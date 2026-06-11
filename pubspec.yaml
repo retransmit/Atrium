@@ -1,0 +1,32 @@
+name: atrium_workspace
+publish_to: none
+description: >
+  Workspace root for Atrium - a Flutter mobile controller for a full
+  self-hosted media stack (Sonarr / Radarr / Prowlarr / Bazarr / Overseerr
+  / Tautulli / Jellyfin / Emby / Plex / qBittorrent / SABnzbd). Individual
+  packages live under app/, packages/, and services/.
+
+environment:
+  sdk: ^3.6.0
+  flutter: ^3.27.0
+
+workspace:
+  - app
+  - packages/core_models
+  - packages/core_storage
+  - packages/core_networking
+  - packages/core_player
+  - packages/core_profile
+  - packages/core_ui
+  - packages/core_router
+  - services/service_sonarr
+  - services/service_radarr
+  - services/service_prowlarr
+  - services/service_bazarr
+  - services/service_overseerr
+  - services/service_tautulli
+  - services/service_jellyfin
+  - services/service_emby
+  - services/service_plex
+  - services/service_qbittorrent
+  - services/service_sabnzbd

@@ -1,0 +1,87 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+**/build/
+**/.dart_tool/
+**/pubspec.lock
+!app/pubspec.lock
+.fvm/
+
+# IntelliJ / Android Studio
+*.iml
+*.ipr
+*.iws
+.idea/
+.gradle/
+local.properties
+
+# VS Code
+.vscode/
+
+# Generated files
+**/*.g.dart
+**/*.freezed.dart
+**/*.gr.dart
+**/*.mocks.dart
+**/*.config.dart
+!**/lib/**/*.g.dart.keep
+
+# Android
+android/.gradle/
+android/captures/
+android/gradlew
+android/gradlew.bat
+android/local.properties
+android/**/GeneratedPluginRegistrant.java
+android/key.properties
+android/app/upload-keystore.jks
+android/app/debug.keystore
+android/app/release.keystore
+*.jks
+*.keystore
+
+# iOS
+ios/Pods/
+ios/Runner.xcworkspace/xcuserdata/
+ios/Runner.xcodeproj/xcuserdata/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/flutter_export_environment.sh
+
+# macOS / Linux / Windows desktop
+macos/Pods/
+linux/build/
+windows/build/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Secrets - defense in depth
+*.env
+.env.*
+*.secret
+*.local.json
+google-services.json
+GoogleService-Info.plist
+
+# Coverage
+coverage/
+test/.test_coverage.dart
+lcov.info
+
+# Logs
+*.log
+flutter_*.log
+
+# Local scratch screenshots from device testing
+look*.png
+shot*.png
+*.ui.xml
+ui.xml

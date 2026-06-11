@@ -1,0 +1,24 @@
+name: core_profile
+description: >
+  Profile / Instance CRUD, Riverpod providers, and import/export
+  serialization for Atrium.
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.6.0
+  flutter: ^3.27.0
+
+dependencies:
+  collection: ^1.18.0
+  core_models:
+  core_storage:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.6.1
+  hive_ce: ^2.10.1
+  meta: ^1.16.0
+  uuid: ^4.5.1
+
+dev_dependencies:
+  build_runner: ^2.4.13

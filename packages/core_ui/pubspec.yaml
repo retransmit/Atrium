@@ -1,0 +1,21 @@
+name: core_ui
+description: >
+  Material 3 theme, design tokens, and shared widgets (service tiles,
+  status chips, async-loaders) for Atrium.
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.6.0
+  flutter: ^3.27.0
+
+dependencies:
+  core_models:
+  dynamic_color: ^1.7.0
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.6.1
+  meta: ^1.16.0
+
+dev_dependencies:
+  build_runner: ^2.4.13
