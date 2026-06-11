@@ -41,16 +41,60 @@ sealed class NetworkException implements Exception {
     if (status == 404) {
       return const NetworkNotFoundException('Resource not found.');
     }
+    final String? detail = _bodyMessage(e.response?.data);
     if (status >= 500) {
       return NetworkServerException(
-        'Server error (HTTP $status). Try again in a moment.',
+        detail == null
+            ? 'Server error (HTTP $status). Try again in a moment.'
+            : 'Server error (HTTP $status): $detail',
         status: status,
       );
     }
     return NetworkBadResponseException(
-      'Unexpected response (HTTP $status).',
+      detail == null
+          ? 'Unexpected response (HTTP $status).'
+          : 'HTTP $status: $detail',
       status: status,
     );
+  }
+
+  /// Best-effort human message from an error response body. The *arr family
+  /// returns `{"message": ...}` for errors and a list of
+  /// `{"errorMessage": ...}` validation failures for failed tests - both are
+  /// far more useful than a bare status code.
+  static String? _bodyMessage(Object? data) {
+    String clip(String s) => s.length > 200 ? '${s.substring(0, 200)}...' : s;
+    if (data is String) {
+      final String trimmed = data.trim();
+      if (trimmed.isEmpty || trimmed.startsWith('<')) {
+        return null; // HTML error pages are noise, not a message.
+      }
+      return clip(trimmed);
+    }
+    if (data is Map) {
+      for (final String key in <String>['message', 'error', 'errorMessage']) {
+        final Object? m = data[key];
+        if (m is String && m.isNotEmpty) {
+          return clip(m);
+        }
+      }
+      return null;
+    }
+    if (data is List) {
+      final List<String> messages = <String>[];
+      for (final Object? item in data) {
+        if (item is Map) {
+          final Object? m = item['errorMessage'] ?? item['message'];
+          if (m is String && m.isNotEmpty) {
+            messages.add(m);
+          }
+        }
+      }
+      if (messages.isNotEmpty) {
+        return clip(messages.join('; '));
+      }
+    }
+    return null;
   }
 
   @override

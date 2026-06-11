@@ -151,6 +151,11 @@ class _IndexerSheetState extends ConsumerState<_IndexerSheet> {
   late bool _enabled = widget.indexer.enable;
   bool _busy = false;
 
+  // Inline feedback: snackbars fired from inside a modal sheet render on the
+  // scaffold UNDERNEATH it and are invisible while the sheet is up.
+  String? _status;
+  bool _statusOk = true;
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
@@ -210,9 +215,34 @@ class _IndexerSheetState extends ConsumerState<_IndexerSheet> {
             const SizedBox(height: Insets.md),
             OutlinedButton.icon(
               onPressed: _busy ? null : _test,
-              icon: const Icon(Icons.network_check),
+              icon: _busy
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.network_check),
               label: const Text('Test'),
             ),
+            if (_status != null) ...<Widget>[
+              const SizedBox(height: Insets.sm),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Icon(
+                    _statusOk ? Icons.check_circle : Icons.error_outline,
+                    size: 16,
+                    color: _statusOk
+                        ? Colors.green
+                        : theme.colorScheme.error,
+                  ),
+                  const SizedBox(width: Insets.xs),
+                  Flexible(
+                    child: Text(_status!, style: theme.textTheme.bodySmall),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
@@ -220,23 +250,30 @@ class _IndexerSheetState extends ConsumerState<_IndexerSheet> {
   }
 
   Future<void> _setEnabled(bool value) async {
-    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     setState(() {
       _enabled = value;
       _busy = true;
+      _status = null;
     });
     try {
       final ProwlarrApi api =
           await ref.read(prowlarrApiProvider(widget.instance).future);
       await api.setIndexerEnabled(widget.indexer.id, enabled: value);
       ref.invalidate(prowlarrIndexersProvider(widget.instance));
+      if (mounted) {
+        setState(() {
+          _statusOk = true;
+          _status = value ? 'Enabled' : 'Disabled';
+        });
+      }
     } on Object catch (e) {
       if (mounted) {
-        setState(() => _enabled = !value);
+        setState(() {
+          _enabled = !value;
+          _statusOk = false;
+          _status = _errorMessage(e);
+        });
       }
-      messenger.showSnackBar(
-        SnackBar(content: Text('${widget.indexer.name}: ${_errorMessage(e)}')),
-      );
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -245,19 +282,27 @@ class _IndexerSheetState extends ConsumerState<_IndexerSheet> {
   }
 
   Future<void> _test() async {
-    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _status = null;
+    });
     try {
       final ProwlarrApi api =
           await ref.read(prowlarrApiProvider(widget.instance).future);
       await api.testIndexer(widget.indexer.id);
-      messenger.showSnackBar(
-        SnackBar(content: Text('${widget.indexer.name}: test passed')),
-      );
+      if (mounted) {
+        setState(() {
+          _statusOk = true;
+          _status = 'Test passed';
+        });
+      }
     } on Object catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text('${widget.indexer.name}: ${_errorMessage(e)}')),
-      );
+      if (mounted) {
+        setState(() {
+          _statusOk = false;
+          _status = _errorMessage(e);
+        });
+      }
     } finally {
       if (mounted) {
         setState(() => _busy = false);

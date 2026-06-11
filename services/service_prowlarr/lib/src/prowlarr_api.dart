@@ -71,10 +71,15 @@ class ProwlarrApi {
     }
   }
 
+  /// `forceSave=true` skips Prowlarr's test-on-save: without it, enabling an
+  /// indexer whose tracker is unreachable (or slow) rejects the PUT with a
+  /// validation error. A user flipping the enable switch should not be
+  /// blocked on tracker reachability.
   Future<void> updateIndexerRaw(Map<String, dynamic> indexer) async {
     try {
       await _dio.put<dynamic>(
         '$_base/indexer/${indexer['id']}',
+        queryParameters: <String, dynamic>{'forceSave': 'true'},
         data: indexer,
       );
     } on DioException catch (e) {
