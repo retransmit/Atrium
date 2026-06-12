@@ -210,6 +210,28 @@ class RadarrApi {
     }
   }
 
+  Future<List<RadarrMovie>> getCalendar({
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>(
+        '$_base/calendar',
+        queryParameters: <String, dynamic>{
+          'start': start.toUtc().toIso8601String(),
+          'end': end.toUtc().toIso8601String(),
+        },
+      );
+      return (resp.data as List<dynamic>)
+          .map(
+            (dynamic e) => RadarrMovie.fromJson(e as Map<String, dynamic>),
+          )
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
   /// Absolute, authenticated URL for a movie image, suitable for
   /// `CachedNetworkImage`.
   ///

@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'screens/activity_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/instance_form_screen.dart';
-import 'screens/library_screen.dart';
+import 'screens/calendar_screen.dart';
 import 'screens/profiles_screen.dart';
 import 'screens/service_detail_screen.dart';
 import 'screens/settings_screen.dart';
@@ -70,10 +70,10 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
           StatefulShellBranch(
             routes: <RouteBase>[
               GoRoute(
-                path: AtriumRoutes.library,
-                name: AtriumRoutes.libraryName,
+                path: AtriumRoutes.calendar,
+                name: AtriumRoutes.calendarName,
                 builder: (BuildContext context, GoRouterState state) =>
-                    const LibraryScreen(),
+                    const CalendarScreen(),
               ),
             ],
           ),

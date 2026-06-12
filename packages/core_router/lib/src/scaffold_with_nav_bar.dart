@@ -25,9 +25,9 @@ class ScaffoldWithNavBar extends StatelessWidget {
             label: 'Dashboard',
           ),
           NavigationDestination(
-            icon: Icon(Icons.video_library_outlined),
-            selectedIcon: Icon(Icons.video_library),
-            label: 'Library',
+            icon: Icon(Icons.calendar_today_outlined),
+            selectedIcon: Icon(Icons.calendar_today),
+            label: 'Calendar',
           ),
           NavigationDestination(
             icon: Icon(Icons.swap_vert_outlined),
