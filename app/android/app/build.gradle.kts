@@ -1,5 +1,8 @@
 plugins {
     id("com.android.application")
+    // Required for the top-level kotlin { compilerOptions } block below;
+    // android.builtInKotlin is off, so nothing else applies Kotlin.
+    id("org.jetbrains.kotlin.android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
