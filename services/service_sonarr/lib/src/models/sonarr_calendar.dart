@@ -1,11 +1,12 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'sonarr_series.dart';
 
 part 'sonarr_calendar.freezed.dart';
 part 'sonarr_calendar.g.dart';
 
 /// A calendar entry (an episode airing) from `GET /api/v3/calendar`.
 @freezed
-class SonarrCalendarEntry with _$SonarrCalendarEntry {
+abstract class SonarrCalendarEntry with _$SonarrCalendarEntry {
   const factory SonarrCalendarEntry({
     required int id,
     required int seriesId,
@@ -16,6 +17,7 @@ class SonarrCalendarEntry with _$SonarrCalendarEntry {
     DateTime? airDateUtc,
     @Default(false) bool hasFile,
     @Default(false) bool monitored,
+    SonarrSeries? series,
   }) = _SonarrCalendarEntry;
 
   factory SonarrCalendarEntry.fromJson(Map<String, dynamic> json) =>
