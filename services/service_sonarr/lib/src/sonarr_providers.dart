@@ -3,7 +3,9 @@ import 'package:core_networking/core_networking.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'models/sonarr_calendar.dart';
+import 'models/sonarr_episode.dart';
 import 'models/sonarr_queue.dart';
+import 'models/sonarr_release.dart';
 import 'models/sonarr_series.dart';
 import 'sonarr_api.dart';
 
@@ -100,4 +102,37 @@ final sonarrCalendarProvider =
   });
 
   return entries;
+});
+
+/// All episodes for a given series. Auto-dispose, family key is (Instance, seriesId).
+final sonarrEpisodesProvider =
+    FutureProvider.autoDispose.family<List<SonarrEpisode>, (Instance, int)>((
+  Ref ref,
+  (Instance, int) key,
+) async {
+  final (Instance instance, int seriesId) = key;
+  final SonarrApi api = await ref.watch(sonarrApiProvider(instance).future);
+  return api.getEpisodes(seriesId);
+});
+
+/// Fetches releases for a given episode. family key is (Instance, episodeId).
+final sonarrReleasesProvider =
+    FutureProvider.autoDispose.family<List<SonarrRelease>, (Instance, int)>((
+  Ref ref,
+  (Instance, int) key,
+) async {
+  final (Instance instance, int episodeId) = key;
+  final SonarrApi api = await ref.watch(sonarrApiProvider(instance).future);
+  return api.getReleases(episodeId);
+});
+
+/// Fetches releases for a given season. family key is (Instance, seriesId, seasonNumber).
+final sonarrSeasonReleasesProvider =
+    FutureProvider.autoDispose.family<List<SonarrRelease>, (Instance, int, int)>((
+  Ref ref,
+  (Instance, int, int) key,
+) async {
+  final (Instance instance, int seriesId, int seasonNumber) = key;
+  final SonarrApi api = await ref.watch(sonarrApiProvider(instance).future);
+  return api.getSeasonReleases(seriesId, seasonNumber);
 });

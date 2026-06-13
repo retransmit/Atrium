@@ -1,4 +1,5 @@
 import 'package:core_models/core_models.dart';
+import 'package:core_profile/core_profile.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -7,9 +8,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:service_bazarr/service_bazarr.dart';
 import 'package:service_overseerr/service_overseerr.dart';
 import 'package:service_plex/service_plex.dart';
+import 'package:service_radarr/service_radarr.dart';
 import 'package:service_sabnzbd/service_sabnzbd.dart';
 import 'package:service_sonarr/service_sonarr.dart';
 import 'package:service_tautulli/service_tautulli.dart';
+import 'package:atrium/src/screens/calendar_screen.dart';
 
 /// Deterministic render tests for the service modules added in the final pass.
 ///
@@ -188,26 +191,27 @@ void main() {
     expect(find.text('Movies'), findsOneWidget);
   });
 
-  testWidgets('SonarrHome renders calendar entries', (WidgetTester tester) async {
+  testWidgets('CalendarScreen renders Sonarr and Radarr aggregated entries', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(800, 1200);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final Instance instance = _instance(ServiceKind.sonarr);
-    // Use an airDate slightly in the future so it resolves as "Upcoming"
-    final DateTime airDate = DateTime.now().add(const Duration(hours: 2));
+    final Instance sonarr = _instance(ServiceKind.sonarr);
+    final Instance radarr = _instance(ServiceKind.radarr);
+    final DateTime airDate = DateTime.now();
+
     await _pump(
       tester,
       <Override>[
-        sonarrApiProvider(instance).overrideWith(
+        activeInstancesProvider.overrideWith(
+          (Ref ref) => <Instance>[sonarr, radarr],
+        ),
+        sonarrApiProvider(sonarr).overrideWith(
           (Ref ref) async => SonarrApi(Dio(), apiKey: 'k'),
         ),
-        sonarrSeriesProvider(instance).overrideWith(
-          (Ref ref) async => const <SonarrSeries>[],
-        ),
-        sonarrQueueProvider(instance).overrideWith(
-          (Ref ref) async => const SonarrQueuePage(records: <SonarrQueueRecord>[]),
+        radarrApiProvider(radarr).overrideWith(
+          (Ref ref) async => RadarrApi(Dio(), apiKey: 'k'),
         ),
         sonarrCalendarProvider.overrideWith(
           (Ref ref, (Instance, DateTime) key) async => <SonarrCalendarEntry>[
@@ -223,27 +227,29 @@ void main() {
               series: const SonarrSeries(
                 id: 10,
                 title: 'Game of Thrones',
-                images: <SonarrImage>[
-                  SonarrImage(coverType: 'poster', url: '/cover.jpg'),
-                ],
               ),
             ),
           ],
         ),
+        radarrCalendarProvider.overrideWith(
+          (Ref ref, (Instance, DateTime) key) async => <RadarrMovie>[
+            RadarrMovie(
+              id: 1,
+              title: 'Inception',
+              year: 2010,
+              inCinemas: airDate.toIso8601String(),
+              monitored: true,
+              hasFile: false,
+            ),
+          ],
+        ),
       ],
-      SonarrHome(instance: instance),
-      pumps: 2,
+      const CalendarScreen(),
+      pumps: 3,
     );
 
-    // Tap on Calendar tab
-    await tester.tap(find.text('Calendar'));
-    await tester.pumpAndSettle();
-    for (int i = 0; i < 3; i++) {
-      await tester.pump();
-    }
-
-    expect(find.text('Game of Thrones'), findsOneWidget);
-    expect(find.text('S03E09 • The Rains of Castamere'), findsOneWidget);
-    expect(find.text('Upcoming'), findsOneWidget);
+    expect(find.text('Game of Thrones - S03E09'), findsOneWidget);
+    expect(find.text('Inception'), findsOneWidget);
+    expect(find.text('Missing'), findsNWidgets(2));
   });
 }

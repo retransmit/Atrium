@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'models/radarr_movie.dart';
 import 'models/radarr_queue.dart';
+import 'models/radarr_release.dart';
 import 'radarr_api.dart';
 
 /// How often the download queue refreshes while a Radarr screen is visible.
@@ -71,3 +72,36 @@ final radarrQueueProvider =
       final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
       return api.getQueue();
     });
+
+/// The calendar entries for an instance for a given month.
+final radarrCalendarProvider =
+    FutureProvider.autoDispose.family<List<RadarrMovie>, (Instance, DateTime)>((
+  Ref ref,
+  (Instance, DateTime) key,
+) async {
+  final (Instance instance, DateTime month) = key;
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  
+  // Calculate local month boundaries
+  final DateTime start = DateTime(month.year, month.month);
+  final DateTime end = DateTime(month.year, month.month + 1).subtract(const Duration(seconds: 1));
+  
+  final List<RadarrMovie> movies = await api.getCalendar(
+    start: start,
+    end: end,
+  );
+  
+  return movies;
+});
+
+/// Fetches releases for a given movie. family key is (Instance, movieId).
+final radarrReleasesProvider =
+    FutureProvider.autoDispose.family<List<RadarrRelease>, (Instance, int)>((
+  Ref ref,
+  (Instance, int) key,
+) async {
+  final (Instance instance, int movieId) = key;
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getReleases(movieId);
+});
+

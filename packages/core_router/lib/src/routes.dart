@@ -11,8 +11,8 @@ abstract final class AtriumRoutes {
   static const String dashboard = '/dashboard';
   static const String dashboardName = 'dashboard';
 
-  static const String library = '/library';
-  static const String libraryName = 'library';
+  static const String calendar = '/calendar';
+  static const String calendarName = 'calendar';
 
   static const String activity = '/activity';
   static const String activityName = 'activity';
