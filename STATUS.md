@@ -1,6 +1,6 @@
 # Atrium - Status
 
-> Snapshot of what genuinely works and what is left, as of 2026-06-12.
+> Snapshot of what genuinely works and what is left, as of 2026-06-14.
 > Atrium is in early development; nothing here is a release promise.
 
 ## Scope note
@@ -17,10 +17,13 @@ Atrium is a **controller** app. Video playback was removed by design
   3s realtime list polling, add magnet/file, categories, pause/resume/
   delete/recheck/queue moves, detail screen (overview/files/trackers),
   per-file priority
-- **Sonarr** (live-verified): poster grid, series detail (seasons, monitor
-  toggles, season search, delete), search-and-add (quality profile + root
-  folder + monitor options), queue 3s / library 60s polling, interactive
-  release search (manual indexer search + grab from the detail screen)
+- **Sonarr** (live-verified, the deepest module): poster grid, series detail
+  (seasons, monitor toggles, season search, delete), search-and-add (quality
+  profile + root folder + monitor options), queue 3s / library 60s polling,
+  interactive release search, plus Wanted (missing + cutoff-unmet), History,
+  Blocklist, System (status/disk/tasks/health/backups), and a Settings editor
+  (indexers, download clients, notifications, import lists, host/media-
+  management/naming config) - settings writes live-verified
 - **Radarr** (live-verified): same depth as Sonarr, movie flavored, plus
   interactive release search
 - **Calendar** (top-level tab, replaces the old Library placeholder): month
@@ -31,6 +34,10 @@ Atrium is a **controller** app. Video playback was removed by design
 - **Tautulli** (live-verified incl. a real stream): Activity tab w/ 10s
   polling, session detail sheet (codecs, decisions, bandwidth, terminate
   w/ inline errors), History, Stats (30-day home stats), Users
+- **Glances** (system monitor, contributed): per-instance polling, animated
+  CPU/Memory gauges, swap + per-core usage bars, network rx/tx, disk usage,
+  uptime (built and renders; not yet live-verified against a real Glances
+  server)
 
 ## Partially done
 
