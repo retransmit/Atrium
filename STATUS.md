@@ -19,9 +19,12 @@ Atrium is a **controller** app. Video playback was removed by design
   per-file priority
 - **Sonarr** (live-verified): poster grid, series detail (seasons, monitor
   toggles, season search, delete), search-and-add (quality profile + root
-  folder + monitor options), queue 3s / library 60s polling, calendar tab
-  (month grid with status dots; contributed, live-verified)
-- **Radarr** (live-verified): same depth as Sonarr, movie flavored
+  folder + monitor options), queue 3s / library 60s polling, interactive
+  release search (manual indexer search + grab from the detail screen)
+- **Radarr** (live-verified): same depth as Sonarr, movie flavored, plus
+  interactive release search
+- **Calendar** (top-level tab, replaces the old Library placeholder): month
+  grid aggregating upcoming Sonarr + Radarr airings/releases with status dots
 - **Prowlarr** (live-verified incl. grab-to-client): indexer list + stats
   w/ 60s polling, enable/disable (forceSave), test, manual search across
   indexers w/ seeders/size/age sort, grab lands in the download client
