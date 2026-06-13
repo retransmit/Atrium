@@ -83,8 +83,8 @@ final radarrCalendarProvider =
   final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
   
   // Calculate local month boundaries
-  final DateTime start = DateTime(month.year, month.month, 1);
-  final DateTime end = DateTime(month.year, month.month + 1, 1).subtract(const Duration(seconds: 1));
+  final DateTime start = DateTime(month.year, month.month);
+  final DateTime end = DateTime(month.year, month.month + 1).subtract(const Duration(seconds: 1));
   
   final List<RadarrMovie> movies = await api.getCalendar(
     start: start,
@@ -101,13 +101,7 @@ final radarrReleasesProvider =
   (Instance, int) key,
 ) async {
   final (Instance instance, int movieId) = key;
-  try {
-    final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
-    return await api.getReleases(movieId);
-  } catch (e, stack) {
-    print('Error in radarrReleasesProvider for movie $movieId: $e');
-    print(stack);
-    rethrow;
-  }
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getReleases(movieId);
 });
 

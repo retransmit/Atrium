@@ -260,6 +260,7 @@ class EmbyPosterCard extends ConsumerWidget {
       onLongPress: () {
         showModalBottomSheet<void>(
           context: context,
+          useRootNavigator: true,
           builder: (BuildContext context) {
             return SafeArea(
               child: Column(

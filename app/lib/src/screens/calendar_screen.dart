@@ -178,6 +178,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   void _showMonthYearPicker(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),

@@ -1,8 +1,8 @@
+import 'package:core_models/core_models.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:core_models/core_models.dart';
-import 'package:core_ui/core_ui.dart';
 
 import 'models/radarr_movie.dart';
 import 'models/radarr_release.dart';
@@ -89,7 +89,7 @@ class _RadarrReleaseSearchScreenState
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
               side: BorderSide(
-                color: colors.outlineVariant.withOpacity(0.5),
+                color: colors.outlineVariant.withValues(alpha: 0.5),
               ),
             ),
             child: Padding(
@@ -290,7 +290,7 @@ class _RadarrReleaseSearchScreenState
                         r.title.toLowerCase().contains(query) ||
                         (r.indexer != null &&
                             r.indexer!.toLowerCase().contains(query)) ||
-                        r.releaseGroup.toLowerCase().contains(query));
+                        r.releaseGroup.toLowerCase().contains(query),);
                   }
 
                   // Apply protocol filter locally
@@ -479,11 +479,11 @@ class _ReleaseTileState extends ConsumerState<_ReleaseTile> {
       qualityFg = isDark ? const Color(0xFFC8E6C9) : const Color(0xFF2E7D32);
     } else if (q.contains('720') || q.contains('hd')) {
       qualityBg = isDark
-          ? const Color(0xFFE65100).withOpacity(0.3)
+          ? const Color(0xFFE65100).withValues(alpha: 0.3)
           : const Color(0xFFFFF3E0);
       qualityFg = isDark ? const Color(0xFFFFCC80) : const Color(0xFFE65100);
     } else {
-      qualityBg = colors.surfaceVariant;
+      qualityBg = colors.surfaceContainerHighest;
       qualityFg = colors.onSurfaceVariant;
     }
 
@@ -493,8 +493,7 @@ class _ReleaseTileState extends ConsumerState<_ReleaseTile> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: colors.outlineVariant.withOpacity(0.5),
-          width: 1,
+          color: colors.outlineVariant.withValues(alpha: 0.5),
         ),
       ),
       child: InkWell(
@@ -544,7 +543,7 @@ class _ReleaseTileState extends ConsumerState<_ReleaseTile> {
                             Icons.cloud_download_outlined,
                             color: r.downloadAllowed
                                 ? colors.primary
-                                : colors.onSurface.withOpacity(0.38),
+                                : colors.onSurface.withValues(alpha: 0.38),
                           ),
                           onPressed: r.downloadAllowed ? _grab : null,
                           tooltip: r.downloadAllowed
@@ -657,7 +656,7 @@ class _ReleaseTileState extends ConsumerState<_ReleaseTile> {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: colors.surfaceVariant.withOpacity(0.5),
+                        color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -674,7 +673,7 @@ class _ReleaseTileState extends ConsumerState<_ReleaseTile> {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: colors.surfaceVariant.withOpacity(0.5),
+                      color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -692,7 +691,7 @@ class _ReleaseTileState extends ConsumerState<_ReleaseTile> {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: colors.surfaceVariant.withOpacity(0.5),
+                      color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -711,8 +710,8 @@ class _ReleaseTileState extends ConsumerState<_ReleaseTile> {
                       ),
                       decoration: BoxDecoration(
                         color: r.customFormatScore > 0
-                            ? Colors.green.withOpacity(0.1)
-                            : Colors.red.withOpacity(0.1),
+                            ? Colors.green.withValues(alpha: 0.1)
+                            : Colors.red.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -733,7 +732,7 @@ class _ReleaseTileState extends ConsumerState<_ReleaseTile> {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: colors.outlineVariant.withOpacity(0.3),
+                        color: colors.outlineVariant.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -786,10 +785,10 @@ class _ReleaseTileState extends ConsumerState<_ReleaseTile> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(Insets.xs),
                   decoration: BoxDecoration(
-                    color: colors.errorContainer.withOpacity(0.3),
+                    color: colors.errorContainer.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: colors.error.withOpacity(0.3),
+                      color: colors.error.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Column(

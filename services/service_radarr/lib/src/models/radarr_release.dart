@@ -21,7 +21,8 @@ class RadarrRelease {
   bool get downloadAllowed => (raw['downloadAllowed'] as bool?) ?? false;
   bool get approved => (raw['approved'] as bool?) ?? false;
 
-  String get quality => (raw['quality']?['quality']?['name'] as String?) ?? '';
+  String get quality =>
+      ((raw['quality'] as Map?)?['quality'] as Map?)?['name'] as String? ?? '';
   String get releaseGroup => (raw['releaseGroup'] as String?) ?? '';
   int get customFormatScore => ((raw['customFormatScore'] as num?) ?? 0).toInt();
 

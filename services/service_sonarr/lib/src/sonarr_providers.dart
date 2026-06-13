@@ -122,14 +122,8 @@ final sonarrReleasesProvider =
   (Instance, int) key,
 ) async {
   final (Instance instance, int episodeId) = key;
-  try {
-    final SonarrApi api = await ref.watch(sonarrApiProvider(instance).future);
-    return await api.getReleases(episodeId);
-  } catch (e, stack) {
-    print('Error in sonarrReleasesProvider for episode $episodeId: $e');
-    print(stack);
-    rethrow;
-  }
+  final SonarrApi api = await ref.watch(sonarrApiProvider(instance).future);
+  return api.getReleases(episodeId);
 });
 
 /// Fetches releases for a given season. family key is (Instance, seriesId, seasonNumber).
@@ -139,12 +133,6 @@ final sonarrSeasonReleasesProvider =
   (Instance, int, int) key,
 ) async {
   final (Instance instance, int seriesId, int seasonNumber) = key;
-  try {
-    final SonarrApi api = await ref.watch(sonarrApiProvider(instance).future);
-    return await api.getSeasonReleases(seriesId, seasonNumber);
-  } catch (e, stack) {
-    print('Error in sonarrSeasonReleasesProvider for series $seriesId, season $seasonNumber: $e');
-    print(stack);
-    rethrow;
-  }
+  final SonarrApi api = await ref.watch(sonarrApiProvider(instance).future);
+  return api.getSeasonReleases(seriesId, seasonNumber);
 });

@@ -4,13 +4,13 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
-import 'models/sonarr_series.dart';
 import 'models/sonarr_episode.dart';
+import 'models/sonarr_series.dart';
 import 'sonarr_api.dart';
 import 'sonarr_providers.dart';
 import 'sonarr_release_search_screen.dart';
-import 'package:intl/intl.dart';
 
 /// Detail view for one Sonarr series: poster header, stats, season list with
 /// per-season monitor toggles and search, plus series-level actions
@@ -372,7 +372,7 @@ class _SeasonTile extends ConsumerWidget {
 
               // Sort by episode number ascending
               seasonEpisodes.sort((SonarrEpisode a, SonarrEpisode b) =>
-                  a.episodeNumber - b.episodeNumber);
+                  a.episodeNumber - b.episodeNumber,);
 
               return Column(
                 children: <Widget>[
