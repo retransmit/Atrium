@@ -1,5 +1,5 @@
-name: service_overseerr
-description: Overseerr / Jellyseerr API client and UI screens for Atrium.
+name: service_seerr
+description: Seerr / Jellyseerr API client and UI screens for Atrium.
 publish_to: none
 resolution: workspace
 

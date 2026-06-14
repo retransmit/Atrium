@@ -24,7 +24,7 @@ part 'instance_auth.g.dart';
 @freezed
 sealed class InstanceAuth with _$InstanceAuth {
   /// Static API key in a header or query param. Used by every *arr service,
-  /// Overseerr / Jellyseerr, Tautulli, and SABnzbd.
+  /// Seerr / Jellyseerr, Tautulli, and SABnzbd.
   const factory InstanceAuth.apiKey({required String apiKey}) =
       InstanceAuthApiKey;
 

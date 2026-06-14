@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:service_bazarr/service_bazarr.dart';
-import 'package:service_overseerr/service_overseerr.dart';
+import 'package:service_seerr/service_seerr.dart';
 import 'package:service_plex/service_plex.dart';
 import 'package:service_radarr/service_radarr.dart';
 import 'package:service_sabnzbd/service_sabnzbd.dart';
@@ -107,24 +107,24 @@ void main() {
     expect(find.text('The Matrix'), findsOneWidget);
   });
 
-  testWidgets('OverseerrHome renders requests with approve action',
+  testWidgets('SeerrHome renders requests with approve action',
       (WidgetTester tester) async {
-    final Instance instance = _instance(ServiceKind.overseerr);
+    final Instance instance = _instance(ServiceKind.seerr);
     await _pump(
       tester,
       <Override>[
-        overseerrRequestsProvider(instance).overrideWith(
-          (Ref ref) async => const <OverseerrRequest>[
-            OverseerrRequest(
+        seerrRequestsProvider(instance).overrideWith(
+          (Ref ref) async => const <SeerrRequest>[
+            SeerrRequest(
               id: 1,
               status: 1,
               type: 'movie',
-              requestedBy: OverseerrUser(displayName: 'Bob'),
+              requestedBy: SeerrUser(displayName: 'Bob'),
             ),
           ],
         ),
       ],
-      OverseerrHome(instance: instance),
+      SeerrHome(instance: instance),
     );
     expect(find.text('Movie request'), findsOneWidget);
     expect(find.text('by Bob'), findsOneWidget);

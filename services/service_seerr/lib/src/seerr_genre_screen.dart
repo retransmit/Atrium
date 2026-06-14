@@ -1,0 +1,124 @@
+import 'package:core_models/core_models.dart';
+import 'package:core_ui/core_ui.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'models/seerr_discover.dart';
+import 'seerr_item_detail.dart';
+import 'seerr_providers.dart';
+
+class SeerrGenreScreen extends ConsumerWidget {
+  const SeerrGenreScreen({
+    required this.instance,
+    required this.genre,
+    required this.isMovie,
+    super.key,
+  });
+
+  final Instance instance;
+  final SeerrGenre genre;
+  final bool isMovie;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<List<SeerrDiscoverResult>> items = ref.watch(
+      seerrItemsByGenreProvider((instance: instance, genreId: genre.id, isMovie: isMovie)),
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('${genre.name} ${isMovie ? 'Movies' : 'TV Shows'}'),
+      ),
+      body: AsyncValueView<List<SeerrDiscoverResult>>(
+        value: items,
+        onRetry: () => ref.invalidate(seerrItemsByGenreProvider((instance: instance, genreId: genre.id, isMovie: isMovie))),
+        data: (List<SeerrDiscoverResult> list) {
+          if (list.isEmpty) {
+            return const EmptyView(
+              icon: Icons.movie_filter_outlined,
+              title: 'No results',
+              message: 'No items found for this genre.',
+            );
+          }
+
+          return GridView.builder(
+            padding: Insets.page,
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 140,
+              childAspectRatio: 0.52,
+              crossAxisSpacing: Insets.md,
+              mainAxisSpacing: Insets.md,
+            ),
+            itemCount: list.length,
+            itemBuilder: (BuildContext context, int index) {
+              final SeerrDiscoverResult item = list[index];
+              return _SeerrGenrePosterCard(instance: instance, item: item);
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SeerrGenrePosterCard extends StatelessWidget {
+  const _SeerrGenrePosterCard({required this.instance, required this.item});
+
+  final Instance instance;
+  final SeerrDiscoverResult item;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        pushScreen<void>(
+          context,
+          SeerrItemDetailScreen(instance: instance, item: item),
+        );
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(Radii.sm),
+              child: item.posterPath != null
+                  ? Image.network(
+                      'https://image.tmdb.org/t/p/w500${item.posterPath}',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const _Placeholder(),
+                    )
+                  : const _Placeholder(),
+            ),
+          ),
+          const SizedBox(height: Insets.xs),
+          Text(
+            item.displayTitle,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          if (item.displayDate != null)
+            Text(
+              item.displayDate!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Placeholder extends StatelessWidget {
+  const _Placeholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: const Center(child: Icon(Icons.movie_outlined)),
+    );
+  }
+}
