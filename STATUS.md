@@ -31,9 +31,10 @@ Atrium is a **controller** app. Video playback was removed by design
 - **Prowlarr** (live-verified incl. grab-to-client): indexer list + stats
   w/ 60s polling, enable/disable (forceSave), test, manual search across
   indexers w/ seeders/size/age sort, grab lands in the download client
-- **Tautulli** (live-verified incl. a real stream): Activity tab w/ 10s
-  polling, session detail sheet (codecs, decisions, bandwidth, terminate
-  w/ inline errors), History, Stats (30-day home stats), Users
+- **Tautulli** (live-verified, poster-rich): Activity tab w/ 10s polling,
+  session detail sheet (codecs, decisions, bandwidth, terminate w/ inline
+  errors), History, Stats (30-day home stats), Users - all with Plex artwork
+  via Tautulli's image proxy, user avatars, ranked stat bars, and tab icons
 - **Glances** (system monitor, contributed): per-instance polling, animated
   CPU/Memory gauges, swap + per-core usage bars, network rx/tx, disk usage,
   uptime (built and renders; not yet live-verified against a real Glances
