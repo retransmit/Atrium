@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:service_bazarr/service_bazarr.dart';
-import 'package:service_overseerr/service_overseerr.dart';
+import 'package:service_seerr/service_seerr.dart';
 import 'package:service_plex/service_plex.dart';
 import 'package:service_radarr/service_radarr.dart';
 import 'package:service_sabnzbd/service_sabnzbd.dart';
@@ -107,29 +107,39 @@ void main() {
     expect(find.text('The Matrix'), findsOneWidget);
   });
 
-  testWidgets('OverseerrHome renders requests with approve action',
+  testWidgets('SeerrHome renders a request with its media details',
       (WidgetTester tester) async {
-    final Instance instance = _instance(ServiceKind.overseerr);
+    final Instance instance = _instance(ServiceKind.seerr);
     await _pump(
       tester,
       <Override>[
-        overseerrRequestsProvider(instance).overrideWith(
-          (Ref ref) async => const <OverseerrRequest>[
-            OverseerrRequest(
+        seerrRequestsProvider(instance).overrideWith(
+          (Ref ref) async => const <SeerrRequest>[
+            SeerrRequest(
               id: 1,
               status: 1,
               type: 'movie',
-              requestedBy: OverseerrUser(displayName: 'Bob'),
+              media: SeerrMedia(mediaType: 'movie', tmdbId: 603, status: 5),
+              requestedBy: SeerrUser(displayName: 'Bob'),
             ),
           ],
         ),
+        // The request tile resolves the title from Seerr's media details.
+        seerrMediaDetailsProvider(
+          (instance: instance, mediaType: 'movie', tmdbId: 603),
+        ).overrideWith(
+          (Ref ref) async => const SeerrDiscoverResult(
+            id: 603,
+            mediaType: 'movie',
+            title: 'The Matrix',
+          ),
+        ),
       ],
-      OverseerrHome(instance: instance),
+      SeerrHome(instance: instance),
+      pumps: 4,
     );
-    expect(find.text('Movie request'), findsOneWidget);
-    expect(find.text('by Bob'), findsOneWidget);
-    // Pending requests expose an approve button.
-    expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+    expect(find.text('The Matrix'), findsOneWidget);
+    expect(find.text('Requested by: Bob'), findsOneWidget);
   });
 
   testWidgets('BazarrHome renders wanted-subtitles rows', (WidgetTester tester) async {

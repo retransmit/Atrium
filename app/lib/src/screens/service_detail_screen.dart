@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:service_bazarr/service_bazarr.dart';
 import 'package:service_emby/service_emby.dart';
 import 'package:service_jellyfin/service_jellyfin.dart';
-import 'package:service_overseerr/service_overseerr.dart';
+import 'package:service_seerr/service_seerr.dart';
 import 'package:service_plex/service_plex.dart';
 import 'package:service_prowlarr/service_prowlarr.dart';
 import 'package:service_qbittorrent/service_qbittorrent.dart';
@@ -41,7 +41,8 @@ class ServiceDetailScreen extends ConsumerWidget {
         actions: <Widget>[
           if (instance.kind == ServiceKind.emby ||
               instance.kind == ServiceKind.jellyfin ||
-              instance.kind == ServiceKind.plex)
+              instance.kind == ServiceKind.plex ||
+              instance.kind == ServiceKind.seerr)
             IconButton(
               tooltip: 'Search',
               icon: const Icon(Icons.search),
@@ -55,6 +56,7 @@ class ServiceDetailScreen extends ConsumerWidget {
                   delegate: switch (instance.kind) {
                     ServiceKind.emby => EmbySearchDelegate(instance: instance),
                     ServiceKind.plex => PlexSearchDelegate(instance: instance),
+                    ServiceKind.seerr => SeerrSearchDelegate(instance: instance),
                     _ => JellyfinSearchDelegate(instance: instance),
                   },
                 );
@@ -80,7 +82,7 @@ class ServiceDetailScreen extends ConsumerWidget {
       ServiceKind.radarr => RadarrHome(instance: instance),
       ServiceKind.prowlarr => ProwlarrHome(instance: instance),
       ServiceKind.bazarr => BazarrHome(instance: instance),
-      ServiceKind.overseerr => OverseerrHome(instance: instance),
+      ServiceKind.seerr => SeerrHome(instance: instance),
       ServiceKind.tautulli => TautulliHome(instance: instance),
       ServiceKind.jellyfin => JellyfinHome(instance: instance),
       ServiceKind.emby => EmbyHome(instance: instance),

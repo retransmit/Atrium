@@ -20,3 +20,10 @@ final AutoDisposeFutureProviderFamily<GlancesStats, Instance>
   final GlancesApi api = await ref.watch(glancesApiProvider(instance));
   return api.getStats();
 });
+
+/// Stores the user's selected network interface names for an instance.
+/// An empty set means "All" interfaces are displayed.
+final glancesPinnedNetworkProvider =
+    StateProvider.family<Set<String>, Instance>((Ref ref, Instance instance) {
+  return <String>{};
+});

@@ -25,7 +25,7 @@ enum _HealthMode {
 /// service packages.
 ({String path, _HealthMode mode}) _config(ServiceKind kind) {
   switch (kind) {
-    // *arr family + Overseerr: authed REST status endpoints.
+    // *arr family + Seerr: authed REST status endpoints.
     case ServiceKind.sonarr:
     case ServiceKind.radarr:
       return (path: 'api/v3/system/status', mode: _HealthMode.authed);
@@ -33,7 +33,7 @@ enum _HealthMode {
       return (path: 'api/v1/system/status', mode: _HealthMode.authed);
     case ServiceKind.bazarr:
       return (path: 'api/system/status', mode: _HealthMode.authed);
-    case ServiceKind.overseerr:
+    case ServiceKind.seerr:
       return (path: 'api/v1/status', mode: _HealthMode.authed);
     // Query-key services - AuthInterceptor appends the key as a query param.
     case ServiceKind.tautulli:

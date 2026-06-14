@@ -8,7 +8,7 @@ enum ServiceKind {
   radarr,
   prowlarr,
   bazarr,
-  overseerr,
+  seerr,
   tautulli,
   jellyfin,
   emby,
@@ -29,7 +29,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.radarr => 'Radarr',
         ServiceKind.prowlarr => 'Prowlarr',
         ServiceKind.bazarr => 'Bazarr',
-        ServiceKind.overseerr => 'Overseerr',
+        ServiceKind.seerr => 'Seerr',
         ServiceKind.tautulli => 'Tautulli',
         ServiceKind.jellyfin => 'Jellyfin',
         ServiceKind.emby => 'Emby',
@@ -45,7 +45,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.radarr => 'Movies',
         ServiceKind.prowlarr => 'Indexers',
         ServiceKind.bazarr => 'Subtitles',
-        ServiceKind.overseerr => 'Requests',
+        ServiceKind.seerr => 'Requests',
         ServiceKind.tautulli => 'Plex stats',
         ServiceKind.jellyfin => 'Media server',
         ServiceKind.emby => 'Media server',
@@ -62,7 +62,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.radarr => 7878,
         ServiceKind.prowlarr => 9696,
         ServiceKind.bazarr => 6767,
-        ServiceKind.overseerr => 5055,
+        ServiceKind.seerr => 5055,
         ServiceKind.tautulli => 8181,
         ServiceKind.jellyfin => 8096,
         ServiceKind.emby => 8096,
@@ -79,7 +79,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.radarr ||
         ServiceKind.prowlarr ||
         ServiceKind.bazarr ||
-        ServiceKind.overseerr ||
+        ServiceKind.seerr ||
         ServiceKind.tautulli ||
         ServiceKind.sabnzbd =>
           AuthStyle.apiKey,
@@ -97,7 +97,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.prowlarr ||
         ServiceKind.bazarr =>
           ServiceRole.automation,
-        ServiceKind.overseerr => ServiceRole.requests,
+        ServiceKind.seerr => ServiceRole.requests,
         ServiceKind.tautulli => ServiceRole.analytics,
         ServiceKind.jellyfin ||
         ServiceKind.emby ||

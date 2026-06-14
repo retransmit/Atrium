@@ -7,7 +7,7 @@ import 'package:dio/dio.dart';
 ///
 /// | Service                  | Where the secret goes                       |
 /// |--------------------------|---------------------------------------------|
-/// | *arr family, Overseerr   | `X-Api-Key` header                          |
+/// | *arr family, Seerr   | `X-Api-Key` header                          |
 /// | SABnzbd, Tautulli        | `?apikey=` query param                      |
 /// | Plex                     | `X-Plex-Token` header                       |
 /// | Jellyfin / Emby          | `X-Emby-Authorization` (token only after login) |

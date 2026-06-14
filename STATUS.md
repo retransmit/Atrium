@@ -35,10 +35,14 @@ Atrium is a **controller** app. Video playback was removed by design
   session detail sheet (codecs, decisions, bandwidth, terminate w/ inline
   errors), History, Stats (30-day home stats), Users - all with Plex artwork
   via Tautulli's image proxy, user avatars, ranked stat bars, and tab icons
-- **Glances** (system monitor, contributed): per-instance polling, animated
-  CPU/Memory gauges, swap + per-core usage bars, network rx/tx, disk usage,
-  uptime (built and renders; not yet live-verified against a real Glances
-  server)
+- **Glances** (system monitor, live-verified): per-instance polling, animated
+  CPU/Memory gauges, swap + per-core usage bars, network rx/tx with multi-select
+  interface pinning, disk usage, uptime.
+- **Seerr** (formerly Overseerr, live-verified): complete integration including
+  a rich Discover tab (trending, upcoming, genres), robust search, detailed item
+  views (movie/tv details with cast, trailer, request status), request submission
+  (with automatic "all seasons" tv handling), and a full Requests management tab
+  (approve/decline/delete/retry) with 10s auto-refresh polling.
 
 ## Partially done
 
@@ -68,8 +72,6 @@ long-press. Missing:
 
 - Bazarr: only badges + wanted list; missing search/download subtitle
   actions, history, per-item language profiles
-- Overseerr: request list + approve/decline only; missing titles/posters
-  (needs tmdbId lookup), discover/search, issue reporting
 - SABnzbd: queue control only; missing history, categories, speed limits,
   polling
 

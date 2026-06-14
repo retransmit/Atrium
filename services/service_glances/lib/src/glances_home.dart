@@ -14,6 +14,7 @@ class GlancesHome extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<GlancesStats> statsAsync = ref.watch(glancesStatsProvider(instance));
+    final Set<String> pinnedNets = ref.watch(glancesPinnedNetworkProvider(instance));
 
     return statsAsync.when(
       data: (GlancesStats stats) => RefreshIndicator(
@@ -54,8 +55,10 @@ class GlancesHome extends ConsumerWidget {
             const SizedBox(height: Insets.md),
             _buildCoresCard(context, stats.cpu),
             const SizedBox(height: Insets.md),
-            _buildSectionHeader(context, 'Network', Icons.network_check_outlined),
-            ...stats.network.map((GlancesNetwork n) => _buildNetworkCard(context, n)),
+            _buildNetworkSectionHeader(context, ref, stats.network),
+            ...stats.network
+                .where((GlancesNetwork n) => pinnedNets.isEmpty || pinnedNets.contains(n.interface))
+                .map((GlancesNetwork n) => _buildNetworkCard(context, n)),
             const SizedBox(height: Insets.md),
             _buildSectionHeader(context, 'Disks', Icons.storage_outlined),
             ...stats.disks.map((GlancesDisk d) => _buildDiskCard(context, d)),
@@ -117,6 +120,112 @@ class GlancesHome extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildNetworkSectionHeader(BuildContext context, WidgetRef ref, List<GlancesNetwork> networks) {
+    final Set<String> pinnedNets = ref.watch(glancesPinnedNetworkProvider(instance));
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: Insets.sm),
+      child: Row(
+        children: <Widget>[
+          Icon(Icons.network_check_outlined, size: 20, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: Insets.sm),
+          Text(
+            'Network',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          if (pinnedNets.isNotEmpty) ...<Widget>[
+            const SizedBox(width: Insets.sm),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '${pinnedNets.length}',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+            ),
+          ],
+          const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            tooltip: 'Filter Interfaces',
+            onPressed: () {
+              _showNetworkFilterDialog(context, ref, networks);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showNetworkFilterDialog(BuildContext context, WidgetRef parentRef, List<GlancesNetwork> networks) {
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return Consumer(
+          builder: (BuildContext context, WidgetRef ref, Widget? child) {
+            final Set<String> pinnedNets = ref.watch(glancesPinnedNetworkProvider(instance));
+            return AlertDialog(
+              title: const Text('Filter Network Interfaces'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: ListView(
+                  shrinkWrap: true,
+                  children: networks.map((GlancesNetwork net) {
+                    final bool isSelected = pinnedNets.isEmpty || pinnedNets.contains(net.interface);
+                    return CheckboxListTile(
+                      title: Text(net.interface),
+                      value: isSelected,
+                      onChanged: (bool? checked) {
+                        final Set<String> newSet = Set<String>.from(pinnedNets);
+                        if (pinnedNets.isEmpty) {
+                          if (checked != true) {
+                            newSet.addAll(networks.map((GlancesNetwork e) => e.interface));
+                            newSet.remove(net.interface);
+                          }
+                        } else {
+                          if (checked == true) {
+                            newSet.add(net.interface);
+                          } else {
+                            newSet.remove(net.interface);
+                          }
+                          if (newSet.length == networks.length) {
+                            newSet.clear();
+                          }
+                        }
+                        ref.read(glancesPinnedNetworkProvider(instance).notifier).state = newSet;
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    ref.read(glancesPinnedNetworkProvider(instance).notifier).state = <String>{};
+                  },
+                  child: const Text('Reset'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Done'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 

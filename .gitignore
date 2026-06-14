@@ -83,6 +83,7 @@ flutter_*.log
 # Local scratch screenshots from device testing
 look*.png
 shot*.png
+flutter_*.png
 *.ui.xml
 ui.xml
 v3.json

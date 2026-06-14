@@ -30,7 +30,7 @@ dependencies:
   service_bazarr:
   service_emby:
   service_jellyfin:
-  service_overseerr:
+  service_seerr:
   service_plex:
   service_prowlarr:
   service_qbittorrent:

@@ -26,6 +26,7 @@ abstract class Instance with _$Instance {
     required String name,
 
     /// What service this instance speaks to.
+    @JsonKey(fromJson: _serviceKindFromJson)
     required ServiceKind kind,
 
     /// URL reachable from the home LAN (e.g., `http://192.168.1.10:8989`).
@@ -55,3 +56,10 @@ abstract class Instance with _$Instance {
   factory Instance.fromJson(Map<String, dynamic> json) =>
       _$InstanceFromJson(json);
 }
+
+/// Decodes [ServiceKind], migrating the legacy `overseerr` value to
+/// [ServiceKind.seerr]. Overseerr was archived upstream so the service was
+/// renamed to Seerr (API-compatible); profiles saved before the rename still
+/// store `overseerr` and must keep loading.
+ServiceKind _serviceKindFromJson(String value) =>
+    value == 'overseerr' ? ServiceKind.seerr : ServiceKind.values.byName(value);

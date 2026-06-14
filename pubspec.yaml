@@ -22,7 +22,7 @@ workspace:
   - services/service_radarr
   - services/service_prowlarr
   - services/service_bazarr
-  - services/service_overseerr
+  - services/service_seerr
   - services/service_tautulli
   - services/service_jellyfin
   - services/service_emby
