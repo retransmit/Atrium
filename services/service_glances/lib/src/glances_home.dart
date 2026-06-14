@@ -278,7 +278,7 @@ class GlancesHome extends ConsumerWidget {
                       const SizedBox(height: 6),
                       LinearProgressIndicator(
                         value: (stats.swap.percentage / 100.0).clamp(0.0, 1.0),
-                        backgroundColor: const Color(0xFFF59E0B).withOpacity(0.15),
+                        backgroundColor: const Color(0xFFF59E0B).withValues(alpha: 0.15),
                         color: const Color(0xFFF59E0B),
                         minHeight: 6,
                         borderRadius: Radii.card,
@@ -354,7 +354,7 @@ class GlancesHome extends ConsumerWidget {
                         builder: (BuildContext context, double value, Widget? child) {
                           return LinearProgressIndicator(
                             value: value,
-                            backgroundColor: theme.colorScheme.onSurface.withOpacity(0.1),
+                            backgroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.1),
                             color: theme.colorScheme.primary,
                             minHeight: 6,
                             borderRadius: Radii.card,
@@ -561,7 +561,7 @@ class _GaugeCard extends StatelessWidget {
                         value: value,
                         strokeWidth: 8,
                         strokeCap: StrokeCap.round,
-                        backgroundColor: color.withOpacity(0.15),
+                        backgroundColor: color.withValues(alpha: 0.15),
                         color: color,
                       );
                     },
