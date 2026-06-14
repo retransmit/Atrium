@@ -7,7 +7,7 @@ import 'models/glances_stats.dart';
 
 final ProviderFamily<Future<GlancesApi>, Instance> glancesApiProvider =
     Provider.family<Future<GlancesApi>, Instance>(
-        (ProviderRef<Future<GlancesApi>> ref, Instance instance) async {
+        (Ref ref, Instance instance) async {
   final DioFactory factory = ref.watch(dioFactoryProvider);
   return GlancesApi(await factory.create(instance));
 });
@@ -15,7 +15,7 @@ final ProviderFamily<Future<GlancesApi>, Instance> glancesApiProvider =
 final AutoDisposeFutureProviderFamily<GlancesStats, Instance>
     glancesStatsProvider =
     FutureProvider.autoDispose.family<GlancesStats, Instance>(
-        (AutoDisposeFutureProviderRef<GlancesStats> ref, Instance instance) async {
+        (Ref ref, Instance instance) async {
   ref.pollEvery(Duration(seconds: instance.pollingIntervalSeconds));
   final GlancesApi api = await ref.watch(glancesApiProvider(instance));
   return api.getStats();

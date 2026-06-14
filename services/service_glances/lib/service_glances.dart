@@ -1,4 +1,4 @@
-library service_glances;
+library;
 
 export 'src/glances_api.dart';
 export 'src/glances_home.dart';
