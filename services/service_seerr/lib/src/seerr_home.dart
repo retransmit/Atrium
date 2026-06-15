@@ -7,6 +7,7 @@ import 'models/seerr_request.dart';
 import 'seerr_discover_screen.dart';
 import 'seerr_item_detail.dart';
 import 'seerr_providers.dart';
+import 'seerr_status_badge.dart';
 
 /// Seerr's per-instance UI: the recent request list. Pending requests get
 /// approve / decline actions - the key thing you want to do from a phone.
@@ -163,7 +164,17 @@ class _RequestTile extends ConsumerWidget {
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                             const SizedBox(height: Insets.sm),
-                            _StatusChip(status: request.status),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: <Widget>[
+                                SeerrStatusBadge(
+                                  status: request.media?.status,
+                                ),
+                                _StatusChip(status: request.status),
+                              ],
+                            ),
                           ],
                         ),
                       ),
