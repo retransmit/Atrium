@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
+import 'package:core_storage/core_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_ce/hive.dart';
 
 import 'glances_api.dart';
 import 'models/glances_stats.dart';
@@ -21,9 +25,50 @@ final AutoDisposeFutureProviderFamily<GlancesStats, Instance>
   return api.getStats();
 });
 
-/// Stores the user's selected network interface names for an instance.
-/// An empty set means "All" interfaces are displayed.
+/// The user's selected network interface names for an instance. An empty set
+/// means "All" interfaces are shown.
+///
+/// Persisted in the app settings box (keyed by instance id) so the choice
+/// survives a refresh, a screen rebuild, and an app restart.
 final glancesPinnedNetworkProvider =
-    StateProvider.family<Set<String>, Instance>((Ref ref, Instance instance) {
-  return <String>{};
-});
+    NotifierProvider.family<GlancesPinnedNetworks, Set<String>, Instance>(
+  GlancesPinnedNetworks.new,
+);
+
+class GlancesPinnedNetworks extends FamilyNotifier<Set<String>, Instance> {
+  static String _keyFor(String instanceId) => 'glances.pinnedNets.$instanceId';
+
+  /// The settings box, when open. Null in contexts where Hive wasn't booted
+  /// (e.g. some widget tests) - the filter then just behaves in-memory.
+  Box<String>? get _box => Hive.isBoxOpen(AtriumBoxes.settings)
+      ? Hive.box<String>(AtriumBoxes.settings)
+      : null;
+
+  @override
+  Set<String> build(Instance instance) {
+    final String? raw = _box?.get(_keyFor(instance.id));
+    if (raw == null || raw.isEmpty) {
+      return <String>{};
+    }
+    try {
+      return (jsonDecode(raw) as List<dynamic>).cast<String>().toSet();
+    } on FormatException {
+      return <String>{};
+    }
+  }
+
+  /// Replaces the pinned set and persists it. An empty set clears the stored
+  /// key (== show all interfaces).
+  Future<void> set(Set<String> interfaces) async {
+    state = interfaces;
+    final Box<String>? box = _box;
+    if (box == null) {
+      return;
+    }
+    if (interfaces.isEmpty) {
+      await box.delete(_keyFor(arg.id));
+    } else {
+      await box.put(_keyFor(arg.id), jsonEncode(interfaces.toList()));
+    }
+  }
+}

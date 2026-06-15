@@ -204,7 +204,7 @@ class GlancesHome extends ConsumerWidget {
                             newSet.clear();
                           }
                         }
-                        ref.read(glancesPinnedNetworkProvider(instance).notifier).state = newSet;
+                        ref.read(glancesPinnedNetworkProvider(instance).notifier).set(newSet);
                       },
                     );
                   }).toList(),
@@ -213,7 +213,7 @@ class GlancesHome extends ConsumerWidget {
               actions: <Widget>[
                 TextButton(
                   onPressed: () {
-                    ref.read(glancesPinnedNetworkProvider(instance).notifier).state = <String>{};
+                    ref.read(glancesPinnedNetworkProvider(instance).notifier).set(<String>{});
                   },
                   child: const Text('Reset'),
                 ),

@@ -11,12 +11,14 @@ dependencies:
   collection: ^1.18.0
   core_models:
   core_networking:
+  core_storage:
   core_ui:
   dio: ^5.7.0
   flutter:
     sdk: flutter
   flutter_riverpod: ^2.6.1
   freezed_annotation: ^2.4.4
+  hive_ce: ^2.10.1
   json_annotation: ^4.9.0
 
 dev_dependencies:
