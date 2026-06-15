@@ -1,6 +1,6 @@
 # Atrium - Status
 
-> Snapshot of what genuinely works and what is left, as of 2026-06-14.
+> Snapshot of what genuinely works and what is left, as of 2026-06-15.
 > Atrium is in early development; nothing here is a release promise.
 
 ## Scope note
@@ -41,8 +41,11 @@ Atrium is a **controller** app. Video playback was removed by design
 - **Seerr** (formerly Overseerr, live-verified): complete integration including
   a rich Discover tab (trending, upcoming, genres), robust search, detailed item
   views (movie/tv details with cast, trailer, request status), request submission
-  (with automatic "all seasons" tv handling), and a full Requests management tab
-  (approve/decline/delete/retry) with 10s auto-refresh polling.
+  (with automatic "all seasons" tv handling, plus quality-profile / root-folder /
+  server selection), and a full Requests management tab (approve/decline/delete/
+  retry) with 10s auto-refresh polling. The Requests tab and item detail use
+  poster-rich cards (a darkened backdrop-image background, poster, metadata, and
+  solid availability/approval status pills) styled after the Jellyseerr layout.
 
 ## Partially done
 
