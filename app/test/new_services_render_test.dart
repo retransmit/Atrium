@@ -13,6 +13,7 @@ import 'package:service_sabnzbd/service_sabnzbd.dart';
 import 'package:service_sonarr/service_sonarr.dart';
 import 'package:service_tautulli/service_tautulli.dart';
 import 'package:atrium/src/screens/calendar_screen.dart';
+import 'package:atrium/src/screens/service_detail_screen.dart';
 
 /// Deterministic render tests for the service modules added in the final pass.
 ///
@@ -283,6 +284,7 @@ void main() {
     await _pump(
       tester,
       <Override>[
+        instanceByIdProvider(instance.id).overrideWithValue(instance),
         sonarrApiProvider(instance).overrideWith(
           (Ref ref) async => SonarrApi(Dio(), apiKey: 'k'),
         ),
@@ -515,12 +517,15 @@ void main() {
           ],
         ),
       ],
-      SonarrHome(instance: instance),
-      pumps: 3,
+      ServiceDetailScreen(kindName: 'sonarr', instanceId: instance.id),
+      pumps: 4,
     );
 
     // Verify default view (Series Tab) renders correctly
     expect(find.text('Breaking Bad'), findsOneWidget);
+
+    // Verify the view mode action button (grid/list toggle) is visible on Series tab
+    expect(find.byTooltip('Switch to Banner List'), findsOneWidget);
 
     // Verify all tabs are present in TabBar
     expect(find.text('Series'), findsOneWidget);
@@ -534,6 +539,10 @@ void main() {
     // Switch to Settings tab
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
+
+    // Verify the view mode action button is now hidden on Settings tab
+    expect(find.byTooltip('Switch to Banner List'), findsNothing);
+    expect(find.byTooltip('Switch to Grid'), findsNothing);
 
     // Verify new settings panels are rendered
     expect(find.text('General / Host Settings'), findsOneWidget);

@@ -1,6 +1,8 @@
 import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
+import 'package:core_storage/core_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_ce/hive.dart';
 
 import 'models/sonarr_add_models.dart';
 import 'models/sonarr_blocklist.dart';
@@ -465,5 +467,162 @@ final sonarrQualityProfilesRawProvider =
 ) async {
   final SonarrApi api = await ref.watch(sonarrApiProvider(instance).future);
   return api.getQualityProfilesRaw();
+});
+
+/// View mode for the Sonarr series tab (grid or banner list).
+enum SonarrViewMode { grid, banner }
+
+/// State notifier to track and persist the user's preferred view mode (grid or banner list) per instance.
+final sonarrViewModeProvider =
+    NotifierProvider.family<SonarrViewModeNotifier, SonarrViewMode, Instance>(
+  SonarrViewModeNotifier.new,
+);
+
+/// Tracks the currently active top-level tab index of the Sonarr screen.
+final sonarrActiveTabBarIndexProvider = StateProvider.family<int, Instance>((ref, instance) => 0);
+
+class SonarrViewModeNotifier extends FamilyNotifier<SonarrViewMode, Instance> {
+  static String _keyFor(String instanceId) => 'sonarr.viewMode.$instanceId';
+
+  Box<String>? get _box => Hive.isBoxOpen(AtriumBoxes.settings)
+      ? Hive.box<String>(AtriumBoxes.settings)
+      : null;
+
+  @override
+  SonarrViewMode build(Instance arg) {
+    final String? val = _box?.get(_keyFor(arg.id));
+    if (val == 'banner') {
+      return SonarrViewMode.banner;
+    }
+    return SonarrViewMode.grid;
+  }
+
+  Future<void> setViewMode(SonarrViewMode mode) async {
+    state = mode;
+    final Box<String>? box = _box;
+    if (box != null) {
+      await box.put(_keyFor(arg.id), mode.name);
+    }
+  }
+}
+
+/// Sort options for Sonarr series list.
+enum SonarrSortOption {
+  titleAsc,
+  titleDesc,
+  yearAsc,
+  yearDesc,
+  sizeAsc,
+  sizeDesc,
+  progressAsc,
+  progressDesc,
+}
+
+/// Filter options for Sonarr series status.
+enum SonarrStatusFilter {
+  all,
+  continuing,
+  ended,
+}
+
+/// Filter options for Sonarr series monitored status.
+enum SonarrMonitoredFilter {
+  all,
+  monitored,
+  unmonitored,
+}
+
+/// Search query provider per instance.
+final sonarrSearchQueryProvider = StateProvider.family<String, Instance>((Ref ref, Instance instance) => '');
+
+/// Sort option provider per instance.
+final sonarrSortOptionProvider = StateProvider.family<SonarrSortOption, Instance>(
+  (Ref ref, Instance instance) => SonarrSortOption.titleAsc,
+);
+
+/// Status filter provider per instance.
+final sonarrStatusFilterProvider = StateProvider.family<SonarrStatusFilter, Instance>(
+  (Ref ref, Instance instance) => SonarrStatusFilter.all,
+);
+
+/// Monitored filter provider per instance.
+final sonarrMonitoredFilterProvider = StateProvider.family<SonarrMonitoredFilter, Instance>(
+  (Ref ref, Instance instance) => SonarrMonitoredFilter.all,
+);
+
+/// Selector provider that automatically filters, searches, and sorts series list based on user preferences.
+final sonarrFilteredSeriesProvider = Provider.autoDispose.family<AsyncValue<List<SonarrSeries>>, Instance>((Ref ref, Instance instance) {
+  final AsyncValue<List<SonarrSeries>> seriesVal = ref.watch(sonarrSeriesProvider(instance));
+  
+  return seriesVal.whenData((List<SonarrSeries> list) {
+    final String query = ref.watch(sonarrSearchQueryProvider(instance)).trim().toLowerCase();
+    final SonarrSortOption sortOption = ref.watch(sonarrSortOptionProvider(instance));
+    final SonarrStatusFilter statusFilter = ref.watch(sonarrStatusFilterProvider(instance));
+    final SonarrMonitoredFilter monitoredFilter = ref.watch(sonarrMonitoredFilterProvider(instance));
+    
+    // 1. Filter
+    final List<SonarrSeries> filtered = list.where((SonarrSeries s) {
+      // Search query filter
+      if (query.isNotEmpty && !s.title.toLowerCase().contains(query)) {
+        return false;
+      }
+      // Status filter
+      if (statusFilter != SonarrStatusFilter.all) {
+        final String? status = s.status?.toLowerCase();
+        if (statusFilter == SonarrStatusFilter.continuing && status != 'continuing') {
+          return false;
+        }
+        if (statusFilter == SonarrStatusFilter.ended && status != 'ended') {
+          return false;
+        }
+      }
+      // Monitored filter
+      if (monitoredFilter != SonarrMonitoredFilter.all) {
+        if (monitoredFilter == SonarrMonitoredFilter.monitored && !s.monitored) {
+          return false;
+        }
+        if (monitoredFilter == SonarrMonitoredFilter.unmonitored && s.monitored) {
+          return false;
+        }
+      }
+      return true;
+    }).toList();
+    
+    // 2. Sort
+    filtered.sort((SonarrSeries a, SonarrSeries b) {
+      switch (sortOption) {
+        case SonarrSortOption.titleAsc:
+          return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+        case SonarrSortOption.titleDesc:
+          return b.title.toLowerCase().compareTo(a.title.toLowerCase());
+        case SonarrSortOption.yearAsc:
+          return (a.year ?? 0).compareTo(b.year ?? 0);
+        case SonarrSortOption.yearDesc:
+          return (b.year ?? 0).compareTo(a.year ?? 0);
+        case SonarrSortOption.sizeAsc:
+          return (a.statistics?.sizeOnDisk ?? 0).compareTo(b.statistics?.sizeOnDisk ?? 0);
+        case SonarrSortOption.sizeDesc:
+          return (b.statistics?.sizeOnDisk ?? 0).compareTo(a.statistics?.sizeOnDisk ?? 0);
+        case SonarrSortOption.progressAsc:
+          final double progressA = a.statistics == null || a.statistics!.totalEpisodeCount == 0
+              ? 0
+              : a.statistics!.episodeFileCount / a.statistics!.totalEpisodeCount;
+          final double progressB = b.statistics == null || b.statistics!.totalEpisodeCount == 0
+              ? 0
+              : b.statistics!.episodeFileCount / b.statistics!.totalEpisodeCount;
+          return progressA.compareTo(progressB);
+        case SonarrSortOption.progressDesc:
+          final double progressA = a.statistics == null || a.statistics!.totalEpisodeCount == 0
+              ? 0
+              : a.statistics!.episodeFileCount / a.statistics!.totalEpisodeCount;
+          final double progressB = b.statistics == null || b.statistics!.totalEpisodeCount == 0
+              ? 0
+              : b.statistics!.episodeFileCount / b.statistics!.totalEpisodeCount;
+          return progressB.compareTo(progressA);
+      }
+    });
+    
+    return filtered;
+  });
 });
 

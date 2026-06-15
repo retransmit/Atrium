@@ -54,10 +54,16 @@ flutter run -d <device>
 ```
 
 Code-generation step (run after edits to any freezed / json_serializable
-model):
+model). To run code generation for a specific package, navigate to that package's directory and run:
 
 ```sh
 dart run build_runner build --delete-conflicting-outputs
+```
+
+Alternatively, to run code generation for all packages in the workspace from the repository root, run:
+
+```sh
+dart run tool/build_all.dart
 ```
 
 ## Repo layout

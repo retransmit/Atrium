@@ -190,7 +190,25 @@ class SonarrQualityDefinition {
   final Map<String, dynamic> raw;
 
   int get id => ((raw['id'] as num?) ?? 0).toInt();
-  String get name => (raw['name'] as String?) ?? '';
+  
+  String get title => (raw['title'] as String?) ?? '';
+
+  String get name {
+    final nameVal = raw['name'] as String?;
+    if (nameVal != null && nameVal.isNotEmpty) return nameVal;
+
+    final titleVal = raw['title'] as String?;
+    if (titleVal != null && titleVal.isNotEmpty) return titleVal;
+
+    final qualityMap = raw['quality'] as Map<String, dynamic>?;
+    if (qualityMap != null) {
+      final qName = qualityMap['name'] as String?;
+      if (qName != null && qName.isNotEmpty) return qName;
+    }
+
+    return '';
+  }
+
   double get minSize => ((raw['minSize'] as num?) ?? 0.0).toDouble();
   double get maxSize => ((raw['maxSize'] as num?) ?? 0.0).toDouble();
   double get preferredSize => ((raw['preferredSize'] as num?) ?? 0.0).toDouble();

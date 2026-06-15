@@ -33,6 +33,7 @@ class SonarrReleaseSearchScreen extends ConsumerStatefulWidget {
 class _SonarrReleaseSearchScreenState
     extends ConsumerState<SonarrReleaseSearchScreen> {
   final TextEditingController _searchController = TextEditingController();
+  late final FocusNode _focusNode;
   String _searchQuery = '';
   String _selectedProtocol = 'All'; // 'All', 'Torrent', 'Usenet'
   bool _approvedOnly = false;
@@ -40,8 +41,15 @@ class _SonarrReleaseSearchScreenState
   bool _sortAscending = true; // For Age, true means smaller age (newest) first
 
   @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode(skipTraversal: true);
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -97,48 +105,52 @@ class _SonarrReleaseSearchScreenState
           ],
         ),
       ),
-      body: Column(
-        children: <Widget>[
-          // Filtering & Sorting Panel
-          Card(
-            margin: const EdgeInsets.all(Insets.md),
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(
-                color: colors.outlineVariant.withValues(alpha: 0.5),
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.translucent,
+        child: Column(
+          children: <Widget>[
+            // Filtering & Sorting Panel
+            Card(
+              margin: const EdgeInsets.all(Insets.md),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: colors.outlineVariant.withValues(alpha: 0.5),
+                ),
               ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(Insets.md),
-              child: Column(
-                children: <Widget>[
-                  // Search Bar
-                  TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Search by title, group, or indexer...',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() => _searchQuery = '');
-                              },
-                            )
-                          : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.all(Insets.md),
+                child: Column(
+                  children: <Widget>[
+                    // Search Bar
+                    TextField(
+                      controller: _searchController,
+                      focusNode: _focusNode,
+                      decoration: InputDecoration(
+                        hintText: 'Search by title, group, or indexer...',
+                        prefixIcon: const Icon(Icons.search),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                              )
+                            : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: Insets.md,
+                          vertical: Insets.sm,
+                        ),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: Insets.md,
-                        vertical: Insets.sm,
-                      ),
+                      onChanged: (String val) =>
+                          setState(() => _searchQuery = val),
                     ),
-                    onChanged: (String val) =>
-                        setState(() => _searchQuery = val),
-                  ),
                   const SizedBox(height: Insets.sm),
                   // Protocol Selection SegmentedButton
                   SizedBox(
@@ -218,6 +230,11 @@ class _SonarrReleaseSearchScreenState
                                 _sortAscending = val == 'Age';
                               });
                             }
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (context.mounted) {
+                                FocusScope.of(context).unfocus();
+                              }
+                            });
                           },
                         ),
                         const SizedBox(width: Insets.xs),
@@ -415,6 +432,7 @@ class _SonarrReleaseSearchScreenState
             ),
           ),
         ],
+      ),
       ),
     );
   }

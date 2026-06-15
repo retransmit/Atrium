@@ -33,8 +33,21 @@ abstract class SonarrQueueRecord with _$SonarrQueueRecord {
     String? timeleft,
     String? downloadClient,
     String? protocol,
+    @Default(<SonarrQueueStatusMessage>[]) List<SonarrQueueStatusMessage> statusMessages,
   }) = _SonarrQueueRecord;
 
   factory SonarrQueueRecord.fromJson(Map<String, dynamic> json) =>
       _$SonarrQueueRecordFromJson(json);
+}
+
+/// A status message within a queue record.
+@freezed
+abstract class SonarrQueueStatusMessage with _$SonarrQueueStatusMessage {
+  const factory SonarrQueueStatusMessage({
+    String? title,
+    @Default(<String>[]) List<String> messages,
+  }) = _SonarrQueueStatusMessage;
+
+  factory SonarrQueueStatusMessage.fromJson(Map<String, dynamic> json) =>
+      _$SonarrQueueStatusMessageFromJson(json);
 }

@@ -62,6 +62,31 @@ class ServiceDetailScreen extends ConsumerWidget {
                 );
               },
             ),
+          if (instance.kind == ServiceKind.sonarr)
+            Consumer(
+              builder: (BuildContext context, WidgetRef ref, Widget? child) {
+                final int activeTab = ref.watch(sonarrActiveTabBarIndexProvider(instance));
+                if (activeTab != 0) {
+                  return const SizedBox.shrink();
+                }
+                final SonarrViewMode viewMode = ref.watch(sonarrViewModeProvider(instance));
+                return IconButton(
+                  tooltip: viewMode == SonarrViewMode.grid
+                      ? 'Switch to Banner List'
+                      : 'Switch to Grid',
+                  icon: Icon(viewMode == SonarrViewMode.grid
+                      ? Icons.view_headline
+                      : Icons.grid_view),
+                  onPressed: () {
+                    ref.read(sonarrViewModeProvider(instance).notifier).setViewMode(
+                          viewMode == SonarrViewMode.grid
+                              ? SonarrViewMode.banner
+                              : SonarrViewMode.grid,
+                        );
+                  },
+                );
+              },
+            ),
           IconButton(
             tooltip: 'Edit',
             icon: const Icon(Icons.edit_outlined),

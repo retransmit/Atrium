@@ -22,46 +22,87 @@ import 'sonarr_providers.dart';
 import 'sonarr_settings_form_screen.dart';
 
 /// Sonarr's per-instance UI: a tabbed Series / Queue / Wanted / History / Blocklist / System view.
-class SonarrHome extends StatelessWidget {
+class SonarrHome extends ConsumerStatefulWidget {
   const SonarrHome({required this.instance, super.key});
 
   final Instance instance;
 
   @override
+  ConsumerState<SonarrHome> createState() => _SonarrHomeState();
+}
+
+class _SonarrHomeState extends ConsumerState<SonarrHome> with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 7, vsync: this);
+    _tabController.addListener(_onTabChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ref.read(sonarrActiveTabBarIndexProvider(widget.instance).notifier).state = _tabController.index;
+      }
+    });
+  }
+
+  void _onTabChanged() {
+    if (!_tabController.indexIsChanging) {
+      if (ref.read(sonarrActiveTabBarIndexProvider(widget.instance)) != _tabController.index) {
+        ref.read(sonarrActiveTabBarIndexProvider(widget.instance).notifier).state = _tabController.index;
+      }
+    }
+  }
+
+  @override
+  void didUpdateWidget(SonarrHome oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.instance.id != widget.instance.id) {
+      ref.read(sonarrActiveTabBarIndexProvider(widget.instance).notifier).state = _tabController.index;
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 7,
-      child: Scaffold(
-        body: Column(
-          children: <Widget>[
-            const TabBar(
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
-              tabs: <Widget>[
-                Tab(text: 'Series'),
-                Tab(text: 'Queue'),
-                Tab(text: 'Wanted'),
-                Tab(text: 'History'),
-                Tab(text: 'Blocklist'),
-                Tab(text: 'System'),
-                Tab(text: 'Settings'),
+    return Scaffold(
+      body: Column(
+        children: <Widget>[
+          TabBar(
+            controller: _tabController,
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            tabs: const <Widget>[
+              Tab(text: 'Series'),
+              Tab(text: 'Queue'),
+              Tab(text: 'Wanted'),
+              Tab(text: 'History'),
+              Tab(text: 'Blocklist'),
+              Tab(text: 'System'),
+              Tab(text: 'Settings'),
+            ],
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: <Widget>[
+                _SeriesTab(instance: widget.instance),
+                _QueueTab(instance: widget.instance),
+                _WantedTab(instance: widget.instance),
+                _HistoryTab(instance: widget.instance),
+                _BlocklistTab(instance: widget.instance),
+                _SystemTab(instance: widget.instance),
+                _SettingsTab(instance: widget.instance),
               ],
             ),
-            Expanded(
-              child: TabBarView(
-                children: <Widget>[
-                  _SeriesTab(instance: instance),
-                  _QueueTab(instance: instance),
-                  _WantedTab(instance: instance),
-                  _HistoryTab(instance: instance),
-                  _BlocklistTab(instance: instance),
-                  _SystemTab(instance: instance),
-                  _SettingsTab(instance: instance),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -74,54 +115,91 @@ class _SeriesTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<List<SonarrSeries>> series =
-        ref.watch(sonarrSeriesProvider(instance));
+    final AsyncValue<List<SonarrSeries>> filteredSeries =
+        ref.watch(sonarrFilteredSeriesProvider(instance));
     final SonarrApi? api =
         ref.watch(sonarrApiProvider(instance)).value;
+    final SonarrViewMode viewMode = ref.watch(sonarrViewModeProvider(instance));
     return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(sonarrSeriesProvider(instance)),
-        child: AsyncValueView<List<SonarrSeries>>(
-          value: series,
-          onRetry: () => ref.invalidate(sonarrSeriesProvider(instance)),
-          data: (List<SonarrSeries> list) {
-            if (list.isEmpty) {
-              return const EmptyView(
-                icon: Icons.live_tv_outlined,
-                title: 'No series',
-                message: 'This Sonarr has no series yet.',
-              );
-            }
-            return GridView.builder(
-              padding: Insets.page,
-              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 140,
-                childAspectRatio: 0.52,
-                crossAxisSpacing: Insets.md,
-                mainAxisSpacing: Insets.md,
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.translucent,
+        child: Column(
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(Insets.lg, Insets.sm, Insets.lg, Insets.xs),
+              child: _SearchBar(instance: instance),
+            ),
+            _FilterChipsRow(instance: instance),
+            const SizedBox(height: Insets.xs),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async => ref.invalidate(sonarrSeriesProvider(instance)),
+                child: AsyncValueView<List<SonarrSeries>>(
+                  value: filteredSeries,
+                  onRetry: () => ref.invalidate(sonarrSeriesProvider(instance)),
+                  data: (List<SonarrSeries> list) {
+                    if (list.isEmpty) {
+                      return const EmptyView(
+                        icon: Icons.live_tv_outlined,
+                        title: 'No series found',
+                        message: 'Try adjusting your search query or active filters.',
+                      );
+                    }
+                    if (viewMode == SonarrViewMode.grid) {
+                      return GridView.builder(
+                        padding: Insets.page,
+                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 140,
+                          childAspectRatio: 0.52,
+                          crossAxisSpacing: Insets.md,
+                          mainAxisSpacing: Insets.md,
+                        ),
+                        itemCount: list.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          final SonarrSeries s = list[index];
+                          final SonarrImage? poster = s.images
+                              .firstWhereOrNull((SonarrImage i) => i.coverType == 'poster');
+                          return _SeriesCard(
+                            series: s,
+                            imageUrl: poster == null ? null : api?.posterUrl(poster),
+                            onTap: () => Navigator.of(context, rootNavigator: true).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => SeriesDetailScreen(
+                                  instance: instance,
+                                  seriesId: s.id,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    } else {
+                      return ListView.builder(
+                        padding: Insets.page,
+                        itemCount: list.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          final SonarrSeries s = list[index];
+                          return _SeriesBannerCard(
+                            instance: instance,
+                            series: s,
+                            onTap: () => Navigator.of(context, rootNavigator: true).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => SeriesDetailScreen(
+                                  instance: instance,
+                                  seriesId: s.id,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    }
+                  },
+                ),
               ),
-              itemCount: list.length,
-              itemBuilder: (BuildContext context, int index) {
-                final SonarrSeries s = list[index];
-                final SonarrImage? poster = s.images
-                    .firstWhereOrNull((SonarrImage i) => i.coverType == 'poster');
-                return _SeriesCard(
-                  series: s,
-                  imageUrl: poster == null ? null : api?.posterUrl(poster),
-                  // Root navigator: branch-navigator pushes get swept by
-                  // GoRouter shell rebuilds (see qBit detail for history).
-                  onTap: () => Navigator.of(context, rootNavigator: true).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => SeriesDetailScreen(
-                        instance: instance,
-                        seriesId: s.id,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            );
-          },
+            ),
+          ],
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -228,6 +306,513 @@ class _SeriesCard extends StatelessWidget {
   }
 }
 
+class _SeriesBannerCard extends ConsumerWidget {
+  const _SeriesBannerCard({
+    required this.instance,
+    required this.series,
+    required this.onTap,
+  });
+
+  final Instance instance;
+  final SonarrSeries series;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
+    final SonarrApi? api = ref.watch(sonarrApiProvider(instance)).value;
+
+    final SonarrImage? banner = series.images
+        .firstWhereOrNull((SonarrImage i) => i.coverType == 'banner');
+    final String? bannerUrl = banner == null ? null : api?.posterUrl(banner);
+
+    final SonarrImage? poster = series.images
+        .firstWhereOrNull((SonarrImage i) => i.coverType == 'poster');
+    final String? posterUrl = poster == null ? null : api?.posterUrl(poster);
+
+    final SonarrSeriesStatistics? stats = series.statistics;
+    final double progress = (stats == null || stats.totalEpisodeCount == 0)
+        ? 0
+        : (stats.episodeFileCount / stats.totalEpisodeCount).clamp(0, 1);
+
+    Widget buildMetaChip(String label, {bool isPrimary = false}) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: isPrimary
+              ? theme.colorScheme.primary.withValues(alpha: 0.25)
+              : Colors.white.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: isPrimary
+                ? theme.colorScheme.primary.withValues(alpha: 0.4)
+                : Colors.white.withValues(alpha: 0.1),
+          ),
+        ),
+        child: Text(
+          label,
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: isPrimary ? theme.colorScheme.primary : Colors.white,
+            fontWeight: isPrimary ? FontWeight.bold : FontWeight.normal,
+            fontSize: 10,
+          ),
+        ),
+      );
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: Insets.md),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      elevation: 0,
+      child: InkWell(
+        onTap: onTap,
+        child: SizedBox(
+          height: 135,
+          child: Stack(
+            fit: StackFit.expand,
+            children: <Widget>[
+              // Background banner image aligned to the right
+              if (bannerUrl != null)
+                Positioned.fill(
+                  child: CachedNetworkImage(
+                    imageUrl: bannerUrl,
+                    fit: BoxFit.cover,
+                    alignment: Alignment.centerRight,
+                    errorWidget: (_, __, ___) => Container(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                    ),
+                  ),
+                )
+              else
+                Positioned.fill(
+                  child: Container(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                  ),
+                ),
+              // Dark gradient overlay
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: <Color>[
+                        Colors.black.withValues(alpha: 0.95),
+                        Colors.black.withValues(alpha: 0.75),
+                        Colors.black.withValues(alpha: 0.2),
+                      ],
+                      stops: const <double>[0.4, 0.75, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+              // Content overlay
+              Padding(
+                padding: const EdgeInsets.all(Insets.md),
+                child: Row(
+                  children: <Widget>[
+                    // Show Cover (Poster) on the left
+                    Container(
+                      width: 75,
+                      height: 112,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.4),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: posterUrl != null
+                            ? CachedNetworkImage(
+                                imageUrl: posterUrl,
+                                fit: BoxFit.cover,
+                                placeholder: (_, __) => Container(
+                                  color: theme.colorScheme.surfaceContainerHighest,
+                                ),
+                                errorWidget: (_, __, ___) => Container(
+                                  color: theme.colorScheme.surfaceContainerHighest,
+                                  child: const Icon(Icons.live_tv, size: 24),
+                                ),
+                              )
+                            : Container(
+                                color: theme.colorScheme.surfaceContainerHighest,
+                                child: const Icon(Icons.live_tv, size: 24),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(width: Insets.md),
+                    // Show Details
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          Text(
+                            series.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              shadows: const <Shadow>[
+                                Shadow(
+                                  blurRadius: 4,
+                                  offset: Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          // Meta tags
+                          Wrap(
+                            spacing: Insets.xs,
+                            runSpacing: 4,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: <Widget>[
+                              if (series.year != null)
+                                buildMetaChip('${series.year}'),
+                              if (series.seasonCount > 0)
+                                buildMetaChip(
+                                  '${series.seasonCount} ${series.seasonCount == 1 ? 'season' : 'seasons'}',
+                                ),
+                              if (series.status != null)
+                                buildMetaChip(
+                                  series.status!,
+                                  isPrimary: series.status?.toLowerCase() == 'continuing',
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          // Stats row (Size on disk and episodes)
+                          Row(
+                            children: <Widget>[
+                              Icon(
+                                Icons.sd_storage_outlined,
+                                size: 14,
+                                color: Colors.white.withValues(alpha: 0.7),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _fmtSize(stats?.sizeOnDisk ?? 0),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: Colors.white.withValues(alpha: 0.7),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '•',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.5),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(
+                                Icons.folder_open_outlined,
+                                size: 14,
+                                color: Colors.white.withValues(alpha: 0.7),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${stats?.episodeFileCount ?? 0}/${stats?.totalEpisodeCount ?? 0} eps',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: Colors.white.withValues(alpha: 0.7),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          if (progress > 0)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(2),
+                              child: LinearProgressIndicator(
+                                value: progress.toDouble(),
+                                minHeight: 4,
+                                backgroundColor: Colors.white.withValues(alpha: 0.2),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  theme.colorScheme.primary,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: Insets.sm),
+                    // Monitored badge
+                    if (series.monitored)
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.bookmark,
+                          color: theme.colorScheme.primary,
+                          size: 16,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _fmtSize(int bytes) {
+  if (bytes <= 0) {
+    return '0 B';
+  }
+  const List<String> units = <String>['B', 'KB', 'MB', 'GB', 'TB'];
+  double value = bytes.toDouble();
+  int unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  final String text =
+      value >= 100 || unit == 0 ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
+  return '$text ${units[unit]}';
+}
+
+class _SearchBar extends ConsumerStatefulWidget {
+  const _SearchBar({required this.instance});
+
+  final Instance instance;
+
+  @override
+  ConsumerState<_SearchBar> createState() => _SearchBarState();
+}
+
+class _SearchBarState extends ConsumerState<_SearchBar> {
+  late final TextEditingController _controller;
+  late final FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    final String initialQuery = ref.read(sonarrSearchQueryProvider(widget.instance));
+    _controller = TextEditingController(text: initialQuery);
+    _focusNode = FocusNode(skipTraversal: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return SearchBar(
+      controller: _controller,
+      focusNode: _focusNode,
+      hintText: 'Search series...',
+      leading: const Icon(Icons.search),
+      trailing: <Widget>[
+        if (_controller.text.isNotEmpty)
+          IconButton(
+            icon: const Icon(Icons.clear),
+            onPressed: () {
+              setState(() {
+                _controller.clear();
+              });
+              ref.read(sonarrSearchQueryProvider(widget.instance).notifier).state = '';
+              _focusNode.unfocus();
+            },
+          ),
+      ],
+      elevation: const WidgetStatePropertyAll<double>(0),
+      backgroundColor: WidgetStatePropertyAll<Color>(
+        theme.colorScheme.surfaceContainerLow,
+      ),
+      shape: WidgetStatePropertyAll<OutlinedBorder>(
+        RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+        ),
+      ),
+      onChanged: (String val) {
+        setState(() {}); // to show/hide the clear button
+        ref.read(sonarrSearchQueryProvider(widget.instance).notifier).state = val;
+      },
+    );
+  }
+}
+
+class _FilterChipsRow extends ConsumerWidget {
+  const _FilterChipsRow({required this.instance});
+
+  final Instance instance;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final SonarrSortOption sortOption = ref.watch(sonarrSortOptionProvider(instance));
+    final SonarrStatusFilter statusFilter = ref.watch(sonarrStatusFilterProvider(instance));
+    final SonarrMonitoredFilter monitoredFilter = ref.watch(sonarrMonitoredFilterProvider(instance));
+
+    String sortLabel(SonarrSortOption opt) => switch (opt) {
+      SonarrSortOption.titleAsc => 'Title (A-Z)',
+      SonarrSortOption.titleDesc => 'Title (Z-A)',
+      SonarrSortOption.yearAsc => 'Year (Oldest)',
+      SonarrSortOption.yearDesc => 'Year (Newest)',
+      SonarrSortOption.sizeAsc => 'Size (Smallest)',
+      SonarrSortOption.sizeDesc => 'Size (Largest)',
+      SonarrSortOption.progressAsc => 'Progress (Lowest)',
+      SonarrSortOption.progressDesc => 'Progress (Highest)',
+    };
+
+    String statusLabel(SonarrStatusFilter flt) => switch (flt) {
+      SonarrStatusFilter.all => 'Status: All',
+      SonarrStatusFilter.continuing => 'Status: Continuing',
+      SonarrStatusFilter.ended => 'Status: Ended',
+    };
+
+    String monitoredLabel(SonarrMonitoredFilter flt) => switch (flt) {
+      SonarrMonitoredFilter.all => 'Monitored: All',
+      SonarrMonitoredFilter.monitored => 'Monitored: Yes',
+      SonarrMonitoredFilter.unmonitored => 'Monitored: No',
+    };
+
+    return SizedBox(
+      height: 48,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
+        children: <Widget>[
+          // Sort Chip
+          PopupMenuButton<SonarrSortOption>(
+            onSelected: (SonarrSortOption opt) {
+              ref.read(sonarrSortOptionProvider(instance).notifier).state = opt;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (context.mounted) {
+                  FocusScope.of(context).unfocus();
+                }
+              });
+            },
+            itemBuilder: (BuildContext context) => SonarrSortOption.values.map(
+              (SonarrSortOption opt) => PopupMenuItem<SonarrSortOption>(
+                value: opt,
+                child: Text(sortLabel(opt)),
+              ),
+            ).toList(),
+            child: IgnorePointer(
+              child: ChoiceChip(
+                avatar: const Icon(Icons.sort, size: 16),
+                label: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Text('Sort: ${sortLabel(sortOption)}'),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.arrow_drop_down, size: 16),
+                  ],
+                ),
+                selected: true,
+                onSelected: (_) {},
+              ),
+            ),
+          ),
+          const SizedBox(width: Insets.sm),
+          // Status Filter Chip
+          PopupMenuButton<SonarrStatusFilter>(
+            onSelected: (SonarrStatusFilter flt) {
+              ref.read(sonarrStatusFilterProvider(instance).notifier).state = flt;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (context.mounted) {
+                  FocusScope.of(context).unfocus();
+                }
+              });
+            },
+            itemBuilder: (BuildContext context) => SonarrStatusFilter.values.map(
+              (SonarrStatusFilter flt) => PopupMenuItem<SonarrStatusFilter>(
+                value: flt,
+                child: Text(statusLabel(flt)),
+              ),
+            ).toList(),
+            child: IgnorePointer(
+              child: ChoiceChip(
+                avatar: Icon(
+                  statusFilter == SonarrStatusFilter.all
+                      ? Icons.filter_alt_outlined
+                      : Icons.filter_alt,
+                  size: 16,
+                ),
+                label: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Text(statusLabel(statusFilter)),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.arrow_drop_down, size: 16),
+                  ],
+                ),
+                selected: statusFilter != SonarrStatusFilter.all,
+                onSelected: (_) {},
+              ),
+            ),
+          ),
+          const SizedBox(width: Insets.sm),
+          // Monitored Filter Chip
+          PopupMenuButton<SonarrMonitoredFilter>(
+            onSelected: (SonarrMonitoredFilter flt) {
+              ref.read(sonarrMonitoredFilterProvider(instance).notifier).state = flt;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (context.mounted) {
+                  FocusScope.of(context).unfocus();
+                }
+              });
+            },
+            itemBuilder: (BuildContext context) => SonarrMonitoredFilter.values.map(
+              (SonarrMonitoredFilter flt) => PopupMenuItem<SonarrMonitoredFilter>(
+                value: flt,
+                child: Text(monitoredLabel(flt)),
+              ),
+            ).toList(),
+            child: IgnorePointer(
+              child: ChoiceChip(
+                avatar: Icon(
+                  monitoredFilter == SonarrMonitoredFilter.all
+                      ? Icons.bookmark_border
+                      : Icons.bookmark,
+                  size: 16,
+                ),
+                label: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Text(monitoredLabel(monitoredFilter)),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.arrow_drop_down, size: 16),
+                  ],
+                ),
+                selected: monitoredFilter != SonarrMonitoredFilter.all,
+                onSelected: (_) {},
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _Poster extends StatelessWidget {
   const _Poster({required this.imageUrl, required this.theme});
 
@@ -283,6 +868,9 @@ class _QueueTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<SonarrQueuePage> queue =
         ref.watch(sonarrQueueProvider(instance));
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme colors = theme.colorScheme;
+
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(sonarrQueueProvider(instance)),
       child: AsyncValueView<SonarrQueuePage>(
@@ -297,41 +885,264 @@ class _QueueTab extends ConsumerWidget {
             );
           }
           return ListView.builder(
-            padding: Insets.pageH,
+            padding: const EdgeInsets.symmetric(horizontal: Insets.lg, vertical: Insets.md),
             itemCount: page.records.length,
             itemBuilder: (BuildContext context, int index) {
               final SonarrQueueRecord r = page.records[index];
               final double progress = r.size <= 0
                   ? 0
                   : ((r.size - r.sizeleft) / r.size).clamp(0, 1).toDouble();
-              return ListTile(
-                title: Text(
-                  r.title ?? 'Item ${r.id}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              
+              final int progressPct = (progress * 100).round();
+              final String sizeStr = _fmtSize(r.size.toInt());
+              final String sizeLeftStr = _fmtSize(r.sizeleft.toInt());
+              final String sizeDoneStr = _fmtSize((r.size - r.sizeleft).toInt());
+
+              final bool hasWarning = r.trackedDownloadStatus?.toLowerCase() == 'warning' || r.statusMessages.isNotEmpty;
+              final bool hasError = r.trackedDownloadStatus?.toLowerCase() == 'error';
+
+              IconData stateIcon = Icons.cloud_download_outlined;
+              Color stateColor = colors.primary;
+
+              if (hasError) {
+                stateIcon = Icons.error_outline;
+                stateColor = colors.error;
+              } else if (hasWarning) {
+                stateIcon = Icons.warning_amber_rounded;
+                stateColor = Colors.orange;
+              } else if (r.status?.toLowerCase() == 'paused') {
+                stateIcon = Icons.pause_circle_outline;
+                stateColor = colors.outline;
+              } else if (r.status?.toLowerCase() == 'completed' || progress >= 0.999) {
+                stateIcon = Icons.check_circle_outline;
+                stateColor = Colors.green;
+              }
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: Insets.md),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: colors.outlineVariant.withValues(alpha: 0.5),
+                  ),
                 ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    const SizedBox(height: Insets.xs),
-                    LinearProgressIndicator(value: progress),
-                    const SizedBox(height: Insets.xs),
-                    Text(
-                      <String?>[
-                        r.status,
-                        if (r.timeleft != null) r.timeleft,
-                      ].whereType<String>().join(' • '),
-                    ),
-                  ],
-                ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () async {
-                    final SonarrApi api =
-                        await ref.read(sonarrApiProvider(instance).future);
-                    await api.deleteQueueItem(r.id);
-                    ref.invalidate(sonarrQueueProvider(instance));
-                  },
+                child: Padding(
+                  padding: const EdgeInsets.all(Insets.md),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Icon(stateIcon, color: stateColor, size: 24),
+                          const SizedBox(width: Insets.sm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  r.title ?? 'Item ${r.id}',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: <Widget>[
+                                    if (r.downloadClient != null) ...<Widget>[
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: colors.surfaceContainerHighest,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          r.downloadClient!,
+                                          style: theme.textTheme.labelSmall?.copyWith(
+                                            color: colors.onSurfaceVariant,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: Insets.xs),
+                                    ],
+                                    if (r.protocol != null)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: colors.surfaceContainerHighest,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          r.protocol!.toUpperCase(),
+                                          style: theme.textTheme.labelSmall?.copyWith(
+                                            color: colors.onSurfaceVariant,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: Insets.xs),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline),
+                            color: colors.error.withValues(alpha: 0.8),
+                            onPressed: () async {
+                              final bool? confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (BuildContext context) => AlertDialog(
+                                  title: const Text('Remove from Queue?'),
+                                  content: Text(r.title ?? 'this item'),
+                                  actions: <Widget>[
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    FilledButton(
+                                      onPressed: () => Navigator.pop(context, true),
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: colors.error,
+                                        foregroundColor: colors.onError,
+                                      ),
+                                      child: const Text('Remove'),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirm == true) {
+                                final SonarrApi api =
+                                    await ref.read(sonarrApiProvider(instance).future);
+                                await api.deleteQueueItem(r.id);
+                                ref.invalidate(sonarrQueueProvider(instance));
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: Insets.md),
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: progress,
+                                minHeight: 6,
+                                backgroundColor: colors.surfaceContainerHighest,
+                                valueColor: AlwaysStoppedAnimation<Color>(stateColor),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: Insets.sm),
+                          Text(
+                            '$progressPct%',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: stateColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: Insets.xs),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: <Widget>[
+                          Text(
+                            '$sizeDoneStr of $sizeStr ($sizeLeftStr left)',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colors.onSurfaceVariant,
+                            ),
+                          ),
+                          Text(
+                            <String?>[
+                              if (r.status != null) r.status,
+                              if (r.timeleft != null) r.timeleft,
+                            ].whereType<String>().join(' • '),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colors.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (r.statusMessages.isNotEmpty) ...<Widget>[
+                        const SizedBox(height: Insets.sm),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(Insets.sm),
+                          decoration: BoxDecoration(
+                            color: (hasError ? colors.error : Colors.orange).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: (hasError ? colors.error : Colors.orange).withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Row(
+                                children: <Widget>[
+                                  Icon(
+                                    hasError ? Icons.error_outline : Icons.warning_amber_rounded,
+                                    color: hasError ? colors.error : Colors.orange,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      hasError ? 'Error Details' : 'Warning Details',
+                                      style: theme.textTheme.labelMedium?.copyWith(
+                                        color: hasError ? colors.error : Colors.orange[800] ?? Colors.orange,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              ...r.statusMessages.map((SonarrQueueStatusMessage msg) {
+                                final List<String> details = msg.messages;
+                                final String text = msg.title ?? '';
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      if (text.isNotEmpty)
+                                        Text(
+                                          '• $text',
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            color: hasError ? colors.error : Colors.orange[800] ?? Colors.orange,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      if (details.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: 12.0),
+                                          child: Text(
+                                            details.join('\n'),
+                                            style: theme.textTheme.bodySmall?.copyWith(
+                                              color: hasError ? colors.error.withValues(alpha: 0.8) : (Colors.orange[900] ?? Colors.orange).withValues(alpha: 0.8),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               );
             },
@@ -2891,38 +3702,40 @@ class _QualityDefinitionRow extends ConsumerStatefulWidget {
 }
 
 class _QualityDefinitionRowState extends ConsumerState<_QualityDefinitionRow> {
-  late double _min;
-  late double _max;
-  late double _preferred;
   late bool _isUnlimited;
   bool _saving = false;
-  late double _sliderMax;
+
+  late TextEditingController _minController;
+  late TextEditingController _maxController;
+  late TextEditingController _preferredController;
 
   @override
   void initState() {
     super.initState();
+    _minController = TextEditingController();
+    _maxController = TextEditingController();
+    _preferredController = TextEditingController();
     _reset();
   }
 
+  @override
+  void dispose() {
+    _minController.dispose();
+    _maxController.dispose();
+    _preferredController.dispose();
+    super.dispose();
+  }
+
   void _reset() {
-    _min = widget.definition.minSize;
+    final double minVal = widget.definition.minSize;
     final rawMax = widget.definition.raw['maxSize'];
     _isUnlimited = rawMax == null || rawMax == 0.0 || widget.definition.maxSize == 0.0;
-    _max = _isUnlimited ? 400.0 : widget.definition.maxSize;
-    _preferred = widget.definition.preferredSize;
-    _sliderMax = 400.0;
-    if (!_isUnlimited && widget.definition.maxSize > _sliderMax) {
-      _sliderMax = widget.definition.maxSize;
-    }
-    if (widget.definition.minSize > _sliderMax) {
-      _sliderMax = widget.definition.minSize;
-    }
-    if (widget.definition.preferredSize > _sliderMax) {
-      _sliderMax = widget.definition.preferredSize;
-    }
-    if (_sliderMax <= _min) {
-      _sliderMax = _min + 10.0;
-    }
+    final double maxVal = _isUnlimited ? 0.0 : widget.definition.maxSize;
+    final double prefVal = widget.definition.preferredSize;
+
+    _minController.text = minVal.toStringAsFixed(1);
+    _maxController.text = _isUnlimited ? '' : maxVal.toStringAsFixed(1);
+    _preferredController.text = prefVal.toStringAsFixed(1);
   }
 
   @override
@@ -2933,24 +3746,66 @@ class _QualityDefinitionRowState extends ConsumerState<_QualityDefinitionRow> {
     }
   }
 
+  String? get _minError {
+    final val = double.tryParse(_minController.text);
+    if (_minController.text.isEmpty) return 'Required';
+    if (val == null) return 'Invalid';
+    if (val < 0) return 'Must be >= 0';
+    return null;
+  }
+
+  String? get _preferredError {
+    final val = double.tryParse(_preferredController.text);
+    if (_preferredController.text.isEmpty) return 'Required';
+    if (val == null) return 'Invalid';
+    final minVal = double.tryParse(_minController.text);
+    if (minVal != null && val < minVal) return 'Must be >= Min';
+    return null;
+  }
+
+  String? get _maxError {
+    if (_isUnlimited) return null;
+    final val = double.tryParse(_maxController.text);
+    if (_maxController.text.isEmpty) return 'Required';
+    if (val == null) return 'Invalid';
+    final prefVal = double.tryParse(_preferredController.text);
+    if (prefVal != null && val < prefVal) return 'Must be >= Preferred';
+    return null;
+  }
+
+  bool get _isValid => _minError == null && _preferredError == null && _maxError == null;
+
   bool get _hasChanges {
     final double origMin = widget.definition.minSize;
     final double origPref = widget.definition.preferredSize;
     final bool origUnlimited = widget.definition.raw['maxSize'] == null || widget.definition.raw['maxSize'] == 0.0 || widget.definition.maxSize == 0.0;
-    final double origMax = origUnlimited ? 400.0 : widget.definition.maxSize;
+    final double origMax = origUnlimited ? 0.0 : widget.definition.maxSize;
 
-    return _min != origMin || _preferred != origPref || _isUnlimited != origUnlimited || (!_isUnlimited && _max != origMax);
+    final minVal = double.tryParse(_minController.text);
+    final prefVal = double.tryParse(_preferredController.text);
+    final maxVal = _isUnlimited ? 0.0 : double.tryParse(_maxController.text);
+
+    if (minVal == null || prefVal == null || (!_isUnlimited && maxVal == null)) {
+      return true;
+    }
+
+    return minVal != origMin || prefVal != origPref || _isUnlimited != origUnlimited || (!_isUnlimited && maxVal != origMax);
   }
 
   Future<void> _save() async {
+    if (!_isValid) return;
+
     setState(() => _saving = true);
     final api = await ref.read(sonarrApiProvider(widget.instance).future);
-    final double targetMax = _isUnlimited ? 0.0 : _max;
+
+    final double minVal = double.parse(_minController.text);
+    final double prefVal = double.parse(_preferredController.text);
+    final double maxVal = _isUnlimited ? 0.0 : double.parse(_maxController.text);
 
     final newRaw = Map<String, dynamic>.of(widget.definition.raw)
-      ..['minSize'] = _min
-      ..['maxSize'] = targetMax
-      ..['preferredSize'] = _preferred;
+      ..['minSize'] = minVal
+      ..['maxSize'] = maxVal
+      ..['preferredSize'] = prefVal;
 
     try {
       await api.updateQualityDefinitionRaw(newRaw);
@@ -2976,147 +3831,131 @@ class _QualityDefinitionRowState extends ConsumerState<_QualityDefinitionRow> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    final String minLabel = '${_min.toStringAsFixed(1)} MB/h';
-    final String maxLabel = _isUnlimited ? 'Unlimited' : '${_max.toStringAsFixed(1)} MB/h';
-    final String preferredLabel = '${_preferred.toStringAsFixed(1)} MB/h';
-
     return Padding(
       padding: const EdgeInsets.only(bottom: Insets.md),
       child: Material(
-      color: isDark ? theme.colorScheme.surfaceContainerHigh : theme.colorScheme.surfaceContainerLowest,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: _hasChanges ? theme.colorScheme.primary.withValues(alpha: 0.5) : theme.colorScheme.outlineVariant,
-          width: _hasChanges ? 1.5 : 1,
+        color: isDark ? theme.colorScheme.surfaceContainerHigh : theme.colorScheme.surfaceContainerLowest,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: _hasChanges ? theme.colorScheme.primary.withValues(alpha: 0.5) : theme.colorScheme.outlineVariant,
+            width: _hasChanges ? 1.5 : 1,
+          ),
         ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(Insets.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  widget.definition.name,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: _hasChanges ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+        child: Padding(
+          padding: const EdgeInsets.all(Insets.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    widget.definition.name,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: _hasChanges ? theme.colorScheme.primary : theme.colorScheme.onSurface,
+                    ),
                   ),
-                ),
-                Row(
-                  children: [
-                    if (_hasChanges && !_saving)
-                      IconButton(
-                        icon: const Icon(Icons.undo, size: 20),
-                        tooltip: 'Discard changes',
-                        onPressed: () => setState(_reset),
+                  Row(
+                    children: [
+                      if (_hasChanges && !_saving)
+                        IconButton(
+                          icon: const Icon(Icons.undo, size: 20),
+                          tooltip: 'Discard changes',
+                          onPressed: () => setState(_reset),
+                        ),
+                      if (_saving)
+                        const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      else if (_hasChanges)
+                        IconButton(
+                          icon: Icon(
+                            Icons.check,
+                            color: _isValid ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.3),
+                            size: 20,
+                          ),
+                          tooltip: _isValid ? 'Save changes' : 'Validation errors exist',
+                          onPressed: _isValid ? _save : null,
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: Insets.md),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _minController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Min Size',
+                        suffixText: 'MB/h',
+                        errorText: _minError,
+                        border: const OutlineInputBorder(),
                       ),
-                    if (_saving)
-                      const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    else if (_hasChanges)
-                      IconButton(
-                        icon: Icon(Icons.check, color: theme.colorScheme.primary, size: 20),
-                        tooltip: 'Save changes',
-                        onPressed: _save,
+                      onChanged: (val) => setState(() {}),
+                    ),
+                  ),
+                  const SizedBox(width: Insets.md),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _preferredController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Preferred',
+                        suffixText: 'MB/h',
+                        errorText: _preferredError,
+                        border: const OutlineInputBorder(),
                       ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: Insets.sm),
-            Wrap(
-              spacing: Insets.md,
-              children: [
-                _InfoLabel(label: 'Min', value: minLabel, color: theme.colorScheme.outline),
-                _InfoLabel(label: 'Preferred', value: preferredLabel, color: theme.colorScheme.primary),
-                _InfoLabel(label: 'Max', value: maxLabel, color: _isUnlimited ? Colors.green : theme.colorScheme.outline),
-              ],
-            ),
-            const SizedBox(height: Insets.md),
-            if (_isUnlimited) ...[
-              Text('Minimum Size', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline)),
-              Slider(
-                value: _min,
-                max: _sliderMax,
+                      onChanged: (val) => setState(() {}),
+                    ),
+                  ),
+                  const SizedBox(width: Insets.md),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _maxController,
+                      enabled: !_isUnlimited,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Max Size',
+                        suffixText: _isUnlimited ? '' : 'MB/h',
+                        hintText: _isUnlimited ? 'Unlimited' : null,
+                        errorText: _maxError,
+                        border: const OutlineInputBorder(),
+                      ),
+                      onChanged: (val) => setState(() {}),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: Insets.sm),
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text('Unlimited Max Size', style: theme.textTheme.bodyMedium),
+                value: _isUnlimited,
                 onChanged: (val) {
                   setState(() {
-                    _min = val;
-                    if (_preferred < _min) _preferred = _min;
+                    _isUnlimited = val ?? false;
+                    if (_isUnlimited) {
+                      _maxController.text = '';
+                    } else {
+                      final prefVal = double.tryParse(_preferredController.text) ?? widget.definition.preferredSize;
+                      _maxController.text = prefVal.toStringAsFixed(1);
+                    }
                   });
                 },
-              ),
-            ] else ...[
-              Text('Size Range (Min - Max)', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline)),
-              RangeSlider(
-                values: RangeValues(_min, _max),
-                max: _sliderMax,
-                onChanged: (vals) {
-                  setState(() {
-                    _min = vals.start;
-                    _max = vals.end;
-                    if (_preferred < _min) _preferred = _min;
-                    if (_preferred > _max) _preferred = _max;
-                  });
-                },
+                controlAffinity: ListTileControlAffinity.leading,
               ),
             ],
-            const SizedBox(height: Insets.xs),
-            Text('Preferred Size', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline)),
-            Slider(
-              value: _preferred,
-              min: _min,
-              max: _isUnlimited ? _sliderMax : _max,
-              onChanged: (val) {
-                setState(() {
-                  _preferred = val;
-                });
-              },
-            ),
-            const SizedBox(height: Insets.xs),
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text('Unlimited Max Size', style: theme.textTheme.bodyMedium),
-              value: _isUnlimited,
-              onChanged: (val) {
-                setState(() {
-                  _isUnlimited = val ?? false;
-                  if (!_isUnlimited) {
-                    _max = _preferred;
-                  }
-                });
-              },
-              controlAffinity: ListTileControlAffinity.leading,
-            ),
-          ],
+          ),
         ),
       ),
-      ),
-    );
-  }
-}
-
-class _InfoLabel extends StatelessWidget {
-  const _InfoLabel({required this.label, required this.value, required this.color});
-  final String label;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline)),
-        Text(value, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold, color: color)),
-      ],
     );
   }
 }
@@ -3435,6 +4274,26 @@ class _QualityProfileSettingsPanel extends ConsumerWidget {
 
   final Instance instance;
 
+  int _getItemId(Map<String, dynamic> item) {
+    final int? id = (item['id'] as num?)?.toInt();
+    if (id != null && id != 0) return id;
+    final quality = item['quality'] as Map<String, dynamic>?;
+    if (quality != null) {
+      return ((quality['id'] as num?) ?? 0).toInt();
+    }
+    return 0;
+  }
+
+  String _getItemName(Map<String, dynamic> item) {
+    final String? name = item['name'] as String?;
+    if (name != null && name.isNotEmpty) return name;
+    final quality = item['quality'] as Map<String, dynamic>?;
+    if (quality != null) {
+      return (quality['name'] as String?) ?? '';
+    }
+    return '';
+  }
+
   List<Map<String, dynamic>> _getAllowedQualities(List<dynamic> items) {
     final List<Map<String, dynamic>> list = [];
     void helper(List<dynamic> listItems) {
@@ -3456,7 +4315,7 @@ class _QualityProfileSettingsPanel extends ConsumerWidget {
 
   Widget _buildQualityItemTile(BuildContext context, Map<String, dynamic> item, StateSetter setState, {bool readOnly = false}) {
     final List<dynamic>? nestedItems = item['items'] as List<dynamic>?;
-    final String name = (item['name'] as String?) ?? '';
+    final String name = _getItemName(item);
     final bool allowed = (item['allowed'] as bool?) ?? false;
 
     if (nestedItems != null && nestedItems.isNotEmpty) {
@@ -3526,10 +4385,10 @@ class _QualityProfileSettingsPanel extends ConsumerWidget {
             
             int cutoffId = (payload['cutoff'] as num? ?? 0).toInt();
             if (cutoffId == 0 && allowedQualities.isNotEmpty) {
-              cutoffId = allowedQualities.first['id'] as int;
+              cutoffId = _getItemId(allowedQualities.first);
               payload['cutoff'] = cutoffId;
-            } else if (allowedQualities.isNotEmpty && !allowedQualities.any((q) => q['id'] == cutoffId)) {
-              cutoffId = allowedQualities.first['id'] as int;
+            } else if (allowedQualities.isNotEmpty && !allowedQualities.any((q) => _getItemId(q) == cutoffId)) {
+              cutoffId = _getItemId(allowedQualities.first);
               payload['cutoff'] = cutoffId;
             }
 
@@ -3565,9 +4424,10 @@ class _QualityProfileSettingsPanel extends ConsumerWidget {
                           border: OutlineInputBorder(),
                         ),
                         items: allowedQualities.map((q) {
-                          final qName = (q['name'] as String?) ?? '';
+                          final qId = _getItemId(q);
+                          final qName = _getItemName(q);
                           return DropdownMenuItem<int>(
-                            value: q['id'] as int,
+                            value: qId,
                             child: Text(qName),
                           );
                         }).toList(),

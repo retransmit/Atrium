@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:collection/collection.dart';
 import 'package:core_models/core_models.dart';
@@ -32,8 +34,11 @@ class SeriesDetailScreen extends ConsumerWidget {
         ref.watch(sonarrSeriesByIdProvider((instance, seriesId)));
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(series.value?.title ?? 'Series'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
         actions: <Widget>[
           if (series.hasValue)
             _SeriesMenu(
@@ -66,10 +71,17 @@ class _Body extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
     final SonarrApi? api = ref.watch(sonarrApiProvider(instance)).value;
     final SonarrImage? poster = series.images
         .firstWhereOrNull((SonarrImage i) => i.coverType == 'poster');
     final String? imageUrl = poster == null ? null : api?.posterUrl(poster);
+
+    final SonarrImage? fanart = series.images
+        .firstWhereOrNull((SonarrImage i) => i.coverType == 'fanart');
+    final String? fanartUrl = fanart == null ? null : api?.posterUrl(fanart);
+
     final List<SonarrSeasonStats> seasons = series.seasons
         .where((SonarrSeasonStats s) => s.seasonNumber > 0)
         .sorted(
@@ -82,44 +94,94 @@ class _Body extends ConsumerWidget {
     final AsyncValue<List<SonarrEpisode>> episodesValue =
         ref.watch(sonarrEpisodesProvider((instance, series.id)));
 
-    return RefreshIndicator(
-      onRefresh: () async => _refresh(ref),
-      child: ListView(
-        padding: Insets.page,
-        children: <Widget>[
-          _Header(instance: instance, series: series, imageUrl: imageUrl),
-          const SizedBox(height: Insets.md),
-          _ActionsRow(instance: instance, series: series, onChanged: _refresh),
-          if (series.overview != null && series.overview!.isNotEmpty) ...<
-              Widget>[
-            const SizedBox(height: Insets.md),
-            Text(
-              series.overview!,
-              style: Theme.of(context).textTheme.bodyMedium,
+    return Stack(
+      children: <Widget>[
+        // Backdrop Image Banner
+         if (fanartUrl != null)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 260,
+            child: ShaderMask(
+              shaderCallback: (Rect rect) {
+                return LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: <Color>[
+                    Colors.black.withValues(alpha: 0.5),
+                    Colors.transparent,
+                  ],
+                ).createShader(Rect.fromLTRB(0, 0, rect.width, rect.height));
+              },
+              blendMode: BlendMode.dstIn,
+              child: CachedNetworkImage(
+                imageUrl: fanartUrl,
+                fit: BoxFit.cover,
+                memCacheWidth: 800,
+                errorWidget: (_, __, ___) => const SizedBox(),
+              ),
             ),
-          ],
-          const SizedBox(height: Insets.lg),
-          Text('Seasons', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: Insets.sm),
-          for (final SonarrSeasonStats season in seasons)
-            _SeasonTile(
-              instance: instance,
-              series: series,
-              season: season,
-              onChanged: _refresh,
-              episodesValue: episodesValue,
-            ),
-          if (specials != null)
-            _SeasonTile(
-              instance: instance,
-              series: series,
-              season: specials,
-              onChanged: _refresh,
-              episodesValue: episodesValue,
-            ),
-          const SizedBox(height: Insets.xl),
-        ],
-      ),
+          ),
+
+        // Main Screen Content
+        RefreshIndicator(
+          onRefresh: () async => _refresh(ref),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(Insets.lg, Insets.sm, Insets.lg, Insets.lg),
+            children: <Widget>[
+              // Top padding to show the backdrop beautiful top half
+              const SizedBox(height: 110),
+              _Header(instance: instance, series: series, imageUrl: imageUrl),
+              const SizedBox(height: Insets.md),
+              _ActionsRow(instance: instance, series: series, onChanged: _refresh),
+              if (series.overview != null && series.overview!.isNotEmpty) ...<
+                  Widget>[
+                const SizedBox(height: Insets.md),
+                // Overview Text Card for better readability over the backdrop
+                Container(
+                  padding: const EdgeInsets.all(Insets.md),
+                  decoration: BoxDecoration(
+                    color: isDark 
+                        ? theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.8)
+                        : theme.colorScheme.surfaceContainerLowest.withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: Text(
+                    series.overview!,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: Insets.lg),
+              Text('Seasons', style: theme.textTheme.titleMedium),
+              const SizedBox(height: Insets.sm),
+              for (final SonarrSeasonStats season in seasons)
+                _SeasonTile(
+                  instance: instance,
+                  series: series,
+                  season: season,
+                  onChanged: _refresh,
+                  episodesValue: episodesValue,
+                ),
+              if (specials != null)
+                _SeasonTile(
+                  instance: instance,
+                  series: series,
+                  season: specials,
+                  onChanged: _refresh,
+                  episodesValue: episodesValue,
+                ),
+              const SizedBox(height: Insets.xl),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
@@ -138,6 +200,7 @@ class _Header extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
+    final bool isDark = theme.brightness == Brightness.dark;
     final SonarrSeriesStatistics? st = series.statistics;
 
     final AsyncValue<List<SonarrQualityProfile>> profilesVal =
@@ -148,79 +211,230 @@ class _Header extends ConsumerWidget {
       orElse: () => '...',
     );
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        ClipRRect(
-          borderRadius: Radii.card,
-          child: SizedBox(
-            width: 110,
-            height: 165,
-            child: imageUrl == null
-                ? Container(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    child: Icon(
-                      Icons.live_tv_outlined,
-                      color: theme.colorScheme.outline,
-                    ),
-                  )
-                : CachedNetworkImage(
-                    imageUrl: imageUrl!,
-                    fit: BoxFit.cover,
-                    memCacheWidth: 200,
-                    errorWidget: (_, __, ___) => Container(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      child: Icon(
-                        Icons.live_tv_outlined,
-                        color: theme.colorScheme.outline,
-                      ),
-                    ),
-                  ),
-          ),
-        ),
-        const SizedBox(width: Insets.md),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(series.title, style: theme.textTheme.titleLarge),
-              const SizedBox(height: Insets.xs),
-              Text(
-                <String>[
-                  if (series.year != null) '${series.year}',
-                  if (series.network != null && series.network!.isNotEmpty)
-                    series.network!,
-                  if (series.status != null) series.status!,
-                  'Profile: $profileName',
-                ].join(' • '),
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.outline),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark
+                ? theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.65)
+                : theme.colorScheme.surfaceContainerLowest.withValues(alpha: 0.75),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+            ),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-              if (st != null) ...<Widget>[
-                const SizedBox(height: Insets.sm),
-                Text(
-                  '${st.episodeFileCount}/${st.totalEpisodeCount} episodes',
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: Insets.xs),
-                LinearProgressIndicator(
-                  value: st.totalEpisodeCount == 0
-                      ? 0
-                      : (st.episodeFileCount / st.totalEpisodeCount)
-                          .clamp(0, 1)
-                          .toDouble(),
-                ),
-                const SizedBox(height: Insets.xs),
-                Text(
-                  _fmtSize(st.sizeOnDisk),
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.outline),
-                ),
-              ],
             ],
           ),
+          padding: const EdgeInsets.all(Insets.md),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+          // Premium Poster Design
+          Hero(
+            tag: 'poster-${series.id}',
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: SizedBox(
+                  width: 110,
+                  height: 165,
+                  child: imageUrl == null
+                      ? Container(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          child: Icon(
+                            Icons.live_tv_outlined,
+                            color: theme.colorScheme.outline,
+                            size: 32,
+                          ),
+                        )
+                      : CachedNetworkImage(
+                          imageUrl: imageUrl!,
+                          fit: BoxFit.cover,
+                          memCacheWidth: 200,
+                          placeholder: (BuildContext context, String url) => Container(
+                            color: theme.colorScheme.surfaceContainerHighest,
+                            child: const Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                          ),
+                          errorWidget: (_, __, ___) => Container(
+                            color: theme.colorScheme.surfaceContainerHighest,
+                            child: Icon(
+                              Icons.live_tv_outlined,
+                              color: theme.colorScheme.outline,
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: Insets.lg),
+          // Text & Stats Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  series.title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: Insets.xs),
+                // Tags row (Network, Year, Status)
+                Wrap(
+                  spacing: Insets.xs,
+                  runSpacing: 4,
+                  children: <Widget>[
+                    if (series.year != null)
+                      _InfoChip(label: '${series.year}'),
+                    if (series.network != null && series.network!.isNotEmpty)
+                      _InfoChip(label: series.network!),
+                    if (series.status != null)
+                      _InfoChip(
+                        label: series.status!,
+                        isPrimary: series.status?.toLowerCase() == 'continuing',
+                      ),
+                  ],
+                ),
+                const SizedBox(height: Insets.sm),
+                // Quality profile pill
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Icon(Icons.video_settings, size: 14, color: theme.colorScheme.primary),
+                      const SizedBox(width: 4),
+                      Text(
+                        profileName,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (st != null) ...<Widget>[
+                  const SizedBox(height: Insets.md),
+                  // Episodes progress text & indicator
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: <Widget>[
+                      Text(
+                        'Episodes',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.outline,
+                        ),
+                      ),
+                      Text(
+                        '${st.episodeFileCount}/${st.totalEpisodeCount}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      minHeight: 6,
+                      value: st.totalEpisodeCount == 0
+                          ? 0
+                          : (st.episodeFileCount / st.totalEpisodeCount)
+                              .clamp(0, 1)
+                              .toDouble(),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: <Widget>[
+                      Icon(
+                        Icons.sd_storage_outlined,
+                        size: 14,
+                        color: theme.colorScheme.outline,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _fmtSize(st.sizeOnDisk),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.outline,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  ),
+);
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({required this.label, this.isPrimary = false});
+  final String label;
+  final bool isPrimary;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: isPrimary
+            ? theme.colorScheme.primary.withValues(alpha: 0.1)
+            : theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: isPrimary
+              ? theme.colorScheme.primary
+              : theme.colorScheme.onSurfaceVariant,
+          fontWeight: isPrimary ? FontWeight.bold : FontWeight.normal,
         ),
-      ],
+      ),
     );
   }
 }
@@ -238,30 +452,50 @@ class _ActionsRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
     return Row(
       children: <Widget>[
+        // Monitored Action Button
         Expanded(
-          child: FilledButton.tonalIcon(
-            icon: Icon(
-              series.monitored ? Icons.bookmark : Icons.bookmark_border,
-            ),
-            label: Text(series.monitored ? 'Monitored' : 'Unmonitored'),
-            onPressed: () async {
-              final SonarrApi api =
-                  await ref.read(sonarrApiProvider(instance).future);
-              final Map<String, dynamic> raw =
-                  await api.getSeriesRaw(series.id);
-              raw['monitored'] = !series.monitored;
-              await api.updateSeriesRaw(raw);
-              onChanged(ref);
-            },
-          ),
+          child: series.monitored
+              ? FilledButton.tonalIcon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
+                    foregroundColor: theme.colorScheme.onPrimaryContainer,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.bookmark, size: 20),
+                  label: const Text('Monitored', style: TextStyle(fontWeight: FontWeight.bold)),
+                  onPressed: () => _toggleMonitored(ref),
+                )
+              : OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: BorderSide(color: theme.colorScheme.outline),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.bookmark_border, size: 20),
+                  label: const Text('Unmonitored'),
+                  onPressed: () => _toggleMonitored(ref),
+                ),
         ),
-        const SizedBox(width: Insets.sm),
+        const SizedBox(width: Insets.md),
+        // Search All Action Button
         Expanded(
           child: FilledButton.icon(
-            icon: const Icon(Icons.search),
-            label: const Text('Search all'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            icon: const Icon(Icons.search, size: 20),
+            label: const Text('Search all', style: TextStyle(fontWeight: FontWeight.bold)),
             onPressed: () async {
               final SonarrApi api =
                   await ref.read(sonarrApiProvider(instance).future);
@@ -278,6 +512,14 @@ class _ActionsRow extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _toggleMonitored(WidgetRef ref) async {
+    final SonarrApi api = await ref.read(sonarrApiProvider(instance).future);
+    final Map<String, dynamic> raw = await api.getSeriesRaw(series.id);
+    raw['monitored'] = !series.monitored;
+    await api.updateSeriesRaw(raw);
+    onChanged(ref);
   }
 }
 
@@ -298,6 +540,7 @@ class _SeasonTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
     final SonarrSeasonStatistics? st = season.statistics;
     final String label = season.seasonNumber == 0
         ? 'Specials'
@@ -310,16 +553,47 @@ class _SeasonTile extends ConsumerWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: Insets.sm),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
       clipBehavior: Clip.antiAlias,
       child: ExpansionTile(
-        title: Text(label),
-        subtitle: Text(statsStr),
-        leading: IconButton(
-          tooltip: season.monitored ? 'Unmonitor season' : 'Monitor season',
-          icon: Icon(
-            season.monitored ? Icons.bookmark : Icons.bookmark_border,
+        title: Text(
+          label,
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
           ),
-          onPressed: () => _toggleSeason(ref),
+        ),
+        subtitle: statsStr.isNotEmpty
+            ? Text(
+                statsStr,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.outline,
+                ),
+              )
+            : null,
+        leading: Container(
+          decoration: BoxDecoration(
+            color: season.monitored
+                ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                : theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: IconButton(
+            tooltip: season.monitored ? 'Unmonitor season' : 'Monitor season',
+            icon: Icon(
+              season.monitored ? Icons.bookmark : Icons.bookmark_border,
+              color: season.monitored
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.outline,
+              size: 20,
+            ),
+            onPressed: () => _toggleSeason(ref),
+          ),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -354,6 +628,62 @@ class _SeasonTile extends ConsumerWidget {
                 }
               },
             ),
+            if (st != null && st.episodeFileCount > 0)
+              IconButton(
+                tooltip: 'Delete season files',
+                icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
+                onPressed: () async {
+                  final bool? confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (BuildContext context) => AlertDialog(
+                      title: Text('Delete $label files?'),
+                      content: Text(
+                        'Are you sure you want to delete all $label files on disk?\n'
+                        'This will delete ${st.episodeFileCount} file(s).',
+                      ),
+                      actions: <Widget>[
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: theme.colorScheme.error,
+                            foregroundColor: theme.colorScheme.onError,
+                          ),
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (confirm == true) {
+                    final SonarrApi api = await ref.read(sonarrApiProvider(instance).future);
+                    final List<SonarrEpisode> episodes = await api.getEpisodes(series.id);
+                    final List<SonarrEpisode> seasonEpisodes = episodes
+                        .where((ep) =>
+                            ep.seasonNumber == season.seasonNumber &&
+                            ep.hasFile &&
+                            ep.episodeFileId > 0,)
+                        .toList();
+
+                    if (seasonEpisodes.isNotEmpty) {
+                      await Future.wait(
+                        seasonEpisodes.map((ep) => api.deleteEpisodeFile(ep.episodeFileId)),
+                      );
+                    }
+
+                    onChanged(ref);
+
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('All $label files deleted')),
+                      );
+                    }
+                  }
+                },
+              ),
             const Icon(Icons.expand_more),
           ],
         ),
@@ -369,7 +699,7 @@ class _SeasonTile extends ConsumerWidget {
               child: Center(
                 child: Text(
                   'Error loading episodes: $err',
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  style: TextStyle(color: theme.colorScheme.error),
                 ),
               ),
             ),
@@ -448,157 +778,197 @@ class _EpisodeTile extends ConsumerWidget {
     final (String label, Color bg, Color fg) = episode.hasFile
         ? (
             'Downloaded',
-            theme.colorScheme.primaryContainer,
+            theme.colorScheme.primaryContainer.withValues(alpha: 0.4),
             theme.colorScheme.onPrimaryContainer,
           )
         : isFuture
             ? (
                 'Upcoming',
-                theme.colorScheme.secondaryContainer,
+                theme.colorScheme.secondaryContainer.withValues(alpha: 0.4),
                 theme.colorScheme.onSecondaryContainer,
               )
             : (
                 'Missing',
-                theme.colorScheme.errorContainer,
+                theme.colorScheme.errorContainer.withValues(alpha: 0.4),
                 theme.colorScheme.onErrorContainer,
               );
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: Insets.md),
-      child: Row(
-        children: <Widget>[
-          // Monitored Toggle
-          IconButton(
-            icon: Icon(
-              episode.monitored ? Icons.bookmark : Icons.bookmark_border,
-              size: 20,
-              color: episode.monitored ? theme.colorScheme.primary : theme.colorScheme.outline,
-            ),
-            tooltip: episode.monitored ? 'Stop monitoring' : 'Monitor episode',
-            onPressed: () async {
-              final SonarrApi api = await ref.read(sonarrApiProvider(instance).future);
-              await api.updateEpisode(episode.copyWith(monitored: !episode.monitored));
-              ref.invalidate(sonarrEpisodesProvider((instance, seriesId)));
-            },
-          ),
-          const SizedBox(width: Insets.xs),
-          // Episode info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  '$epCode • ${episode.title ?? "Episode ${episode.episodeNumber}"}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  airDateStr,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.outline,
-                  ),
-                ),
-              ],
+    return InkWell(
+      onTap: () {
+        Navigator.of(context, rootNavigator: true).push(
+          MaterialPageRoute<void>(
+            builder: (_) => SonarrReleaseSearchScreen(
+              instance: instance,
+              episode: episode,
             ),
           ),
-          const SizedBox(width: Insets.sm),
-          // Status Badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              label,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: fg,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(width: Insets.xs),
-          // Manual Search Button
-          IconButton(
-            icon: const Icon(Icons.manage_search, size: 20),
-            tooltip: 'Manual search',
-            onPressed: () {
-              Navigator.of(context, rootNavigator: true).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => SonarrReleaseSearchScreen(
-                    instance: instance,
-                    episode: episode,
-                  ),
-                ),
-              );
-            },
-          ),
-          // Search Button (Automatic)
-          IconButton(
-            icon: const Icon(Icons.search, size: 20),
-            tooltip: 'Automatic search',
-            onPressed: () async {
-              final SonarrApi api = await ref.read(sonarrApiProvider(instance).future);
-              await api.searchEpisode(episode.id);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Search started for $epCode • ${episode.title ?? "Episode"}',
-                    ),
-                  ),
-                );
-              }
-            },
-          ),
-          // Delete file button
-          if (episode.hasFile && episode.episodeFileId > 0)
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: Insets.sm),
+        child: Row(
+          children: <Widget>[
+            // Monitored Toggle
             IconButton(
-              icon: Icon(Icons.delete_outline, color: theme.colorScheme.error, size: 20),
-              tooltip: 'Delete episode file',
+              icon: Icon(
+                episode.monitored ? Icons.bookmark : Icons.bookmark_border,
+                size: 20,
+                color: episode.monitored ? theme.colorScheme.primary : theme.colorScheme.outline,
+              ),
+              visualDensity: VisualDensity.compact,
+              tooltip: episode.monitored ? 'Stop monitoring' : 'Monitor episode',
               onPressed: () async {
-                final bool? confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Delete episode file?'),
-                    content: Text(
-                      'Are you sure you want to delete the file for:\n'
-                      '${episode.title ?? "Episode ${episode.episodeNumber}"}?',
+                final SonarrApi api = await ref.read(sonarrApiProvider(instance).future);
+                await api.updateEpisode(episode.copyWith(monitored: !episode.monitored));
+                ref.invalidate(sonarrEpisodesProvider((instance, seriesId)));
+              },
+            ),
+            const SizedBox(width: Insets.xs),
+            // Episode info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    '$epCode • ${episode.title ?? "Episode ${episode.episodeNumber}"}',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.2,
                     ),
-                    actions: <Widget>[
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(false),
-                        child: const Text('Cancel'),
-                      ),
-                      FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: theme.colorScheme.error,
-                          foregroundColor: theme.colorScheme.onError,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: Insets.xs),
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: Insets.xs,
+                    runSpacing: 4,
+                    children: <Widget>[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: bg,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: fg.withValues(alpha: 0.1),
+                          ),
                         ),
-                        onPressed: () => Navigator.of(context).pop(true),
-                        child: const Text('Delete'),
+                        child: Text(
+                          label,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: fg,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        airDateStr,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.outline,
+                        ),
                       ),
                     ],
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(width: Insets.xs),
+            // Primary Action: Manual Search
+            IconButton(
+              icon: const Icon(Icons.manage_search, size: 20),
+              tooltip: 'Manual search',
+              visualDensity: VisualDensity.compact,
+              onPressed: () {
+                Navigator.of(context, rootNavigator: true).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => SonarrReleaseSearchScreen(
+                      instance: instance,
+                      episode: episode,
+                    ),
+                  ),
                 );
-                if (confirm == true) {
-                  final SonarrApi api = await ref.read(sonarrApiProvider(instance).future);
-                  await api.deleteEpisodeFile(episode.episodeFileId);
-                  ref.invalidate(sonarrEpisodesProvider((instance, seriesId)));
-                  ref.invalidate(sonarrSeriesByIdProvider((instance, seriesId)));
-                  ref.invalidate(sonarrSeriesProvider(instance));
+              },
+            ),
+            // Secondary Actions Dropdown
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, size: 20),
+              onSelected: (String val) async {
+                final SonarrApi api = await ref.read(sonarrApiProvider(instance).future);
+                if (val == 'search') {
+                  await api.searchEpisode(episode.id);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Episode file deleted')),
+                      SnackBar(
+                        content: Text(
+                          'Search started for $epCode • ${episode.title ?? "Episode"}',
+                        ),
+                      ),
                     );
+                  }
+                } else if (val == 'delete') {
+                  if (!context.mounted) return;
+                  final bool? confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (BuildContext context) => AlertDialog(
+                      title: const Text('Delete episode file?'),
+                      content: Text(
+                        'Are you sure you want to delete the file for:\n'
+                        '${episode.title ?? "Episode ${episode.episodeNumber}"}?',
+                      ),
+                      actions: <Widget>[
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: theme.colorScheme.error,
+                            foregroundColor: theme.colorScheme.onError,
+                          ),
+                          onPressed: () => Navigator.of(context).pop(true),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirm == true) {
+                    await api.deleteEpisodeFile(episode.episodeFileId);
+                    ref.invalidate(sonarrEpisodesProvider((instance, seriesId)));
+                    ref.invalidate(sonarrSeriesByIdProvider((instance, seriesId)));
+                    ref.invalidate(sonarrSeriesProvider(instance));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Episode file deleted')),
+                      );
+                    }
                   }
                 }
               },
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                const PopupMenuItem<String>(
+                  value: 'search',
+                  child: ListTile(
+                    leading: Icon(Icons.search, size: 20),
+                    title: Text('Automatic search'),
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                  ),
+                ),
+                if (episode.hasFile && episode.episodeFileId > 0)
+                  PopupMenuItem<String>(
+                    value: 'delete',
+                    child: ListTile(
+                      leading: Icon(Icons.delete_outline, color: theme.colorScheme.error, size: 20),
+                      title: Text('Delete episode file', style: TextStyle(color: theme.colorScheme.error)),
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                    ),
+                  ),
+              ],
             ),
-        ],
+          ],
+        ),
       ),
     );
   }

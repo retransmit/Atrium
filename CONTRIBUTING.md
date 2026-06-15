@@ -37,9 +37,12 @@ For each package, generated code (`*.g.dart`, `*.freezed.dart`) is produced by:
 dart run build_runner build --delete-conflicting-outputs
 ```
 
-Generated files are gitignored, so run this **from inside the package
-directory** (not the repo root) after pulling any change that touches a
-`models/` file - the build is broken until you do.
+Generated files are gitignored. You can run this **from inside the package
+directory** after pulling any change that touches a `models/` file in that specific package, or you can run it for **all packages in the workspace** from the repository root using the helper script:
+
+```sh
+dart run tool/build_all.dart
+```
 
 ## Navigation rule (important)
 

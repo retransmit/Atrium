@@ -79,45 +79,49 @@ class _AddSeriesScreenState extends ConsumerState<AddSeriesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Add series')),
-      body: Column(
-        children: <Widget>[
-          Padding(
-            padding: Insets.page,
-            child: TextField(
-              controller: _query,
-              autofocus: true,
-              textInputAction: TextInputAction.search,
-              onChanged: _onChanged,
-              onSubmitted: _search,
-              decoration: InputDecoration(
-                hintText: 'Search for a show...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _query.text.isEmpty
-                    ? null
-                    : IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _query.clear();
-                          _onChanged('');
-                        },
-                      ),
-                border: const OutlineInputBorder(),
-              ),
-            ),
-          ),
-          if (_searching) const LinearProgressIndicator(),
-          if (_error != null)
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.translucent,
+        child: Column(
+          children: <Widget>[
             Padding(
               padding: Insets.page,
-              child: Text(
-                _error!,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.error,
+              child: TextField(
+                controller: _query,
+                autofocus: true,
+                textInputAction: TextInputAction.search,
+                onChanged: _onChanged,
+                onSubmitted: _search,
+                decoration: InputDecoration(
+                  hintText: 'Search for a show...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _query.text.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _query.clear();
+                            _onChanged('');
+                          },
+                        ),
+                  border: const OutlineInputBorder(),
                 ),
               ),
             ),
-          Expanded(child: _resultsList()),
-        ],
+            if (_searching) const LinearProgressIndicator(),
+            if (_error != null)
+              Padding(
+                padding: Insets.page,
+                child: Text(
+                  _error!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+              ),
+            Expanded(child: _resultsList()),
+          ],
+        ),
       ),
     );
   }
