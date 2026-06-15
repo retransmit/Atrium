@@ -1,3 +1,6 @@
+// This is a developer CLI helper (run via `dart run tool/build_all.dart`), so
+// printing to the console is the intended output channel.
+// ignore_for_file: avoid_print
 import 'dart:io';
 
 void main(List<String> args) async {

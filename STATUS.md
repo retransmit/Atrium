@@ -1,6 +1,6 @@
 # Atrium - Status
 
-> Snapshot of what genuinely works and what is left, as of 2026-06-14.
+> Snapshot of what genuinely works and what is left, as of 2026-06-15.
 > Atrium is in early development; nothing here is a release promise.
 
 ## Scope note
@@ -17,8 +17,10 @@ Atrium is a **controller** app. Video playback was removed by design
   3s realtime list polling, add magnet/file, categories, pause/resume/
   delete/recheck/queue moves, detail screen (overview/files/trackers),
   per-file priority
-- **Sonarr** (live-verified, the deepest module): poster grid, series detail
-  (seasons, monitor toggles, season search, delete), search-and-add (quality
+- **Sonarr** (live-verified, the deepest module): poster grid with a
+  grid/banner series-view toggle (persisted per instance), a redesigned
+  series-detail screen (fanart backdrop, quality pill, season monitor
+  toggles, season search, delete-season-files), search-and-add (quality
   profile + root folder + monitor options), queue 3s / library 60s polling,
   interactive release search, plus Wanted (missing + cutoff-unmet), History,
   Blocklist, System (status/disk/tasks/health/backups), and a Settings editor
@@ -41,8 +43,11 @@ Atrium is a **controller** app. Video playback was removed by design
 - **Seerr** (formerly Overseerr, live-verified): complete integration including
   a rich Discover tab (trending, upcoming, genres), robust search, detailed item
   views (movie/tv details with cast, trailer, request status), request submission
-  (with automatic "all seasons" tv handling), and a full Requests management tab
-  (approve/decline/delete/retry) with 10s auto-refresh polling.
+  (with automatic "all seasons" tv handling, plus quality-profile / root-folder /
+  server selection), and a full Requests management tab (approve/decline/delete/
+  retry) with 10s auto-refresh polling. The Requests tab and item detail use
+  poster-rich cards (a darkened backdrop-image background, poster, metadata, and
+  solid availability/approval status pills) styled after the Jellyseerr layout.
 
 ## Partially done
 

@@ -7,6 +7,7 @@ import 'models/seerr_discover.dart';
 import 'seerr_genre_screen.dart';
 import 'seerr_item_detail.dart';
 import 'seerr_providers.dart';
+import 'seerr_status_badge.dart';
 
 class SeerrDiscoverScreen extends ConsumerWidget {
   const SeerrDiscoverScreen({required this.instance, super.key});
@@ -109,17 +110,28 @@ class _DiscoverSection extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(Insets.sm),
-                            child: item.posterPath != null
-                                ? Image.network(
-                                    // Seerr uses TMDB image URLs often, but we might need the full URL from Seerr if posterPath is relative.
-                                    // Assuming posterPath is relative like '/xfpSBNhBdQyrN3dTigqRVrOvSh1.jpg' it is TMDB's path.
-                                    'https://image.tmdb.org/t/p/w500${item.posterPath}',
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const _Placeholder(),
-                                  )
-                                : const _Placeholder(),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: <Widget>[
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(Insets.sm),
+                                child: item.posterPath != null
+                                    ? Image.network(
+                                        'https://image.tmdb.org/t/p/w500${item.posterPath}',
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) =>
+                                            const _Placeholder(),
+                                      )
+                                    : const _Placeholder(),
+                              ),
+                              Positioned(
+                                top: 6,
+                                right: 6,
+                                child: SeerrStatusBadge(
+                                  status: item.mediaInfo?.status,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(height: Insets.xs),

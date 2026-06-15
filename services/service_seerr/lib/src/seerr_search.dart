@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models/seerr_discover.dart';
 import 'seerr_item_detail.dart';
 import 'seerr_providers.dart';
+import 'seerr_status_badge.dart';
 
 class SeerrSearchDelegate extends SearchDelegate<void> {
   SeerrSearchDelegate({required this.instance});
@@ -118,15 +119,25 @@ class _SeerrSearchPosterCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(Radii.sm),
-              child: item.posterPath != null
-                  ? Image.network(
-                      'https://image.tmdb.org/t/p/w500${item.posterPath}',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const _Placeholder(),
-                    )
-                  : const _Placeholder(),
+            child: Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(Radii.sm),
+                  child: item.posterPath != null
+                      ? Image.network(
+                          'https://image.tmdb.org/t/p/w500${item.posterPath}',
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const _Placeholder(),
+                        )
+                      : const _Placeholder(),
+                ),
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: SeerrStatusBadge(status: item.mediaInfo?.status),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: Insets.xs),

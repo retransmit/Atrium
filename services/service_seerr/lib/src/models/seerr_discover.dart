@@ -37,6 +37,15 @@ abstract class SeerrDiscoverResult with _$SeerrDiscoverResult {
     bool? adult,
     String? posterPath,
     SeerrMedia? mediaInfo,
+    // Detail-only fields (populated by GET /{movie|tv}/{id}).
+    String? backdropPath,
+    /// TMDB status, e.g. "Released", "Ended", "Returning Series".
+    String? status,
+    /// Movie runtime in minutes.
+    int? runtime,
+    /// TV total episode count.
+    int? numberOfEpisodes,
+    @Default(<SeerrGenre>[]) List<SeerrGenre> genres,
   }) = _SeerrDiscoverResult;
 
   factory SeerrDiscoverResult.fromJson(Map<String, dynamic> json) =>
@@ -44,6 +53,17 @@ abstract class SeerrDiscoverResult with _$SeerrDiscoverResult {
 
   String get displayTitle => title ?? name ?? originalTitle ?? 'Unknown';
   String? get displayDate => releaseDate ?? firstAirDate;
+
+  /// Four-digit year from the release/air date, when present.
+  String? get year {
+    final String? d = displayDate;
+    if (d == null || d.length < 4) {
+      return null;
+    }
+    return d.substring(0, 4);
+  }
+
+  bool get isMovie => mediaType.toLowerCase() == 'movie';
 }
 
 @freezed
