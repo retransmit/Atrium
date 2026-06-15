@@ -5,10 +5,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'models/seerr_discover.dart';
 import 'models/seerr_service.dart';
+import 'seerr_media_card.dart';
 import 'seerr_providers.dart';
 
-/// Displays the details (overview, release date, etc.) for a single Seerr item.
-class SeerrItemDetailScreen extends StatelessWidget {
+/// Detail screen for a Seerr movie/show: a backdrop banner with an overlapping
+/// info card (poster, title, metadata pills, request/availability status), then
+/// genres and the overview.
+///
+/// Progressive enhancement - the passed [item] (from the browse list) renders
+/// immediately and is swapped for the full details (backdrop, status, runtime,
+/// genres) once `getMediaDetails` loads.
+class SeerrItemDetailScreen extends ConsumerWidget {
   const SeerrItemDetailScreen({
     required this.instance,
     required this.item,
@@ -19,82 +26,134 @@ class SeerrItemDetailScreen extends StatelessWidget {
   final SeerrDiscoverResult item;
 
   @override
-  Widget build(BuildContext context) {
-    final bool isMovie = item.mediaType.toLowerCase() == 'movie';
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
+    final SeerrDiscoverResult full = ref
+            .watch(seerrMediaDetailsProvider((
+              instance: instance,
+              mediaType: item.mediaType,
+              tmdbId: item.id,
+            ),),)
+            .valueOrNull ??
+        item;
+
+    final String? backdrop = full.backdropPath ?? item.backdropPath;
+    final List<String> genreNames = full.genres
+        .map((SeerrGenre g) => g.name)
+        .where((String n) => n.isNotEmpty)
+        .toList();
+
+    // The card overlaps the bottom of the backdrop banner. It is painted AFTER
+    // the backdrop (later in the Stack), so its solid surface covers the
+    // overlap and the title stays fully visible.
+    const double backdropHeight = 230;
+    const double overlap = 52;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(item.displayTitle),
-      ),
-      body: SingleChildScrollView(
-        padding: Insets.page,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            if (item.posterPath != null)
-              Center(
-                child: ClipRRect(
-                  borderRadius: Radii.card,
-                  child: Image.network(
-                    'https://image.tmdb.org/t/p/w500${item.posterPath}',
-                    height: 300,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-            const SizedBox(height: Insets.lg),
-            Row(
+      body: Stack(
+        children: <Widget>[
+          SingleChildScrollView(
+            child: Stack(
               children: <Widget>[
-                Icon(
-                  isMovie ? Icons.movie_outlined : Icons.live_tv_outlined,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(width: Insets.sm),
-                Text(
-                  isMovie ? 'Movie' : 'TV Show',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.bold,
+                SizedBox(
+                  height: backdropHeight,
+                  width: double.infinity,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: <Widget>[
+                      if (backdrop != null)
+                        Image.network(
+                          'https://image.tmdb.org/t/p/w780$backdrop',
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => ColoredBox(
+                            color: theme.colorScheme.surfaceContainerHighest,
+                          ),
+                        )
+                      else
+                        ColoredBox(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                        ),
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            stops: const <double>[0.0, 0.55, 1.0],
+                            colors: <Color>[
+                              Colors.black.withValues(alpha: 0.3),
+                              Colors.transparent,
+                              theme.colorScheme.surface,
+                            ],
+                          ),
+                        ),
                       ),
-                ),
-                const Spacer(),
-                if (item.voteAverage != null && item.voteAverage! > 0) ...<Widget>[
-                  const Icon(Icons.star, color: Colors.amber, size: 20),
-                  const SizedBox(width: 4),
-                  Text(
-                    item.voteAverage!.toStringAsFixed(1),
-                    style: Theme.of(context).textTheme.titleMedium,
+                    ],
                   ),
-                ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    Insets.lg,
+                    backdropHeight - overlap,
+                    Insets.lg,
+                    Insets.lg,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      SeerrMediaCard(
+                        item: full,
+                        action:
+                            _RequestButton(instance: instance, item: full),
+                      ),
+                      if (genreNames.isNotEmpty) ...<Widget>[
+                        const SizedBox(height: Insets.lg),
+                        Wrap(
+                          spacing: Insets.sm,
+                          runSpacing: Insets.xs,
+                          children: <Widget>[
+                            for (final String g in genreNames)
+                              SeerrInfoPill(label: g),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: Insets.lg),
+                      Text(
+                        'Overview',
+                        style: theme.textTheme.titleLarge
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: Insets.sm),
+                      Text(
+                        (full.overview != null && full.overview!.isNotEmpty)
+                            ? full.overview!
+                            : 'No overview available.',
+                        style: theme.textTheme.bodyLarge,
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: Insets.md),
-            if (item.displayDate != null) ...<Widget>[
-              Text(
-                'Release Date: ${item.displayDate}',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-              ),
-              const SizedBox(height: Insets.lg),
-            ],
-            Text(
-              'Overview',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
+          ),
+          // Pinned back button, always on top and tappable.
+          Positioned(
+            top: 0,
+            left: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(Insets.sm),
+                child: Material(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  shape: const CircleBorder(),
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () => Navigator.of(context).maybePop(),
                   ),
+                ),
+              ),
             ),
-            const SizedBox(height: Insets.sm),
-            _RequestButton(instance: instance, item: item),
-            const SizedBox(height: Insets.md),
-            Text(
-              item.overview != null && item.overview!.isNotEmpty
-                  ? item.overview!
-                  : 'No overview available.',
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

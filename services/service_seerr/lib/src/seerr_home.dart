@@ -6,8 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models/seerr_request.dart';
 import 'seerr_discover_screen.dart';
 import 'seerr_item_detail.dart';
+import 'seerr_media_card.dart';
 import 'seerr_providers.dart';
-import 'seerr_status_badge.dart';
 
 /// Seerr's per-instance UI: the recent request list. Pending requests get
 /// approve / decline actions - the key thing you want to do from a phone.
@@ -110,98 +110,34 @@ class _RequestTile extends ConsumerWidget {
       tmdbId: tmdbId,
     ),),);
 
-    return Card(
-      child: detailsAsync.when(
-        data: (item) {
-          return InkWell(
-            onTap: () {
-              pushScreen<void>(
-                context,
-                SeerrItemDetailScreen(instance: instance, item: item),
-              );
-            },
-            borderRadius: Radii.card,
-            child: Stack(
-              children: <Widget>[
-                Padding(
-                  padding: const EdgeInsets.all(Insets.sm),
-                  child: Row(
-                    children: <Widget>[
-                      if (item.posterPath != null)
-                        ClipRRect(
-                          borderRadius: Radii.card,
-                          child: Image.network(
-                            'https://image.tmdb.org/t/p/w200${item.posterPath}',
-                            width: 80,
-                            height: 120,
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      else
-                        Container(
-                          width: 80,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surfaceContainer,
-                            borderRadius: Radii.card,
-                          ),
-                          child: const Icon(Icons.image_not_supported),
-                        ),
-                      const SizedBox(width: Insets.md),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              item.displayTitle,
-                              style: Theme.of(context).textTheme.titleMedium,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Requested by: ${request.requestedBy?.displayName ?? 'Unknown'}',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                            const SizedBox(height: Insets.sm),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 4,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: <Widget>[
-                                SeerrStatusBadge(
-                                  status: request.media?.status,
-                                ),
-                                _StatusChip(status: request.status),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: _RequestActionsMenu(
-                    instance: instance,
-                    request: request,
-                  ),
-                ),
-              ],
+    return detailsAsync.when(
+      data: (item) {
+        return InkWell(
+          onTap: () => pushScreen<void>(
+            context,
+            SeerrItemDetailScreen(instance: instance, item: item),
+          ),
+          borderRadius: BorderRadius.circular(20),
+          child: SeerrRequestCard(
+            item: item,
+            requestedBy: request.requestedBy?.displayName,
+            mediaStatus: request.media?.status,
+            requestStatus: request.status,
+            trailing: _RequestActionsMenu(
+              instance: instance,
+              request: request,
             ),
-          );
-        },
-        loading: () => const SizedBox(
-          height: 120,
-          child: Center(child: CircularProgressIndicator()),
-        ),
-        error: (_, __) => ListTile(
-          title: Text('Request #${request.id}'),
-          subtitle: Text('Status: ${_statusString(request.status)}'),
-          trailing: const Icon(Icons.error, color: Colors.red),
-        ),
+          ),
+        );
+      },
+      loading: () => const SizedBox(
+        height: 180,
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (_, __) => ListTile(
+        title: Text('Request #${request.id}'),
+        subtitle: Text('Status: ${_statusString(request.status)}'),
+        trailing: const Icon(Icons.error, color: Colors.red),
       ),
     );
   }
@@ -217,49 +153,6 @@ class _RequestTile extends ConsumerWidget {
       default:
         return 'Unknown ($status)';
     }
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.status});
-
-  final int status;
-
-  @override
-  Widget build(BuildContext context) {
-    Color color;
-    String label;
-    IconData icon;
-
-    switch (status) {
-      case 1: // Pending
-        color = Colors.orange;
-        label = 'Pending Approval';
-        icon = Icons.pending;
-        break;
-      case 2: // Approved
-        color = Colors.green;
-        label = 'Approved';
-        icon = Icons.check_circle;
-        break;
-      case 3: // Declined
-        color = Colors.red;
-        label = 'Declined';
-        icon = Icons.cancel;
-        break;
-      default:
-        color = Colors.grey;
-        label = 'Unknown';
-        icon = Icons.help;
-    }
-
-    return Chip(
-      label: Text(label),
-      avatar: Icon(icon, color: color, size: 16),
-      backgroundColor: color.withValues(alpha: 0.1),
-      side: BorderSide(color: color.withValues(alpha: 0.2)),
-      labelStyle: TextStyle(color: color, fontWeight: FontWeight.bold),
-    );
   }
 }
 
@@ -327,7 +220,7 @@ class _RequestActionsMenuState extends ConsumerState<_RequestActionsMenu> {
       );
     }
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert),
+      icon: const Icon(Icons.more_vert, color: Colors.white),
       onSelected: _handleAction,
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
         if (widget.request.status == 1) ...<PopupMenuEntry<String>>[
