@@ -17,8 +17,10 @@ Atrium is a **controller** app. Video playback was removed by design
   3s realtime list polling, add magnet/file, categories, pause/resume/
   delete/recheck/queue moves, detail screen (overview/files/trackers),
   per-file priority
-- **Sonarr** (live-verified, the deepest module): poster grid, series detail
-  (seasons, monitor toggles, season search, delete), search-and-add (quality
+- **Sonarr** (live-verified, the deepest module): poster grid with a
+  grid/banner series-view toggle (persisted per instance), a redesigned
+  series-detail screen (fanart backdrop, quality pill, season monitor
+  toggles, season search, delete-season-files), search-and-add (quality
   profile + root folder + monitor options), queue 3s / library 60s polling,
   interactive release search, plus Wanted (missing + cutoff-unmet), History,
   Blocklist, System (status/disk/tasks/health/backups), and a Settings editor
