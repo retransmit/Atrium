@@ -139,7 +139,9 @@ void main() {
       pumps: 4,
     );
     expect(find.text('The Matrix'), findsOneWidget);
-    expect(find.text('Requested by: Bob'), findsOneWidget);
+    // The redesigned SeerrRequestCard shows the requester name next to an
+    // avatar (no "Requested by:" prefix).
+    expect(find.text('Bob'), findsOneWidget);
   });
 
   testWidgets('BazarrHome renders wanted-subtitles rows', (WidgetTester tester) async {
