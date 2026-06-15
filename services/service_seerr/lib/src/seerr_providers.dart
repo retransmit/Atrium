@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models/seerr_counts.dart';
 import 'models/seerr_discover.dart';
 import 'models/seerr_request.dart';
+import 'models/seerr_service.dart';
 import 'seerr_api.dart';
 
 /// An [SeerrApi] for an instance, over the shared `instanceDioProvider`.
@@ -145,4 +146,32 @@ final seerrMediaDetailsProvider =
     ) async {
       final SeerrApi api = await ref.watch(seerrApiProvider(args.instance).future);
       return api.getMediaDetails(args.mediaType, args.tmdbId);
+    });
+
+typedef SeerrServersArgs = ({Instance instance, String mediaType});
+
+/// Radarr (movie) / Sonarr (tv) servers configured in Seerr, for the request
+/// options sheet.
+final seerrServersProvider =
+    FutureProvider.autoDispose.family<List<SeerrServer>, SeerrServersArgs>((
+      Ref ref,
+      SeerrServersArgs args,
+    ) async {
+      final SeerrApi api =
+          await ref.watch(seerrApiProvider(args.instance).future);
+      return api.getServers(args.mediaType);
+    });
+
+typedef SeerrServerDetailsArgs =
+    ({Instance instance, String mediaType, int serverId});
+
+/// Quality profiles + root folders for a chosen server.
+final seerrServerDetailsProvider = FutureProvider.autoDispose
+    .family<SeerrServerDetails, SeerrServerDetailsArgs>((
+      Ref ref,
+      SeerrServerDetailsArgs args,
+    ) async {
+      final SeerrApi api =
+          await ref.watch(seerrApiProvider(args.instance).future);
+      return api.getServerDetails(args.mediaType, args.serverId);
     });

@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'models/seerr_counts.dart';
 import 'models/seerr_discover.dart';
 import 'models/seerr_request.dart';
+import 'models/seerr_service.dart';
 
 /// Thin client over the Seerr / Jellyseerr API.
 ///
@@ -53,12 +54,18 @@ class SeerrApi {
     required String mediaType,
     required int mediaId,
     bool is4k = false,
+    int? serverId,
+    int? profileId,
+    String? rootFolder,
   }) async {
     try {
       final Map<String, dynamic> data = <String, dynamic>{
         'mediaType': mediaType,
         'mediaId': mediaId,
         'is4k': is4k,
+        if (serverId != null) 'serverId': serverId,
+        if (profileId != null) 'profileId': profileId,
+        if (rootFolder != null && rootFolder.isNotEmpty) 'rootFolder': rootFolder,
       };
       if (mediaType.toLowerCase() == 'tv') {
         data['seasons'] = 'all';
@@ -68,6 +75,37 @@ class SeerrApi {
         data: data,
       );
       return SeerrRequest.fromJson(resp.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Radarr (movie) or Sonarr (tv) servers configured in Seerr. Used to offer
+  /// quality-profile / root-folder choices when requesting.
+  Future<List<SeerrServer>> getServers(String mediaType) async {
+    final String svc = mediaType.toLowerCase() == 'tv' ? 'sonarr' : 'radarr';
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/service/$svc');
+      final List<dynamic> list = (resp.data as List<dynamic>?) ?? <dynamic>[];
+      return list
+          .map((dynamic e) => SeerrServer.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Quality profiles + root folders for one [serverId].
+  Future<SeerrServerDetails> getServerDetails(
+    String mediaType,
+    int serverId,
+  ) async {
+    final String svc = mediaType.toLowerCase() == 'tv' ? 'sonarr' : 'radarr';
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/service/$svc/$serverId');
+      return SeerrServerDetails.fromJson(resp.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
