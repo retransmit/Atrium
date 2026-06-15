@@ -950,9 +950,11 @@ class _QueueTab extends ConsumerWidget {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 4),
-                                Row(
+                                Wrap(
+                                  spacing: Insets.xs,
+                                  runSpacing: Insets.xs,
                                   children: <Widget>[
-                                    if (r.downloadClient != null) ...<Widget>[
+                                    if (r.downloadClient != null)
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                         decoration: BoxDecoration(
@@ -967,8 +969,6 @@ class _QueueTab extends ConsumerWidget {
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(width: Insets.xs),
-                                    ],
                                     if (r.protocol != null)
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -1054,20 +1054,27 @@ class _QueueTab extends ConsumerWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: <Widget>[
-                          Text(
-                            '$sizeDoneStr of $sizeStr ($sizeLeftStr left)',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colors.onSurfaceVariant,
+                          Expanded(
+                            child: Text(
+                              '$sizeDoneStr of $sizeStr ($sizeLeftStr left)',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colors.onSurfaceVariant,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          Text(
-                            <String?>[
-                              if (r.status != null) r.status,
-                              if (r.timeleft != null) r.timeleft,
-                            ].whereType<String>().join(' • '),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colors.onSurfaceVariant,
-                              fontWeight: FontWeight.w500,
+                          const SizedBox(width: Insets.sm),
+                          Flexible(
+                            child: Text(
+                              <String?>[
+                                if (r.status != null) r.status,
+                                if (r.timeleft != null) r.timeleft,
+                              ].whereType<String>().join(' • '),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colors.onSurfaceVariant,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
