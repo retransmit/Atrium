@@ -892,34 +892,263 @@ class _QueueTab extends ConsumerWidget {
               final double progress = r.size <= 0
                   ? 0
                   : ((r.size - r.sizeleft) / r.size).clamp(0, 1).toDouble();
-              return ListTile(
-                title: Text(
-                  r.title ?? 'Item ${r.id}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+              final int progressPct = (progress * 100).round();
+              final String sizeStr = _formatBytes(r.size.toInt());
+              final String sizeLeftStr = _formatBytes(r.sizeleft.toInt());
+              final String sizeDoneStr = _formatBytes((r.size - r.sizeleft).toInt());
+
+              final bool hasWarning = r.trackedDownloadStatus?.toLowerCase() == 'warning' || r.statusMessages.isNotEmpty;
+              final bool hasError = r.trackedDownloadStatus?.toLowerCase() == 'error';
+
+              IconData stateIcon = Icons.cloud_download_outlined;
+              Color stateColor = colors.primary;
+
+              if (hasError) {
+                stateIcon = Icons.error_outline;
+                stateColor = colors.error;
+              } else if (hasWarning) {
+                stateIcon = Icons.warning_amber_rounded;
+                stateColor = Colors.orange;
+              } else if (r.status?.toLowerCase() == 'paused') {
+                stateIcon = Icons.pause_circle_outline;
+                stateColor = colors.outline;
+              } else if (r.status?.toLowerCase() == 'completed' || progress >= 0.999) {
+                stateIcon = Icons.check_circle_outline;
+                stateColor = Colors.green;
+              }
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: Insets.md),
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: colors.outlineVariant.withValues(alpha: 0.5),
+                  ),
                 ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    const SizedBox(height: Insets.xs),
-                    LinearProgressIndicator(value: progress),
-                    const SizedBox(height: Insets.xs),
-                    Text(
-                      <String?>[
-                        r.status,
-                        if (r.timeleft != null) r.timeleft,
-                      ].whereType<String>().join(' • '),
-                    ),
-                  ],
-                ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () async {
-                    final SonarrApi api =
-                        await ref.read(sonarrApiProvider(instance).future);
-                    await api.deleteQueueItem(r.id);
-                    ref.invalidate(sonarrQueueProvider(instance));
-                  },
+                child: Padding(
+                  padding: const EdgeInsets.all(Insets.md),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Icon(stateIcon, color: stateColor, size: 24),
+                          const SizedBox(width: Insets.sm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  r.title ?? 'Item ${r.id}',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Wrap(
+                                  spacing: Insets.xs,
+                                  runSpacing: Insets.xs,
+                                  children: <Widget>[
+                                    if (r.downloadClient != null)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: colors.surfaceContainerHighest,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          r.downloadClient!,
+                                          style: theme.textTheme.labelSmall?.copyWith(
+                                            color: colors.onSurfaceVariant,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ),
+                                    if (r.protocol != null)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: colors.surfaceContainerHighest,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          r.protocol!.toUpperCase(),
+                                          style: theme.textTheme.labelSmall?.copyWith(
+                                            color: colors.onSurfaceVariant,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: Insets.xs),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline),
+                            color: colors.error.withValues(alpha: 0.8),
+                            onPressed: () async {
+                              final bool? confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (BuildContext context) => AlertDialog(
+                                  title: const Text('Remove from Queue?'),
+                                  content: Text(r.title ?? 'this item'),
+                                  actions: <Widget>[
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    FilledButton(
+                                      onPressed: () => Navigator.pop(context, true),
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor: colors.error,
+                                        foregroundColor: colors.onError,
+                                      ),
+                                      child: const Text('Remove'),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirm == true) {
+                                final SonarrApi api =
+                                    await ref.read(sonarrApiProvider(instance).future);
+                                await api.deleteQueueItem(r.id);
+                                ref.invalidate(sonarrQueueProvider(instance));
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: Insets.md),
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: progress,
+                                minHeight: 6,
+                                backgroundColor: colors.surfaceContainerHighest,
+                                valueColor: AlwaysStoppedAnimation<Color>(stateColor),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: Insets.sm),
+                          Text(
+                            '$progressPct%',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: stateColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: Insets.xs),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: <Widget>[
+                          Expanded(
+                            child: Text(
+                              '$sizeDoneStr of $sizeStr ($sizeLeftStr left)',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colors.onSurfaceVariant,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: Insets.sm),
+                          Flexible(
+                            child: Text(
+                              <String?>[
+                                if (r.status != null) r.status,
+                                if (r.timeleft != null) r.timeleft,
+                              ].whereType<String>().join(' • '),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colors.onSurfaceVariant,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (r.statusMessages.isNotEmpty) ...<Widget>[
+                        const SizedBox(height: Insets.sm),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(Insets.sm),
+                          decoration: BoxDecoration(
+                            color: (hasError ? colors.error : Colors.orange).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: (hasError ? colors.error : Colors.orange).withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Row(
+                                children: <Widget>[
+                                  Icon(
+                                    hasError ? Icons.error_outline : Icons.warning_amber_rounded,
+                                    color: hasError ? colors.error : Colors.orange,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      hasError ? 'Error Details' : 'Warning Details',
+                                      style: theme.textTheme.labelMedium?.copyWith(
+                                        color: hasError ? colors.error : Colors.orange[800] ?? Colors.orange,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              ...r.statusMessages.map((SonarrQueueStatusMessage msg) {
+                                final List<String> details = msg.messages;
+                                final String text = msg.title ?? '';
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      if (text.isNotEmpty)
+                                        Text(
+                                          '• $text',
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            color: hasError ? colors.error : Colors.orange[800] ?? Colors.orange,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      if (details.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(left: 12.0),
+                                          child: Text(
+                                            details.join('\n'),
+                                            style: theme.textTheme.bodySmall?.copyWith(
+                                              color: hasError ? colors.error.withValues(alpha: 0.8) : (Colors.orange[900] ?? Colors.orange).withValues(alpha: 0.8),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               );
             },
@@ -1705,13 +1934,13 @@ class _DiskSpaceSection extends StatelessWidget {
       ),
     );
   }
+}
 
-  String _formatBytes(int bytes) {
-    if (bytes <= 0) return '0 B';
-    const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    final i = (math.log(bytes) / math.log(1024)).floor();
-    return '${(bytes / math.pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
-  }
+String _formatBytes(int bytes) {
+  if (bytes <= 0) return '0 B';
+  const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  final i = (math.log(bytes) / math.log(1024)).floor();
+  return '${(bytes / math.pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
 }
 
 class _TasksSection extends StatelessWidget {
