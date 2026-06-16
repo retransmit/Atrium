@@ -59,3 +59,40 @@ final prowlarrStatsByIdProvider =
         for (final ProwlarrIndexerStat s in stats.indexers) s.indexerId: s,
       };
     });
+
+/// Addable indexer definitions for the "Add indexer" picker. Effectively
+/// static for a session, so no polling.
+final prowlarrIndexerSchemasProvider =
+    FutureProvider.autoDispose
+        .family<List<Map<String, dynamic>>, Instance>((
+      Ref ref,
+      Instance instance,
+    ) async {
+      final ProwlarrApi api = await ref.watch(
+        prowlarrApiProvider(instance).future,
+      );
+      final List<Map<String, dynamic>> schemas = await api.getIndexerSchemas();
+      schemas.sort(
+        (Map<String, dynamic> a, Map<String, dynamic> b) =>
+            ((a['name'] ?? a['implementationName'] ?? '') as String)
+                .toLowerCase()
+                .compareTo(
+                  ((b['name'] ?? b['implementationName'] ?? '') as String)
+                      .toLowerCase(),
+                ),
+      );
+      return schemas;
+    });
+
+/// App (sync) profiles, for the indexer form's sync-profile dropdown.
+final prowlarrAppProfilesProvider =
+    FutureProvider.autoDispose
+        .family<List<Map<String, dynamic>>, Instance>((
+      Ref ref,
+      Instance instance,
+    ) async {
+      final ProwlarrApi api = await ref.watch(
+        prowlarrApiProvider(instance).future,
+      );
+      return api.getAppProfiles();
+    });

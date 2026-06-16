@@ -47,12 +47,71 @@ class ProwlarrApi {
   /// it gets extra receive-timeout headroom.
   Future<void> testIndexer(int id) async {
     final Map<String, dynamic> raw = await getIndexerRaw(id);
+    await testIndexerRaw(raw);
+  }
+
+  /// Tests an arbitrary (possibly unsaved) indexer definition - used by the
+  /// add/edit form before saving. Waits on the live tracker, so it gets extra
+  /// receive-timeout headroom.
+  Future<void> testIndexerRaw(Map<String, dynamic> indexer) async {
     try {
       await _dio.post<dynamic>(
         '$_base/indexer/test',
-        data: raw,
+        data: indexer,
         options: Options(receiveTimeout: const Duration(seconds: 60)),
       );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// All addable indexer definitions (`GET /indexer/schema`). Prowlarr returns
+  /// hundreds (every Cardigann/Torznab/Newznab tracker), so the picker filters
+  /// them. Kept as raw maps because the add POST round-trips the whole object.
+  Future<List<Map<String, dynamic>>> getIndexerSchemas() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/indexer/schema');
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => Map<String, dynamic>.from(e as Map<dynamic, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Creates a new indexer (`POST /indexer`). `forceSave=true` for the same
+  /// reason as [updateIndexerRaw] - don't block the save on tracker reachability.
+  Future<void> createIndexerRaw(Map<String, dynamic> indexer) async {
+    try {
+      await _dio.post<dynamic>(
+        '$_base/indexer',
+        queryParameters: <String, dynamic>{'forceSave': 'true'},
+        data: indexer,
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Deletes an indexer (`DELETE /indexer/{id}`).
+  Future<void> deleteIndexer(int id) async {
+    try {
+      await _dio.delete<dynamic>('$_base/indexer/$id');
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// App (sync) profiles (`GET /appprofile`), for the indexer form's
+  /// sync-profile picker. Raw maps - only id/name are needed.
+  Future<List<Map<String, dynamic>>> getAppProfiles() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/appprofile');
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => Map<String, dynamic>.from(e as Map<dynamic, dynamic>))
+          .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
