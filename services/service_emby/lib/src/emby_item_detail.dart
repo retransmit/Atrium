@@ -26,9 +26,23 @@ class EmbyItemDetailScreen extends ConsumerWidget {
         ref.watch(embyClientProvider(instance)).value;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         actions: <Widget>[
-          if (itemAsync.hasValue && client != null)
+          if (itemAsync.hasValue && client != null) ...<Widget>[
+            IconButton(
+              icon: Icon(
+                itemAsync.value!.userData?.played == true
+                    ? Icons.check_circle
+                    : Icons.check_circle_outline,
+              ),
+              onPressed: () async {
+                final toggle = ref.read(embyToggleWatchedProvider(instance));
+                await toggle(itemId, !(itemAsync.value!.userData?.played == true));
+              },
+            ),
             IconButton(
               icon: Icon(
                 itemAsync.value!.userData?.isFavorite == true
@@ -46,6 +60,7 @@ class EmbyItemDetailScreen extends ConsumerWidget {
                 ref.invalidate(embyFavoritesProvider(instance));
               },
             ),
+          ],
         ],
       ),
       body: AsyncValueView<EmbyItem>(
@@ -53,10 +68,56 @@ class EmbyItemDetailScreen extends ConsumerWidget {
         onRetry: () =>
             ref.invalidate(embyItemDetailsProvider((instance, itemId))),
         data: (EmbyItem item) {
+          final String? backdropUrl = client?.backdropImageUrl(item);
           return CustomScrollView(
             slivers: <Widget>[
               SliverToBoxAdapter(
-                child: _Header(item: item, client: client),
+                child: backdropUrl != null
+                    ? SizedBox(
+                        height: 320,
+                        child: Stack(
+                          children: <Widget>[
+                            Positioned.fill(
+                              child: Opacity(
+                                opacity: 0.45,
+                                child: CachedNetworkImage(
+                                  imageUrl: backdropUrl,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                            Positioned.fill(
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: <Color>[
+                                      Colors.black54,
+                                      Colors.transparent,
+                                      Theme.of(context).scaffoldBackgroundColor,
+                                    ],
+                                    stops: const <double>[0.0, 0.4, 1.0],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              child: _Header(item: item, client: client),
+                            ),
+                          ],
+                        ),
+                      )
+                    : SafeArea(
+                        bottom: false,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: Insets.lg),
+                          child: _Header(item: item, client: client),
+                        ),
+                      ),
               ),
               if (item.overview != null && item.overview!.isNotEmpty)
                 SliverToBoxAdapter(
@@ -131,8 +192,18 @@ class _Header extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
+                if (item.seriesName != null)
+                  Text(
+                    item.seriesName!,
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
+                  ),
+                if (item.seriesName != null)
+                  const SizedBox(height: 4),
                 Text(
-                  item.name,
+                  (item.seriesName != null && item.indexNumber != null)
+                      ? 'Episode ${item.indexNumber} - ${item.name}'
+                      : item.name,
                   style: theme.textTheme.headlineSmall
                       ?.copyWith(fontWeight: FontWeight.bold),
                 ),

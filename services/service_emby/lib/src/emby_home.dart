@@ -8,6 +8,7 @@ import 'emby_client.dart';
 import 'emby_item_detail.dart';
 import 'emby_providers.dart';
 import 'models/emby_item.dart';
+import 'models/emby_session.dart';
 import 'models/emby_view.dart';
 
 /// Container types - tapping drills into children. Everything else plays.
@@ -96,7 +97,7 @@ class _LibraryChips extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
-        itemCount: libraries.length + 1,
+        itemCount: libraries.length + 3,
         separatorBuilder: (_, __) => const SizedBox(width: Insets.sm),
         itemBuilder: (BuildContext context, int index) {
           if (index == 0) {
@@ -108,14 +109,39 @@ class _LibraryChips extends StatelessWidget {
               ),
             );
           }
-          final EmbyView lib = libraries[index - 1];
-          return Center(
-            child: ChoiceChip(
-              label: Text(lib.name),
-              selected: lib.id == selectedId,
-              onSelected: (_) => onSelect(lib.id),
-            ),
-          );
+          
+          if (index <= libraries.length) {
+            final EmbyView lib = libraries[index - 1];
+            return Center(
+              child: ChoiceChip(
+                label: Text(lib.name),
+                selected: lib.id == selectedId,
+                onSelected: (_) => onSelect(lib.id),
+              ),
+            );
+          }
+
+          if (index == libraries.length + 1) {
+            return Center(
+              child: ChoiceChip(
+                label: const Text('Watched'),
+                selected: 'watched' == selectedId,
+                onSelected: (_) => onSelect('watched'),
+              ),
+            );
+          }
+
+          if (index == libraries.length + 2) {
+            return Center(
+              child: ChoiceChip(
+                label: const Text('Unwatched'),
+                selected: 'unwatched' == selectedId,
+                onSelected: (_) => onSelect('unwatched'),
+              ),
+            );
+          }
+          
+          return const SizedBox.shrink();
         },
       ),
     );
@@ -268,6 +294,21 @@ class EmbyPosterCard extends ConsumerWidget {
                 children: <Widget>[
                   ListTile(
                     leading: Icon(
+                      item.userData?.played == true
+                          ? Icons.check_circle
+                          : Icons.check_circle_outline,
+                    ),
+                    title: Text(item.userData?.played == true
+                        ? 'Mark as Unwatched'
+                        : 'Mark as Watched'),
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      final toggle = ref.read(embyToggleWatchedProvider(instance));
+                      await toggle(item.id, !(item.userData?.played == true));
+                    },
+                  ),
+                  ListTile(
+                    leading: Icon(
                       item.userData?.isFavorite == true
                           ? Icons.favorite
                           : Icons.favorite_border,
@@ -414,17 +455,25 @@ class _HomeSections extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return RefreshIndicator(
       onRefresh: () async {
+        ref.invalidate(embySessionsProvider(instance));
         ref.invalidate(embyResumeItemsProvider(instance));
+        ref.invalidate(embyLatestItemsProvider(instance));
         ref.invalidate(embyFavoritesProvider(instance));
         ref.invalidate(embyNextUpProvider(instance));
       },
       child: ListView(
         padding: const EdgeInsets.symmetric(vertical: Insets.md),
         children: <Widget>[
-          _VerticalSection(
+          _ActiveSessionsSection(instance: instance),
+          _HorizontalSection(
             instance: instance,
             title: 'Currently Watching',
             provider: embyResumeItemsProvider(instance),
+          ),
+          _HorizontalSection(
+            instance: instance,
+            title: 'Recently Added',
+            provider: embyLatestItemsProvider(instance),
           ),
           _HorizontalSection(
             instance: instance,
@@ -726,3 +775,233 @@ class _VerticalCard extends StatelessWidget {
     );
   }
 }
+
+class _ActiveSessionsSection extends ConsumerWidget {
+  const _ActiveSessionsSection({required this.instance});
+
+  final Instance instance;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<List<ActiveSession>> sessions =
+        ref.watch(embySessionsProvider(instance));
+
+    return AsyncValueView<List<ActiveSession>>(
+      value: sessions,
+      onRetry: () {},
+      data: (List<ActiveSession> list) {
+        if (list.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        return Padding(
+          padding: const EdgeInsets.only(bottom: Insets.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Insets.lg,
+                  vertical: Insets.sm,
+                ),
+                child: Text(
+                  'Currently Streaming',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ),
+              SizedBox(
+                height: 168, // Fixed height for horizontal scroll, leaves room for elevation shadow
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
+                  itemCount: list.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: Insets.md),
+                  itemBuilder: (BuildContext context, int index) {
+                    return SizedBox(
+                      width: 330, // Limit width of the card so it fits nicely in the horizontal list
+                      child: _SessionCard(session: list[index]),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SessionCard extends StatelessWidget {
+  const _SessionCard({required this.session});
+
+  final ActiveSession session;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final double pct = session.progressPercent / 100.0;
+    final bool playing = session.status == 'Playing';
+
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: Radii.card,
+        side: BorderSide(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          width: 1,
+        ),
+      ),
+      child: Stack(
+        children: <Widget>[
+          // Backdrop
+          if (session.posterUrl != null)
+            Positioned.fill(
+              child: Stack(
+                fit: StackFit.expand,
+                children: <Widget>[
+                  Image.network(
+                    session.posterUrl!,
+                    fit: BoxFit.cover,
+                    alignment: Alignment.topCenter,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: <Color>[
+                          theme.colorScheme.surface,
+                          theme.colorScheme.surface.withValues(alpha: 0.85),
+                          theme.colorScheme.surface.withValues(alpha: 0.6),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+          // Content
+          Padding(
+            padding: const EdgeInsets.all(Insets.md),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            // Poster
+            Container(
+              width: 84,
+              height: 126,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+                image: session.posterUrl != null
+                    ? DecorationImage(
+                        image: NetworkImage(session.posterUrl!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
+              child: session.posterUrl == null
+                  ? Icon(Icons.movie_outlined, color: theme.colorScheme.outline, size: 32)
+                  : null,
+            ),
+            const SizedBox(width: Insets.lg),
+            
+            // Details
+            Expanded(
+              child: SizedBox(
+                height: 126,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    // Title
+                    Text(
+                      session.showTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    
+                    if (session.episodeName != null)
+                      Text(
+                        session.episodeName!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    
+                    const SizedBox(height: 4),
+                    Text(
+                      '${session.user}: ${session.device}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    
+                    const Spacer(),
+                    
+                    // Progress Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: <Widget>[
+                        Text(
+                          session.timePosition,
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          session.timeDuration,
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: theme.colorScheme.outline,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    
+                    // Progress Bar
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: pct.clamp(0.0, 1.0),
+                        minHeight: 6,
+                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          playing ? theme.colorScheme.primary : theme.colorScheme.outline,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ],
+  ),
+);
+  }
+}
+
