@@ -9,6 +9,7 @@ import 'prowlarr_history_tab.dart';
 import 'prowlarr_indexer_form_screen.dart';
 import 'prowlarr_providers.dart';
 import 'prowlarr_search_screen.dart';
+import 'prowlarr_system_tab.dart';
 
 /// Prowlarr's per-instance UI: a tabbed Indexers / History view. The Indexers
 /// tab lists indexers (tap to edit); its FABs add an indexer or run a manual
@@ -29,7 +30,7 @@ class _ProwlarrHomeState extends State<ProwlarrHome>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 2, vsync: this);
+    _tab = TabController(length: 3, vsync: this);
     _tab.addListener(() {
       // Rebuild so the FAB shows only on the Indexers tab.
       if (!_tab.indexIsChanging) {
@@ -54,6 +55,7 @@ class _ProwlarrHomeState extends State<ProwlarrHome>
             tabs: const <Widget>[
               Tab(text: 'Indexers'),
               Tab(text: 'History'),
+              Tab(text: 'System'),
             ],
           ),
           Expanded(
@@ -65,6 +67,7 @@ class _ProwlarrHomeState extends State<ProwlarrHome>
                   onEdit: _openForm,
                 ),
                 ProwlarrHistoryTab(instance: widget.instance),
+                ProwlarrSystemTab(instance: widget.instance),
               ],
             ),
           ),

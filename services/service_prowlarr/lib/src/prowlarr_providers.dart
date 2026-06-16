@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models/prowlarr_history.dart';
 import 'models/prowlarr_indexer.dart';
 import 'models/prowlarr_indexer_stats.dart';
+import 'models/prowlarr_system.dart';
 import 'prowlarr_api.dart';
 
 /// How often the indexer list and stats refresh while a Prowlarr screen is
@@ -114,4 +115,52 @@ final prowlarrHistoryProvider =
         prowlarrApiProvider(args.instance).future,
       );
       return api.getHistory(eventType: args.eventType);
+    });
+
+/// System status (version, OS, runtime). Effectively static for a session.
+final prowlarrSystemStatusProvider =
+    FutureProvider.autoDispose.family<ProwlarrSystemStatus, Instance>((
+      Ref ref,
+      Instance instance,
+    ) async {
+      final ProwlarrApi api = await ref.watch(
+        prowlarrApiProvider(instance).future,
+      );
+      return api.getSystemStatus();
+    });
+
+/// Active health warnings/errors.
+final prowlarrHealthProvider =
+    FutureProvider.autoDispose.family<List<ProwlarrHealth>, Instance>((
+      Ref ref,
+      Instance instance,
+    ) async {
+      final ProwlarrApi api = await ref.watch(
+        prowlarrApiProvider(instance).future,
+      );
+      return api.getHealth();
+    });
+
+/// Scheduled tasks.
+final prowlarrTasksProvider =
+    FutureProvider.autoDispose.family<List<ProwlarrSystemTask>, Instance>((
+      Ref ref,
+      Instance instance,
+    ) async {
+      final ProwlarrApi api = await ref.watch(
+        prowlarrApiProvider(instance).future,
+      );
+      return api.getTasks();
+    });
+
+/// Existing backups.
+final prowlarrBackupsProvider =
+    FutureProvider.autoDispose.family<List<ProwlarrBackup>, Instance>((
+      Ref ref,
+      Instance instance,
+    ) async {
+      final ProwlarrApi api = await ref.watch(
+        prowlarrApiProvider(instance).future,
+      );
+      return api.getBackups();
     });

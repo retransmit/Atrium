@@ -5,6 +5,7 @@ import 'models/prowlarr_history.dart';
 import 'models/prowlarr_indexer.dart';
 import 'models/prowlarr_indexer_stats.dart';
 import 'models/prowlarr_release.dart';
+import 'models/prowlarr_system.dart';
 
 /// Thin typed client over the Prowlarr v1 REST API.
 ///
@@ -226,6 +227,83 @@ class ProwlarrApi {
         },
       );
       return ProwlarrHistoryPage.fromJson(resp.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// System status (version, OS, runtime, ...).
+  Future<ProwlarrSystemStatus> getSystemStatus() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/system/status');
+      return ProwlarrSystemStatus.fromJson(resp.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Active health warnings/errors (`GET /health`).
+  Future<List<ProwlarrHealth>> getHealth() async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/health');
+      return (resp.data as List<dynamic>)
+          .map(
+            (dynamic e) => ProwlarrHealth.fromJson(e as Map<String, dynamic>),
+          )
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Scheduled tasks (`GET /system/task`).
+  Future<List<ProwlarrSystemTask>> getTasks() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/system/task');
+      return (resp.data as List<dynamic>)
+          .map(
+            (dynamic e) =>
+                ProwlarrSystemTask.fromJson(e as Map<String, dynamic>),
+          )
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Existing backups (`GET /system/backup`).
+  Future<List<ProwlarrBackup>> getBackups() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/system/backup');
+      return (resp.data as List<dynamic>)
+          .map(
+            (dynamic e) => ProwlarrBackup.fromJson(e as Map<String, dynamic>),
+          )
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Runs a command (`POST /command`), e.g. a task's `taskName` or `Backup`.
+  Future<void> runCommand(String name) async {
+    try {
+      await _dio.post<dynamic>(
+        '$_base/command',
+        data: <String, dynamic>{'name': name},
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Deletes a backup (`DELETE /system/backup/{id}`).
+  Future<void> deleteBackup(int id) async {
+    try {
+      await _dio.delete<dynamic>('$_base/system/backup/$id');
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
