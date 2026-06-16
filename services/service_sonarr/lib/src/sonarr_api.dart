@@ -134,6 +134,8 @@ class SonarrApi {
     int page = 1,
     int pageSize = 50,
     bool includeSeries = true,
+    bool includeEpisode = true,
+    bool includeUnknownSeriesItems = true,
   }) async {
     try {
       final Response<dynamic> resp = await _dio.get<dynamic>(
@@ -142,6 +144,8 @@ class SonarrApi {
           'page': page,
           'pageSize': pageSize,
           'includeSeries': includeSeries,
+          'includeEpisode': includeEpisode,
+          'includeUnknownSeriesItems': includeUnknownSeriesItems,
         },
       );
       return SonarrQueuePage.fromJson(resp.data as Map<String, dynamic>);

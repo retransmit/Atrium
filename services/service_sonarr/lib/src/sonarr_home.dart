@@ -134,7 +134,10 @@ class _SeriesTab extends ConsumerWidget {
             const SizedBox(height: Insets.xs),
             Expanded(
               child: RefreshIndicator(
-                onRefresh: () async => ref.invalidate(sonarrSeriesProvider(instance)),
+                onRefresh: () async {
+                  ref.invalidate(sonarrSeriesProvider(instance));
+                  await ref.read(sonarrSeriesProvider(instance).future);
+                },
                 child: AsyncValueView<List<SonarrSeries>>(
                   value: filteredSeries,
                   onRetry: () => ref.invalidate(sonarrSeriesProvider(instance)),
@@ -233,10 +236,9 @@ class _SeriesCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final SonarrSeriesStatistics? stats = series.statistics;
-    final double progress = (stats == null || stats.totalEpisodeCount == 0)
-        ? 0
-        : (stats.episodeFileCount / stats.totalEpisodeCount).clamp(0, 1);
+    final List<SonarrSeasonStats> monitoredSeasons = series.seasons
+        .where((SonarrSeasonStats s) => s.monitored)
+        .sorted((SonarrSeasonStats a, SonarrSeasonStats b) => b.seasonNumber.compareTo(a.seasonNumber));
 
     return InkWell(
       onTap: onTap,
@@ -264,12 +266,36 @@ class _SeriesCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                if (progress > 0.02 && progress < 0.999)
+                if (monitoredSeasons.isNotEmpty)
                   Align(
                     alignment: Alignment.bottomCenter,
-                    child: LinearProgressIndicator(
-                      value: progress.toDouble(),
-                      minHeight: 3,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                      child: Row(
+                        children: monitoredSeasons.map((SonarrSeasonStats s) {
+                          final double seasonProgress = (s.statistics == null || s.statistics!.totalEpisodeCount == 0)
+                              ? 0
+                              : (s.statistics!.episodeFileCount / s.statistics!.totalEpisodeCount).clamp(0, 1);
+                          return Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 1),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(1),
+                                child: LinearProgressIndicator(
+                                  value: seasonProgress.toDouble(),
+                                  minHeight: 3,
+                                  backgroundColor: theme.brightness == Brightness.dark
+                                      ? Colors.white12
+                                      : Colors.black12,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    theme.colorScheme.primary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
                     ),
                   ),
               ],
@@ -296,12 +322,21 @@ class _SeriesCard extends StatelessWidget {
   }
 
   String _subtitle() {
-    final SonarrSeriesStatistics? st = series.statistics;
     final List<String> parts = <String>[
       if (series.year != null) '${series.year}',
-      if (st != null)
-        '${st.episodeFileCount}/${st.totalEpisodeCount} eps',
     ];
+    final List<SonarrSeasonStats> monitoredSeasons = series.seasons
+        .where((SonarrSeasonStats s) => s.monitored)
+        .sorted((SonarrSeasonStats a, SonarrSeasonStats b) => b.seasonNumber.compareTo(a.seasonNumber));
+    if (monitoredSeasons.isNotEmpty) {
+      final String seasonStatsList = monitoredSeasons.map((SonarrSeasonStats s) {
+        final String label = s.seasonNumber == 0 ? 'Specials' : 'S${s.seasonNumber}';
+        final int fileCount = s.statistics?.episodeFileCount ?? 0;
+        final int totalCount = s.statistics?.totalEpisodeCount ?? 0;
+        return '$label: $fileCount/$totalCount';
+      }).join(', ');
+      parts.add(seasonStatsList);
+    }
     return parts.join(' • ');
   }
 }
@@ -331,9 +366,10 @@ class _SeriesBannerCard extends ConsumerWidget {
     final String? posterUrl = poster == null ? null : api?.posterUrl(poster);
 
     final SonarrSeriesStatistics? stats = series.statistics;
-    final double progress = (stats == null || stats.totalEpisodeCount == 0)
-        ? 0
-        : (stats.episodeFileCount / stats.totalEpisodeCount).clamp(0, 1);
+
+    final List<SonarrSeasonStats> monitoredSeasons = series.seasons
+        .where((SonarrSeasonStats s) => s.monitored)
+        .sorted((SonarrSeasonStats a, SonarrSeasonStats b) => b.seasonNumber.compareTo(a.seasonNumber));
 
     Widget buildMetaChip(String label, {bool isPrimary = false}) {
       return Container(
@@ -373,7 +409,7 @@ class _SeriesBannerCard extends ConsumerWidget {
       child: InkWell(
         onTap: onTap,
         child: SizedBox(
-          height: 135,
+          height: 142,
           child: Stack(
             fit: StackFit.expand,
             children: <Widget>[
@@ -472,7 +508,7 @@ class _SeriesBannerCard extends ConsumerWidget {
                               ],
                             ),
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 4),
                           // Meta tags
                           Wrap(
                             spacing: Insets.xs,
@@ -492,8 +528,8 @@ class _SeriesBannerCard extends ConsumerWidget {
                                 ),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          // Stats row (Size on disk and episodes)
+                          const SizedBox(height: 6),
+                          // Stats row (Size on disk)
                           Row(
                             children: <Widget>[
                               Icon(
@@ -509,42 +545,59 @@ class _SeriesBannerCard extends ConsumerWidget {
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '•',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.5),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Icon(
-                                Icons.folder_open_outlined,
-                                size: 14,
-                                color: Colors.white.withValues(alpha: 0.7),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${stats?.episodeFileCount ?? 0}/${stats?.totalEpisodeCount ?? 0} eps',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: Colors.white.withValues(alpha: 0.7),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          if (progress > 0)
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(2),
-                              child: LinearProgressIndicator(
-                                value: progress.toDouble(),
-                                minHeight: 4,
-                                backgroundColor: Colors.white.withValues(alpha: 0.2),
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  theme.colorScheme.primary,
-                                ),
+                          if (monitoredSeasons.isNotEmpty) ...<Widget>[
+                            const SizedBox(height: 6),
+                            SizedBox(
+                              height: 32,
+                              child: ListView.builder(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: monitoredSeasons.length,
+                                itemBuilder: (BuildContext context, int idx) {
+                                  final SonarrSeasonStats s = monitoredSeasons[idx];
+                                  final double seasonProgress = (s.statistics == null || s.statistics!.totalEpisodeCount == 0)
+                                      ? 0
+                                      : (s.statistics!.episodeFileCount / s.statistics!.totalEpisodeCount).clamp(0, 1);
+                                  final String label = s.seasonNumber == 0 ? 'Specials' : 'S${s.seasonNumber}';
+                                  final int fileCount = s.statistics?.episodeFileCount ?? 0;
+                                  final int totalCount = s.statistics?.totalEpisodeCount ?? 0;
+                                  return Container(
+                                    width: 80,
+                                    margin: const EdgeInsets.only(right: 8),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: <Widget>[
+                                        Text(
+                                          '$label: $fileCount/$totalCount',
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            color: Colors.white.withValues(alpha: 0.8),
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 2),
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(2),
+                                          child: LinearProgressIndicator(
+                                            value: seasonProgress.toDouble(),
+                                            minHeight: 3,
+                                            backgroundColor: Colors.white.withValues(alpha: 0.15),
+                                            valueColor: AlwaysStoppedAnimation<Color>(
+                                              theme.colorScheme.primary,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
                               ),
                             ),
+                          ],
                         ],
                       ),
                     ),
@@ -859,6 +912,16 @@ class _Badge extends StatelessWidget {
   }
 }
 
+class _QueueItem {
+  _QueueItem({required this.downloadId, required this.records});
+
+  final String? downloadId;
+  final List<SonarrQueueRecord> records;
+
+  bool get isGrouped => records.length > 1;
+  SonarrQueueRecord get primary => records.first;
+}
+
 class _QueueTab extends ConsumerWidget {
   const _QueueTab({required this.instance});
 
@@ -872,7 +935,16 @@ class _QueueTab extends ConsumerWidget {
     final ColorScheme colors = theme.colorScheme;
 
     return RefreshIndicator(
-      onRefresh: () async => ref.invalidate(sonarrQueueProvider(instance)),
+      onRefresh: () async {
+        try {
+          final SonarrApi api = await ref.read(
+            sonarrApiProvider(instance).future,
+          );
+          await api.runSystemTask('RefreshMonitoredDownloads');
+        } catch (_) {}
+        ref.invalidate(sonarrQueueProvider(instance));
+        await ref.read(sonarrQueueProvider(instance).future);
+      },
       child: AsyncValueView<SonarrQueuePage>(
         value: queue,
         onRetry: () => ref.invalidate(sonarrQueueProvider(instance)),
@@ -884,22 +956,54 @@ class _QueueTab extends ConsumerWidget {
               message: 'Nothing downloading right now.',
             );
           }
+
+          // Group records by downloadId (season pack / sessional grab)
+          final List<_QueueItem> items = <_QueueItem>[];
+          final Map<String, List<SonarrQueueRecord>> groups = <String, List<SonarrQueueRecord>>{};
+
+          for (final SonarrQueueRecord r in page.records) {
+            final String? dId = r.downloadId;
+            if (dId != null && dId.isNotEmpty) {
+              groups.putIfAbsent(dId, () => <SonarrQueueRecord>[]).add(r);
+            } else {
+              items.add(_QueueItem(downloadId: null, records: <SonarrQueueRecord>[r]));
+            }
+          }
+
+          groups.forEach((String dId, List<SonarrQueueRecord> list) {
+            items.add(_QueueItem(downloadId: dId, records: list));
+          });
+
+          // Sort items by their original order in page.records
+          items.sort((_QueueItem a, _QueueItem b) {
+            final int indexA = page.records.indexOf(a.primary);
+            final int indexB = page.records.indexOf(b.primary);
+            return indexA.compareTo(indexB);
+          });
+
           return ListView.builder(
             padding: const EdgeInsets.symmetric(horizontal: Insets.lg, vertical: Insets.md),
-            itemCount: page.records.length,
+            itemCount: items.length,
             itemBuilder: (BuildContext context, int index) {
-              final SonarrQueueRecord r = page.records[index];
+              final _QueueItem item = items[index];
+              final SonarrQueueRecord r = item.primary;
               final double progress = r.size <= 0
                   ? 0
                   : ((r.size - r.sizeleft) / r.size).clamp(0, 1).toDouble();
-              
               final int progressPct = (progress * 100).round();
-              final String sizeStr = _fmtSize(r.size.toInt());
-              final String sizeLeftStr = _fmtSize(r.sizeleft.toInt());
-              final String sizeDoneStr = _fmtSize((r.size - r.sizeleft).toInt());
+              final String sizeStr = _formatBytes(r.size.toInt());
+              final String sizeLeftStr = _formatBytes(r.sizeleft.toInt());
+              final String sizeDoneStr = _formatBytes((r.size - r.sizeleft).toInt());
 
-              final bool hasWarning = r.trackedDownloadStatus?.toLowerCase() == 'warning' || r.statusMessages.isNotEmpty;
-              final bool hasError = r.trackedDownloadStatus?.toLowerCase() == 'error';
+              final bool hasWarning = item.records.any(
+                (SonarrQueueRecord rec) =>
+                    rec.trackedDownloadStatus?.toLowerCase() == 'warning' ||
+                    rec.statusMessages.isNotEmpty,
+              );
+              final bool hasError = item.records.any(
+                (SonarrQueueRecord rec) =>
+                    rec.trackedDownloadStatus?.toLowerCase() == 'error',
+              );
 
               IconData stateIcon = Icons.cloud_download_outlined;
               Color stateColor = colors.primary;
@@ -918,19 +1022,37 @@ class _QueueTab extends ConsumerWidget {
                 stateColor = Colors.green;
               }
 
+              final List<SonarrQueueStatusMessage> combinedMessages = item.records
+                  .expand((SonarrQueueRecord rec) => rec.statusMessages)
+                  .toList();
+
               return Card(
                 margin: const EdgeInsets.only(bottom: Insets.md),
                 elevation: 0,
+                clipBehavior: Clip.antiAlias,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                   side: BorderSide(
                     color: colors.outlineVariant.withValues(alpha: 0.5),
                   ),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(Insets.md),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                child: InkWell(
+                  onTap: r.seriesId != null
+                      ? () {
+                          Navigator.of(context, rootNavigator: true).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => SeriesDetailScreen(
+                                instance: instance,
+                                seriesId: r.seriesId!,
+                              ),
+                            ),
+                          );
+                        }
+                      : null,
+                  child: Padding(
+                    padding: const EdgeInsets.all(Insets.md),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -950,9 +1072,30 @@ class _QueueTab extends ConsumerWidget {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 4),
-                                Row(
+                                Wrap(
+                                  spacing: Insets.xs,
+                                  runSpacing: Insets.xs,
                                   children: <Widget>[
-                                    if (r.downloadClient != null) ...<Widget>[
+                                    if (item.isGrouped)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: colors.primary.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(4),
+                                          border: Border.all(
+                                            color: colors.primary.withValues(alpha: 0.3),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'SEASON GRAB (${item.records.length} EPS)',
+                                          style: theme.textTheme.labelSmall?.copyWith(
+                                            color: colors.primary,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    if (r.downloadClient != null)
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                         decoration: BoxDecoration(
@@ -967,8 +1110,6 @@ class _QueueTab extends ConsumerWidget {
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(width: Insets.xs),
-                                    ],
                                     if (r.protocol != null)
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -997,8 +1138,12 @@ class _QueueTab extends ConsumerWidget {
                               final bool? confirm = await showDialog<bool>(
                                 context: context,
                                 builder: (BuildContext context) => AlertDialog(
-                                  title: const Text('Remove from Queue?'),
-                                  content: Text(r.title ?? 'this item'),
+                                  title: Text(item.isGrouped ? 'Remove Season Grab?' : 'Remove from Queue?'),
+                                  content: Text(
+                                    item.isGrouped
+                                        ? 'Are you sure you want to remove the season grab for "${r.title ?? 'this series'}" (${item.records.length} episodes)?'
+                                        : r.title ?? 'this item',
+                                  ),
                                   actions: <Widget>[
                                     TextButton(
                                       onPressed: () => Navigator.pop(context, false),
@@ -1019,7 +1164,13 @@ class _QueueTab extends ConsumerWidget {
                               if (confirm == true) {
                                 final SonarrApi api =
                                     await ref.read(sonarrApiProvider(instance).future);
-                                await api.deleteQueueItem(r.id);
+                                if (item.isGrouped) {
+                                  await Future.wait(
+                                    item.records.map((SonarrQueueRecord rec) => api.deleteQueueItem(rec.id)),
+                                  );
+                                } else {
+                                  await api.deleteQueueItem(r.id);
+                                }
                                 ref.invalidate(sonarrQueueProvider(instance));
                               }
                             },
@@ -1054,25 +1205,32 @@ class _QueueTab extends ConsumerWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: <Widget>[
-                          Text(
-                            '$sizeDoneStr of $sizeStr ($sizeLeftStr left)',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colors.onSurfaceVariant,
+                          Expanded(
+                            child: Text(
+                              '$sizeDoneStr of $sizeStr ($sizeLeftStr left)',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colors.onSurfaceVariant,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          Text(
-                            <String?>[
-                              if (r.status != null) r.status,
-                              if (r.timeleft != null) r.timeleft,
-                            ].whereType<String>().join(' • '),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: colors.onSurfaceVariant,
-                              fontWeight: FontWeight.w500,
+                          const SizedBox(width: Insets.sm),
+                          Flexible(
+                            child: Text(
+                              <String?>[
+                                if (r.status != null) r.status,
+                                if (r.timeleft != null) r.timeleft,
+                              ].whereType<String>().join(' • '),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colors.onSurfaceVariant,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
-                      if (r.statusMessages.isNotEmpty) ...<Widget>[
+                      if (combinedMessages.isNotEmpty) ...<Widget>[
                         const SizedBox(height: Insets.sm),
                         Container(
                           width: double.infinity,
@@ -1107,7 +1265,7 @@ class _QueueTab extends ConsumerWidget {
                                 ],
                               ),
                               const SizedBox(height: 6),
-                              ...r.statusMessages.map((SonarrQueueStatusMessage msg) {
+                              ...combinedMessages.map((SonarrQueueStatusMessage msg) {
                                 final List<String> details = msg.messages;
                                 final String text = msg.title ?? '';
                                 return Padding(
@@ -1144,7 +1302,8 @@ class _QueueTab extends ConsumerWidget {
                     ],
                   ),
                 ),
-              );
+              ),
+            );
             },
           );
         },
@@ -1201,7 +1360,207 @@ class _WantedTabState extends State<_WantedTab> {
   }
 }
 
-class _WantedMissingSubTab extends ConsumerWidget {
+class _WantedEpisodeCard extends StatefulWidget {
+  const _WantedEpisodeCard({
+    required this.record,
+    required this.imageUrl,
+    required this.onSearch,
+    required this.onTap,
+    super.key,
+  });
+
+  final SonarrWantedRecord record;
+  final String? imageUrl;
+  final Future<void> Function() onSearch;
+  final VoidCallback onTap;
+
+  @override
+  State<_WantedEpisodeCard> createState() => _WantedEpisodeCardState();
+}
+
+class _WantedEpisodeCardState extends State<_WantedEpisodeCard> {
+  bool _isSearching = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    String formattedAirDate = 'Unknown';
+    if (widget.record.airDate != null) {
+      try {
+        final DateTime dt = DateTime.parse(widget.record.airDate!);
+        formattedAirDate = DateFormat('yMMMd').format(dt);
+      } catch (_) {
+        formattedAirDate = widget.record.airDate!;
+      }
+    }
+
+    final String epCode = 'S${widget.record.seasonNumber.toString().padLeft(2, '0')}E${widget.record.episodeNumber.toString().padLeft(2, '0')}';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: Insets.sm),
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: widget.onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(Insets.sm),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: SizedBox(
+                  width: 68,
+                  height: 102,
+                  child: widget.imageUrl == null
+                      ? Container(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          child: Icon(
+                            Icons.live_tv_outlined,
+                            color: theme.colorScheme.outline,
+                            size: 24,
+                          ),
+                        )
+                      : CachedNetworkImage(
+                          imageUrl: widget.imageUrl!,
+                          fit: BoxFit.cover,
+                          placeholder: (BuildContext context, String url) => Container(
+                            color: theme.colorScheme.surfaceContainerHighest,
+                            child: const Center(
+                              child: SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 1.5),
+                              ),
+                            ),
+                          ),
+                          errorWidget: (_, __, ___) => Container(
+                            color: theme.colorScheme.surfaceContainerHighest,
+                            child: Icon(
+                              Icons.live_tv_outlined,
+                              color: theme.colorScheme.outline,
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: Insets.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      widget.record.series?.title ?? 'Unknown Series',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: <Widget>[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: theme.colorScheme.secondary.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Text(
+                            epCode,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSecondaryContainer,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            widget.record.title ?? '',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: <Widget>[
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 12,
+                          color: theme.colorScheme.outline,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Aired: $formattedAirDate',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.outline,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: Insets.sm),
+              Align(
+                child: SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: _isSearching
+                      ? Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: theme.colorScheme.primary,
+                          ),
+                        )
+                      : IconButton(
+                          icon: const Icon(Icons.search),
+                          tooltip: 'Search for this episode',
+                          onPressed: () async {
+                            setState(() {
+                              _isSearching = true;
+                            });
+                            try {
+                              await widget.onSearch();
+                            } finally {
+                              if (mounted) {
+                                setState(() {
+                                  _isSearching = false;
+                                });
+                              }
+                            }
+                          },
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WantedMissingSubTab extends ConsumerStatefulWidget {
   const _WantedMissingSubTab({
     required this.instance,
     required this.page,
@@ -1213,16 +1572,26 @@ class _WantedMissingSubTab extends ConsumerWidget {
   final ValueChanged<int> onPageChanged;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_WantedMissingSubTab> createState() => _WantedMissingSubTabState();
+}
+
+class _WantedMissingSubTabState extends ConsumerState<_WantedMissingSubTab> {
+  bool _isSearchingAll = false;
+
+  @override
+  Widget build(BuildContext context) {
     final AsyncValue<SonarrWantedPage> missing =
-        ref.watch(sonarrWantedMissingProvider((instance, page)));
-    final SonarrApi? api = ref.watch(sonarrApiProvider(instance)).value;
+        ref.watch(sonarrWantedMissingProvider((widget.instance, widget.page)));
+    final SonarrApi? api = ref.watch(sonarrApiProvider(widget.instance)).value;
 
     return RefreshIndicator(
-      onRefresh: () async => ref.invalidate(sonarrWantedMissingProvider((instance, page))),
+      onRefresh: () async {
+        ref.invalidate(sonarrWantedMissingProvider((widget.instance, widget.page)));
+        await ref.read(sonarrWantedMissingProvider((widget.instance, widget.page)).future);
+      },
       child: AsyncValueView<SonarrWantedPage>(
         value: missing,
-        onRetry: () => ref.invalidate(sonarrWantedMissingProvider((instance, page))),
+        onRetry: () => ref.invalidate(sonarrWantedMissingProvider((widget.instance, widget.page))),
         data: (SonarrWantedPage dataPage) {
           if (dataPage.records.isEmpty) {
             return const EmptyView(
@@ -1240,26 +1609,46 @@ class _WantedMissingSubTab extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: Insets.lg, vertical: Insets.sm),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
+                  children: <Widget>[
                     Text(
                       '${dataPage.totalRecords} missing episodes',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: Theme.of(context).colorScheme.outline,
                           ),
                     ),
-                    TextButton.icon(
-                      onPressed: () async {
-                        final apiObj = await ref.read(sonarrApiProvider(instance).future);
-                        await apiObj.triggerMissingSearch();
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Missing episode search triggered')),
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.search),
-                      label: const Text('Search All'),
-                    ),
+                    _isSearchingAll
+                        ? const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : TextButton.icon(
+                            onPressed: () async {
+                              setState(() {
+                                _isSearchingAll = true;
+                              });
+                              try {
+                                final SonarrApi apiObj = await ref.read(sonarrApiProvider(widget.instance).future);
+                                await apiObj.triggerMissingSearch();
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Missing episode search triggered')),
+                                  );
+                                }
+                              } finally {
+                                if (mounted) {
+                                  setState(() {
+                                    _isSearchingAll = false;
+                                  });
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.search),
+                            label: const Text('Search All'),
+                          ),
                   ],
                 ),
               ),
@@ -1269,58 +1658,27 @@ class _WantedMissingSubTab extends ConsumerWidget {
                   itemCount: dataPage.records.length,
                   itemBuilder: (BuildContext context, int index) {
                     final SonarrWantedRecord record = dataPage.records[index];
-                    final poster = record.series?.images.firstWhereOrNull((img) => img.coverType == 'poster');
+                    final SonarrImage? poster = record.series?.images.firstWhereOrNull((SonarrImage img) => img.coverType == 'poster');
                     final String? imageUrl = poster != null ? api?.posterUrl(poster) : null;
 
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: Insets.sm),
-                      clipBehavior: Clip.antiAlias,
-                      child: ListTile(
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(Radii.sm),
-                          child: AspectRatio(
-                            aspectRatio: Sizes.posterAspect,
-                            child: imageUrl != null
-                                ? CachedNetworkImage(
-                                    imageUrl: imageUrl,
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) => Container(color: Colors.grey[800]),
-                                    errorWidget: (context, url, err) => Container(color: Colors.grey[800], child: const Icon(Icons.live_tv)),
-                                  )
-                                : Container(color: Colors.grey[800], child: const Icon(Icons.live_tv)),
-                          ),
-                        ),
-                        title: Text(
-                          record.series?.title ?? 'Unknown Series',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          'S${record.seasonNumber.toString().padLeft(2, '0')}E${record.episodeNumber.toString().padLeft(2, '0')} • ${record.title ?? ''}\nAir date: ${record.airDate ?? 'Unknown'}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.outline,
-                              ),
-                        ),
-                        isThreeLine: true,
-                        trailing: IconButton(
-                          icon: const Icon(Icons.search),
-                          tooltip: 'Search for this episode',
-                          onPressed: () async {
-                            final apiObj = await ref.read(sonarrApiProvider(instance).future);
-                            await apiObj.searchEpisode(record.id);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Search triggered for S${record.seasonNumber}E${record.episodeNumber}')),
-                              );
-                            }
-                          },
-                        ),
-                        onTap: () => Navigator.of(context, rootNavigator: true).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => SeriesDetailScreen(
-                              instance: instance,
-                              seriesId: record.seriesId,
-                            ),
+                    return _WantedEpisodeCard(
+                      key: ValueKey<int>(record.id),
+                      record: record,
+                      imageUrl: imageUrl,
+                      onSearch: () async {
+                        final SonarrApi apiObj = await ref.read(sonarrApiProvider(widget.instance).future);
+                        await apiObj.searchEpisode(record.id);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Search triggered for S${record.seasonNumber}E${record.episodeNumber}')),
+                          );
+                        }
+                      },
+                      onTap: () => Navigator.of(context, rootNavigator: true).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => SeriesDetailScreen(
+                            instance: widget.instance,
+                            seriesId: record.seriesId,
                           ),
                         ),
                       ),
@@ -1330,9 +1688,9 @@ class _WantedMissingSubTab extends ConsumerWidget {
               ),
               if (totalPages > 1)
                 _PaginationBar(
-                  currentPage: page,
+                  currentPage: widget.page,
                   totalPages: totalPages,
-                  onPageChanged: onPageChanged,
+                  onPageChanged: widget.onPageChanged,
                 ),
             ],
           );
@@ -1342,7 +1700,7 @@ class _WantedMissingSubTab extends ConsumerWidget {
   }
 }
 
-class _WantedCutoffSubTab extends ConsumerWidget {
+class _WantedCutoffSubTab extends ConsumerStatefulWidget {
   const _WantedCutoffSubTab({
     required this.instance,
     required this.page,
@@ -1354,16 +1712,26 @@ class _WantedCutoffSubTab extends ConsumerWidget {
   final ValueChanged<int> onPageChanged;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_WantedCutoffSubTab> createState() => _WantedCutoffSubTabState();
+}
+
+class _WantedCutoffSubTabState extends ConsumerState<_WantedCutoffSubTab> {
+  bool _isSearchingAll = false;
+
+  @override
+  Widget build(BuildContext context) {
     final AsyncValue<SonarrWantedPage> cutoff =
-        ref.watch(sonarrWantedCutoffProvider((instance, page)));
-    final SonarrApi? api = ref.watch(sonarrApiProvider(instance)).value;
+        ref.watch(sonarrWantedCutoffProvider((widget.instance, widget.page)));
+    final SonarrApi? api = ref.watch(sonarrApiProvider(widget.instance)).value;
 
     return RefreshIndicator(
-      onRefresh: () async => ref.invalidate(sonarrWantedCutoffProvider((instance, page))),
+      onRefresh: () async {
+        ref.invalidate(sonarrWantedCutoffProvider((widget.instance, widget.page)));
+        await ref.read(sonarrWantedCutoffProvider((widget.instance, widget.page)).future);
+      },
       child: AsyncValueView<SonarrWantedPage>(
         value: cutoff,
-        onRetry: () => ref.invalidate(sonarrWantedCutoffProvider((instance, page))),
+        onRetry: () => ref.invalidate(sonarrWantedCutoffProvider((widget.instance, widget.page))),
         data: (SonarrWantedPage dataPage) {
           if (dataPage.records.isEmpty) {
             return const EmptyView(
@@ -1381,26 +1749,46 @@ class _WantedCutoffSubTab extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: Insets.lg, vertical: Insets.sm),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
+                  children: <Widget>[
                     Text(
                       '${dataPage.totalRecords} cutoff unmet episodes',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: Theme.of(context).colorScheme.outline,
                           ),
                     ),
-                    TextButton.icon(
-                      onPressed: () async {
-                        final apiObj = await ref.read(sonarrApiProvider(instance).future);
-                        await apiObj.triggerCutoffUnmetSearch();
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Cutoff unmet search triggered')),
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.search),
-                      label: const Text('Search All'),
-                    ),
+                    _isSearchingAll
+                        ? const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : TextButton.icon(
+                            onPressed: () async {
+                              setState(() {
+                                _isSearchingAll = true;
+                              });
+                              try {
+                                final SonarrApi apiObj = await ref.read(sonarrApiProvider(widget.instance).future);
+                                await apiObj.triggerCutoffUnmetSearch();
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Cutoff unmet search triggered')),
+                                  );
+                                }
+                              } finally {
+                                if (mounted) {
+                                  setState(() {
+                                    _isSearchingAll = false;
+                                  });
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.search),
+                            label: const Text('Search All'),
+                          ),
                   ],
                 ),
               ),
@@ -1410,58 +1798,27 @@ class _WantedCutoffSubTab extends ConsumerWidget {
                   itemCount: dataPage.records.length,
                   itemBuilder: (BuildContext context, int index) {
                     final SonarrWantedRecord record = dataPage.records[index];
-                    final poster = record.series?.images.firstWhereOrNull((img) => img.coverType == 'poster');
+                    final SonarrImage? poster = record.series?.images.firstWhereOrNull((SonarrImage img) => img.coverType == 'poster');
                     final String? imageUrl = poster != null ? api?.posterUrl(poster) : null;
 
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: Insets.sm),
-                      clipBehavior: Clip.antiAlias,
-                      child: ListTile(
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(Radii.sm),
-                          child: AspectRatio(
-                            aspectRatio: Sizes.posterAspect,
-                            child: imageUrl != null
-                                ? CachedNetworkImage(
-                                    imageUrl: imageUrl,
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) => Container(color: Colors.grey[800]),
-                                    errorWidget: (context, url, err) => Container(color: Colors.grey[800], child: const Icon(Icons.live_tv)),
-                                  )
-                                : Container(color: Colors.grey[800], child: const Icon(Icons.live_tv)),
-                          ),
-                        ),
-                        title: Text(
-                          record.series?.title ?? 'Unknown Series',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          'S${record.seasonNumber.toString().padLeft(2, '0')}E${record.episodeNumber.toString().padLeft(2, '0')} • ${record.title ?? ''}\nAir date: ${record.airDate ?? 'Unknown'}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.outline,
-                              ),
-                        ),
-                        isThreeLine: true,
-                        trailing: IconButton(
-                          icon: const Icon(Icons.search),
-                          tooltip: 'Search for this episode',
-                          onPressed: () async {
-                            final apiObj = await ref.read(sonarrApiProvider(instance).future);
-                            await apiObj.searchEpisode(record.id);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Search triggered for S${record.seasonNumber}E${record.episodeNumber}')),
-                              );
-                            }
-                          },
-                        ),
-                        onTap: () => Navigator.of(context, rootNavigator: true).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => SeriesDetailScreen(
-                              instance: instance,
-                              seriesId: record.seriesId,
-                            ),
+                    return _WantedEpisodeCard(
+                      key: ValueKey<int>(record.id),
+                      record: record,
+                      imageUrl: imageUrl,
+                      onSearch: () async {
+                        final SonarrApi apiObj = await ref.read(sonarrApiProvider(widget.instance).future);
+                        await apiObj.searchEpisode(record.id);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Search triggered for S${record.seasonNumber}E${record.episodeNumber}')),
+                          );
+                        }
+                      },
+                      onTap: () => Navigator.of(context, rootNavigator: true).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => SeriesDetailScreen(
+                            instance: widget.instance,
+                            seriesId: record.seriesId,
                           ),
                         ),
                       ),
@@ -1471,9 +1828,9 @@ class _WantedCutoffSubTab extends ConsumerWidget {
               ),
               if (totalPages > 1)
                 _PaginationBar(
-                  currentPage: page,
+                  currentPage: widget.page,
                   totalPages: totalPages,
-                  onPageChanged: onPageChanged,
+                  onPageChanged: widget.onPageChanged,
                 ),
             ],
           );
@@ -1501,7 +1858,10 @@ class _HistoryTabState extends ConsumerState<_HistoryTab> {
         ref.watch(sonarrHistoryProvider((widget.instance, _page)));
 
     return RefreshIndicator(
-      onRefresh: () async => ref.invalidate(sonarrHistoryProvider((widget.instance, _page))),
+      onRefresh: () async {
+        ref.invalidate(sonarrHistoryProvider((widget.instance, _page)));
+        await ref.read(sonarrHistoryProvider((widget.instance, _page)).future);
+      },
       child: AsyncValueView<SonarrHistoryPage>(
         value: history,
         onRetry: () => ref.invalidate(sonarrHistoryProvider((widget.instance, _page))),
@@ -1661,7 +2021,10 @@ class _BlocklistTabState extends ConsumerState<_BlocklistTab> {
         ref.watch(sonarrBlocklistProvider((widget.instance, _page)));
 
     return RefreshIndicator(
-      onRefresh: () async => ref.invalidate(sonarrBlocklistProvider((widget.instance, _page))),
+      onRefresh: () async {
+        ref.invalidate(sonarrBlocklistProvider((widget.instance, _page)));
+        await ref.read(sonarrBlocklistProvider((widget.instance, _page)).future);
+      },
       child: AsyncValueView<SonarrBlocklistPage>(
         value: blocklist,
         onRetry: () => ref.invalidate(sonarrBlocklistProvider((widget.instance, _page))),
@@ -1783,6 +2146,13 @@ class _SystemTab extends ConsumerWidget {
         ref.invalidate(sonarrDiskSpaceProvider(instance));
         ref.invalidate(sonarrSystemTasksProvider(instance));
         ref.invalidate(sonarrBackupsProvider(instance));
+        await Future.wait(<Future<dynamic>>[
+          ref.read(sonarrHealthProvider(instance).future),
+          ref.read(sonarrSystemStatusProvider(instance).future),
+          ref.read(sonarrDiskSpaceProvider(instance).future),
+          ref.read(sonarrSystemTasksProvider(instance).future),
+          ref.read(sonarrBackupsProvider(instance).future),
+        ]);
       },
       child: ListView(
         padding: Insets.page,
@@ -1928,13 +2298,13 @@ class _DiskSpaceSection extends StatelessWidget {
       ),
     );
   }
+}
 
-  String _formatBytes(int bytes) {
-    if (bytes <= 0) return '0 B';
-    const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    final i = (math.log(bytes) / math.log(1024)).floor();
-    return '${(bytes / math.pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
-  }
+String _formatBytes(int bytes) {
+  if (bytes <= 0) return '0 B';
+  const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  final i = (math.log(bytes) / math.log(1024)).floor();
+  return '${(bytes / math.pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
 }
 
 class _TasksSection extends StatelessWidget {
@@ -2211,6 +2581,26 @@ class _SettingsTab extends ConsumerWidget {
         ref.invalidate(sonarrAutoTaggingRulesProvider(instance));
         ref.invalidate(sonarrQualityProfilesRawProvider(instance));
         ref.invalidate(sonarrQualityProfilesProvider(instance));
+        await Future.wait(<Future<dynamic>>[
+          ref.read(sonarrIndexersProvider(instance).future),
+          ref.read(sonarrDownloadClientsProvider(instance).future),
+          ref.read(sonarrNotificationsProvider(instance).future),
+          ref.read(sonarrImportListsProvider(instance).future),
+          ref.read(sonarrTagsProvider(instance).future),
+          ref.read(sonarrHostConfigProvider(instance).future),
+          ref.read(sonarrNamingConfigProvider(instance).future),
+          ref.read(sonarrMediaManagementConfigProvider(instance).future),
+          ref.read(sonarrUiConfigProvider(instance).future),
+          ref.read(sonarrMetadataProvidersProvider(instance).future),
+          ref.read(sonarrDelayProfilesProvider(instance).future),
+          ref.read(sonarrCustomFormatsProvider(instance).future),
+          ref.read(sonarrQualityDefinitionsProvider(instance).future),
+          ref.read(sonarrReleaseProfilesProvider(instance).future),
+          ref.read(sonarrImportListExclusionsProvider(instance).future),
+          ref.read(sonarrAutoTaggingRulesProvider(instance).future),
+          ref.read(sonarrQualityProfilesRawProvider(instance).future),
+          ref.read(sonarrQualityProfilesProvider(instance).future),
+        ]);
       },
       child: ListView(
         padding: Insets.page,

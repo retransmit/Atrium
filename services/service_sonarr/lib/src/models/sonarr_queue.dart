@@ -33,6 +33,7 @@ abstract class SonarrQueueRecord with _$SonarrQueueRecord {
     String? timeleft,
     String? downloadClient,
     String? protocol,
+    String? downloadId,
     @Default(<SonarrQueueStatusMessage>[]) List<SonarrQueueStatusMessage> statusMessages,
   }) = _SonarrQueueRecord;
 

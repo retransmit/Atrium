@@ -10,6 +10,7 @@ import 'package:intl/intl.dart';
 
 import 'models/sonarr_add_models.dart';
 import 'models/sonarr_episode.dart';
+import 'models/sonarr_queue.dart';
 import 'models/sonarr_series.dart';
 import 'sonarr_api.dart';
 import 'sonarr_providers.dart';
@@ -349,38 +350,6 @@ class _Header extends ConsumerWidget {
                 ),
                 if (st != null) ...<Widget>[
                   const SizedBox(height: Insets.md),
-                  // Episodes progress text & indicator
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: <Widget>[
-                      Text(
-                        'Episodes',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.outline,
-                        ),
-                      ),
-                      Text(
-                        '${st.episodeFileCount}/${st.totalEpisodeCount}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      minHeight: 6,
-                      value: st.totalEpisodeCount == 0
-                          ? 0
-                          : (st.episodeFileCount / st.totalEpisodeCount)
-                              .clamp(0, 1)
-                              .toDouble(),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
                   Row(
                     children: <Widget>[
                       Icon(
@@ -523,7 +492,7 @@ class _ActionsRow extends ConsumerWidget {
   }
 }
 
-class _SeasonTile extends ConsumerWidget {
+class _SeasonTile extends ConsumerStatefulWidget {
   const _SeasonTile({
     required this.instance,
     required this.series,
@@ -539,17 +508,106 @@ class _SeasonTile extends ConsumerWidget {
   final AsyncValue<List<SonarrEpisode>> episodesValue;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_SeasonTile> createState() => _SeasonTileState();
+}
+
+class _SeasonTileState extends ConsumerState<_SeasonTile> with SingleTickerProviderStateMixin {
+  late final AnimationController _animationController;
+  bool _isExpanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _toggleSeason() async {
+    final SonarrApi api = await ref.read(sonarrApiProvider(widget.instance).future);
+    final Map<String, dynamic> raw = await api.getSeriesRaw(widget.series.id);
+    final List<dynamic> seasons = raw['seasons'] as List<dynamic>;
+    for (final dynamic s in seasons) {
+      final Map<String, dynamic> sm = s as Map<String, dynamic>;
+      if (sm['seasonNumber'] == widget.season.seasonNumber) {
+        sm['monitored'] = !widget.season.monitored;
+      }
+    }
+    await api.updateSeriesRaw(raw);
+    widget.onChanged(ref);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final SonarrSeasonStatistics? st = season.statistics;
-    final String label = season.seasonNumber == 0
+    final bool isDark = theme.brightness == Brightness.dark;
+    final SonarrSeasonStatistics? st = widget.season.statistics;
+    final String label = widget.season.seasonNumber == 0
         ? 'Specials'
-        : 'Season ${season.seasonNumber}';
+        : 'Season ${widget.season.seasonNumber}';
 
     final String statsStr = st == null
         ? ''
-        : '${st.episodeFileCount}/${st.totalEpisodeCount} episodes'
-            '${st.sizeOnDisk > 0 ? ' • ${_fmtSize(st.sizeOnDisk)}' : ''}';
+        : '${st.episodeFileCount}/${st.totalEpisodeCount} eps • ${_fmtSize(st.sizeOnDisk)}';
+
+    final AsyncValue<SonarrQueuePage> queueValue = ref.watch(sonarrQueueProvider(widget.instance));
+    final List<SonarrQueueRecord> seriesRecords = queueValue.maybeWhen(
+      data: (SonarrQueuePage page) => page.records
+          .where((SonarrQueueRecord r) => r.seriesId == widget.series.id)
+          .toList(),
+      orElse: () => <SonarrQueueRecord>[],
+    );
+
+    final List<SonarrEpisode> seasonEps = widget.episodesValue.maybeWhen(
+      data: (List<SonarrEpisode> list) => list
+          .where((SonarrEpisode ep) => ep.seasonNumber == widget.season.seasonNumber)
+          .toList(),
+      orElse: () => <SonarrEpisode>[],
+    );
+    final Set<int> seasonEpIds = seasonEps.map((SonarrEpisode ep) => ep.id).toSet();
+    final List<SonarrQueueRecord> seasonQueueRecords = seriesRecords
+        .where((SonarrQueueRecord r) => r.episodeId != null && seasonEpIds.contains(r.episodeId))
+        .toList();
+
+    double progress = 0;
+    int progressPct = 0;
+    String downloadStatusStr = '';
+    if (seasonQueueRecords.isNotEmpty) {
+      final double totalSize = seasonQueueRecords.fold<double>(
+        0,
+        (double prev, SonarrQueueRecord r) => prev + r.size,
+      );
+      final double totalLeft = seasonQueueRecords.fold<double>(
+        0,
+        (double prev, SonarrQueueRecord r) => prev + r.sizeleft,
+      );
+      progress = totalSize <= 0
+          ? 0
+          : ((totalSize - totalLeft) / totalSize).clamp(0, 1).toDouble();
+      progressPct = (progress * 100).round();
+
+      final bool hasSessional = seasonQueueRecords.any(
+        (SonarrQueueRecord r) => r.downloadId != null && r.downloadId!.isNotEmpty,
+      );
+      if (hasSessional) {
+        downloadStatusStr = 'Season Grab: $progressPct%';
+      } else {
+        downloadStatusStr = 'Downloading ${seasonQueueRecords.length} ep(s): $progressPct%';
+      }
+    }
+
+    final double cardProgress = (st == null || st.totalEpisodeCount == 0)
+        ? 0
+        : (st.episodeFileCount / st.totalEpisodeCount)
+            .clamp(0, 1)
+            .toDouble();
 
     return Card(
       margin: const EdgeInsets.only(bottom: Insets.sm),
@@ -561,196 +619,284 @@ class _SeasonTile extends ConsumerWidget {
         ),
       ),
       clipBehavior: Clip.antiAlias,
-      child: ExpansionTile(
-        title: Text(
-          label,
-          style: theme.textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        subtitle: statsStr.isNotEmpty
-            ? Text(
-                statsStr,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.outline,
-                ),
-              )
-            : null,
-        leading: Container(
-          decoration: BoxDecoration(
-            color: season.monitored
-                ? theme.colorScheme.primary.withValues(alpha: 0.1)
-                : theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: IconButton(
-            tooltip: season.monitored ? 'Unmonitor season' : 'Monitor season',
-            icon: Icon(
-              season.monitored ? Icons.bookmark : Icons.bookmark_border,
-              color: season.monitored
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.outline,
-              size: 20,
-            ),
-            onPressed: () => _toggleSeason(ref),
-          ),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            IconButton(
-              tooltip: 'Manual search',
-              icon: const Icon(Icons.manage_search),
-              onPressed: () {
-                Navigator.of(context, rootNavigator: true).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => SonarrReleaseSearchScreen(
-                      instance: instance,
-                      seriesId: series.id,
-                      seasonNumber: season.seasonNumber,
-                      seriesTitle: series.title,
+      child: Column(
+        children: <Widget>[
+          Stack(
+            children: <Widget>[
+              // Library progress static background
+              if (cardProgress > 0 && seasonQueueRecords.isEmpty)
+                Positioned.fill(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: cardProgress,
+                      child: Container(
+                        color: theme.colorScheme.primary.withValues(
+                          alpha: isDark ? 0.08 : 0.06,
+                        ),
+                      ),
                     ),
                   ),
-                );
-              },
-            ),
-            IconButton(
-              tooltip: 'Search season',
-              icon: const Icon(Icons.search),
-              onPressed: () async {
-                final SonarrApi api =
-                    await ref.read(sonarrApiProvider(instance).future);
-                await api.searchSeason(series.id, season.seasonNumber);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Search started for $label')),
-                  );
-                }
-              },
-            ),
-            if (st != null && st.episodeFileCount > 0)
-              IconButton(
-                tooltip: 'Delete season files',
-                icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
-                onPressed: () async {
-                  final bool? confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (BuildContext context) => AlertDialog(
-                      title: Text('Delete $label files?'),
-                      content: Text(
-                        'Are you sure you want to delete all $label files on disk?\n'
-                        'This will delete ${st.episodeFileCount} file(s).',
-                      ),
-                      actions: <Widget>[
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Cancel'),
-                        ),
-                        FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: theme.colorScheme.error,
-                            foregroundColor: theme.colorScheme.onError,
+                ),
+              // Active download progress pulsing background
+              if (seasonQueueRecords.isNotEmpty && progress > 0)
+                Positioned.fill(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: AnimatedBuilder(
+                      animation: _animationController,
+                      builder: (BuildContext context, Widget? child) {
+                        final double alpha = lerpDouble(
+                          isDark ? 0.08 : 0.05,
+                          isDark ? 0.20 : 0.15,
+                          _animationController.value,
+                        )!;
+                        return FractionallySizedBox(
+                          widthFactor: progress,
+                          child: Container(
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: alpha,
+                            ),
                           ),
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text('Delete'),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ListTile(
+                onTap: () {
+                  setState(() {
+                    _isExpanded = !_isExpanded;
+                  });
+                },
+                title: Text(
+                  label,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: statsStr.isNotEmpty || downloadStatusStr.isNotEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text.rich(
+                          TextSpan(
+                            children: <InlineSpan>[
+                              if (downloadStatusStr.isNotEmpty)
+                                TextSpan(
+                                  text: '$downloadStatusStr • ',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              if (statsStr.isNotEmpty)
+                                TextSpan(
+                                  text: statsStr,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.outline,
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
+                      )
+                    : null,
+                leading: Container(
+                  decoration: BoxDecoration(
+                    color: widget.season.monitored
+                        ? theme.colorScheme.primary.withValues(alpha: 0.1)
+                        : theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: IconButton(
+                    tooltip: widget.season.monitored ? 'Unmonitor season' : 'Monitor season',
+                    icon: Icon(
+                      widget.season.monitored ? Icons.bookmark : Icons.bookmark_border,
+                      color: widget.season.monitored
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.outline,
+                      size: 20,
+                    ),
+                    onPressed: _toggleSeason,
+                  ),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert),
+                      tooltip: 'Season actions',
+                      onSelected: (String value) async {
+                        if (value == 'manual') {
+                          await Navigator.of(context, rootNavigator: true).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => SonarrReleaseSearchScreen(
+                                instance: widget.instance,
+                                seriesId: widget.series.id,
+                                seasonNumber: widget.season.seasonNumber,
+                                seriesTitle: widget.series.title,
+                              ),
+                            ),
+                          );
+                        } else if (value == 'search') {
+                          final SonarrApi api =
+                              await ref.read(sonarrApiProvider(widget.instance).future);
+                          await api.searchSeason(widget.series.id, widget.season.seasonNumber);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Search started for $label')),
+                            );
+                          }
+                        } else if (value == 'delete') {
+                          final bool? confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (BuildContext context) => AlertDialog(
+                              title: Text('Delete $label files?'),
+                              content: Text(
+                                'Are you sure you want to delete all $label files on disk?\n'
+                                'This will delete ${st!.episodeFileCount} file(s).',
+                              ),
+                              actions: <Widget>[
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, false),
+                                  child: const Text('Cancel'),
+                                ),
+                                FilledButton(
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: theme.colorScheme.error,
+                                    foregroundColor: theme.colorScheme.onError,
+                                  ),
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: const Text('Delete'),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (confirm == true && context.mounted) {
+                            final SonarrApi api = await ref.read(sonarrApiProvider(widget.instance).future);
+                            final List<SonarrEpisode> episodes = await api.getEpisodes(widget.series.id);
+                            final List<SonarrEpisode> seasonEpisodes = episodes
+                                .where((ep) =>
+                                    ep.seasonNumber == widget.season.seasonNumber &&
+                                    ep.hasFile &&
+                                    ep.episodeFileId > 0,)
+                                .toList();
+
+                            if (seasonEpisodes.isNotEmpty) {
+                              await Future.wait(
+                                seasonEpisodes.map((ep) => api.deleteEpisodeFile(ep.episodeFileId)),
+                              );
+                            }
+
+                            widget.onChanged(ref);
+
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('All $label files deleted')),
+                              );
+                            }
+                          }
+                        }
+                      },
+                      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                        const PopupMenuItem<String>(
+                          value: 'manual',
+                          child: Row(
+                            children: <Widget>[
+                              Icon(Icons.manage_search),
+                              SizedBox(width: 8),
+                              Text('Manual search'),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem<String>(
+                          value: 'search',
+                          child: Row(
+                            children: <Widget>[
+                              Icon(Icons.search),
+                              SizedBox(width: 8),
+                              Text('Search season'),
+                            ],
+                          ),
+                        ),
+                        if (st != null && st.episodeFileCount > 0)
+                          PopupMenuItem<String>(
+                            value: 'delete',
+                            child: Row(
+                              children: <Widget>[
+                                Icon(Icons.delete_outline, color: theme.colorScheme.error),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Delete season files',
+                                  style: TextStyle(color: theme.colorScheme.error),
+                                ),
+                              ],
+                            ),
+                          ),
                       ],
                     ),
-                  );
-
-                  if (confirm == true) {
-                    final SonarrApi api = await ref.read(sonarrApiProvider(instance).future);
-                    final List<SonarrEpisode> episodes = await api.getEpisodes(series.id);
-                    final List<SonarrEpisode> seasonEpisodes = episodes
-                        .where((ep) =>
-                            ep.seasonNumber == season.seasonNumber &&
-                            ep.hasFile &&
-                            ep.episodeFileId > 0,)
-                        .toList();
-
-                    if (seasonEpisodes.isNotEmpty) {
-                      await Future.wait(
-                        seasonEpisodes.map((ep) => api.deleteEpisodeFile(ep.episodeFileId)),
-                      );
-                    }
-
-                    onChanged(ref);
-
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('All $label files deleted')),
-                      );
-                    }
-                  }
-                },
-              ),
-            const Icon(Icons.expand_more),
-          ],
-        ),
-        children: <Widget>[
-          const Divider(height: 1),
-          episodesValue.when(
-            loading: () => const Padding(
-              padding: EdgeInsets.symmetric(vertical: Insets.md),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (Object err, StackTrace? stack) => Padding(
-              padding: const EdgeInsets.all(Insets.md),
-              child: Center(
-                child: Text(
-                  'Error loading episodes: $err',
-                  style: TextStyle(color: theme.colorScheme.error),
+                    AnimatedRotation(
+                      turns: _isExpanded ? 0.5 : 0.0,
+                      duration: const Duration(milliseconds: 200),
+                      child: const Icon(Icons.expand_more),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            data: (List<SonarrEpisode> list) {
-              final List<SonarrEpisode> seasonEpisodes = list
-                  .where((SonarrEpisode ep) => ep.seasonNumber == season.seasonNumber)
-                  .toList();
-
-              if (seasonEpisodes.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: Insets.md),
-                  child: Center(child: Text('No episodes found')),
-                );
-              }
-
-              // Sort by episode number ascending
-              seasonEpisodes.sort((SonarrEpisode a, SonarrEpisode b) =>
-                  a.episodeNumber - b.episodeNumber,);
-
-              return Column(
-                children: <Widget>[
-                  for (final SonarrEpisode ep in seasonEpisodes) ...[
-                    _EpisodeTile(
-                      instance: instance,
-                      seriesId: series.id,
-                      episode: ep,
-                    ),
-                    if (ep != seasonEpisodes.last) const Divider(height: 1, indent: Insets.xl),
-                  ],
-                  const SizedBox(height: Insets.xs),
-                ],
-              );
-            },
+            ],
           ),
+          if (_isExpanded) ...<Widget>[
+            const Divider(height: 1),
+            widget.episodesValue.when(
+              loading: () => const Padding(
+                padding: EdgeInsets.symmetric(vertical: Insets.md),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+              error: (Object err, StackTrace? stack) => Padding(
+                padding: const EdgeInsets.all(Insets.md),
+                child: Center(
+                  child: Text(
+                    'Error loading episodes: $err',
+                    style: TextStyle(color: theme.colorScheme.error),
+                  ),
+                ),
+              ),
+              data: (List<SonarrEpisode> list) {
+                final List<SonarrEpisode> seasonEpisodes = list
+                    .where((SonarrEpisode ep) => ep.seasonNumber == widget.season.seasonNumber)
+                    .toList();
+
+                if (seasonEpisodes.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: Insets.md),
+                    child: Center(child: Text('No episodes found')),
+                  );
+                }
+
+                // Sort by episode number ascending
+                seasonEpisodes.sort((SonarrEpisode a, SonarrEpisode b) =>
+                    a.episodeNumber - b.episodeNumber,);
+
+                return Column(
+                  children: <Widget>[
+                    for (final SonarrEpisode ep in seasonEpisodes) ...[
+                      _EpisodeTile(
+                        instance: widget.instance,
+                        seriesId: widget.series.id,
+                        episode: ep,
+                      ),
+                      if (ep != seasonEpisodes.last) const Divider(height: 1, indent: Insets.xl),
+                    ],
+                    const SizedBox(height: Insets.xs),
+                  ],
+                );
+              },
+            ),
+          ],
         ],
       ),
     );
-  }
-
-  Future<void> _toggleSeason(WidgetRef ref) async {
-    final SonarrApi api = await ref.read(sonarrApiProvider(instance).future);
-    final Map<String, dynamic> raw = await api.getSeriesRaw(series.id);
-    final List<dynamic> seasons = raw['seasons'] as List<dynamic>;
-    for (final dynamic s in seasons) {
-      final Map<String, dynamic> sm = s as Map<String, dynamic>;
-      if (sm['seasonNumber'] == season.seasonNumber) {
-        sm['monitored'] = !season.monitored;
-      }
-    }
-    await api.updateSeriesRaw(raw);
-    onChanged(ref);
   }
 }
 
@@ -792,6 +938,68 @@ class _EpisodeTile extends ConsumerWidget {
                 theme.colorScheme.errorContainer.withValues(alpha: 0.4),
                 theme.colorScheme.onErrorContainer,
               );
+
+    final AsyncValue<SonarrQueuePage> queueValue = ref.watch(sonarrQueueProvider(instance));
+    final SonarrQueueRecord? queueRecord = queueValue.maybeWhen(
+      data: (SonarrQueuePage page) => page.records
+          .firstWhereOrNull((SonarrQueueRecord r) => r.episodeId == episode.id),
+      orElse: () => null,
+    );
+
+    double progress = 0;
+    int progressPct = 0;
+    String detailText = '';
+    String labelOverride = '';
+    Color bgOverride = Colors.transparent;
+    Color fgOverride = Colors.transparent;
+
+    if (queueRecord != null) {
+      progress = queueRecord.size <= 0
+          ? 0
+          : ((queueRecord.size - queueRecord.sizeleft) / queueRecord.size).clamp(0, 1).toDouble();
+      progressPct = (progress * 100).round();
+
+      final bool hasWarning = queueRecord.trackedDownloadStatus?.toLowerCase() == 'warning' ||
+          queueRecord.statusMessages.isNotEmpty;
+      final bool hasError = queueRecord.trackedDownloadStatus?.toLowerCase() == 'error';
+
+      if (hasError) {
+        labelOverride = 'Error';
+        bgOverride = theme.colorScheme.errorContainer.withValues(alpha: 0.4);
+        fgOverride = theme.colorScheme.onErrorContainer;
+      } else if (hasWarning) {
+        labelOverride = 'Warning';
+        bgOverride = Colors.orange.withValues(alpha: 0.2);
+        fgOverride = Colors.orange[800] ?? Colors.orange;
+      } else if (queueRecord.status?.toLowerCase() == 'paused') {
+        labelOverride = 'Paused';
+        bgOverride = theme.colorScheme.outlineVariant.withValues(alpha: 0.4);
+        fgOverride = theme.colorScheme.outline;
+      } else if (queueRecord.status?.toLowerCase() == 'completed' || progress >= 0.999) {
+        labelOverride = 'Completed';
+        bgOverride = Colors.green.withValues(alpha: 0.15);
+        fgOverride = Colors.green[800] ?? Colors.green;
+      } else {
+        labelOverride = 'Downloading ($progressPct%)';
+        bgOverride = theme.colorScheme.primaryContainer.withValues(alpha: 0.4);
+        fgOverride = theme.colorScheme.onPrimaryContainer;
+      }
+
+      final List<String> details = <String>[];
+      if (queueRecord.timeleft != null && queueRecord.timeleft!.isNotEmpty) {
+        details.add(queueRecord.timeleft!);
+      }
+      if (queueRecord.status != null &&
+          queueRecord.status!.isNotEmpty &&
+          queueRecord.status!.toLowerCase() != 'downloading') {
+        details.add(queueRecord.status!);
+      }
+      detailText = details.join(' • ');
+    }
+
+    final String activeLabel = queueRecord != null ? labelOverride : label;
+    final Color activeBg = queueRecord != null ? bgOverride : bg;
+    final Color activeFg = queueRecord != null ? fgOverride : fg;
 
     return InkWell(
       onTap: () {
@@ -847,16 +1055,16 @@ class _EpisodeTile extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: bg,
+                          color: activeBg,
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
-                            color: fg.withValues(alpha: 0.1),
+                            color: activeFg.withValues(alpha: 0.1),
                           ),
                         ),
                         child: Text(
-                          label,
+                          activeLabel,
                           style: theme.textTheme.labelSmall?.copyWith(
-                            color: fg,
+                            color: activeFg,
                             fontWeight: FontWeight.bold,
                             fontSize: 10,
                           ),
@@ -870,6 +1078,30 @@ class _EpisodeTile extends ConsumerWidget {
                       ),
                     ],
                   ),
+                  if (queueRecord != null) ...[
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 4,
+                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          activeFg == Colors.transparent ? theme.colorScheme.primary : activeFg,
+                        ),
+                      ),
+                    ),
+                    if (detailText.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        detailText,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ],
                 ],
               ),
             ),
