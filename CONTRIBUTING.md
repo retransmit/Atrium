@@ -90,6 +90,34 @@ fix(core_networking): retry on connection-reset
 Open PRs against `development` (the default branch). `main` only receives
 merges from `development` at stable milestones. Squash-merge is the default.
 
+### Fork Synchronization & Feature Branch Workflow
+
+Since PRs are squash-merged, your fork's `development` branch will diverge from upstream after a merge. To avoid merge conflict issues, follow this workflow:
+
+1. **Add the upstream remote** (do this once):
+   ```sh
+   git remote add upstream https://github.com/0xLennox07/Atrium.git
+   ```
+
+2. **Sync your local `development` branch** before starting any new work:
+   ```sh
+   git fetch upstream
+   git checkout development
+   git merge --ff-only upstream/development
+   git push origin development
+   ```
+   *Note: If your branch has already diverged due to a squash-merge, you can reset it to align with upstream:*
+   ```sh
+   git reset --hard upstream/development
+   git push origin development --force
+   ```
+
+3. **Create a feature branch** off the fresh `development` branch for your changes:
+   ```sh
+   git checkout -b my-feature-branch
+   ```
+   Always commit your changes to and open PRs from feature branches rather than your fork's `development` branch. This keeps your local commits organized and prevents unrelated commits from leaking into your PRs.
+
 ## License
 
 By contributing you agree your contribution is licensed under
