@@ -1,6 +1,7 @@
 import 'package:core_networking/core_networking.dart';
 import 'package:dio/dio.dart';
 
+import 'models/prowlarr_history.dart';
 import 'models/prowlarr_indexer.dart';
 import 'models/prowlarr_indexer_stats.dart';
 import 'models/prowlarr_release.dart';
@@ -199,6 +200,32 @@ class ProwlarrApi {
           'indexerId': release.indexerId,
         },
       );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Paged history, newest first. [eventType] filters server-side by
+  /// HistoryEventType (1 grabbed, 2 query, 3 RSS, 4 auth); null returns all.
+  /// Filtering server-side is essential - RSS syncs flood the feed and would
+  /// otherwise bury grabs many pages deep.
+  Future<ProwlarrHistoryPage> getHistory({
+    int page = 1,
+    int pageSize = 50,
+    int? eventType,
+  }) async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>(
+        '$_base/history',
+        queryParameters: <String, dynamic>{
+          'page': page,
+          'pageSize': pageSize,
+          'sortKey': 'date',
+          'sortDirection': 'descending',
+          if (eventType != null) 'eventType': eventType,
+        },
+      );
+      return ProwlarrHistoryPage.fromJson(resp.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }

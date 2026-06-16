@@ -2,6 +2,7 @@ import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'models/prowlarr_history.dart';
 import 'models/prowlarr_indexer.dart';
 import 'models/prowlarr_indexer_stats.dart';
 import 'prowlarr_api.dart';
@@ -95,4 +96,22 @@ final prowlarrAppProfilesProvider =
         prowlarrApiProvider(instance).future,
       );
       return api.getAppProfiles();
+    });
+
+/// Args for [prowlarrHistoryProvider]: an instance plus an optional
+/// HistoryEventType filter (1 grabbed, 2 query, 3 RSS, 4 auth; null = all).
+typedef ProwlarrHistoryArgs = ({Instance instance, int? eventType});
+
+/// Recent history, newest first, optionally filtered by event type. Polls
+/// slowly while watched.
+final prowlarrHistoryProvider =
+    FutureProvider.autoDispose.family<ProwlarrHistoryPage, ProwlarrHistoryArgs>((
+      Ref ref,
+      ProwlarrHistoryArgs args,
+    ) async {
+      ref.pollEvery(prowlarrPollInterval);
+      final ProwlarrApi api = await ref.watch(
+        prowlarrApiProvider(args.instance).future,
+      );
+      return api.getHistory(eventType: args.eventType);
     });

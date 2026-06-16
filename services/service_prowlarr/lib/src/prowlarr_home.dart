@@ -5,18 +5,122 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'models/prowlarr_indexer.dart';
 import 'models/prowlarr_indexer_stats.dart';
+import 'prowlarr_history_tab.dart';
 import 'prowlarr_indexer_form_screen.dart';
 import 'prowlarr_providers.dart';
 import 'prowlarr_search_screen.dart';
 
-/// Prowlarr's per-instance UI: the indexer list with enable status and grab /
-/// query counts. Tapping an indexer opens its config form (edit / test /
-/// delete); the Add FAB creates one from a definition; the Search FAB runs a
-/// manual search across all indexers.
-class ProwlarrHome extends ConsumerWidget {
+/// Prowlarr's per-instance UI: a tabbed Indexers / History view. The Indexers
+/// tab lists indexers (tap to edit); its FABs add an indexer or run a manual
+/// search across all indexers.
+class ProwlarrHome extends StatefulWidget {
   const ProwlarrHome({required this.instance, super.key});
 
   final Instance instance;
+
+  @override
+  State<ProwlarrHome> createState() => _ProwlarrHomeState();
+}
+
+class _ProwlarrHomeState extends State<ProwlarrHome>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tab;
+
+  @override
+  void initState() {
+    super.initState();
+    _tab = TabController(length: 2, vsync: this);
+    _tab.addListener(() {
+      // Rebuild so the FAB shows only on the Indexers tab.
+      if (!_tab.indexIsChanging) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _tab.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Column(
+        children: <Widget>[
+          TabBar(
+            controller: _tab,
+            tabs: const <Widget>[
+              Tab(text: 'Indexers'),
+              Tab(text: 'History'),
+            ],
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tab,
+              children: <Widget>[
+                _IndexersTab(
+                  instance: widget.instance,
+                  onEdit: _openForm,
+                ),
+                ProwlarrHistoryTab(instance: widget.instance),
+              ],
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: _tab.index == 0 ? _indexerFabs(context) : null,
+    );
+  }
+
+  Widget _indexerFabs(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: <Widget>[
+        FloatingActionButton.small(
+          heroTag: 'prowlarr-search',
+          tooltip: 'Search',
+          onPressed: () => Navigator.of(context, rootNavigator: true).push(
+            MaterialPageRoute<void>(
+              builder: (_) => ProwlarrSearchScreen(instance: widget.instance),
+            ),
+          ),
+          child: const Icon(Icons.search),
+        ),
+        const SizedBox(height: Insets.sm),
+        FloatingActionButton.extended(
+          heroTag: 'prowlarr-add',
+          onPressed: _openForm,
+          icon: const Icon(Icons.add),
+          label: const Text('Add indexer'),
+        ),
+      ],
+    );
+  }
+
+  // Root navigator: branch-navigator pushes get swept by GoRouter shell
+  // rebuilds (see qBit detail/add history).
+  void _openForm([int? indexerId]) {
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ProwlarrIndexerFormScreen(
+          instance: widget.instance,
+          indexerId: indexerId,
+        ),
+      ),
+    );
+  }
+}
+
+/// The Indexers tab: the indexer list with enable status and grab / query
+/// counts. Tapping a row opens its config form.
+class _IndexersTab extends ConsumerWidget {
+  const _IndexersTab({required this.instance, required this.onEdit});
+
+  final Instance instance;
+  final ValueChanged<int> onEdit;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -26,85 +130,49 @@ class ProwlarrHome extends ConsumerWidget {
         ref.watch(prowlarrStatsByIdProvider(instance)).valueOrNull ??
             const <int, ProwlarrIndexerStat>{};
 
-    return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(prowlarrIndexersProvider(instance));
-          ref.invalidate(prowlarrStatsByIdProvider(instance));
-        },
-        child: AsyncValueView<List<ProwlarrIndexer>>(
-          value: indexers,
-          onRetry: () => ref.invalidate(prowlarrIndexersProvider(instance)),
-          data: (List<ProwlarrIndexer> list) {
-            if (list.isEmpty) {
-              return const EmptyView(
-                icon: Icons.travel_explore_outlined,
-                title: 'No indexers',
-                message: 'Tap "Add indexer" to configure one.',
-              );
-            }
-            return ListView.builder(
-              padding: Insets.pageH,
-              itemCount: list.length,
-              itemBuilder: (BuildContext context, int index) {
-                final ProwlarrIndexer ix = list[index];
-                final ProwlarrIndexerStat? stat = stats[ix.id];
-                return ListTile(
-                  leading: Icon(
-                    ix.enable ? Icons.check_circle : Icons.cancel_outlined,
-                    color: ix.enable
-                        ? Colors.green
-                        : Theme.of(context).colorScheme.outline,
-                  ),
-                  title: Text(ix.name),
-                  subtitle: Text(
-                    <String>[
-                      if (ix.protocol != null) ix.protocol!,
-                      if (stat != null) '${stat.numberOfGrabs} grabs',
-                      if (stat != null) '${stat.numberOfQueries} queries',
-                    ].join(' • '),
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _openForm(context, indexerId: ix.id),
-                );
-              },
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(prowlarrIndexersProvider(instance));
+        ref.invalidate(prowlarrStatsByIdProvider(instance));
+      },
+      child: AsyncValueView<List<ProwlarrIndexer>>(
+        value: indexers,
+        onRetry: () => ref.invalidate(prowlarrIndexersProvider(instance)),
+        data: (List<ProwlarrIndexer> list) {
+          if (list.isEmpty) {
+            return const EmptyView(
+              icon: Icons.travel_explore_outlined,
+              title: 'No indexers',
+              message: 'Tap "Add indexer" to configure one.',
             );
-          },
-        ),
-      ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: <Widget>[
-          FloatingActionButton.small(
-            heroTag: 'prowlarr-search',
-            tooltip: 'Search',
-            onPressed: () => Navigator.of(context, rootNavigator: true).push(
-              MaterialPageRoute<void>(
-                builder: (_) => ProwlarrSearchScreen(instance: instance),
-              ),
-            ),
-            child: const Icon(Icons.search),
-          ),
-          const SizedBox(height: Insets.sm),
-          FloatingActionButton.extended(
-            heroTag: 'prowlarr-add',
-            onPressed: () => _openForm(context),
-            icon: const Icon(Icons.add),
-            label: const Text('Add indexer'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Root navigator: branch-navigator pushes get swept by GoRouter shell
-  // rebuilds (see qBit detail/add history).
-  void _openForm(BuildContext context, {int? indexerId}) {
-    Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute<void>(
-        builder: (_) =>
-            ProwlarrIndexerFormScreen(instance: instance, indexerId: indexerId),
+          }
+          return ListView.builder(
+            padding: Insets.pageH,
+            itemCount: list.length,
+            itemBuilder: (BuildContext context, int index) {
+              final ProwlarrIndexer ix = list[index];
+              final ProwlarrIndexerStat? stat = stats[ix.id];
+              return ListTile(
+                leading: Icon(
+                  ix.enable ? Icons.check_circle : Icons.cancel_outlined,
+                  color: ix.enable
+                      ? Colors.green
+                      : Theme.of(context).colorScheme.outline,
+                ),
+                title: Text(ix.name),
+                subtitle: Text(
+                  <String>[
+                    if (ix.protocol != null) ix.protocol!,
+                    if (stat != null) '${stat.numberOfGrabs} grabs',
+                    if (stat != null) '${stat.numberOfQueries} queries',
+                  ].join(' • '),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => onEdit(ix.id),
+              );
+            },
+          );
+        },
       ),
     );
   }
