@@ -179,16 +179,17 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     showModalBottomSheet<void>(
       context: context,
       useRootNavigator: true,
+      showDragHandle: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
             final ThemeData theme = Theme.of(context);
             return Container(
-              padding: const EdgeInsets.all(Insets.md),
-              height: 360,
+              padding: const EdgeInsets.fromLTRB(Insets.md, 0, Insets.md, Insets.md),
+              height: 320,
               child: Column(
                 children: <Widget>[
                   // Year Selector Row
@@ -221,13 +222,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: Insets.md),
+                  const SizedBox(height: Insets.sm),
                   // Month Grid (3x4)
                   Expanded(
                     child: GridView.builder(
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 4,
-                        childAspectRatio: 1.5,
+                        childAspectRatio: 1.6,
                         crossAxisSpacing: Insets.sm,
                         mainAxisSpacing: Insets.sm,
                       ),
@@ -235,7 +236,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       itemBuilder: (BuildContext context, int index) {
                         final int monthNum = index + 1;
                         final bool isCurrent = _visibleMonth.month == monthNum;
-                        final String monthName = DateFormat('MMM').format(DateTime(2000, monthNum));
+                        final String monthName = DateFormat('MMMM').format(DateTime(2000, monthNum));
                         return InkWell(
                           onTap: () {
                             setState(() {
@@ -243,7 +244,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                             });
                             Navigator.pop(context);
                           },
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(12),
                           child: Container(
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
@@ -251,16 +252,16 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                   ? theme.colorScheme.primary
                                   : theme.colorScheme.surfaceContainerHighest
                                       .withValues(alpha: 0.3),
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(12),
                               border: isCurrent
                                   ? null
                                   : Border.all(
                                       color: theme.colorScheme.outline
-                                          .withValues(alpha: 0.2),
+                                          .withValues(alpha: 0.15),
                                     ),
                             ),
                             child: Text(
-                              monthName,
+                              monthName.substring(0, 3),
                               style: theme.textTheme.labelLarge?.copyWith(
                                 color: isCurrent
                                     ? theme.colorScheme.onPrimary
@@ -288,6 +289,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   Widget build(BuildContext context) {
     final AsyncValue<List<CalendarEvent>> calendar =
         ref.watch(globalCalendarProvider(_visibleMonth));
+
+    // Prefetch and cache adjacent months to ensure instant navigation transitions
+    final DateTime nextMonth = DateTime(_visibleMonth.year, _visibleMonth.month + 1);
+    final DateTime prevMonth = DateTime(_visibleMonth.year, _visibleMonth.month - 1);
+    ref.watch(globalCalendarProvider(nextMonth));
+    ref.watch(globalCalendarProvider(prevMonth));
+
     final List<Instance> activeServices = ref.watch(activeInstancesProvider);
     final bool hasCalendarServices = activeServices.any(
       (Instance i) => i.kind == ServiceKind.sonarr || i.kind == ServiceKind.radarr,
@@ -340,59 +348,92 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 // Header Row
                 Row(
                   children: <Widget>[
-                    InkWell(
-                      onTap: () => _showMonthYearPicker(context),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: Insets.xs,
-                          vertical: 4,
-                        ),
-                        child: Row(
-                          children: <Widget>[
-                            Text(
-                              DateFormat('MMMM yyyy').format(_visibleMonth),
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => _showMonthYearPicker(context),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: Insets.xs,
+                            vertical: 4,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Text(
+                                DateFormat('yyyy').format(_visibleMonth),
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.outline,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.2,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.arrow_drop_down,
-                              size: 20,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ],
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Flexible(
+                                    child: Text(
+                                      DateFormat('MMMM').format(_visibleMonth),
+                                      style: theme.textTheme.titleLarge?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Icon(
+                                    Icons.arrow_drop_down,
+                                    size: 20,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                    const Spacer(),
-                    TextButton(
+                    const SizedBox(width: Insets.xs),
+                    TextButton.icon(
                       onPressed: _goToToday,
-                      child: const Text('Today'),
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: Insets.sm),
+                      ),
+                      icon: const Icon(Icons.today, size: 16),
+                      label: const Text('Today'),
                     ),
                     IconButton(
                       icon: const Icon(Icons.chevron_left),
                       onPressed: _prevMonth,
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
+                    const SizedBox(width: Insets.xs),
                     IconButton(
                       icon: const Icon(Icons.chevron_right),
                       onPressed: _nextMonth,
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
                     ),
                   ],
                 ),
-                const SizedBox(height: Insets.sm),
+                const SizedBox(height: Insets.md),
                 // Weekdays header
-                const Row(
+                Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: <Widget>[
-                    Expanded(child: Center(child: Text('Sun', style: TextStyle(fontWeight: FontWeight.w500)))),
-                    Expanded(child: Center(child: Text('Mon', style: TextStyle(fontWeight: FontWeight.w500)))),
-                    Expanded(child: Center(child: Text('Tue', style: TextStyle(fontWeight: FontWeight.w500)))),
-                    Expanded(child: Center(child: Text('Wed', style: TextStyle(fontWeight: FontWeight.w500)))),
-                    Expanded(child: Center(child: Text('Thu', style: TextStyle(fontWeight: FontWeight.w500)))),
-                    Expanded(child: Center(child: Text('Fri', style: TextStyle(fontWeight: FontWeight.w500)))),
-                    Expanded(child: Center(child: Text('Sat', style: TextStyle(fontWeight: FontWeight.w500)))),
+                    _buildWeekdayHeader(theme, 'Sun'),
+                    _buildWeekdayHeader(theme, 'Mon'),
+                    _buildWeekdayHeader(theme, 'Tue'),
+                    _buildWeekdayHeader(theme, 'Wed'),
+                    _buildWeekdayHeader(theme, 'Thu'),
+                    _buildWeekdayHeader(theme, 'Fri'),
+                    _buildWeekdayHeader(theme, 'Sat'),
                   ],
                 ),
                 const SizedBox(height: Insets.xs),
@@ -442,16 +483,20 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: <Widget>[
                             Container(
-                              width: 32,
-                              height: 32,
+                              width: 36,
+                              height: 36,
                               alignment: Alignment.center,
                               decoration: BoxDecoration(
-                                color: isSelected ? theme.colorScheme.primary : Colors.transparent,
+                                color: isSelected
+                                    ? theme.colorScheme.primary
+                                    : isToday
+                                        ? theme.colorScheme.primaryContainer.withValues(alpha: 0.45)
+                                        : Colors.transparent,
                                 shape: BoxShape.circle,
                                 border: isToday && !isSelected
                                     ? Border.all(
                                         color: theme.colorScheme.primary,
-                                        width: 2,
+                                        width: 1.5,
                                       )
                                     : null,
                               ),
@@ -467,7 +512,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 4),
                             SizedBox(
                               height: 6,
                               child: Row(
@@ -524,6 +569,20 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       ),
     );
   }
+
+  Widget _buildWeekdayHeader(ThemeData theme, String day) {
+    return Expanded(
+      child: Center(
+        child: Text(
+          day,
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: theme.colorScheme.outline,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _Dot extends StatelessWidget {
@@ -533,10 +592,13 @@ class _Dot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 4,
-      height: 4,
-      margin: const EdgeInsets.symmetric(horizontal: 1),
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      width: 5,
+      height: 5,
+      margin: const EdgeInsets.symmetric(horizontal: 1.5),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(2.5),
+      ),
     );
   }
 }
@@ -633,124 +695,161 @@ class _EventTile extends ConsumerWidget {
     }
 
     final bool isFuture = event.date.isAfter(DateTime.now());
-    final (String label, Color bg, Color fg) = event.hasFile
+    final (String label, Color bg, Color fg, Color accentColor) = event.hasFile
         ? (
             'Downloaded',
             theme.colorScheme.primaryContainer,
             theme.colorScheme.onPrimaryContainer,
+            Colors.green,
           )
         : isFuture
             ? (
                 'Upcoming',
                 theme.colorScheme.secondaryContainer,
                 theme.colorScheme.onSecondaryContainer,
+                theme.colorScheme.primary,
               )
             : (
                 'Missing',
                 theme.colorScheme.errorContainer,
                 theme.colorScheme.onErrorContainer,
+                theme.colorScheme.error,
               );
 
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: Insets.sm, horizontal: Insets.xs),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            ClipRRect(
-              borderRadius: Radii.card,
-              child: SizedBox(
-                width: 48,
-                height: 72,
-                child: posterWidget,
+    return Card(
+      margin: const EdgeInsets.only(bottom: Insets.sm),
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+        ),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(
+                color: accentColor,
+                width: 4,
               ),
             ),
-            const SizedBox(width: Insets.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    event.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+          ),
+          padding: const EdgeInsets.all(Insets.md),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: 52,
+                  height: 78,
+                  child: posterWidget,
+                ),
+              ),
+              const SizedBox(width: Insets.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      event.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        height: 1.2,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          releaseType,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.outline,
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: Insets.xs,
+                      runSpacing: Insets.xs,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            releaseType,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: Insets.sm),
-                      Expanded(
-                        child: Text(
-                          instance.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        Text(
+                          '•',
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.outline,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: <Widget>[
-                      Icon(
-                        Icons.access_time,
-                        size: 13,
-                        color: theme.colorScheme.outline,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        DateFormat.jm().format(event.date.toLocal()),
-                        style: theme.textTheme.labelMedium?.copyWith(
+                        Text(
+                          instance.name,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.outline,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: <Widget>[
+                        Icon(
+                          Icons.access_time,
+                          size: 14,
                           color: theme.colorScheme.outline,
                         ),
-                      ),
-                      const SizedBox(width: Insets.md),
-                      Icon(
-                        event.monitored ? Icons.bookmark : Icons.bookmark_border,
-                        size: 13,
-                        color: theme.colorScheme.outline,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        event.monitored ? 'Monitored' : 'Unmonitored',
-                        style: theme.textTheme.labelMedium?.copyWith(
+                        const SizedBox(width: 4),
+                        Text(
+                          DateFormat.jm().format(event.date.toLocal()),
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: theme.colorScheme.outline,
+                          ),
+                        ),
+                        const SizedBox(width: Insets.md),
+                        Icon(
+                          event.monitored ? Icons.bookmark : Icons.bookmark_border,
+                          size: 14,
                           color: theme.colorScheme.outline,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 4),
+                        Text(
+                          event.monitored ? 'Monitored' : 'Unmonitored',
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            color: theme.colorScheme.outline,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: Insets.sm),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: bg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: fg.withValues(alpha: 0.15),
                   ),
-                ],
+                ),
+                child: Text(
+                  label,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: fg,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(width: Insets.sm),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: Insets.sm, vertical: 4),
-              decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
-              child: Text(
-                label,
-                style: theme.textTheme.labelSmall?.copyWith(color: fg, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
