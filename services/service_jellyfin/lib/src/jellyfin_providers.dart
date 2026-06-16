@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'jellyfin_client.dart';
 import 'models/jellyfin_item.dart';
+import 'models/jellyfin_session.dart';
 import 'models/jellyfin_view.dart';
 
 /// A logged-in [JellyfinClient] for an instance.
@@ -57,6 +58,14 @@ final jellyfinItemsProvider =
   final (Instance instance, String libraryId) = key;
   final JellyfinClient client =
       await ref.watch(jellyfinClientProvider(instance).future);
+      
+  if (libraryId == 'watched') {
+    return client.getWatchedItems();
+  }
+  if (libraryId == 'unwatched') {
+    return client.getUnwatchedItems();
+  }
+  
   return client.getItems(libraryId);
 });
 
@@ -80,6 +89,16 @@ final jellyfinNextUpProvider =
   return client.getNextUp();
 });
 
+final jellyfinLatestItemsProvider =
+    FutureProvider.family<List<JellyfinItem>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final JellyfinClient client =
+      await ref.watch(jellyfinClientProvider(instance).future);
+  return client.getLatestItems();
+});
+
 final jellyfinFavoritesProvider =
     FutureProvider.family<List<JellyfinItem>, Instance>((
   Ref ref,
@@ -90,15 +109,6 @@ final jellyfinFavoritesProvider =
   return client.getFavorites();
 });
 
-final jellyfinLatestItemsProvider =
-    FutureProvider.family<List<JellyfinItem>, Instance>((
-  Ref ref,
-  Instance instance,
-) async {
-  final JellyfinClient client =
-      await ref.watch(jellyfinClientProvider(instance).future);
-  return client.getLatestItems();
-});
 
 final jellyfinItemDetailsProvider =
     FutureProvider.family<JellyfinItem, (Instance, String)>((
@@ -134,3 +144,44 @@ final jellyfinEpisodesProvider =
 });
 
 
+
+final jellyfinSessionsProvider =
+    StreamProvider.family<List<ActiveSession>, Instance>((
+  Ref ref,
+  Instance instance,
+) async* {
+  final JellyfinClient client =
+      await ref.watch(jellyfinClientProvider(instance).future);
+      
+  while (true) {
+    yield await client.getSessions();
+    await Future<void>.delayed(const Duration(seconds: 10));
+  }
+});
+
+final jellyfinToggleWatchedProvider =
+    Provider.family<Future<void> Function(String, bool), Instance>((
+  Ref ref,
+  Instance instance,
+) {
+  return (String itemId, bool watched) async {
+    final JellyfinClient client =
+        await ref.watch(jellyfinClientProvider(instance).future);
+
+    // Jellyfin natively supports marking Series/Season/BoxSet as watched
+    // with a single API call to the item itself. No need to map episodes!
+    if (watched) {
+      await client.markAsWatched(itemId);
+    } else {
+      await client.markAsUnwatched(itemId);
+    }
+
+    // Give Jellyfin a moment to recalculate UnplayedItemCount in its database
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+
+    ref.invalidate(jellyfinItemsProvider);
+    ref.invalidate(jellyfinResumeItemsProvider);
+    ref.invalidate(jellyfinItemDetailsProvider((instance, itemId)));
+    ref.invalidate(jellyfinNextUpProvider);
+  };
+});

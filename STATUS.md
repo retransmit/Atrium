@@ -48,18 +48,12 @@ Atrium is a **controller** app. Video playback was removed by design
   retry) with 10s auto-refresh polling. The Requests tab and item detail use
   poster-rich cards (a darkened backdrop-image background, poster, metadata, and
   solid availability/approval status pills) styled after the Jellyseerr layout.
+- **Jellyfin / Emby** (live-verified): auth, library chips + poster grid, folder
+  drill-down, Next Up / Recently Added / Continue Watching resume rows, active
+  sessions tab, item detail screens, in-server search, favorite toggles, and
+  watched/unwatched toggles.
 
 ## Partially done
-
-### Media servers - Jellyfin / Emby (browse + detail + search)
-
-Have: auth, library chips + poster grid, folder drill-down, Continue
-Watching resume rows, item detail screens, in-server search, favorite
-toggles (contributed). Missing:
-
-1. Next Up / Recently Added home rows
-2. Now Playing / active sessions tab
-3. Watched/unwatched toggles
 
 ### Plex (browse + hub + detail + search, live-verified)
 
