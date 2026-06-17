@@ -411,6 +411,7 @@ class _SonarrSettingsFormScreenState extends ConsumerState<SonarrSettingsFormScr
                         validator: (val) {
                           // Allow optional textbox fields
                           if (field['name'] == 'directory') return null; // directory is typically optional
+                          if (field['name'] == 'avatar') return null; // Discord avatar is optional
                           if (val == null || val.trim().isEmpty) return 'Required';
                           return null;
                         },
