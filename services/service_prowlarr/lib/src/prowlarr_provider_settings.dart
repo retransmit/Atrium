@@ -4,54 +4,168 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'models/prowlarr_indexer_stats.dart';
 import 'prowlarr_api.dart';
 import 'prowlarr_form_fields.dart';
 import 'prowlarr_providers.dart';
 
-/// Add or edit a Prowlarr indexer.
-///
-/// In ADD mode ([indexerId] null) it first shows a searchable list of indexer
-/// definitions (`/indexer/schema` - Prowlarr returns hundreds), then the config
-/// form for the chosen one. In EDIT mode it loads the raw indexer by id and
-/// shows the same form. Dynamic `fields` are rendered from the schema, mirroring
-/// the *arr settings-form pattern; the payload round-trips the whole object.
-class ProwlarrIndexerFormScreen extends ConsumerStatefulWidget {
-  const ProwlarrIndexerFormScreen({
+/// Describes a Servarr "provider" settings resource (download client,
+/// notification, indexer proxy) so one generic list + form can serve them all.
+/// They share the `/{endpoint}`, `/{endpoint}/schema`, `/{endpoint}/test` and
+/// `/{endpoint}/{id}` routes; only the title and a few top-level fields differ.
+class ProwlarrProviderConfig {
+  const ProwlarrProviderConfig({
+    required this.endpoint,
+    required this.title,
+    required this.resourceLabel,
+    required this.icon,
+    this.topLevel,
+  });
+
+  /// API path segment, e.g. `downloadclient`.
+  final String endpoint;
+
+  /// Plural screen title, e.g. `Download Clients`.
+  final String title;
+
+  /// Singular noun for messages, e.g. `download client`.
+  final String resourceLabel;
+
+  final IconData icon;
+
+  /// Builds the resource-specific top-level controls (enable/priority, an app's
+  /// event toggles, ...). Mutates [raw] in place; call `onChanged` to rebuild.
+  final List<Widget> Function(
+    BuildContext context,
+    Map<String, dynamic> raw,
+    VoidCallback onChanged,
+  )? topLevel;
+}
+
+/// Generic list screen for a provider resource: shows each configured instance
+/// (tap to edit) and an Add FAB. Pushed from the Prowlarr Settings menu.
+class ProwlarrProviderScreen extends ConsumerWidget {
+  const ProwlarrProviderScreen({
     required this.instance,
-    this.indexerId,
+    required this.config,
     super.key,
   });
 
   final Instance instance;
-  final int? indexerId;
+  final ProwlarrProviderConfig config;
+
+  ProwlarrProviderArgs get _args =>
+      (instance: instance, endpoint: config.endpoint);
 
   @override
-  ConsumerState<ProwlarrIndexerFormScreen> createState() =>
-      _ProwlarrIndexerFormScreenState();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<List<Map<String, dynamic>>> list =
+        ref.watch(prowlarrProvidersProvider(_args));
+    return Scaffold(
+      appBar: AppBar(title: Text(config.title)),
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'prowlarr-add-${config.endpoint}',
+        onPressed: () => _openForm(context),
+        icon: const Icon(Icons.add),
+        label: const Text('Add'),
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async => ref.invalidate(prowlarrProvidersProvider(_args)),
+        child: AsyncValueView<List<Map<String, dynamic>>>(
+          value: list,
+          onRetry: () => ref.invalidate(prowlarrProvidersProvider(_args)),
+          data: (List<Map<String, dynamic>> items) {
+            if (items.isEmpty) {
+              return EmptyView(
+                icon: config.icon,
+                title: 'No ${config.title.toLowerCase()}',
+                message: 'Tap Add to configure a ${config.resourceLabel}.',
+              );
+            }
+            return ListView.builder(
+              padding: Insets.pageH,
+              itemCount: items.length,
+              itemBuilder: (BuildContext context, int i) {
+                final Map<String, dynamic> m = items[i];
+                final String name = (m['name'] as String?) ?? 'Unknown';
+                final String impl =
+                    (m['implementationName'] as String?) ?? '';
+                final bool hasEnable = m.containsKey('enable');
+                final bool enabled = m['enable'] == true;
+                return ListTile(
+                  leading: hasEnable
+                      ? Icon(
+                          enabled
+                              ? Icons.check_circle
+                              : Icons.cancel_outlined,
+                          color: enabled
+                              ? Colors.green
+                              : Theme.of(context).colorScheme.outline,
+                        )
+                      : Icon(config.icon),
+                  title: Text(name),
+                  subtitle: impl.isNotEmpty ? Text(impl) : null,
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () =>
+                      _openForm(context, id: (m['id'] as num?)?.toInt()),
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  void _openForm(BuildContext context, {int? id}) {
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _ProviderFormScreen(
+          instance: instance,
+          config: config,
+          id: id,
+        ),
+      ),
+    );
+  }
 }
 
-class _ProwlarrIndexerFormScreenState
-    extends ConsumerState<ProwlarrIndexerFormScreen> {
+/// Add or edit one provider instance. ADD shows a searchable schema list, then
+/// the config form; EDIT loads the raw object by id. Dynamic `fields` render via
+/// [ProwlarrDynamicField]; resource-specific top-level controls come from
+/// [ProwlarrProviderConfig.topLevel]. The payload round-trips the whole object.
+class _ProviderFormScreen extends ConsumerStatefulWidget {
+  const _ProviderFormScreen({
+    required this.instance,
+    required this.config,
+    this.id,
+  });
+
+  final Instance instance;
+  final ProwlarrProviderConfig config;
+  final int? id;
+
+  @override
+  ConsumerState<_ProviderFormScreen> createState() =>
+      _ProviderFormScreenState();
+}
+
+class _ProviderFormScreenState extends ConsumerState<_ProviderFormScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
 
-  Map<String, dynamic>? _selected; // chosen schema (add) or raw indexer (edit)
+  Map<String, dynamic>? _selected; // chosen schema (add) or raw object (edit)
   List<Map<String, dynamic>> _fields = <Map<String, dynamic>>[];
-
-  bool _enabled = true;
-  int _priority = 25;
-  int? _appProfileId;
 
   bool _showAdvanced = false;
   bool _testing = false;
   bool _saving = false;
   bool _deleting = false;
-
-  // Edit-mode raw load error (null while loading or once loaded).
   String? _loadError;
 
-  bool get _isEdit => widget.indexerId != null;
+  bool get _isEdit => widget.id != null;
+  ProwlarrProviderConfig get _cfg => widget.config;
+  ProwlarrProviderArgs get _args =>
+      (instance: widget.instance, endpoint: _cfg.endpoint);
 
   @override
   void initState() {
@@ -74,7 +188,8 @@ class _ProwlarrIndexerFormScreenState
     try {
       final ProwlarrApi api =
           await ref.read(prowlarrApiProvider(widget.instance).future);
-      final Map<String, dynamic> raw = await api.getIndexerRaw(widget.indexerId!);
+      final Map<String, dynamic> raw =
+          await api.getProviderRaw(_cfg.endpoint, widget.id!);
       if (!mounted) {
         return;
       }
@@ -86,7 +201,6 @@ class _ProwlarrIndexerFormScreenState
     }
   }
 
-  /// Seed the form state from a schema or raw indexer map.
   void _adopt(Map<String, dynamic> source) {
     _selected = source;
     _nameController.text = (source['name'] as String?) ??
@@ -95,20 +209,12 @@ class _ProwlarrIndexerFormScreenState
     _fields = ((source['fields'] as List<dynamic>?) ?? <dynamic>[])
         .map((dynamic f) => Map<String, dynamic>.from(f as Map<dynamic, dynamic>))
         .toList();
-    _enabled = (source['enable'] as bool?) ?? true;
-    _priority = (source['priority'] as num?)?.toInt() ?? 25;
-    _appProfileId = (source['appProfileId'] as num?)?.toInt();
   }
 
   Map<String, dynamic> _buildPayload() {
     final Map<String, dynamic> payload = Map<String, dynamic>.from(_selected!);
     payload['name'] = _nameController.text.trim();
     payload['fields'] = _fields;
-    payload['enable'] = _enabled;
-    payload['priority'] = _priority;
-    if (_appProfileId != null) {
-      payload['appProfileId'] = _appProfileId;
-    }
     payload['tags'] = (payload['tags'] as List<dynamic>?) ?? <dynamic>[];
     return payload;
   }
@@ -122,10 +228,8 @@ class _ProwlarrIndexerFormScreenState
     try {
       final ProwlarrApi api =
           await ref.read(prowlarrApiProvider(widget.instance).future);
-      await api.testIndexerRaw(_buildPayload());
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Test passed')),
-      );
+      await api.testProvider(_cfg.endpoint, _buildPayload());
+      messenger.showSnackBar(const SnackBar(content: Text('Test passed')));
     } on Object catch (e) {
       messenger.showSnackBar(
         SnackBar(content: Text('Test failed: ${_errorMessage(e)}')),
@@ -149,13 +253,19 @@ class _ProwlarrIndexerFormScreenState
           await ref.read(prowlarrApiProvider(widget.instance).future);
       final Map<String, dynamic> payload = _buildPayload();
       if (_isEdit) {
-        await api.updateIndexerRaw(payload);
+        await api.updateProvider(_cfg.endpoint, payload);
       } else {
-        await api.createIndexerRaw(payload);
+        await api.createProvider(_cfg.endpoint, payload);
       }
-      ref.invalidate(prowlarrIndexersProvider(widget.instance));
+      ref.invalidate(prowlarrProvidersProvider(_args));
       messenger.showSnackBar(
-        SnackBar(content: Text(_isEdit ? 'Indexer saved' : 'Indexer added')),
+        SnackBar(
+          content: Text(
+            _isEdit
+                ? '${_capitalize(_cfg.resourceLabel)} saved'
+                : '${_capitalize(_cfg.resourceLabel)} added',
+          ),
+        ),
       );
       nav.pop();
     } on Object catch (e) {
@@ -172,7 +282,7 @@ class _ProwlarrIndexerFormScreenState
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) => AlertDialog(
-        title: const Text('Delete indexer?'),
+        title: Text('Delete ${_cfg.resourceLabel}?'),
         content: Text('Remove "${_nameController.text}" from Prowlarr?'),
         actions: <Widget>[
           TextButton(
@@ -199,9 +309,11 @@ class _ProwlarrIndexerFormScreenState
     try {
       final ProwlarrApi api =
           await ref.read(prowlarrApiProvider(widget.instance).future);
-      await api.deleteIndexer(widget.indexerId!);
-      ref.invalidate(prowlarrIndexersProvider(widget.instance));
-      messenger.showSnackBar(const SnackBar(content: Text('Indexer deleted')));
+      await api.deleteProvider(_cfg.endpoint, widget.id!);
+      ref.invalidate(prowlarrProvidersProvider(_args));
+      messenger.showSnackBar(
+        SnackBar(content: Text('${_capitalize(_cfg.resourceLabel)} deleted')),
+      );
       nav.pop();
     } on Object catch (e) {
       messenger.showSnackBar(
@@ -217,10 +329,10 @@ class _ProwlarrIndexerFormScreenState
   Widget build(BuildContext context) {
     if (_isEdit && _selected == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Edit indexer')),
+        appBar: AppBar(title: Text('Edit ${_cfg.resourceLabel}')),
         body: _loadError != null
             ? ErrorView(
-                title: 'Could not load indexer',
+                title: 'Could not load ${_cfg.resourceLabel}',
                 message: _loadError!,
                 onRetry: _loadRaw,
               )
@@ -228,8 +340,9 @@ class _ProwlarrIndexerFormScreenState
       );
     }
     if (_selected == null) {
-      return _SchemaPicker(
+      return _ProviderSchemaPicker(
         instance: widget.instance,
+        config: _cfg,
         onPick: (Map<String, dynamic> schema) => setState(() => _adopt(schema)),
       );
     }
@@ -237,11 +350,9 @@ class _ProwlarrIndexerFormScreenState
   }
 
   Widget _buildForm(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
     final String impl = (_selected!['implementationName'] as String?) ?? '';
-    final String title = _isEdit
-        ? 'Edit ${_nameController.text}'
-        : 'Add ${_selected!['name'] ?? impl}';
+    final String title =
+        _isEdit ? 'Edit ${_nameController.text}' : 'Add $impl';
 
     final List<Map<String, dynamic>> visibleFields =
         _fields.where((Map<String, dynamic> f) {
@@ -253,6 +364,10 @@ class _ProwlarrIndexerFormScreenState
       }
       return true;
     }).toList();
+
+    final List<Widget> topLevel = _cfg.topLevel
+            ?.call(context, _selected!, () => setState(() {})) ??
+        const <Widget>[];
 
     return Scaffold(
       appBar: AppBar(
@@ -297,39 +412,7 @@ class _ProwlarrIndexerFormScreenState
                   (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: Insets.md),
-            Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: theme.dividerColor),
-                borderRadius: Radii.card,
-              ),
-              child: SwitchListTile(
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: Insets.md),
-                title: const Text('Enabled'),
-                value: _enabled,
-                onChanged: (bool v) => setState(() => _enabled = v),
-              ),
-            ),
-            const SizedBox(height: Insets.md),
-            TextFormField(
-              initialValue: '$_priority',
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Priority',
-                helperText: 'Lower is higher priority (1-50, default 25)',
-                border: OutlineInputBorder(),
-              ),
-              onChanged: (String v) => _priority = int.tryParse(v) ?? _priority,
-              validator: (String? v) =>
-                  (v == null || int.tryParse(v) == null) ? 'Number' : null,
-            ),
-            const SizedBox(height: Insets.md),
-            _SyncProfileDropdown(
-              instance: widget.instance,
-              value: _appProfileId,
-              onChanged: (int? v) => setState(() => _appProfileId = v),
-            ),
-            const SizedBox(height: Insets.md),
+            ...topLevel,
             ...visibleFields.map(
               (Map<String, dynamic> f) => ProwlarrDynamicField(
                 key: ValueKey<String>('${f['name']}'),
@@ -368,13 +451,6 @@ class _ProwlarrIndexerFormScreenState
                 ),
               ],
             ),
-            if (_isEdit) ...<Widget>[
-              const SizedBox(height: Insets.lg),
-              _IndexerStatsSection(
-                instance: widget.instance,
-                indexerId: widget.indexerId!,
-              ),
-            ],
           ],
         ),
       ),
@@ -382,18 +458,24 @@ class _ProwlarrIndexerFormScreenState
   }
 }
 
-/// The searchable list of indexer definitions shown in ADD mode.
-class _SchemaPicker extends ConsumerStatefulWidget {
-  const _SchemaPicker({required this.instance, required this.onPick});
+/// The searchable list of provider definitions shown in ADD mode.
+class _ProviderSchemaPicker extends ConsumerStatefulWidget {
+  const _ProviderSchemaPicker({
+    required this.instance,
+    required this.config,
+    required this.onPick,
+  });
 
   final Instance instance;
+  final ProwlarrProviderConfig config;
   final ValueChanged<Map<String, dynamic>> onPick;
 
   @override
-  ConsumerState<_SchemaPicker> createState() => _SchemaPickerState();
+  ConsumerState<_ProviderSchemaPicker> createState() =>
+      _ProviderSchemaPickerState();
 }
 
-class _SchemaPickerState extends ConsumerState<_SchemaPicker> {
+class _ProviderSchemaPickerState extends ConsumerState<_ProviderSchemaPicker> {
   final TextEditingController _query = TextEditingController();
 
   @override
@@ -402,13 +484,20 @@ class _SchemaPickerState extends ConsumerState<_SchemaPicker> {
     super.dispose();
   }
 
+  String _name(Map<String, dynamic> s) =>
+      (s['implementationName'] as String?) ??
+      (s['name'] as String?) ??
+      'Unknown';
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final ProwlarrProviderArgs args =
+        (instance: widget.instance, endpoint: widget.config.endpoint);
     final AsyncValue<List<Map<String, dynamic>>> schemas =
-        ref.watch(prowlarrIndexerSchemasProvider(widget.instance));
+        ref.watch(prowlarrProviderSchemasProvider(args));
     return Scaffold(
-      appBar: AppBar(title: const Text('Add indexer')),
+      appBar: AppBar(title: Text('Add ${widget.config.resourceLabel}')),
       body: Column(
         children: <Widget>[
           Padding(
@@ -417,7 +506,7 @@ class _SchemaPickerState extends ConsumerState<_SchemaPicker> {
               controller: _query,
               autofocus: true,
               decoration: const InputDecoration(
-                hintText: 'Search indexers...',
+                hintText: 'Search...',
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
               ),
@@ -427,8 +516,8 @@ class _SchemaPickerState extends ConsumerState<_SchemaPicker> {
           Expanded(
             child: AsyncValueView<List<Map<String, dynamic>>>(
               value: schemas,
-              onRetry: () => ref
-                  .invalidate(prowlarrIndexerSchemasProvider(widget.instance)),
+              onRetry: () =>
+                  ref.invalidate(prowlarrProviderSchemasProvider(args)),
               data: (List<Map<String, dynamic>> list) {
                 final String q = _query.text.trim().toLowerCase();
                 final List<Map<String, dynamic>> filtered = q.isEmpty
@@ -436,16 +525,14 @@ class _SchemaPickerState extends ConsumerState<_SchemaPicker> {
                     : list
                         .where(
                           (Map<String, dynamic> s) =>
-                              ((s['name'] ?? '') as String)
-                                  .toLowerCase()
-                                  .contains(q),
+                              _name(s).toLowerCase().contains(q),
                         )
                         .toList();
                 if (filtered.isEmpty) {
                   return const EmptyView(
                     icon: Icons.search_off,
                     title: 'No matches',
-                    message: 'No indexer definition matches your search.',
+                    message: 'No definition matches your search.',
                   );
                 }
                 return ListView.builder(
@@ -453,18 +540,13 @@ class _SchemaPickerState extends ConsumerState<_SchemaPicker> {
                   itemCount: filtered.length,
                   itemBuilder: (BuildContext context, int i) {
                     final Map<String, dynamic> s = filtered[i];
-                    final String name = (s['name'] as String?) ?? 'Unknown';
                     final String proto = (s['protocol'] as String?) ?? '';
-                    final String privacy = (s['privacy'] as String?) ?? '';
                     return ListTile(
-                      title: Text(name),
-                      subtitle: Text(
-                        <String>[
-                          if (proto.isNotEmpty) proto,
-                          if (privacy.isNotEmpty) privacy,
-                        ].join(' • '),
-                        style: theme.textTheme.labelSmall,
-                      ),
+                      leading: Icon(widget.config.icon),
+                      title: Text(_name(s)),
+                      subtitle: proto.isNotEmpty
+                          ? Text(proto, style: theme.textTheme.labelSmall)
+                          : null,
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () => widget.onPick(s),
                     );
@@ -479,115 +561,8 @@ class _SchemaPickerState extends ConsumerState<_SchemaPicker> {
   }
 }
 
-/// Sync-profile dropdown sourced from `/appprofile`. Falls back to a disabled
-/// field while loading or if none are configured.
-class _SyncProfileDropdown extends ConsumerWidget {
-  const _SyncProfileDropdown({
-    required this.instance,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final Instance instance;
-  final int? value;
-  final ValueChanged<int?> onChanged;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<List<Map<String, dynamic>>> profiles =
-        ref.watch(prowlarrAppProfilesProvider(instance));
-    return profiles.when(
-      loading: () => const InputDecorator(
-        decoration: InputDecoration(
-          labelText: 'Sync profile',
-          border: OutlineInputBorder(),
-        ),
-        child: Text('Loading...'),
-      ),
-      error: (_, __) => const SizedBox.shrink(),
-      data: (List<Map<String, dynamic>> list) {
-        if (list.isEmpty) {
-          return const SizedBox.shrink();
-        }
-        final int effective = list.any(
-          (Map<String, dynamic> p) => (p['id'] as num?)?.toInt() == value,
-        )
-            ? value!
-            : (list.first['id'] as num).toInt();
-        // Seed the parent's value if it was unset/invalid.
-        if (effective != value) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            onChanged(effective);
-          });
-        }
-        return DropdownButtonFormField<int>(
-          initialValue: effective,
-          decoration: const InputDecoration(
-            labelText: 'Sync profile',
-            border: OutlineInputBorder(),
-          ),
-          items: list
-              .map(
-                (Map<String, dynamic> p) => DropdownMenuItem<int>(
-                  value: (p['id'] as num).toInt(),
-                  child: Text((p['name'] ?? 'Profile') as String),
-                ),
-              )
-              .toList(),
-          onChanged: onChanged,
-        );
-      },
-    );
-  }
-}
-
-/// Read-only stats block for an existing indexer.
-class _IndexerStatsSection extends ConsumerWidget {
-  const _IndexerStatsSection({required this.instance, required this.indexerId});
-
-  final Instance instance;
-  final int indexerId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final ThemeData theme = Theme.of(context);
-    final ProwlarrIndexerStat? stat = ref
-        .watch(prowlarrStatsByIdProvider(instance))
-        .valueOrNull?[indexerId];
-    if (stat == null) {
-      return const SizedBox.shrink();
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text('Statistics', style: theme.textTheme.titleMedium),
-        const SizedBox(height: Insets.sm),
-        _row(theme, 'Queries', '${stat.numberOfQueries}'),
-        _row(theme, 'Grabs', '${stat.numberOfGrabs}'),
-        _row(theme, 'RSS queries', '${stat.numberOfRssQueries}'),
-        _row(theme, 'Failed queries', '${stat.numberOfFailedQueries}'),
-        _row(theme, 'Failed grabs', '${stat.numberOfFailedGrabs}'),
-        _row(theme, 'Avg response', '${stat.averageResponseTime} ms'),
-      ],
-    );
-  }
-
-  Widget _row(ThemeData theme, String label, String value) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(
-          children: <Widget>[
-            Expanded(
-              child: Text(
-                label,
-                style: theme.textTheme.labelMedium
-                    ?.copyWith(color: theme.colorScheme.outline),
-              ),
-            ),
-            Text(value, style: theme.textTheme.bodySmall),
-          ],
-        ),
-      );
-}
+String _capitalize(String s) =>
+    s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
 
 String _errorMessage(Object e) {
   if (e is NetworkException && e.message.isNotEmpty) {

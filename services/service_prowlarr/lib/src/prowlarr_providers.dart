@@ -2,6 +2,7 @@ import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'models/prowlarr_application.dart';
 import 'models/prowlarr_history.dart';
 import 'models/prowlarr_indexer.dart';
 import 'models/prowlarr_indexer_stats.dart';
@@ -97,6 +98,79 @@ final prowlarrAppProfilesProvider =
         prowlarrApiProvider(instance).future,
       );
       return api.getAppProfiles();
+    });
+
+/// All configured application sync targets, sorted by name. Polls slowly while
+/// watched to pick up sync-level changes made elsewhere.
+final prowlarrApplicationsProvider =
+    FutureProvider.autoDispose.family<List<ProwlarrApplication>, Instance>((
+      Ref ref,
+      Instance instance,
+    ) async {
+      ref.pollEvery(prowlarrPollInterval);
+      final ProwlarrApi api = await ref.watch(
+        prowlarrApiProvider(instance).future,
+      );
+      final List<ProwlarrApplication> apps = await api.getApplications();
+      apps.sort(
+        (ProwlarrApplication a, ProwlarrApplication b) =>
+            a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      );
+      return apps;
+    });
+
+/// Addable application definitions for the "Add application" picker. Effectively
+/// static for a session, so no polling.
+final prowlarrApplicationSchemasProvider =
+    FutureProvider.autoDispose
+        .family<List<Map<String, dynamic>>, Instance>((
+      Ref ref,
+      Instance instance,
+    ) async {
+      final ProwlarrApi api = await ref.watch(
+        prowlarrApiProvider(instance).future,
+      );
+      return api.getApplicationSchemas();
+    });
+
+/// Args for the generic provider list/schema providers: an instance plus the
+/// resource endpoint ('downloadclient', 'notification', 'indexerproxy').
+typedef ProwlarrProviderArgs = ({Instance instance, String endpoint});
+
+/// Configured instances of a provider resource (download clients, etc.) as raw
+/// maps, sorted by name. Polls slowly while watched.
+final prowlarrProvidersProvider =
+    FutureProvider.autoDispose
+        .family<List<Map<String, dynamic>>, ProwlarrProviderArgs>((
+      Ref ref,
+      ProwlarrProviderArgs args,
+    ) async {
+      ref.pollEvery(prowlarrPollInterval);
+      final ProwlarrApi api = await ref.watch(
+        prowlarrApiProvider(args.instance).future,
+      );
+      final List<Map<String, dynamic>> list =
+          await api.getProviders(args.endpoint);
+      list.sort(
+        (Map<String, dynamic> a, Map<String, dynamic> b) =>
+            ((a['name'] ?? '') as String)
+                .toLowerCase()
+                .compareTo(((b['name'] ?? '') as String).toLowerCase()),
+      );
+      return list;
+    });
+
+/// Addable definitions for a provider resource. Static for a session.
+final prowlarrProviderSchemasProvider =
+    FutureProvider.autoDispose
+        .family<List<Map<String, dynamic>>, ProwlarrProviderArgs>((
+      Ref ref,
+      ProwlarrProviderArgs args,
+    ) async {
+      final ProwlarrApi api = await ref.watch(
+        prowlarrApiProvider(args.instance).future,
+      );
+      return api.getProviderSchemas(args.endpoint);
     });
 
 /// Args for [prowlarrHistoryProvider]: an instance plus an optional

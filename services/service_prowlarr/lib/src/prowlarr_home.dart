@@ -9,11 +9,13 @@ import 'prowlarr_history_tab.dart';
 import 'prowlarr_indexer_form_screen.dart';
 import 'prowlarr_providers.dart';
 import 'prowlarr_search_screen.dart';
+import 'prowlarr_settings_tab.dart';
 import 'prowlarr_system_tab.dart';
 
-/// Prowlarr's per-instance UI: a tabbed Indexers / History view. The Indexers
-/// tab lists indexers (tap to edit); its FABs add an indexer or run a manual
-/// search across all indexers.
+/// Prowlarr's per-instance UI: a tabbed Indexers / History / Settings / System
+/// view mirroring Prowlarr's own navigation. The Indexers tab lists indexers
+/// (tap to edit) with FABs to add one or search across all; Settings is a menu
+/// of provider/config screens; System surfaces health, tasks, and status.
 class ProwlarrHome extends StatefulWidget {
   const ProwlarrHome({required this.instance, super.key});
 
@@ -30,9 +32,9 @@ class _ProwlarrHomeState extends State<ProwlarrHome>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 3, vsync: this);
+    _tab = TabController(length: 4, vsync: this);
     _tab.addListener(() {
-      // Rebuild so the FAB shows only on the Indexers tab.
+      // Rebuild so the FABs show only on the Indexers tab.
       if (!_tab.indexIsChanging) {
         setState(() {});
       }
@@ -55,6 +57,7 @@ class _ProwlarrHomeState extends State<ProwlarrHome>
             tabs: const <Widget>[
               Tab(text: 'Indexers'),
               Tab(text: 'History'),
+              Tab(text: 'Settings'),
               Tab(text: 'System'),
             ],
           ),
@@ -67,13 +70,15 @@ class _ProwlarrHomeState extends State<ProwlarrHome>
                   onEdit: _openForm,
                 ),
                 ProwlarrHistoryTab(instance: widget.instance),
+                ProwlarrSettingsTab(instance: widget.instance),
                 ProwlarrSystemTab(instance: widget.instance),
               ],
             ),
           ),
         ],
       ),
-      floatingActionButton: _tab.index == 0 ? _indexerFabs(context) : null,
+      floatingActionButton:
+          _tab.index == 0 ? _indexerFabs(context) : null,
     );
   }
 
