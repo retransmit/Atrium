@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'prowlarr_apps_screen.dart';
 import 'prowlarr_form_fields.dart';
 import 'prowlarr_provider_settings.dart';
+import 'prowlarr_sync_profiles_screen.dart';
+import 'prowlarr_tags_screen.dart';
 
 /// The Settings tab: a menu mirroring Prowlarr's web Settings section. Each row
 /// opens a dedicated screen. Provider resources (download clients,
@@ -43,6 +45,19 @@ class ProwlarrSettingsTab extends StatelessWidget {
           title: 'Indexer Proxies',
           subtitle: 'FlareSolverr, HTTP, SOCKS',
           onTap: () => _pushProvider(context, _indexerProxyConfig),
+        ),
+        _SettingsTile(
+          icon: Icons.tune_outlined,
+          title: 'Sync Profiles',
+          subtitle: 'RSS / search modes and minimum seeders',
+          onTap: () =>
+              _push(context, ProwlarrSyncProfilesScreen(instance: instance)),
+        ),
+        _SettingsTile(
+          icon: Icons.label_outline,
+          title: 'Tags',
+          subtitle: 'Organise indexers, apps, and clients',
+          onTap: () => _push(context, ProwlarrTagsScreen(instance: instance)),
         ),
       ],
     );
