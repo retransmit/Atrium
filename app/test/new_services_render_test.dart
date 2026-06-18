@@ -164,9 +164,20 @@ void main() {
             ),
           ],
         ),
+        bazarrSeriesProvider(instance).overrideWith(
+          (Ref ref) async => const <BazarrSeries>[],
+        ),
+        bazarrMoviesProvider(instance).overrideWith(
+          (Ref ref) async => const <BazarrMovie>[],
+        ),
       ],
       BazarrHome(instance: instance),
     );
+    // Wanted is the third tab now; switch to it before asserting.
+    await tester.tap(find.text('Wanted'));
+    await tester.pump(); // register the tap, start the tab animation
+    await tester.pump(const Duration(milliseconds: 400)); // finish animation
+    await tester.pump(); // let the wanted provider resolve and render
     expect(find.text('Breaking Bad'), findsOneWidget);
   });
 
