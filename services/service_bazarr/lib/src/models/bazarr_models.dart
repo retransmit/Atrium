@@ -151,6 +151,30 @@ abstract class BazarrEpisode with _$BazarrEpisode {
       _$BazarrEpisodeFromJson(json);
 }
 
+/// One manual-search result from `GET /providers/episodes|movies`. The
+/// download POST round-trips [provider], [subtitle] (a base64 token), and the
+/// string flags [hearingImpaired]/[forced]/[originalFormat] back to Bazarr.
+@freezed
+abstract class BazarrSubtitleSearchResult with _$BazarrSubtitleSearchResult {
+  const factory BazarrSubtitleSearchResult({
+    @Default('') String language,
+    @Default('') String provider,
+    @Default(0) int score,
+    @JsonKey(name: 'hearing_impaired') @Default('False') String hearingImpaired,
+    @Default('False') String forced,
+    @JsonKey(name: 'original_format') @Default('False') String originalFormat,
+    @Default('') String subtitle,
+    @JsonKey(name: 'release_info')
+    @Default(<String>[])
+    List<String> releaseInfo,
+    String? uploader,
+    String? url,
+  }) = _BazarrSubtitleSearchResult;
+
+  factory BazarrSubtitleSearchResult.fromJson(Map<String, dynamic> json) =>
+      _$BazarrSubtitleSearchResultFromJson(json);
+}
+
 /// A flattened "needs subtitles" row, unifying episodes + movies for the UI.
 class BazarrWantedRow {
   const BazarrWantedRow({
