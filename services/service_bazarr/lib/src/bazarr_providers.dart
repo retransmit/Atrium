@@ -100,3 +100,30 @@ final bazarrEpisodesProvider =
       });
       return eps;
     });
+
+/// Args for the manual-search providers: an instance plus the item id
+/// (Sonarr episode id, or Radarr movie id).
+typedef BazarrSearchArgs = ({Instance instance, int id});
+
+/// Manual subtitle search results for an episode. autoDispose so leaving the
+/// search screen drops the (slow, provider-hitting) result.
+final bazarrEpisodeSearchProvider = FutureProvider.autoDispose
+    .family<List<BazarrSubtitleSearchResult>, BazarrSearchArgs>((
+      Ref ref,
+      BazarrSearchArgs args,
+    ) async {
+      final BazarrApi api =
+          await ref.watch(bazarrApiProvider(args.instance).future);
+      return api.searchEpisodeSubtitles(args.id);
+    });
+
+/// Manual subtitle search results for a movie.
+final bazarrMovieSearchProvider = FutureProvider.autoDispose
+    .family<List<BazarrSubtitleSearchResult>, BazarrSearchArgs>((
+      Ref ref,
+      BazarrSearchArgs args,
+    ) async {
+      final BazarrApi api =
+          await ref.watch(bazarrApiProvider(args.instance).future);
+      return api.searchMovieSubtitles(args.id);
+    });

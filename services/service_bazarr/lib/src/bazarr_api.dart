@@ -97,4 +97,145 @@ class BazarrApi {
       throw NetworkException.fromDio(e);
     }
   }
+
+  /// Manual subtitle search for one episode (`GET /providers/episodes`). Hits
+  /// live providers, so it gets a long receive timeout.
+  Future<List<BazarrSubtitleSearchResult>> searchEpisodeSubtitles(
+    int episodeId,
+  ) async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>(
+        'api/providers/episodes',
+        queryParameters: <String, dynamic>{'episodeid': episodeId},
+        options: Options(receiveTimeout: const Duration(seconds: 120)),
+      );
+      return _parseResults(resp.data);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Manual subtitle search for one movie (`GET /providers/movies`).
+  Future<List<BazarrSubtitleSearchResult>> searchMovieSubtitles(
+    int radarrId,
+  ) async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>(
+        'api/providers/movies',
+        queryParameters: <String, dynamic>{'radarrid': radarrId},
+        options: Options(receiveTimeout: const Duration(seconds: 120)),
+      );
+      return _parseResults(resp.data);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  List<BazarrSubtitleSearchResult> _parseResults(dynamic data) {
+    final List<dynamic> list = data is Map<String, dynamic>
+        ? ((data['data'] as List<dynamic>?) ?? const <dynamic>[])
+        : (data as List<dynamic>);
+    return list
+        .map(
+          (dynamic e) =>
+              BazarrSubtitleSearchResult.fromJson(e as Map<String, dynamic>),
+        )
+        .toList();
+  }
+
+  /// Downloads a chosen manual-search result for an episode
+  /// (`POST /providers/episodes`). Round-trips the result's provider/token/flags.
+  Future<void> downloadEpisodeSubtitle({
+    required int seriesId,
+    required int episodeId,
+    required BazarrSubtitleSearchResult result,
+  }) async {
+    try {
+      await _dio.post<dynamic>(
+        'api/providers/episodes',
+        queryParameters: <String, dynamic>{
+          'seriesid': seriesId,
+          'episodeid': episodeId,
+          'hi': result.hearingImpaired,
+          'forced': result.forced,
+          'original_format': result.originalFormat,
+          'provider': result.provider,
+          'subtitle': result.subtitle,
+        },
+        options: Options(receiveTimeout: const Duration(seconds: 120)),
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Downloads a chosen manual-search result for a movie
+  /// (`POST /providers/movies`).
+  Future<void> downloadMovieSubtitle({
+    required int radarrId,
+    required BazarrSubtitleSearchResult result,
+  }) async {
+    try {
+      await _dio.post<dynamic>(
+        'api/providers/movies',
+        queryParameters: <String, dynamic>{
+          'radarrid': radarrId,
+          'hi': result.hearingImpaired,
+          'forced': result.forced,
+          'original_format': result.originalFormat,
+          'provider': result.provider,
+          'subtitle': result.subtitle,
+        },
+        options: Options(receiveTimeout: const Duration(seconds: 120)),
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Deletes a downloaded subtitle from an episode (`DELETE /episodes/subtitles`).
+  Future<void> deleteEpisodeSubtitle({
+    required int seriesId,
+    required int episodeId,
+    required BazarrSubtitle subtitle,
+  }) async {
+    try {
+      await _dio.delete<dynamic>(
+        'api/episodes/subtitles',
+        queryParameters: <String, dynamic>{
+          'seriesid': seriesId,
+          'episodeid': episodeId,
+          'language':
+              subtitle.code2.isNotEmpty ? subtitle.code2 : subtitle.code3,
+          'forced': subtitle.forced ? 'True' : 'False',
+          'hi': subtitle.hi ? 'True' : 'False',
+          'path': subtitle.path ?? '',
+        },
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Deletes a downloaded subtitle from a movie (`DELETE /movies/subtitles`).
+  Future<void> deleteMovieSubtitle({
+    required int radarrId,
+    required BazarrSubtitle subtitle,
+  }) async {
+    try {
+      await _dio.delete<dynamic>(
+        'api/movies/subtitles',
+        queryParameters: <String, dynamic>{
+          'radarrid': radarrId,
+          'language':
+              subtitle.code2.isNotEmpty ? subtitle.code2 : subtitle.code3,
+          'forced': subtitle.forced ? 'True' : 'False',
+          'hi': subtitle.hi ? 'True' : 'False',
+          'path': subtitle.path ?? '',
+        },
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
 }

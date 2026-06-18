@@ -4,16 +4,20 @@ import 'package:flutter/material.dart';
 import 'models/bazarr_models.dart';
 
 /// Renders subtitle language chips: present subtitles as filled green chips,
-/// missing ones as outlined chips. Shared by the episode/movie detail views.
+/// missing ones as outlined chips. When [onDeletePresent] is given, each present
+/// chip shows a tappable delete (x) affordance. Shared by the episode/movie
+/// detail views.
 class BazarrSubtitleChips extends StatelessWidget {
   const BazarrSubtitleChips({
     this.present = const <BazarrSubtitle>[],
     this.missing = const <BazarrSubtitle>[],
+    this.onDeletePresent,
     super.key,
   });
 
   final List<BazarrSubtitle> present;
   final List<BazarrSubtitle> missing;
+  final ValueChanged<BazarrSubtitle>? onDeletePresent;
 
   @override
   Widget build(BuildContext context) {
@@ -51,8 +55,11 @@ class BazarrSubtitleChips extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final Color fg =
         present ? Colors.green.shade700 : theme.colorScheme.onSurfaceVariant;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: Insets.sm, vertical: 3),
+    // External (downloaded) subtitles carry a path and can be deleted; embedded
+    // subtitles (path null) cannot.
+    final bool deletable = present && (s.path?.isNotEmpty ?? false);
+    final Widget chip = Container(
+      padding: const EdgeInsets.symmetric(horizontal: Insets.sm, vertical: 4),
       decoration: BoxDecoration(
         color: present
             ? Colors.green.withValues(alpha: 0.16)
@@ -73,8 +80,20 @@ class BazarrSubtitleChips extends StatelessWidget {
             _label(s),
             style: theme.textTheme.labelSmall?.copyWith(color: fg),
           ),
+          if (deletable) ...<Widget>[
+            const SizedBox(width: 4),
+            Icon(Icons.delete_outline, size: 15, color: fg),
+          ],
         ],
       ),
     );
+    if (present && onDeletePresent != null) {
+      return InkWell(
+        borderRadius: BorderRadius.circular(6),
+        onTap: () => onDeletePresent!(s),
+        child: chip,
+      );
+    }
+    return chip;
   }
 }
