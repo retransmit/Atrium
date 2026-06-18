@@ -58,7 +58,8 @@ class BazarrMoviesTab extends ConsumerWidget {
                   MaterialPageRoute<void>(
                     builder: (_) => BazarrMovieDetailScreen(
                       instance: instance,
-                      movie: m,
+                      radarrId: m.radarrId,
+                      title: m.year != null ? '${m.title} (${m.year})' : m.title,
                     ),
                   ),
                 ),
