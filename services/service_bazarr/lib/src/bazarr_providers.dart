@@ -51,3 +51,52 @@ final bazarrWantedProvider =
           ),
       ];
     });
+
+/// All series with subtitle status, sorted by title.
+final bazarrSeriesProvider =
+    FutureProvider.family<List<BazarrSeries>, Instance>((
+      Ref ref,
+      Instance instance,
+    ) async {
+      final BazarrApi api = await ref.watch(bazarrApiProvider(instance).future);
+      final List<BazarrSeries> list = await api.getSeries();
+      list.sort(
+        (BazarrSeries a, BazarrSeries b) =>
+            a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+      );
+      return list;
+    });
+
+/// All movies with subtitle status, sorted by title.
+final bazarrMoviesProvider =
+    FutureProvider.family<List<BazarrMovie>, Instance>((
+      Ref ref,
+      Instance instance,
+    ) async {
+      final BazarrApi api = await ref.watch(bazarrApiProvider(instance).future);
+      final List<BazarrMovie> list = await api.getMovies();
+      list.sort(
+        (BazarrMovie a, BazarrMovie b) =>
+            a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+      );
+      return list;
+    });
+
+/// Args for [bazarrEpisodesProvider]: an instance plus the Sonarr series id.
+typedef BazarrEpisodesArgs = ({Instance instance, int seriesId});
+
+/// Episodes for one series, sorted by season then episode number.
+final bazarrEpisodesProvider =
+    FutureProvider.family<List<BazarrEpisode>, BazarrEpisodesArgs>((
+      Ref ref,
+      BazarrEpisodesArgs args,
+    ) async {
+      final BazarrApi api =
+          await ref.watch(bazarrApiProvider(args.instance).future);
+      final List<BazarrEpisode> eps = await api.getEpisodes(args.seriesId);
+      eps.sort((BazarrEpisode a, BazarrEpisode b) {
+        final int s = (a.season ?? 0).compareTo(b.season ?? 0);
+        return s != 0 ? s : (a.episode ?? 0).compareTo(b.episode ?? 0);
+      });
+      return eps;
+    });
