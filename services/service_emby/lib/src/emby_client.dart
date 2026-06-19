@@ -265,7 +265,7 @@ class EmbyClient {
             progressPercent: durTicks > 0 ? ((posTicks / durTicks) * 100).toInt() : 0,
             timePosition: formatTime(posSec),
             timeDuration: formatTime(durSec),
-            posterUrl: '$_baseStr/Items/${nowPlaying['SeriesId'] ?? nowPlaying['Id']}/Images/Primary?quality=90&maxHeight=400${_token == null ? '' : '&api_key=$_token'}',
+            posterUrl: '$_baseStr/Items/${nowPlaying['SeriesId'] ?? nowPlaying['Id']}/Images/Primary?quality=100${_token == null ? '' : '&api_key=$_token'}',
             aspectRatio: computedAspectRatio,
           ),);
         }
@@ -438,7 +438,7 @@ class EmbyClient {
           ? '&tag=${item.seriesPrimaryImageTag}'
           : '';
       return '$_baseStr/Items/${item.seriesId}/Images/Primary'
-          '?quality=90&maxHeight=$maxHeight$tagParam$key';
+          '?quality=100$tagParam$key';
     }
 
     if (item.type == 'Audio') {
@@ -447,7 +447,7 @@ class EmbyClient {
           ? '&tag=${item.albumPrimaryImageTag}'
           : (item.parentPrimaryImageTag != null ? '&tag=${item.parentPrimaryImageTag}' : '');
       return '$_baseStr/Items/$targetId/Images/Primary'
-          '?quality=90&maxHeight=$maxHeight$tagParam$key';
+          '?quality=100$tagParam$key';
     }
 
     if (item.primaryImageItemId != null) {
@@ -455,19 +455,19 @@ class EmbyClient {
           ? '&tag=${item.primaryImageTag}'
           : '';
       return '$_baseStr/Items/${item.primaryImageItemId}/Images/Primary'
-          '?quality=90&maxHeight=$maxHeight$tagParam$key';
+          '?quality=100$tagParam$key';
     }
 
     if (item.imageTags.containsKey('Primary')) {
       final String tag = item.imageTags['Primary']!;
       return '$_baseStr/Items/${item.id}/Images/Primary'
-          '?tag=$tag&quality=90&maxHeight=$maxHeight$key';
+          '?tag=$tag&quality=100$key';
     }
 
     if (item.seriesPrimaryImageTag != null && item.seriesId != null) {
       final String tag = item.seriesPrimaryImageTag!;
       return '$_baseStr/Items/${item.seriesId}/Images/Primary'
-          '?tag=$tag&quality=90&maxHeight=$maxHeight$key';
+          '?tag=$tag&quality=100$key';
     }
 
 
@@ -475,12 +475,12 @@ class EmbyClient {
     if (item.parentPrimaryImageTag != null && item.parentId != null) {
       final String tag = item.parentPrimaryImageTag!;
       return '$_baseStr/Items/${item.parentId}/Images/Primary'
-          '?tag=$tag&quality=90&maxHeight=$maxHeight$key';
+          '?tag=$tag&quality=100$key';
     }
 
     // Fallback: If no tags were provided in the payload, try fetching the primary image directly.
     return '$_baseStr/Items/${item.id}/Images/Primary'
-        '?quality=90&maxHeight=$maxHeight$key';
+        '?quality=100$key';
   }
 
   /// Builds a backdrop image URL for [item], or null if it has none.
@@ -497,7 +497,7 @@ class EmbyClient {
       targetId = item.seriesId!;
     }
     
-    return '$_baseStr/Items/$targetId/Images/Backdrop/0?quality=90&maxWidth=$maxWidth$tagParam$key';
+    return '$_baseStr/Items/$targetId/Images/Backdrop/0?quality=100$tagParam$key';
   }
 
   void close() => _dio.close(force: true);

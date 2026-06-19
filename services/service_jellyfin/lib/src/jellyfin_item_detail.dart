@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'jellyfin_client.dart';
+import 'jellyfin_deep_link.dart';
 import 'jellyfin_providers.dart';
+import 'jellyfin_season_screen.dart';
 import 'models/jellyfin_item.dart';
 
 class JellyfinItemDetailScreen extends ConsumerWidget {
@@ -123,16 +125,22 @@ class JellyfinItemDetailScreen extends ConsumerWidget {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.all(Insets.lg),
-                    child: Text(
-                      item.overview!,
-                      style: Theme.of(context).textTheme.bodyLarge,
-                    ),
+                    child: _ExpandableOverview(text: item.overview!),
                   ),
                 ),
               if (item.people.isNotEmpty)
                 SliverToBoxAdapter(
                   child: _PeopleRow(item: item, client: client),
                 ),
+              if (item.type == 'Series') ...<Widget>[
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: Insets.lg),
+                    child: Divider(),
+                  ),
+                ),
+                _SeasonsGrid(instance: instance, seriesId: item.id),
+              ],
               const SliverToBoxAdapter(
                 child: SizedBox(height: Insets.xl),
               ),
@@ -229,7 +237,37 @@ class _Header extends StatelessWidget {
                           style: theme.textTheme.bodySmall,
                         ),
                       ),
+                    if (item.communityRating != null)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          const Icon(Icons.star, size: 16, color: Colors.amber),
+                          const SizedBox(width: 4),
+                          Text(
+                            item.communityRating!.toStringAsFixed(1),
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ],
+                      ),
                   ],
+                ),
+                const SizedBox(height: Insets.md),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      if (client != null) {
+                        launchJellyfinDeepLink(context, client!, item.id);
+                      }
+                    },
+                    icon: Icon(item.type == 'Series' || item.type == 'Movie' ? Icons.play_arrow : Icons.play_circle_fill),
+                    label: Text(item.type == 'Series' || item.type == 'Movie' ? 'Watch' : 'Play'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: theme.colorScheme.onPrimary,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -316,5 +354,133 @@ class _PeopleRow extends StatelessWidget {
   }
 }
 
+class _SeasonsGrid extends ConsumerWidget {
+  const _SeasonsGrid({required this.instance, required this.seriesId});
 
+  final Instance instance;
+  final String seriesId;
 
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<List<JellyfinItem>> seasonsAsync =
+        ref.watch(jellyfinSeasonsProvider((instance, seriesId)));
+    final JellyfinClient? client = ref.watch(jellyfinClientProvider(instance)).value;
+    final ThemeData theme = Theme.of(context);
+
+    return SliverToBoxAdapter(
+      child: AsyncValueView<List<JellyfinItem>>(
+        value: seasonsAsync,
+        onRetry: () => ref.invalidate(jellyfinSeasonsProvider((instance, seriesId))),
+        data: (List<JellyfinItem> seasons) {
+          if (seasons.isEmpty) return const SizedBox.shrink();
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Insets.lg, vertical: Insets.lg),
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: EdgeInsets.zero,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                childAspectRatio: 0.65,
+                crossAxisSpacing: Insets.md,
+                mainAxisSpacing: Insets.md,
+              ),
+              itemCount: seasons.length,
+              itemBuilder: (BuildContext context, int index) {
+                final JellyfinItem season = seasons[index];
+                final String? posterUrl = client?.imageUrl(season, maxHeight: 300);
+
+                return InkWell(
+                  borderRadius: Radii.card,
+                  onTap: () {
+                    pushScreen<void>(
+                      context,
+                      JellyfinSeasonScreen(
+                        instance: instance,
+                        seriesId: seriesId,
+                        seasonId: season.id,
+                        seasonName: season.name,
+                        seasonImageUrl: posterUrl,
+                      ),
+                    );
+                  },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: Radii.card,
+                          child: posterUrl != null
+                              ? CachedNetworkImage(
+                                  imageUrl: posterUrl,
+                                  fit: BoxFit.cover,
+                                )
+                              : Container(
+                                  color: theme.colorScheme.surfaceContainerHighest,
+                                  child: const Icon(Icons.tv),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: Insets.xs),
+                      Text(
+                        season.name,
+                        style: theme.textTheme.labelMedium,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ExpandableOverview extends StatefulWidget {
+  const _ExpandableOverview({required this.text});
+  final String text;
+
+  @override
+  State<_ExpandableOverview> createState() => _ExpandableOverviewState();
+}
+
+class _ExpandableOverviewState extends State<_ExpandableOverview> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          widget.text,
+          style: theme.textTheme.bodyLarge,
+          maxLines: _expanded ? null : 3,
+          overflow: _expanded ? null : TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: Insets.sm),
+        InkWell(
+          onTap: () => setState(() => _expanded = !_expanded),
+          borderRadius: BorderRadius.circular(4),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+            child: Text(
+              _expanded ? 'Read Less' : 'Read More',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

@@ -48,6 +48,19 @@ final jellyfinViewsProvider =
   return client.getViews();
 });
 
+/// Flattened items within a root library, using recursive fetch based on CollectionType.
+final jellyfinLibraryItemsProvider =
+    FutureProvider.family<List<JellyfinItem>, (Instance, JellyfinView)>((
+      Ref ref,
+      (Instance, JellyfinView) key,
+    ) async {
+      final (Instance instance, JellyfinView view) = key;
+      final JellyfinClient client =
+          await ref.watch(jellyfinClientProvider(instance).future);
+          
+      return client.getLibraryItems(view.id, view.collectionType);
+    });
+
 /// Items within a library. Keyed by (instance, libraryId) - Dart 3 records
 /// give the family a structural-equality cache key for free.
 final jellyfinItemsProvider =
@@ -185,3 +198,49 @@ final jellyfinToggleWatchedProvider =
     ref.invalidate(jellyfinNextUpProvider);
   };
 });
+
+typedef AlbumScreenData = ({List<JellyfinItem> tracks, JellyfinItem? artistBio});
+
+final jellyfinAlbumDataFutureProvider =
+    FutureProvider.family<AlbumScreenData, (Instance, String, String)>((
+      Ref ref,
+      (Instance, String, String) key,
+    ) async {
+      final (Instance instance, String albumId, String artistName) = key;
+      final JellyfinClient client =
+          await ref.watch(jellyfinClientProvider(instance).future);
+
+      final Future<List<JellyfinItem>> tracksFuture = client.getAlbumSongs(albumId);
+      final Future<JellyfinItem?> bioFuture = client.getArtistBio(artistName);
+
+      final List<Object?> results = await Future.wait<Object?>(<Future<Object?>>[tracksFuture, bioFuture]);
+
+      return (
+        tracks: results[0] as List<JellyfinItem>,
+        artistBio: results[1] as JellyfinItem?,
+      );
+    });
+
+final jellyfinAlbumSongsProvider =
+    FutureProvider.family<List<JellyfinItem>, (Instance, String)>((
+      Ref ref,
+      (Instance, String) key,
+    ) async {
+      final (Instance instance, String albumId) = key;
+      final JellyfinClient client =
+          await ref.watch(jellyfinClientProvider(instance).future);
+      return client.getAlbumSongs(albumId);
+    });
+
+final jellyfinArtistBioProvider =
+    FutureProvider.family<JellyfinItem?, (Instance, String)>((
+      Ref ref,
+      (Instance, String) key,
+    ) async {
+      final (Instance instance, String artistName) = key;
+      final JellyfinClient client =
+          await ref.watch(jellyfinClientProvider(instance).future);
+      return client.getArtistBio(artistName);
+    });
+
+final jellyfinGridScaleProvider = StateProvider<double>((ref) => 140.0);

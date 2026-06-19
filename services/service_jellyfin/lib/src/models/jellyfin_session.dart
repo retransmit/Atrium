@@ -15,6 +15,7 @@ class ActiveSession {
     required this.timeDuration,
     this.episodeName,
     this.posterUrl,
+    this.aspectRatio,
   });
 
   /// The user streaming this session.
@@ -43,4 +44,7 @@ class ActiveSession {
 
   /// Backdrop/poster image URL for the now-playing item, if available.
   final String? posterUrl;
+
+  /// Aspect ratio of the poster image, if available.
+  final double? aspectRatio;
 }
