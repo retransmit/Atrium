@@ -1,13 +1,17 @@
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 
+import 'bazarr_blacklist_tab.dart';
+import 'bazarr_history_tab.dart';
 import 'bazarr_movies_tab.dart';
 import 'bazarr_series_tab.dart';
 import 'bazarr_wanted_tab.dart';
 
-/// Bazarr's per-instance UI: a tabbed Series / Movies / Wanted view. Series and
-/// Movies browse Sonarr/Radarr-backed content with subtitle status; Wanted is
-/// the unified "missing subtitles" list with badge counts.
+/// Bazarr's per-instance UI: tabbed Series / Movies / Wanted / History /
+/// Blacklist. Series and Movies browse Sonarr/Radarr-backed content with
+/// subtitle status (and manual search, download, delete); Wanted lists what is
+/// still missing; History logs subtitle activity; Blacklist manages blocked
+/// subtitles.
 class BazarrHome extends StatefulWidget {
   const BazarrHome({required this.instance, super.key});
 
@@ -24,7 +28,7 @@ class _BazarrHomeState extends State<BazarrHome>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 3, vsync: this);
+    _tab = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -40,10 +44,14 @@ class _BazarrHomeState extends State<BazarrHome>
         children: <Widget>[
           TabBar(
             controller: _tab,
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
             tabs: const <Widget>[
               Tab(text: 'Series'),
               Tab(text: 'Movies'),
               Tab(text: 'Wanted'),
+              Tab(text: 'History'),
+              Tab(text: 'Blacklist'),
             ],
           ),
           Expanded(
@@ -53,6 +61,8 @@ class _BazarrHomeState extends State<BazarrHome>
                 BazarrSeriesTab(instance: widget.instance),
                 BazarrMoviesTab(instance: widget.instance),
                 BazarrWantedTab(instance: widget.instance),
+                BazarrHistoryTab(instance: widget.instance),
+                BazarrBlacklistTab(instance: widget.instance),
               ],
             ),
           ),
