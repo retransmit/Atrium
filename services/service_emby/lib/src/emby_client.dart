@@ -34,7 +34,10 @@ class EmbyClient {
 
   String? _token;
   String? _userId;
+  String? _serverId;
   bool _loggedIn = false;
+
+  String? get serverId => _serverId;
 
   static EmbyClient create({
     required Uri baseUrl,
@@ -86,6 +89,7 @@ class EmbyClient {
           EmbyAuthResult.fromJson(resp.data as Map<String, dynamic>);
       _token = result.accessToken;
       _userId = result.user.id;
+      _serverId = result.serverId;
       _dio.options.headers['X-Emby-Token'] = _token;
       _loggedIn = true;
     } on DioException catch (e) {
@@ -104,6 +108,40 @@ class EmbyClient {
             .toList();
       });
 
+  Future<List<EmbyItem>> getLibraryItems(String parentId, String? collectionType) => _guarded(() async {
+        String? includeItemTypes;
+        switch (collectionType) {
+          case 'movies':
+            includeItemTypes = 'Movie';
+            break;
+          case 'tvshows':
+            includeItemTypes = 'Series';
+            break;
+          case 'music':
+            includeItemTypes = 'MusicAlbum';
+            break;
+          default:
+            includeItemTypes = 'Movie,Series,MusicAlbum'; // Fallback
+            break;
+        }
+
+        final Response<dynamic> resp = await _dio.get<dynamic>(
+          'Users/$_userId/Items',
+          queryParameters: <String, dynamic>{
+            'ParentId': parentId,
+            'Recursive': true,
+            'IncludeItemTypes': includeItemTypes,
+            'SortBy': 'SortName',
+            'SortOrder': 'Ascending',
+            'Fields': 'PrimaryImageAspectRatio,ImageTags,Overview,CommunityRating,ParentId',
+            'ImageTypeLimit': 1,
+            'EnableImageTypes': 'Primary',
+            'Limit': 200,
+          },
+        );
+        return EmbyItemsResult.fromJson(resp.data as Map<String, dynamic>).items;
+      });
+
   Future<List<EmbyItem>> getItems(String parentId) => _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
           'Users/$_userId/Items',
@@ -111,7 +149,7 @@ class EmbyClient {
             'ParentId': parentId,
             'SortBy': 'SortName',
             'SortOrder': 'Ascending',
-            'Fields': 'PrimaryImageAspectRatio,ImageTags',
+            'Fields': 'PrimaryImageAspectRatio,ImageTags,ParentId',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
             'Limit': 200,
@@ -129,7 +167,7 @@ class EmbyClient {
             'IncludeItemTypes': 'Series,Movie',
             'SortBy': 'SortName',
             'SortOrder': 'Ascending',
-            'Fields': 'PrimaryImageAspectRatio,ImageTags',
+            'Fields': 'PrimaryImageAspectRatio,ImageTags,ParentId',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
             'StartIndex': startIndex,
@@ -148,7 +186,7 @@ class EmbyClient {
             'IncludeItemTypes': 'Series,Movie',
             'SortBy': 'SortName',
             'SortOrder': 'Ascending',
-            'Fields': 'PrimaryImageAspectRatio,ImageTags',
+            'Fields': 'PrimaryImageAspectRatio,ImageTags,ParentId',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
             'StartIndex': startIndex,
@@ -172,7 +210,7 @@ class EmbyClient {
           queryParameters: <String, dynamic>{
             'Limit': 24,
             'MediaTypes': 'Video',
-            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags',
+            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ParentId',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -207,16 +245,28 @@ class EmbyClient {
             return '${h > 0 ? '$h:' : ''}${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
           }
           
+          final List<dynamic>? artistsList = nowPlaying['Artists'] as List<dynamic>?;
+          final String? artistName = artistsList != null && artistsList.isNotEmpty 
+              ? artistsList.join(', ') 
+              : null;
+              
+          final String type = nowPlaying['Type'] as String? ?? '';
+          final double computedAspectRatio = type == 'Episode' 
+              ? (2 / 3) 
+              : ((nowPlaying['PrimaryImageAspectRatio'] as num?)?.toDouble() ?? 
+                (type == 'Audio' || type == 'MusicAlbum' || type == 'MusicArtist' ? 1.0 : (2 / 3)));
+          
           active.add(ActiveSession(
             user: element['UserName'] as String? ?? 'Unknown',
             device: element['Client'] as String? ?? 'Unknown',
             status: playState['IsPaused'] == true ? 'Paused' : 'Playing',
-            showTitle: nowPlaying['SeriesName'] as String? ?? nowPlaying['Name'] as String? ?? 'Unknown',
-            episodeName: nowPlaying['Name'] as String?,
+            showTitle: nowPlaying['Name'] as String? ?? 'Unknown',
+            episodeName: type == 'Audio' ? artistName : nowPlaying['SeriesName'] as String?,
             progressPercent: durTicks > 0 ? ((posTicks / durTicks) * 100).toInt() : 0,
             timePosition: formatTime(posSec),
             timeDuration: formatTime(durSec),
             posterUrl: '$_baseStr/Items/${nowPlaying['SeriesId'] ?? nowPlaying['Id']}/Images/Primary?quality=90&maxHeight=400${_token == null ? '' : '&api_key=$_token'}',
+            aspectRatio: computedAspectRatio,
           ),);
         }
         return active;
@@ -228,7 +278,7 @@ class EmbyClient {
           queryParameters: <String, dynamic>{
             'UserId': _userId,
             'Limit': 24,
-            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags',
+            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ParentId',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -246,7 +296,7 @@ class EmbyClient {
             'Limit': 50,
             'Recursive': true,
             'IncludeItemTypes': 'Series,Movie,Episode',
-            'Fields': 'PrimaryImageAspectRatio,Overview',
+            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ParentId',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -263,7 +313,7 @@ class EmbyClient {
             'Filters': 'IsFavorite',
             'Recursive': true,
             'Limit': 24,
-            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags',
+            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ParentId',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -288,7 +338,7 @@ class EmbyClient {
           'Users/$_userId/Items/Latest',
           queryParameters: <String, dynamic>{
             'Limit': 20,
-            'Fields': 'PrimaryImageAspectRatio,Overview',
+            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ParentId',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -311,10 +361,11 @@ class EmbyClient {
 
   Future<List<EmbyItem>> getSeasons(String seriesId) => _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
-          'Shows/$seriesId/Seasons',
+          'Users/$_userId/Items',
           queryParameters: <String, dynamic>{
-            'UserId': _userId,
-            'Fields': 'PrimaryImageAspectRatio,Overview',
+            'ParentId': seriesId,
+            'IncludeItemTypes': 'Season',
+            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -324,13 +375,13 @@ class EmbyClient {
         ).items;
       });
 
-  Future<List<EmbyItem>> getEpisodes(String seriesId, String seasonId) =>
+  Future<List<EmbyItem>> getEpisodes(String seasonId) =>
       _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
-          'Shows/$seriesId/Episodes',
+          'Users/$_userId/Items',
           queryParameters: <String, dynamic>{
-            'SeasonId': seasonId,
-            'UserId': _userId,
+            'ParentId': seasonId,
+            'IncludeItemTypes': 'Episode',
             'Fields': 'PrimaryImageAspectRatio,Overview,RunTimeTicks,CommunityRating,ImageTags',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
@@ -339,6 +390,38 @@ class EmbyClient {
         return EmbyItemsResult.fromJson(
           resp.data as Map<String, dynamic>,
         ).items;
+      });
+
+  Future<List<EmbyItem>> getAlbumSongs(String albumId) => _guarded(() async {
+        final Response<dynamic> resp = await _dio.get<dynamic>(
+          'Users/$_userId/Items',
+          queryParameters: <String, dynamic>{
+            'ParentId': albumId,
+            'IncludeItemTypes': 'Audio',
+            'Fields': 'PrimaryImageAspectRatio,ImageTags,Overview,ParentId',
+            'ImageTypeLimit': 1,
+            'EnableImageTypes': 'Primary',
+          },
+        );
+        return EmbyItemsResult.fromJson(
+          resp.data as Map<String, dynamic>,
+        ).items;
+      });
+
+  Future<EmbyItem?> getArtistBio(String artistName) => _guarded(() async {
+        final Response<dynamic> resp = await _dio.get<dynamic>(
+          'Users/$_userId/Items',
+          queryParameters: <String, dynamic>{
+            'Recursive': true,
+            'IncludeItemTypes': 'MusicArtist',
+            'SearchTerm': artistName,
+            'Fields': 'Overview',
+          },
+        );
+        final items = EmbyItemsResult.fromJson(
+          resp.data as Map<String, dynamic>,
+        ).items;
+        return items.isNotEmpty ? items.first : null;
       });
 
   String get _baseStr => baseUrl.toString().replaceAll(RegExp(r'/+$'), '');
@@ -358,6 +441,23 @@ class EmbyClient {
           '?quality=90&maxHeight=$maxHeight$tagParam$key';
     }
 
+    if (item.type == 'Audio') {
+      final String targetId = item.albumId ?? item.parentId ?? item.id;
+      final String tagParam = item.albumPrimaryImageTag != null
+          ? '&tag=${item.albumPrimaryImageTag}'
+          : (item.parentPrimaryImageTag != null ? '&tag=${item.parentPrimaryImageTag}' : '');
+      return '$_baseStr/Items/$targetId/Images/Primary'
+          '?quality=90&maxHeight=$maxHeight$tagParam$key';
+    }
+
+    if (item.primaryImageItemId != null) {
+      final String tagParam = item.primaryImageTag != null
+          ? '&tag=${item.primaryImageTag}'
+          : '';
+      return '$_baseStr/Items/${item.primaryImageItemId}/Images/Primary'
+          '?quality=90&maxHeight=$maxHeight$tagParam$key';
+    }
+
     if (item.imageTags.containsKey('Primary')) {
       final String tag = item.imageTags['Primary']!;
       return '$_baseStr/Items/${item.id}/Images/Primary'
@@ -370,17 +470,7 @@ class EmbyClient {
           '?tag=$tag&quality=90&maxHeight=$maxHeight$key';
     }
 
-    if (item.imageTags.containsKey('Primary')) {
-      final String tag = item.imageTags['Primary']!;
-      return '$_baseStr/Items/${item.id}/Images/Primary'
-          '?tag=$tag&quality=90&maxHeight=$maxHeight$key';
-    }
 
-    if (item.seriesPrimaryImageTag != null && item.seriesId != null) {
-      final String tag = item.seriesPrimaryImageTag!;
-      return '$_baseStr/Items/${item.seriesId}/Images/Primary'
-          '?tag=$tag&quality=90&maxHeight=$maxHeight$key';
-    }
 
     if (item.parentPrimaryImageTag != null && item.parentId != null) {
       final String tag = item.parentPrimaryImageTag!;
