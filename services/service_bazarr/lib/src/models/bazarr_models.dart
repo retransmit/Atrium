@@ -225,6 +225,95 @@ abstract class BazarrBlacklistItem with _$BazarrBlacklistItem {
       _$BazarrBlacklistItemFromJson(json);
 }
 
+/// `GET /system/status`.
+@freezed
+abstract class BazarrSystemStatus with _$BazarrSystemStatus {
+  const factory BazarrSystemStatus({
+    @JsonKey(name: 'bazarr_version') @Default('') String bazarrVersion,
+    @JsonKey(name: 'package_version') @Default('') String packageVersion,
+    @JsonKey(name: 'sonarr_version') @Default('') String sonarrVersion,
+    @JsonKey(name: 'radarr_version') @Default('') String radarrVersion,
+    @JsonKey(name: 'operating_system') @Default('') String operatingSystem,
+    @JsonKey(name: 'python_version') @Default('') String pythonVersion,
+    @JsonKey(name: 'database_engine') @Default('') String databaseEngine,
+    @JsonKey(name: 'database_migration') @Default('') String databaseMigration,
+    @Default('') String timezone,
+    @JsonKey(name: 'cpu_cores') int? cpuCores,
+    @JsonKey(name: 'start_time') double? startTime,
+  }) = _BazarrSystemStatus;
+
+  factory BazarrSystemStatus.fromJson(Map<String, dynamic> json) =>
+      _$BazarrSystemStatusFromJson(json);
+}
+
+/// One entry from `GET /system/health` (the list is empty when healthy).
+@freezed
+abstract class BazarrHealthItem with _$BazarrHealthItem {
+  const factory BazarrHealthItem({
+    @Default('') String object,
+    @Default('') String issue,
+  }) = _BazarrHealthItem;
+
+  factory BazarrHealthItem.fromJson(Map<String, dynamic> json) =>
+      _$BazarrHealthItemFromJson(json);
+}
+
+/// One scheduled task from `GET /system/tasks`. Run via `POST ?taskid=[jobId]`.
+@freezed
+abstract class BazarrSystemTask with _$BazarrSystemTask {
+  const factory BazarrSystemTask({
+    @JsonKey(name: 'job_id') @Default('') String jobId,
+    @Default('') String name,
+    @Default('') String interval,
+    @JsonKey(name: 'job_running') @Default(false) bool jobRunning,
+    @JsonKey(name: 'next_run_in') @Default('') String nextRunIn,
+  }) = _BazarrSystemTask;
+
+  factory BazarrSystemTask.fromJson(Map<String, dynamic> json) =>
+      _$BazarrSystemTaskFromJson(json);
+}
+
+/// One subtitle provider's status from `GET /providers`. [status] is "Good" or
+/// a throttle reason; [retry] is "-" or a retry time.
+@freezed
+abstract class BazarrProviderStatus with _$BazarrProviderStatus {
+  const factory BazarrProviderStatus({
+    @Default('') String name,
+    @Default('') String status,
+    @Default('') String retry,
+  }) = _BazarrProviderStatus;
+
+  factory BazarrProviderStatus.fromJson(Map<String, dynamic> json) =>
+      _$BazarrProviderStatusFromJson(json);
+}
+
+/// One backup from `GET /system/backups`. Delete via `DELETE ?filename=`.
+@freezed
+abstract class BazarrBackup with _$BazarrBackup {
+  const factory BazarrBackup({
+    @Default('') String type,
+    @Default('') String filename,
+    @Default('') String date,
+  }) = _BazarrBackup;
+
+  factory BazarrBackup.fromJson(Map<String, dynamic> json) =>
+      _$BazarrBackupFromJson(json);
+}
+
+/// One log line from `GET /system/logs`.
+@freezed
+abstract class BazarrLogEntry with _$BazarrLogEntry {
+  const factory BazarrLogEntry({
+    @Default('') String timestamp,
+    @Default('') String type,
+    @Default('') String message,
+    String? exception,
+  }) = _BazarrLogEntry;
+
+  factory BazarrLogEntry.fromJson(Map<String, dynamic> json) =>
+      _$BazarrLogEntryFromJson(json);
+}
+
 /// A flattened "needs subtitles" row, unifying episodes + movies for the UI.
 class BazarrWantedRow {
   const BazarrWantedRow({
