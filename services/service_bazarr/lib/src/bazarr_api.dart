@@ -350,4 +350,151 @@ class BazarrApi {
       throw NetworkException.fromDio(e);
     }
   }
+
+  // --- System ---
+
+  /// System status (versions, OS, database, uptime).
+  Future<BazarrSystemStatus> getSystemStatus() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('api/system/status');
+      final dynamic data = resp.data;
+      final Map<String, dynamic> obj = data is Map<String, dynamic>
+          ? ((data['data'] as Map<String, dynamic>?) ?? data)
+          : <String, dynamic>{};
+      return BazarrSystemStatus.fromJson(obj);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Active health issues (`GET /system/health`); empty when healthy.
+  Future<List<BazarrHealthItem>> getSystemHealth() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('api/system/health');
+      return _listFrom(resp.data)
+          .map(
+            (dynamic e) =>
+                BazarrHealthItem.fromJson(e as Map<String, dynamic>),
+          )
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Scheduled tasks (`GET /system/tasks`).
+  Future<List<BazarrSystemTask>> getSystemTasks() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('api/system/tasks');
+      return _listFrom(resp.data)
+          .map(
+            (dynamic e) =>
+                BazarrSystemTask.fromJson(e as Map<String, dynamic>),
+          )
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Runs a scheduled task now (`POST /system/tasks?taskid=`).
+  Future<void> runTask(String taskId) async {
+    try {
+      await _dio.post<dynamic>(
+        'api/system/tasks',
+        queryParameters: <String, dynamic>{'taskid': taskId},
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Subtitle provider statuses (`GET /providers`).
+  Future<List<BazarrProviderStatus>> getProviderStatuses() async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>('api/providers');
+      return _listFrom(resp.data)
+          .map(
+            (dynamic e) =>
+                BazarrProviderStatus.fromJson(e as Map<String, dynamic>),
+          )
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Resets throttled providers (`POST /providers?action=reset`).
+  Future<void> resetProviders() async {
+    try {
+      await _dio.post<dynamic>(
+        'api/providers',
+        queryParameters: <String, dynamic>{'action': 'reset'},
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Existing backups (`GET /system/backups`).
+  Future<List<BazarrBackup>> getBackups() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('api/system/backups');
+      return _listFrom(resp.data)
+          .map((dynamic e) => BazarrBackup.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Creates a backup now (`POST /system/backups`).
+  Future<void> createBackup() async {
+    try {
+      await _dio.post<dynamic>('api/system/backups');
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Deletes a backup (`DELETE /system/backups?filename=`).
+  Future<void> deleteBackup(String filename) async {
+    try {
+      await _dio.delete<dynamic>(
+        'api/system/backups',
+        queryParameters: <String, dynamic>{'filename': filename},
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Recent log lines (`GET /system/logs`), newest first.
+  Future<List<BazarrLogEntry>> getLogs() async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>('api/system/logs');
+      return _listFrom(resp.data)
+          .map((dynamic e) => BazarrLogEntry.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Clears the logs (`DELETE /system/logs`).
+  Future<void> clearLogs() async {
+    try {
+      await _dio.delete<dynamic>('api/system/logs');
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  List<dynamic> _listFrom(dynamic data) => data is Map<String, dynamic>
+      ? ((data['data'] as List<dynamic>?) ?? const <dynamic>[])
+      : (data as List<dynamic>);
 }

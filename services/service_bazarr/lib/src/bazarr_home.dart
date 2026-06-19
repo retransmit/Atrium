@@ -5,13 +5,14 @@ import 'bazarr_blacklist_tab.dart';
 import 'bazarr_history_tab.dart';
 import 'bazarr_movies_tab.dart';
 import 'bazarr_series_tab.dart';
+import 'bazarr_system_tab.dart';
 import 'bazarr_wanted_tab.dart';
 
 /// Bazarr's per-instance UI: tabbed Series / Movies / Wanted / History /
-/// Blacklist. Series and Movies browse Sonarr/Radarr-backed content with
-/// subtitle status (and manual search, download, delete); Wanted lists what is
-/// still missing; History logs subtitle activity; Blacklist manages blocked
-/// subtitles.
+/// Blacklist / System. Series and Movies browse Sonarr/Radarr-backed content
+/// with subtitle status (and manual search, download, delete); Wanted lists
+/// what is still missing; History logs subtitle activity; Blacklist manages
+/// blocked subtitles; System surfaces status, providers, tasks, backups, logs.
 class BazarrHome extends StatefulWidget {
   const BazarrHome({required this.instance, super.key});
 
@@ -28,7 +29,7 @@ class _BazarrHomeState extends State<BazarrHome>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 5, vsync: this);
+    _tab = TabController(length: 6, vsync: this);
   }
 
   @override
@@ -52,6 +53,7 @@ class _BazarrHomeState extends State<BazarrHome>
               Tab(text: 'Wanted'),
               Tab(text: 'History'),
               Tab(text: 'Blacklist'),
+              Tab(text: 'System'),
             ],
           ),
           Expanded(
@@ -63,6 +65,7 @@ class _BazarrHomeState extends State<BazarrHome>
                 BazarrWantedTab(instance: widget.instance),
                 BazarrHistoryTab(instance: widget.instance),
                 BazarrBlacklistTab(instance: widget.instance),
+                BazarrSystemTab(instance: widget.instance),
               ],
             ),
           ),
