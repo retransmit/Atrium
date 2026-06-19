@@ -3,10 +3,13 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 import 'jellyfin_client.dart';
 import 'jellyfin_item_detail.dart';
+import 'jellyfin_music_screens.dart';
 import 'jellyfin_providers.dart';
+import 'jellyfin_season_screen.dart';
 import 'models/jellyfin_item.dart';
 import 'models/jellyfin_session.dart';
 import 'models/jellyfin_view.dart';
@@ -38,8 +41,6 @@ class JellyfinHome extends ConsumerStatefulWidget {
 }
 
 class _JellyfinHomeState extends ConsumerState<JellyfinHome> {
-  String? _selectedLibraryId;
-
   @override
   Widget build(BuildContext context) {
     final AsyncValue<List<JellyfinView>> views =
@@ -56,84 +57,182 @@ class _JellyfinHomeState extends ConsumerState<JellyfinHome> {
             message: 'This Jellyfin server has no libraries to show.',
           );
         }
-        final String selected = _selectedLibraryId ?? 'home';
-        return Column(
-          children: <Widget>[
-            _LibraryChips(
-              libraries: libraries,
-              selectedId: selected,
-              onSelect: (String id) => setState(() => _selectedLibraryId = id),
-            ),
-            Expanded(
-              child: selected == 'home'
-                  ? _HomeSections(instance: widget.instance)
-                  : JellyfinItemsGrid(
-                      instance: widget.instance,
-                      libraryId: selected,
+        return DefaultTabController(
+          key: ValueKey<int>(libraries.length),
+          length: libraries.length + 3,
+          child: Column(
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: TabBar(
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
+                      tabs: <Widget>[
+                        const Tab(text: 'Home'),
+                        for (final JellyfinView lib in libraries) Tab(text: lib.name),
+                        const Tab(text: 'Watched'),
+                        const Tab(text: 'Unwatched'),
+                      ],
                     ),
-            ),
-          ],
+                  ),
+                  Builder(
+                    builder: (BuildContext context) {
+                      final TabController controller = DefaultTabController.of(context);
+                      return AnimatedBuilder(
+                        animation: controller,
+                        builder: (BuildContext context, Widget? child) {
+                          if (controller.index == 0) {
+                            return const SizedBox.shrink();
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.only(right: Insets.sm),
+                            child: PopupMenuButton<double>(
+                              icon: const Icon(Icons.grid_view),
+                              tooltip: 'Grid Size',
+                              onSelected: (double value) {
+                                ref.read(jellyfinGridScaleProvider.notifier).state = value;
+                              },
+                              itemBuilder: (BuildContext context) {
+                                final double current = ref.read(jellyfinGridScaleProvider);
+                                return <PopupMenuEntry<double>>[
+                                  PopupMenuItem<double>(
+                                    value: 80.0,
+                                    child: Text('Small ${current == 80.0 ? '(Active)' : ''}'),
+                                  ),
+                                  PopupMenuItem<double>(
+                                    value: 140.0,
+                                    child: Text('Medium ${current == 140.0 ? '(Active)' : ''}'),
+                                  ),
+                                  PopupMenuItem<double>(
+                                    value: 200.0,
+                                    child: Text('Large ${current == 200.0 ? '(Active)' : ''}'),
+                                  ),
+                                ];
+                              },
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+              Expanded(
+                child: TabBarView(
+                  children: <Widget>[
+                    _HomeSections(instance: widget.instance),
+                    for (final JellyfinView lib in libraries)
+                      JellyfinLibraryGrid(
+                        instance: widget.instance,
+                        view: lib,
+                      ),
+                    JellyfinItemsGrid(
+                      instance: widget.instance,
+                      libraryId: 'watched',
+                    ),
+                    JellyfinItemsGrid(
+                      instance: widget.instance,
+                      libraryId: 'unwatched',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
   }
 }
 
-class _LibraryChips extends StatelessWidget {
-  const _LibraryChips({
-    required this.libraries,
-    required this.selectedId,
-    required this.onSelect,
-  });
 
-  final List<JellyfinView> libraries;
-  final String selectedId;
-  final ValueChanged<String> onSelect;
+
+class JellyfinLibraryGrid extends ConsumerWidget {
+  const JellyfinLibraryGrid({required this.instance, required this.view, super.key});
+
+  final Instance instance;
+  final JellyfinView view;
 
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 48,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
-        itemCount: libraries.length + 3,
-        separatorBuilder: (_, __) => const SizedBox(width: Insets.sm),
-        itemBuilder: (BuildContext context, int index) {
-          if (index == 0) {
-            return Center(
-              child: ChoiceChip(
-                label: const Text('Home'),
-                selected: 'home' == selectedId,
-                onSelected: (_) => onSelect('home'),
-              ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<List<JellyfinItem>> items =
+        ref.watch(jellyfinLibraryItemsProvider((instance, view)));
+    final JellyfinClient? client =
+        ref.watch(jellyfinClientProvider(instance)).value;
+
+    return RefreshIndicator(
+      onRefresh: () async =>
+          ref.invalidate(jellyfinLibraryItemsProvider((instance, view))),
+      child: AsyncValueView<List<JellyfinItem>>(
+        value: items,
+        onRetry: () => ref.invalidate(jellyfinLibraryItemsProvider((instance, view))),
+        data: (List<JellyfinItem> list) {
+          if (list.isEmpty) {
+            return const EmptyView(
+              icon: Icons.movie_outlined,
+              title: 'Empty library',
+              message: 'Nothing in this library yet.',
             );
           }
-          if (index <= libraries.length) {
-            final JellyfinView lib = libraries[index - 1];
-            return Center(
-              child: ChoiceChip(
-                label: Text(lib.name),
-                selected: lib.id == selectedId,
-                onSelected: (_) => onSelect(lib.id),
-              ),
-            );
-          }
-          if (index == libraries.length + 1) {
-            return Center(
-              child: ChoiceChip(
-                label: const Text('Watched'),
-                selected: 'watched' == selectedId,
-                onSelected: (_) => onSelect('watched'),
-              ),
-            );
-          }
-          return Center(
-            child: ChoiceChip(
-              label: const Text('Unwatched'),
-              selected: 'unwatched' == selectedId,
-              onSelected: (_) => onSelect('unwatched'),
-            ),
+          final double scale = ref.watch(jellyfinGridScaleProvider);
+          return MasonryGridView.extent(
+            padding: Insets.page,
+            maxCrossAxisExtent: scale,
+            crossAxisSpacing: Insets.md,
+            mainAxisSpacing: Insets.md,
+            itemCount: list.length,
+            itemBuilder: (BuildContext context, int index) {
+              final JellyfinItem item = list[index];
+              return JellyfinPosterCard(
+                instance: instance,
+                item: item,
+                imageUrl: client?.imageUrl(item),
+                onTap: client == null
+                    ? null
+                    : () {
+                        if (item.type == 'MusicAlbum') {
+                          pushScreen<void>(
+                            context,
+                            JellyfinAlbumScreen(
+                              instance: instance,
+                              albumId: item.id,
+                              albumName: item.name,
+                              albumArtist: item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
+                              albumOverview: item.overview,
+                              albumImageUrl: client.imageUrl(item),
+                            ),
+                          );
+                        } else if (item.type == 'Series') {
+                          pushScreen<void>(
+                            context,
+                            JellyfinItemDetailScreen(instance: instance, itemId: item.id),
+                          );
+                        } else if (item.type == 'Season') {
+                          pushScreen<void>(
+                            context,
+                            JellyfinSeasonScreen(
+                              instance: instance,
+                              seriesId: item.seriesId ?? item.parentId ?? '',
+                              seasonId: item.id,
+                              seasonName: item.name,
+                              seasonImageUrl: client.imageUrl(item),
+                            ),
+                          );
+                        } else if (jellyfinContainerTypes.contains(item.type)) {
+                          pushScreen<void>(
+                            context,
+                            JellyfinFolderScreen(instance: instance, item: item),
+                          );
+                        } else {
+                          pushScreen<void>(
+                            context,
+                            JellyfinItemDetailScreen(instance: instance, itemId: item.id),
+                          );
+                        }
+                      },
+              );
+            },
           );
         },
       ),
@@ -168,14 +267,12 @@ class JellyfinItemsGrid extends ConsumerWidget {
               message: 'Nothing in this library yet.',
             );
           }
-          return GridView.builder(
+          final double scale = ref.watch(jellyfinGridScaleProvider);
+          return MasonryGridView.extent(
             padding: Insets.page,
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 140,
-              childAspectRatio: 0.52,
-              crossAxisSpacing: Insets.md,
-              mainAxisSpacing: Insets.md,
-            ),
+            maxCrossAxisExtent: scale,
+            crossAxisSpacing: Insets.md,
+            mainAxisSpacing: Insets.md,
             itemCount: list.length,
             itemBuilder: (BuildContext context, int index) {
               final JellyfinItem item = list[index];
@@ -195,19 +292,47 @@ class JellyfinItemsGrid extends ConsumerWidget {
   }
 
   void _openItem(BuildContext context, JellyfinClient client, JellyfinItem item) {
-    if (jellyfinContainerTypes.contains(item.type)) {
+    if (item.type == 'MusicAlbum') {
+      pushScreen<void>(
+        context,
+        JellyfinAlbumScreen(
+          instance: instance,
+          albumId: item.id,
+          albumName: item.name,
+          albumArtist: item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
+          albumOverview: item.overview,
+          albumImageUrl: client.imageUrl(item),
+        ),
+      );
+    } else if (item.type == 'Series') {
+      pushScreen<void>(
+        context,
+        JellyfinItemDetailScreen(instance: instance, itemId: item.id),
+      );
+    } else if (item.type == 'Season') {
+      pushScreen<void>(
+        context,
+        JellyfinSeasonScreen(
+          instance: instance,
+          seriesId: item.seriesId ?? item.parentId ?? '',
+          seasonId: item.id,
+          seasonName: item.name,
+          seasonImageUrl: client.imageUrl(item),
+        ),
+      );
+    } else if (jellyfinContainerTypes.contains(item.type)) {
       // pushScreen = root navigator; branch-navigator pushes get swept by
       // GoRouter shell rebuilds.
       pushScreen<void>(
         context,
         JellyfinFolderScreen(instance: instance, item: item),
       );
-      return;
+    } else {
+      pushScreen<void>(
+        context,
+        JellyfinItemDetailScreen(instance: instance, itemId: item.id),
+      );
     }
-    pushScreen<void>(
-      context,
-      JellyfinItemDetailScreen(instance: instance, itemId: item.id),
-    );
   }
 }
 
@@ -339,8 +464,12 @@ class JellyfinPosterCard extends ConsumerWidget {
       borderRadius: Radii.card,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Expanded(
+          AspectRatio(
+            aspectRatio: item.type == 'Episode' 
+                ? (2 / 3) 
+                : (item.primaryImageAspectRatio ?? (item.type == 'Audio' || item.type == 'MusicAlbum' || item.type == 'MusicArtist' ? 1.0 : (2 / 3))),
             child: ClipRRect(
               borderRadius: Radii.card,
               child: Stack(
@@ -368,10 +497,10 @@ class JellyfinPosterCard extends ConsumerWidget {
                         minHeight: 3,
                       ),
                     ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
           const SizedBox(height: Insets.xs),
           Text(
             item.seriesName ?? item.name,
@@ -527,8 +656,14 @@ class _HorizontalSection extends ConsumerWidget {
                 separatorBuilder: (_, __) => const SizedBox(width: Insets.md),
                 itemBuilder: (BuildContext context, int index) {
                   final JellyfinItem item = list[index];
+                  final double ratio = item.type == 'Episode' 
+                      ? (2 / 3) 
+                      : (item.primaryImageAspectRatio ?? (item.type == 'Audio' || item.type == 'MusicAlbum' || item.type == 'MusicArtist' ? 1.0 : (2 / 3)));
+                  final double exactWidth = 190.0 * ratio;
+                  final double width = exactWidth.clamp(80.0, 400.0);
+
                   return SizedBox(
-                    width: 120,
+                    width: width,
                     child: JellyfinPosterCard(
                       instance: instance,
                       item: item,
@@ -536,21 +671,43 @@ class _HorizontalSection extends ConsumerWidget {
                       onTap: client == null
                           ? null
                           : () {
-                              if (jellyfinContainerTypes.contains(item.type)) {
+                              if (item.type == 'MusicAlbum') {
                                 pushScreen<void>(
                                   context,
-                                  JellyfinFolderScreen(
+                                  JellyfinAlbumScreen(
                                     instance: instance,
-                                    item: item,
+                                    albumId: item.id,
+                                    albumName: item.name,
+                                    albumArtist: item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
+                                    albumOverview: item.overview,
+                                    albumImageUrl: client.imageUrl(item),
                                   ),
+                                );
+                              } else if (item.type == 'Series') {
+                                pushScreen<void>(
+                                  context,
+                                  JellyfinItemDetailScreen(instance: instance, itemId: item.id),
+                                );
+                              } else if (item.type == 'Season') {
+                                pushScreen<void>(
+                                  context,
+                                  JellyfinSeasonScreen(
+                                    instance: instance,
+                                    seriesId: item.seriesId ?? item.parentId ?? '',
+                                    seasonId: item.id,
+                                    seasonName: item.name,
+                                    seasonImageUrl: client.imageUrl(item),
+                                  ),
+                                );
+                              } else if (jellyfinContainerTypes.contains(item.type)) {
+                                pushScreen<void>(
+                                  context,
+                                  JellyfinFolderScreen(instance: instance, item: item),
                                 );
                               } else {
                                 pushScreen<void>(
                                   context,
-                                  JellyfinItemDetailScreen(
-                                    instance: instance,
-                                    itemId: item.id,
-                                  ),
+                                  JellyfinItemDetailScreen(instance: instance, itemId: item.id),
                                 );
                               }
                             },

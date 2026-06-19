@@ -3,10 +3,13 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 import 'emby_client.dart';
 import 'emby_item_detail.dart';
+import 'emby_music_screens.dart';
 import 'emby_providers.dart';
+import 'emby_season_screen.dart';
 import 'models/emby_item.dart';
 import 'models/emby_session.dart';
 import 'models/emby_view.dart';
@@ -38,8 +41,6 @@ class EmbyHome extends ConsumerStatefulWidget {
 }
 
 class _EmbyHomeState extends ConsumerState<EmbyHome> {
-  String? _selectedLibraryId;
-
   @override
   Widget build(BuildContext context) {
     final AsyncValue<List<EmbyView>> views =
@@ -56,92 +57,180 @@ class _EmbyHomeState extends ConsumerState<EmbyHome> {
             message: 'This Emby server has no libraries to show.',
           );
         }
-        final String selected = _selectedLibraryId ?? 'home';
-        return Column(
-          children: <Widget>[
-            _LibraryChips(
-              libraries: libraries,
-              selectedId: selected,
-              onSelect: (String id) => setState(() => _selectedLibraryId = id),
-            ),
-            Expanded(
-              child: selected == 'home'
-                  ? _HomeSections(instance: widget.instance)
-                  : EmbyItemsGrid(
-                      instance: widget.instance,
-                      libraryId: selected,
+        return DefaultTabController(
+          key: ValueKey<int>(libraries.length),
+          length: libraries.length + 3,
+          child: Column(
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: TabBar(
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
+                      tabs: <Widget>[
+                        const Tab(text: 'Home'),
+                        for (final EmbyView lib in libraries) Tab(text: lib.name),
+                        const Tab(text: 'Watched'),
+                        const Tab(text: 'Unwatched'),
+                      ],
                     ),
-            ),
-          ],
+                  ),
+                  Builder(
+                    builder: (BuildContext context) {
+                      final TabController controller = DefaultTabController.of(context);
+                      return AnimatedBuilder(
+                        animation: controller,
+                        builder: (BuildContext context, Widget? child) {
+                          if (controller.index == 0) {
+                            return const SizedBox.shrink();
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.only(right: Insets.sm),
+                            child: PopupMenuButton<double>(
+                              icon: const Icon(Icons.grid_view),
+                              tooltip: 'Grid Size',
+                              onSelected: (double value) {
+                                ref.read(embyGridScaleProvider.notifier).state = value;
+                              },
+                              itemBuilder: (BuildContext context) {
+                                final double current = ref.read(embyGridScaleProvider);
+                                return <PopupMenuEntry<double>>[
+                                  PopupMenuItem<double>(
+                                    value: 80.0,
+                                    child: Text('Small ${current == 80.0 ? '(Active)' : ''}'),
+                                  ),
+                                  PopupMenuItem<double>(
+                                    value: 140.0,
+                                    child: Text('Medium ${current == 140.0 ? '(Active)' : ''}'),
+                                  ),
+                                  PopupMenuItem<double>(
+                                    value: 200.0,
+                                    child: Text('Large ${current == 200.0 ? '(Active)' : ''}'),
+                                  ),
+                                ];
+                              },
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+              Expanded(
+                child: TabBarView(
+                  children: <Widget>[
+                    _HomeSections(instance: widget.instance),
+                    for (final EmbyView lib in libraries)
+                      EmbyLibraryGrid(
+                        instance: widget.instance,
+                        view: lib,
+                      ),
+                    EmbyItemsGrid(
+                      instance: widget.instance,
+                      libraryId: 'watched',
+                    ),
+                    EmbyItemsGrid(
+                      instance: widget.instance,
+                      libraryId: 'unwatched',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
   }
 }
 
-class _LibraryChips extends StatelessWidget {
-  const _LibraryChips({
-    required this.libraries,
-    required this.selectedId,
-    required this.onSelect,
-  });
+class EmbyLibraryGrid extends ConsumerWidget {
+  const EmbyLibraryGrid({required this.instance, required this.view, super.key});
 
-  final List<EmbyView> libraries;
-  final String selectedId;
-  final ValueChanged<String> onSelect;
+  final Instance instance;
+  final EmbyView view;
 
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 48,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
-        itemCount: libraries.length + 3,
-        separatorBuilder: (_, __) => const SizedBox(width: Insets.sm),
-        itemBuilder: (BuildContext context, int index) {
-          if (index == 0) {
-            return Center(
-              child: ChoiceChip(
-                label: const Text('Home'),
-                selected: 'home' == selectedId,
-                onSelected: (_) => onSelect('home'),
-              ),
-            );
-          }
-          
-          if (index <= libraries.length) {
-            final EmbyView lib = libraries[index - 1];
-            return Center(
-              child: ChoiceChip(
-                label: Text(lib.name),
-                selected: lib.id == selectedId,
-                onSelected: (_) => onSelect(lib.id),
-              ),
-            );
-          }
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<List<EmbyItem>> items =
+        ref.watch(embyLibraryItemsProvider((instance, view)));
+    final EmbyClient? client =
+        ref.watch(embyClientProvider(instance)).value;
 
-          if (index == libraries.length + 1) {
-            return Center(
-              child: ChoiceChip(
-                label: const Text('Watched'),
-                selected: 'watched' == selectedId,
-                onSelected: (_) => onSelect('watched'),
-              ),
+    return RefreshIndicator(
+      onRefresh: () async =>
+          ref.invalidate(embyLibraryItemsProvider((instance, view))),
+      child: AsyncValueView<List<EmbyItem>>(
+        value: items,
+        onRetry: () => ref.invalidate(embyLibraryItemsProvider((instance, view))),
+        data: (List<EmbyItem> list) {
+          if (list.isEmpty) {
+            return const EmptyView(
+              icon: Icons.movie_outlined,
+              title: 'Empty library',
+              message: 'Nothing in this library yet.',
             );
           }
-
-          if (index == libraries.length + 2) {
-            return Center(
-              child: ChoiceChip(
-                label: const Text('Unwatched'),
-                selected: 'unwatched' == selectedId,
-                onSelected: (_) => onSelect('unwatched'),
-              ),
-            );
-          }
-          
-          return const SizedBox.shrink();
+          final double scale = ref.watch(embyGridScaleProvider);
+          return MasonryGridView.extent(
+            padding: Insets.page,
+            maxCrossAxisExtent: scale,
+            crossAxisSpacing: Insets.md,
+            mainAxisSpacing: Insets.md,
+            itemCount: list.length,
+            itemBuilder: (BuildContext context, int index) {
+              final EmbyItem item = list[index];
+              return EmbyPosterCard(
+                instance: instance,
+                item: item,
+                imageUrl: client?.imageUrl(item),
+                onTap: client == null
+                    ? null
+                    : () {
+                        if (item.type == 'MusicAlbum') {
+                          pushScreen<void>(
+                            context,
+                            EmbyAlbumScreen(
+                              instance: instance,
+                              albumId: item.id,
+                              albumName: item.name,
+                              albumArtist: item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
+                              albumOverview: item.overview,
+                              albumImageUrl: client.imageUrl(item),
+                            ),
+                          );
+                        } else if (item.type == 'Series') {
+                          pushScreen<void>(
+                            context,
+                            EmbyItemDetailScreen(instance: instance, itemId: item.id),
+                          );
+                        } else if (item.type == 'Season') {
+                          pushScreen<void>(
+                            context,
+                            EmbySeasonScreen(
+                              instance: instance,
+                              seasonId: item.id,
+                              seasonName: item.name,
+                              seasonImageUrl: client.imageUrl(item),
+                            ),
+                          );
+                        } else if (embyContainerTypes.contains(item.type)) {
+                          pushScreen<void>(
+                            context,
+                            EmbyFolderScreen(instance: instance, item: item),
+                          );
+                        } else {
+                          pushScreen<void>(
+                            context,
+                            EmbyItemDetailScreen(instance: instance, itemId: item.id),
+                          );
+                        }
+                      },
+              );
+            },
+          );
         },
       ),
     );
@@ -175,14 +264,12 @@ class EmbyItemsGrid extends ConsumerWidget {
               message: 'Nothing in this library yet.',
             );
           }
-          return GridView.builder(
+          final double scale = ref.watch(embyGridScaleProvider);
+          return MasonryGridView.extent(
             padding: Insets.page,
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 140,
-              childAspectRatio: 0.52,
-              crossAxisSpacing: Insets.md,
-              mainAxisSpacing: Insets.md,
-            ),
+            maxCrossAxisExtent: scale,
+            crossAxisSpacing: Insets.md,
+            mainAxisSpacing: Insets.md,
             itemCount: list.length,
             itemBuilder: (BuildContext context, int index) {
               final EmbyItem item = list[index];
@@ -202,6 +289,39 @@ class EmbyItemsGrid extends ConsumerWidget {
   }
 
   void _openItem(BuildContext context, EmbyClient client, EmbyItem item) {
+    if (item.type == 'MusicAlbum') {
+      pushScreen<void>(
+        context,
+        EmbyAlbumScreen(
+          instance: instance,
+          albumId: item.id,
+          albumName: item.name,
+          albumArtist: item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
+          albumOverview: item.overview,
+          albumImageUrl: client.imageUrl(item),
+        ),
+      );
+      return;
+    }
+    if (item.type == 'Series') {
+      pushScreen<void>(
+        context,
+        EmbyItemDetailScreen(instance: instance, itemId: item.id),
+      );
+      return;
+    }
+    if (item.type == 'Season') {
+      pushScreen<void>(
+        context,
+        EmbySeasonScreen(
+          instance: instance,
+          seasonId: item.id,
+          seasonName: item.name,
+          seasonImageUrl: client.imageUrl(item),
+        ),
+      );
+      return;
+    }
     if (embyContainerTypes.contains(item.type)) {
       // pushScreen = root navigator; branch-navigator pushes get swept by
       // GoRouter shell rebuilds.
@@ -346,8 +466,16 @@ class EmbyPosterCard extends ConsumerWidget {
       borderRadius: Radii.card,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Expanded(
+          AspectRatio(
+            aspectRatio: item.type == 'Episode'
+                ? (2 / 3)
+                : ((item.primaryImageAspectRatio != null && item.primaryImageAspectRatio! > 0.0)
+                    ? item.primaryImageAspectRatio!
+                    : (item.type == 'MusicAlbum' || item.type == 'Audio' || item.type == 'MusicArtist'
+                        ? 1.0
+                        : (2 / 3))),
             child: ClipRRect(
               borderRadius: Radii.card,
               child: Stack(
@@ -408,10 +536,11 @@ class EmbyPosterCard extends ConsumerWidget {
   }
 
   Widget _poster(ThemeData theme) {
+    final bool isMusic = item.type == 'MusicAlbum' || item.type == 'MusicArtist' || item.type == 'Audio';
     final Widget fallback = Container(
       color: theme.colorScheme.surfaceContainerHighest,
       child: Icon(
-        Icons.movie_outlined,
+        isMusic ? Icons.album_outlined : Icons.movie_outlined,
         color: theme.colorScheme.outline,
       ),
     );
@@ -421,7 +550,6 @@ class EmbyPosterCard extends ConsumerWidget {
     return CachedNetworkImage(
       imageUrl: imageUrl!,
       fit: BoxFit.cover,
-      memCacheWidth: 200,
       placeholder: (BuildContext context, String url) => Container(
         color: theme.colorScheme.surfaceContainerHighest,
       ),
@@ -534,8 +662,19 @@ class _HorizontalSection extends ConsumerWidget {
                 separatorBuilder: (_, __) => const SizedBox(width: Insets.md),
                 itemBuilder: (BuildContext context, int index) {
                   final EmbyItem item = list[index];
+                  final String type = item.type;
+                  final double rawRatio = item.type == 'Episode' 
+                      ? (2 / 3) 
+                      : (item.primaryImageAspectRatio ?? 0.0);
+                  final double ratio = rawRatio > 0.0 
+                      ? rawRatio 
+                      : (type == 'MusicAlbum' || type == 'Audio' || type == 'MusicArtist' ? 1.0 : (2 / 3));
+                  
+                  final double exactWidth = 190.0 * ratio;
+                  final double cardWidth = exactWidth.clamp(80.0, 400.0);
+                  
                   return SizedBox(
-                    width: 120,
+                    width: cardWidth,
                     child: EmbyPosterCard(
                       instance: instance,
                       item: item,
@@ -543,7 +682,34 @@ class _HorizontalSection extends ConsumerWidget {
                       onTap: client == null
                           ? null
                           : () {
-                              if (embyContainerTypes.contains(item.type)) {
+                              if (item.type == 'MusicAlbum') {
+                                pushScreen<void>(
+                                  context,
+                                  EmbyAlbumScreen(
+                                    instance: instance,
+                                    albumId: item.id,
+                                    albumName: item.name,
+                                    albumArtist: item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
+                                    albumOverview: item.overview,
+                                    albumImageUrl: client.imageUrl(item),
+                                  ),
+                                );
+                              } else if (item.type == 'Series') {
+                                pushScreen<void>(
+                                  context,
+                                  EmbyItemDetailScreen(instance: instance, itemId: item.id),
+                                );
+                              } else if (item.type == 'Season') {
+                                pushScreen<void>(
+                                  context,
+                                  EmbySeasonScreen(
+                                    instance: instance,
+                                    seasonId: item.id,
+                                    seasonName: item.name,
+                                    seasonImageUrl: client.imageUrl(item),
+                                  ),
+                                );
+                              } else if (embyContainerTypes.contains(item.type)) {
                                 pushScreen<void>(
                                   context,
                                   EmbyFolderScreen(
@@ -688,9 +854,11 @@ class _SessionCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             // Poster
-            Container(
-              width: 84,
-              height: 126,
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 120, maxHeight: 126),
+              child: AspectRatio(
+                aspectRatio: session.aspectRatio != null && session.aspectRatio! > 0.0 ? session.aspectRatio! : (2 / 3),
+                child: Container(
               decoration: BoxDecoration(
                 color: theme.colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(8),
@@ -711,6 +879,8 @@ class _SessionCard extends StatelessWidget {
               child: session.posterUrl == null
                   ? Icon(Icons.movie_outlined, color: theme.colorScheme.outline, size: 32)
                   : null,
+                ),
+              ),
             ),
             const SizedBox(width: Insets.lg),
             
