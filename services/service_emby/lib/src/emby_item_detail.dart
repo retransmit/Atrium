@@ -181,8 +181,6 @@ class _Header extends StatelessWidget {
                 width: 140,
                 height: 210,
                 fit: BoxFit.cover,
-                memCacheWidth: 200,
-                memCacheHeight: 300,
               ),
             )
           else

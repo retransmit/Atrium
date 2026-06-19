@@ -1,5 +1,5 @@
-import 'emby_client.dart';
-import 'emby_deep_link.dart';
+import 'jellyfin_client.dart';
+import 'jellyfin_deep_link.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:core_models/core_models.dart';
@@ -7,11 +7,11 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'emby_providers.dart';
-import 'models/emby_item.dart';
+import 'jellyfin_providers.dart';
+import 'models/jellyfin_item.dart';
 
-class EmbyAlbumScreen extends ConsumerWidget {
-  const EmbyAlbumScreen({
+class JellyfinAlbumScreen extends ConsumerWidget {
+  const JellyfinAlbumScreen({
     required this.instance,
     required this.albumId,
     required this.albumName,
@@ -31,8 +31,8 @@ class EmbyAlbumScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<AlbumScreenData> dataAsync =
-        ref.watch(embyAlbumDataFutureProvider((instance, albumId, albumArtist)));
-    final EmbyClient? client = ref.watch(embyClientProvider(instance)).value;
+        ref.watch(jellyfinAlbumDataFutureProvider((instance, albumId, albumArtist)));
+    final JellyfinClient? client = ref.watch(jellyfinClientProvider(instance)).value;
     
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -107,7 +107,7 @@ class EmbyAlbumScreen extends ConsumerWidget {
           SliverToBoxAdapter(
             child: AsyncValueView<AlbumScreenData>(
               value: dataAsync,
-              onRetry: () => ref.invalidate(embyAlbumDataFutureProvider((instance, albumId, albumArtist))),
+              onRetry: () => ref.invalidate(jellyfinAlbumDataFutureProvider((instance, albumId, albumArtist))),
               data: (AlbumScreenData data) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -126,7 +126,7 @@ class EmbyAlbumScreen extends ConsumerWidget {
                       padding: EdgeInsets.zero,
                       itemCount: data.tracks.length,
                       itemBuilder: (BuildContext context, int index) {
-                        final EmbyItem song = data.tracks[index];
+                        final JellyfinItem song = data.tracks[index];
                         
                         String duration = '';
                         if (song.runTimeTicks != null) {
@@ -207,7 +207,7 @@ class EmbyAlbumScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context, EmbyClient? client) {
+  Widget _buildHeader(BuildContext context, JellyfinClient? client) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
       child: Row(
@@ -256,7 +256,7 @@ class EmbyAlbumScreen extends ConsumerWidget {
                   child: ElevatedButton.icon(
                     onPressed: () {
                       if (client != null) {
-                        launchEmbyDeepLink(context, client, albumId);
+                        launchJellyfinDeepLink(context, client, albumId);
                       }
                     },
                     icon: const Icon(Icons.play_circle_fill),
@@ -320,3 +320,4 @@ class _ExpandableTextState extends State<_ExpandableText> {
     );
   }
 }
+

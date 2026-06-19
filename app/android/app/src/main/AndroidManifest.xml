@@ -49,5 +49,11 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="emby" />
         </intent>
+        <package android:name="org.jellyfin.mobile" />
+        <package android:name="org.jellyfin.androidtv" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="jellyfin" />
+        </intent>
     </queries>
 </manifest>
