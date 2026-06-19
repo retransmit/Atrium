@@ -45,7 +45,7 @@ final seerrRequestsProvider =
       });
       ref.onDispose(timer.cancel);
 
-      return api.getRequests();
+      return api.getAllRequests();
     });
 
 final seerrTrendingProvider =
