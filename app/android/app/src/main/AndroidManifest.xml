@@ -43,5 +43,17 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <package android:name="com.mb.android" />
+        <package android:name="tv.emby.embyatv" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="emby" />
+        </intent>
+        <package android:name="org.jellyfin.mobile" />
+        <package android:name="org.jellyfin.androidtv" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="jellyfin" />
+        </intent>
     </queries>
 </manifest>

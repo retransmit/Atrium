@@ -29,7 +29,7 @@ abstract class EmbyItem with _$EmbyItem {
     @JsonKey(name: 'UserData') EmbyUserData? userData,
     @JsonKey(name: 'Overview') String? overview,
     @JsonKey(name: 'RunTimeTicks') int? runTimeTicks,
-    @JsonKey(name: 'CommunityRating') double? communityRating,
+    @JsonKey(name: 'CommunityRating', fromJson: _parseDouble) double? communityRating,
     @JsonKey(name: 'OfficialRating') String? officialRating,
     @JsonKey(name: 'IndexNumber') int? indexNumber,
     @JsonKey(name: 'ParentIndexNumber') int? parentIndexNumber,
@@ -38,7 +38,15 @@ abstract class EmbyItem with _$EmbyItem {
     @JsonKey(name: 'SeriesPrimaryImageTag') String? seriesPrimaryImageTag,
     @JsonKey(name: 'ParentId') String? parentId,
     @JsonKey(name: 'ParentPrimaryImageTag') String? parentPrimaryImageTag,
+    @JsonKey(name: 'AlbumId') String? albumId,
+    @JsonKey(name: 'AlbumPrimaryImageTag') String? albumPrimaryImageTag,
+    @JsonKey(name: 'PrimaryImageItemId') String? primaryImageItemId,
+    @JsonKey(name: 'PrimaryImageTag') String? primaryImageTag,
+    @JsonKey(name: 'PrimaryImageAspectRatio', fromJson: _parseDouble) double? primaryImageAspectRatio,
+    @JsonKey(name: 'Album') String? album,
+    @JsonKey(name: 'AlbumArtist') String? albumArtist,
     @JsonKey(name: 'People') @Default(<EmbyPerson>[]) List<EmbyPerson> people,
+    @JsonKey(name: 'Artists') @Default(<String>[]) List<String> artists,
   }) = _EmbyItem;
 
   factory EmbyItem.fromJson(Map<String, dynamic> json) =>
@@ -49,7 +57,7 @@ abstract class EmbyItem with _$EmbyItem {
 @freezed
 abstract class EmbyUserData with _$EmbyUserData {
   const factory EmbyUserData({
-    @JsonKey(name: 'PlayedPercentage') @Default(0.0) double playedPercentage,
+    @JsonKey(name: 'PlayedPercentage', fromJson: _parseDoubleDefaultZero) @Default(0.0) double playedPercentage,
     @JsonKey(name: 'Played') @Default(false) bool played,
     @JsonKey(name: 'IsFavorite') @Default(false) bool isFavorite,
     /// Resume point in Emby ticks (100ns units). 0 = start from the top.
@@ -74,3 +82,6 @@ abstract class EmbyPerson with _$EmbyPerson {
   factory EmbyPerson.fromJson(Map<String, dynamic> json) =>
       _$EmbyPersonFromJson(json);
 }
+
+double? _parseDouble(dynamic value) => (value as num?)?.toDouble();
+double _parseDoubleDefaultZero(dynamic value) => (value as num?)?.toDouble() ?? 0.0;
