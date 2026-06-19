@@ -39,7 +39,7 @@ dependencies:
   service_sonarr:
   service_glances:
   service_tautulli:
-
+  url_launcher: ^6.3.2
 dev_dependencies:
   flutter_launcher_icons: ^0.14.3
   flutter_lints: ^6.0.0
@@ -48,6 +48,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/service_icons/
 
 flutter_launcher_icons:
   android: true

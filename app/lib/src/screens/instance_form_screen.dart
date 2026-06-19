@@ -162,20 +162,22 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
         child: ListView(
           padding: Insets.page,
           children: <Widget>[
-            DropdownButtonFormField<ServiceKind>(
-              initialValue: _kind,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Service',
+            DropdownMenu<ServiceKind>(
+              initialSelection: _kind,
+              label: const Text('Service'),
+              expandedInsets: EdgeInsets.zero,
+              leadingIcon: UnconstrainedBox(
+                child: _buildServiceIcon(_kind, size: 24),
               ),
-              items: <DropdownMenuItem<ServiceKind>>[
+              dropdownMenuEntries: <DropdownMenuEntry<ServiceKind>>[
                 for (final ServiceKind k in ServiceKind.values)
-                  DropdownMenuItem<ServiceKind>(
+                  DropdownMenuEntry<ServiceKind>(
                     value: k,
-                    child: Text('${k.displayName} - ${k.tagline}'),
+                    label: '${k.displayName} - ${k.tagline}',
+                    leadingIcon: _buildServiceIcon(k),
                   ),
               ],
-              onChanged: (ServiceKind? k) =>
+              onSelected: (ServiceKind? k) =>
                   setState(() => _kind = k ?? _kind),
             ),
             const SizedBox(height: Insets.md),
@@ -220,27 +222,25 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
               validator: _validateUrlsTogether,
             ),
             const SizedBox(height: Insets.md),
-            DropdownButtonFormField<UrlMode>(
-              initialValue: _urlMode,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'URL selection',
-              ),
-              items: const <DropdownMenuItem<UrlMode>>[
-                DropdownMenuItem<UrlMode>(
+            DropdownMenu<UrlMode>(
+              initialSelection: _urlMode,
+              label: const Text('URL selection'),
+              expandedInsets: EdgeInsets.zero,
+              dropdownMenuEntries: const <DropdownMenuEntry<UrlMode>>[
+                DropdownMenuEntry<UrlMode>(
                   value: UrlMode.auto,
-                  child: Text('Auto (probe local, fall back to external)'),
+                  label: 'Auto (probe local, fall back to external)',
                 ),
-                DropdownMenuItem<UrlMode>(
+                DropdownMenuEntry<UrlMode>(
                   value: UrlMode.forceLocal,
-                  child: Text('Always local'),
+                  label: 'Always local',
                 ),
-                DropdownMenuItem<UrlMode>(
+                DropdownMenuEntry<UrlMode>(
                   value: UrlMode.forceExternal,
-                  child: Text('Always external'),
+                  label: 'Always external',
                 ),
               ],
-              onChanged: (UrlMode? m) =>
+              onSelected: (UrlMode? m) =>
                   setState(() => _urlMode = m ?? _urlMode),
             ),
             const SizedBox(height: Insets.lg),
@@ -369,5 +369,16 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     }
     final Uri? uri = Uri.tryParse(raw.trim());
     return uri != null && uri.hasScheme && uri.host.isNotEmpty;
+  }
+
+  Widget _buildServiceIcon(ServiceKind kind, {double size = 24}) {
+    if (kind.name == 'sabnzbd') {
+      return Icon(Icons.cloud_download_outlined, size: size);
+    }
+    return Image.asset(
+      'assets/service_icons/${kind.name}.png',
+      width: size,
+      height: size,
+    );
   }
 }

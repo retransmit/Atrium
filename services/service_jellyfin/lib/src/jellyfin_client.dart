@@ -37,9 +37,11 @@ class JellyfinClient {
 
   String? _token;
   String? _userId;
+  String? _serverId;
   bool _loggedIn = false;
 
   String? get userId => _userId;
+  String? get serverId => _serverId;
 
   static JellyfinClient create({
     required Uri baseUrl,
@@ -92,6 +94,7 @@ class JellyfinClient {
           JellyfinAuthResult.fromJson(resp.data as Map<String, dynamic>);
       _token = result.accessToken;
       _userId = result.user.id;
+      _serverId = result.serverId;
       _dio.options.headers['Authorization'] = _authHeader();
       _loggedIn = true;
     } on DioException catch (e) {
@@ -109,6 +112,40 @@ class JellyfinClient {
             .map(
                 (dynamic e) => JellyfinView.fromJson(e as Map<String, dynamic>),)
             .toList();
+      });
+
+  Future<List<JellyfinItem>> getLibraryItems(String parentId, String? collectionType) => _guarded(() async {
+        String? includeItemTypes;
+        switch (collectionType) {
+          case 'movies':
+            includeItemTypes = 'Movie';
+            break;
+          case 'tvshows':
+            includeItemTypes = 'Series';
+            break;
+          case 'music':
+            includeItemTypes = 'MusicAlbum';
+            break;
+          default:
+            includeItemTypes = 'Movie,Series,MusicAlbum'; // Fallback
+            break;
+        }
+
+        final Response<dynamic> resp = await _dio.get<dynamic>(
+          'Users/$_userId/Items',
+          queryParameters: <String, dynamic>{
+            'ParentId': parentId,
+            'Recursive': true,
+            'IncludeItemTypes': includeItemTypes,
+            'SortBy': 'SortName',
+            'SortOrder': 'Ascending',
+            'Fields': 'PrimaryImageAspectRatio,ImageTags,Overview,CommunityRating,ParentId',
+            'ImageTypeLimit': 1,
+            'EnableImageTypes': 'Primary',
+            'Limit': 200,
+          },
+        );
+        return JellyfinItemsResult.fromJson(resp.data as Map<String, dynamic>).items;
       });
 
   Future<List<JellyfinItem>> getItems(String parentId) => _guarded(() async {
@@ -202,16 +239,28 @@ class JellyfinClient {
             return '${h > 0 ? '$h:' : ''}${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
           }
           
+          final List<dynamic>? artistsList = nowPlaying['Artists'] as List<dynamic>?;
+          final String? artistName = artistsList != null && artistsList.isNotEmpty 
+              ? artistsList.join(', ') 
+              : null;
+              
+          final String type = nowPlaying['Type'] as String? ?? '';
+          final double computedAspectRatio = type == 'Episode' 
+              ? (2 / 3) 
+              : ((nowPlaying['PrimaryImageAspectRatio'] as num?)?.toDouble() ?? 
+                (type == 'Audio' || type == 'MusicAlbum' || type == 'MusicArtist' ? 1.0 : (2 / 3)));
+          
           active.add(ActiveSession(
             user: element['UserName'] as String? ?? 'Unknown',
             device: element['Client'] as String? ?? 'Unknown',
             status: playState['IsPaused'] == true ? 'Paused' : 'Playing',
-            showTitle: nowPlaying['SeriesName'] as String? ?? nowPlaying['Name'] as String? ?? 'Unknown',
-            episodeName: nowPlaying['Name'] as String?,
+            showTitle: nowPlaying['Name'] as String? ?? 'Unknown',
+            episodeName: type == 'Audio' ? artistName : nowPlaying['SeriesName'] as String?,
             progressPercent: durTicks > 0 ? ((posTicks / durTicks) * 100).toInt() : 0,
             timePosition: formatTime(posSec),
             timeDuration: formatTime(durSec),
-            posterUrl: '$_baseStr/Items/${nowPlaying['SeriesId'] ?? nowPlaying['Id']}/Images/Primary?quality=90&maxHeight=400${_token == null ? '' : '&api_key=$_token'}',
+            posterUrl: '$_baseStr/Items/${nowPlaying['SeriesId'] ?? nowPlaying['Id']}/Images/Primary?quality=100${_token == null ? '' : '&api_key=$_token'}',
+            aspectRatio: computedAspectRatio,
           ),);
         }
         return active;
@@ -351,10 +400,11 @@ class JellyfinClient {
 
   Future<List<JellyfinItem>> getSeasons(String seriesId) => _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
-          'Shows/$seriesId/Seasons',
+          'Users/$_userId/Items',
           queryParameters: <String, dynamic>{
-            'UserId': _userId,
-            'Fields': 'PrimaryImageAspectRatio,Overview',
+            'ParentId': seriesId,
+            'IncludeItemTypes': 'Season',
+            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -382,10 +432,10 @@ class JellyfinClient {
   Future<List<JellyfinItem>> getEpisodes(String seriesId, String seasonId) =>
       _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
-          'Shows/$seriesId/Episodes',
+          'Users/$_userId/Items',
           queryParameters: <String, dynamic>{
-            'SeasonId': seasonId,
-            'UserId': _userId,
+            'ParentId': seasonId,
+            'IncludeItemTypes': 'Episode',
             'Fields': 'PrimaryImageAspectRatio,Overview,RunTimeTicks,CommunityRating,ImageTags',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
@@ -396,11 +446,41 @@ class JellyfinClient {
         ).items;
       });
 
+  Future<List<JellyfinItem>> getAlbumSongs(String albumId) => _guarded(() async {
+        final Response<dynamic> resp = await _dio.get<dynamic>(
+          'Users/$_userId/Items',
+          queryParameters: <String, dynamic>{
+            'ParentId': albumId,
+            'IncludeItemTypes': 'Audio',
+            'Fields': 'PrimaryImageAspectRatio,ImageTags,Overview,ParentId',
+            'ImageTypeLimit': 1,
+            'EnableImageTypes': 'Primary',
+          },
+        );
+        return JellyfinItemsResult.fromJson(
+          resp.data as Map<String, dynamic>,
+        ).items;
+      });
+
+  Future<JellyfinItem?> getArtistBio(String artistName) => _guarded(() async {
+        final Response<dynamic> resp = await _dio.get<dynamic>(
+          'Users/$_userId/Items',
+          queryParameters: <String, dynamic>{
+            'Recursive': true,
+            'IncludeItemTypes': 'MusicArtist',
+            'SearchTerm': artistName,
+            'Fields': 'Overview',
+          },
+        );
+        final items = JellyfinItemsResult.fromJson(
+          resp.data as Map<String, dynamic>,
+        ).items;
+        return items.isNotEmpty ? items.first : null;
+      });
+
   String get _baseStr => baseUrl.toString().replaceAll(RegExp(r'/+$'), '');
 
   /// Builds a primary-image (poster) URL for [item], or null if it has none.
-  /// The image tag acts as a capability token; we also append `api_key` for
-  /// servers configured to require auth on image endpoints.
   String? imageUrl(JellyfinItem item, {int maxHeight = 420}) {
     final String key = _token == null ? '' : '&api_key=$_token';
 
@@ -410,28 +490,47 @@ class JellyfinClient {
           ? '&tag=${item.seriesPrimaryImageTag}'
           : '';
       return '$_baseStr/Items/${item.seriesId}/Images/Primary'
-          '?quality=90&maxHeight=$maxHeight$tagParam$key';
+          '?quality=100$tagParam$key';
+    }
+
+    if (item.type == 'Audio') {
+      final String targetId = item.albumId ?? item.parentId ?? item.id;
+      final String tagParam = item.albumPrimaryImageTag != null
+          ? '&tag=${item.albumPrimaryImageTag}'
+          : (item.parentPrimaryImageTag != null ? '&tag=${item.parentPrimaryImageTag}' : '');
+      return '$_baseStr/Items/$targetId/Images/Primary'
+          '?quality=100$tagParam$key';
+    }
+
+    if (item.primaryImageItemId != null) {
+      final String tagParam = item.primaryImageTag != null
+          ? '&tag=${item.primaryImageTag}'
+          : '';
+      return '$_baseStr/Items/${item.primaryImageItemId}/Images/Primary'
+          '?quality=100$tagParam$key';
     }
 
     if (item.imageTags.containsKey('Primary')) {
       final String tag = item.imageTags['Primary']!;
       return '$_baseStr/Items/${item.id}/Images/Primary'
-          '?tag=$tag&quality=90&maxHeight=$maxHeight$key';
+          '?tag=$tag&quality=100$key';
     }
 
     if (item.seriesPrimaryImageTag != null && item.seriesId != null) {
       final String tag = item.seriesPrimaryImageTag!;
       return '$_baseStr/Items/${item.seriesId}/Images/Primary'
-          '?tag=$tag&quality=90&maxHeight=$maxHeight$key';
+          '?tag=$tag&quality=100$key';
     }
 
     if (item.parentPrimaryImageTag != null && item.parentId != null) {
       final String tag = item.parentPrimaryImageTag!;
       return '$_baseStr/Items/${item.parentId}/Images/Primary'
-          '?tag=$tag&quality=90&maxHeight=$maxHeight$key';
+          '?tag=$tag&quality=100$key';
     }
 
-    return null;
+    // Fallback: If no tags were provided in the payload, try fetching the primary image directly.
+    return '$_baseStr/Items/${item.id}/Images/Primary'
+        '?quality=100$key';
   }
 
   /// Builds a backdrop image URL for [item], or null if it has none.
@@ -448,7 +547,7 @@ class JellyfinClient {
       targetId = item.seriesId!;
     }
     
-    return '$_baseStr/Items/$targetId/Images/Backdrop/0?quality=90&maxWidth=$maxWidth$tagParam$key';
+    return '$_baseStr/Items/$targetId/Images/Backdrop/0?quality=100$tagParam$key';
   }
 
   void close() => _dio.close(force: true);

@@ -46,7 +46,20 @@ final embyViewsProvider =
       return client.getViews();
     });
 
-/// Items within a library, keyed by (instance, libraryId).
+/// Flattened items within a root library, using recursive fetch based on CollectionType.
+final embyLibraryItemsProvider =
+    FutureProvider.family<List<EmbyItem>, (Instance, EmbyView)>((
+      Ref ref,
+      (Instance, EmbyView) key,
+    ) async {
+      final (Instance instance, EmbyView view) = key;
+      final EmbyClient client =
+          await ref.watch(embyClientProvider(instance).future);
+          
+      return client.getLibraryItems(view.id, view.collectionType);
+    });
+
+/// Items within a folder, keyed by (instance, folderId).
 final embyItemsProvider =
     FutureProvider.family<List<EmbyItem>, (Instance, String)>((
       Ref ref,
@@ -132,6 +145,28 @@ final embyFavoritesProvider =
       return client.getFavorites();
     });
 
+typedef AlbumScreenData = ({List<EmbyItem> tracks, EmbyItem? artistBio});
+
+final embyAlbumDataFutureProvider =
+    FutureProvider.family<AlbumScreenData, (Instance, String, String)>((
+      Ref ref,
+      (Instance, String, String) key,
+    ) async {
+      final (Instance instance, String albumId, String artistName) = key;
+      final EmbyClient client =
+          await ref.watch(embyClientProvider(instance).future);
+
+      final Future<List<EmbyItem>> tracksFuture = client.getAlbumSongs(albumId);
+      final Future<EmbyItem?> bioFuture = client.getArtistBio(artistName);
+
+      final List<Object?> results = await Future.wait<Object?>(<Future<Object?>>[tracksFuture, bioFuture]);
+
+      return (
+        tracks: results[0] as List<EmbyItem>,
+        artistBio: results[1] as EmbyItem?,
+      );
+    });
+
 final embyItemDetailsProvider =
     FutureProvider.family<EmbyItem, (Instance, String)>((
       Ref ref,
@@ -142,6 +177,14 @@ final embyItemDetailsProvider =
           await ref.watch(embyClientProvider(instance).future);
       return client.getItemDetails(itemId);
     });
+
+// --- State Providers ---
+
+/// Selected library view (e.g. 'home', 'movies', 'shows')
+final embyHomeSelectedViewProvider = StateProvider<String>((ref) => 'home');
+
+/// Grid scale for poster grids
+final embyGridScaleProvider = StateProvider<double>((ref) => 140.0);
 
 /// A controller to toggle watched/unwatched status and invalidate affected providers.
 final embyToggleWatchedProvider = Provider.family<
@@ -156,6 +199,7 @@ final embyToggleWatchedProvider = Provider.family<
     }
     // Invalidate item grids to refresh watched/unwatched lists
     ref.invalidate(embyItemsProvider);
+    ref.invalidate(embyLibraryItemsProvider);
     // Also invalidate specific item details if they are currently loaded
     ref.invalidate(embyItemDetailsProvider);
     // And next up in case it affected what's next
@@ -175,12 +219,34 @@ final embySeasonsProvider =
     });
 
 final embyEpisodesProvider =
-    FutureProvider.family<List<EmbyItem>, (Instance, String, String)>((
+    FutureProvider.family<List<EmbyItem>, (Instance, String)>((
       Ref ref,
-      (Instance, String, String) key,
+      (Instance, String) key,
     ) async {
-      final (Instance instance, String seriesId, String seasonId) = key;
+      final (Instance instance, String seasonId) = key;
       final EmbyClient client =
           await ref.watch(embyClientProvider(instance).future);
-      return client.getEpisodes(seriesId, seasonId);
+      return client.getEpisodes(seasonId);
+    });
+
+final embyAlbumSongsProvider =
+    FutureProvider.family<List<EmbyItem>, (Instance, String)>((
+      Ref ref,
+      (Instance, String) key,
+    ) async {
+      final (Instance instance, String albumId) = key;
+      final EmbyClient client =
+          await ref.watch(embyClientProvider(instance).future);
+      return client.getAlbumSongs(albumId);
+    });
+
+final embyArtistBioProvider =
+    FutureProvider.family<EmbyItem?, (Instance, String)>((
+      Ref ref,
+      (Instance, String) key,
+    ) async {
+      final (Instance instance, String artistName) = key;
+      final EmbyClient client =
+          await ref.watch(embyClientProvider(instance).future);
+      return client.getArtistBio(artistName);
     });
