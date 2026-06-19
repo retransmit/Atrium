@@ -41,6 +41,33 @@ class SeerrApi {
     }
   }
 
+  /// All requests, paged in until a short page is returned (the `/request`
+  /// endpoint caps each page, so a single call would only ever return one
+  /// page). A safety cap stops runaway paging on very large libraries.
+  Future<List<SeerrRequest>> getAllRequests({
+    String sort = 'added',
+    String? filter,
+  }) async {
+    const int pageSize = 100;
+    const int maxItems = 2000;
+    final List<SeerrRequest> all = <SeerrRequest>[];
+    int skip = 0;
+    while (true) {
+      final List<SeerrRequest> page = await getRequests(
+        take: pageSize,
+        skip: skip,
+        sort: sort,
+        filter: filter,
+      );
+      all.addAll(page);
+      if (page.length < pageSize || all.length >= maxItems) {
+        break;
+      }
+      skip += pageSize;
+    }
+    return all;
+  }
+
   Future<SeerrCounts> getRequestCounts() async {
     try {
       final Response<dynamic> resp = await _dio.get<dynamic>('$_base/request/count');

@@ -1,6 +1,6 @@
 # Atrium - Status
 
-> Snapshot of what genuinely works and what is left, as of 2026-06-15.
+> Snapshot of what genuinely works and what is left, as of 2026-06-19.
 > Atrium is in early development; nothing here is a release promise.
 
 ## Scope note
@@ -30,9 +30,13 @@ Atrium is a **controller** app. Video playback was removed by design
   interactive release search
 - **Calendar** (top-level tab, replaces the old Library placeholder): month
   grid aggregating upcoming Sonarr + Radarr airings/releases with status dots
-- **Prowlarr** (live-verified incl. grab-to-client): indexer list + stats
-  w/ 60s polling, enable/disable (forceSave), test, manual search across
-  indexers w/ seeders/size/age sort, grab lands in the download client
+- **Prowlarr** (live-verified incl. grab-to-client): tabbed Indexers /
+  History / Settings / System. Indexer list + stats w/ 60s polling, add/edit
+  indexers from the schema picker, enable/disable (forceSave), test, manual
+  search across indexers w/ seeders/size/age sort, grab lands in the download
+  client; History (event-type filtered) showing grab titles; a full Settings
+  menu (Apps, Download Clients, Notifications, Indexer Proxies, Sync Profiles,
+  Tags) with add/edit/test/delete; System (status, health, tasks, backups)
 - **Tautulli** (live-verified, poster-rich): Activity tab w/ 10s polling,
   session detail sheet (codecs, decisions, bandwidth, terminate w/ inline
   errors), History, Stats (30-day home stats), Users - all with Plex artwork
@@ -52,6 +56,12 @@ Atrium is a **controller** app. Video playback was removed by design
   drill-down, Next Up / Recently Added / Continue Watching resume rows, active
   sessions tab, item detail screens, in-server search, favorite toggles, and
   watched/unwatched toggles.
+- **Bazarr** (live-verified, full module): tabbed Series / Movies / Wanted /
+  History / Blacklist / System. Browse Sonarr/Radarr-backed series + movies
+  with per-episode/movie subtitle status, manual provider search + download +
+  delete of subtitles, the wanted (missing) list, subtitle History, Blacklist
+  (removable), and System (status, health, providers w/ reset, tasks, backups,
+  logs).
 
 ## Partially done
 
@@ -69,8 +79,6 @@ long-press. Missing:
 
 ### Other shallow modules
 
-- Bazarr: only badges + wanted list; missing search/download subtitle
-  actions, history, per-item language profiles
 - SABnzbd: queue control only; missing history, categories, speed limits,
   polling
 
@@ -78,7 +86,7 @@ long-press. Missing:
 
 1. Release signing + F-Droid metadata (debug-signed right now)
 2. iOS platform scaffold
-3. Live-stack testing of Bazarr/Overseerr/SABnzbd (built from docs only)
+3. Live-stack testing of SABnzbd (built from docs only)
 4. Possible profile loss after Android hard-kill (seen once - investigate
    crash-safe Hive writes/backup)
 5. Polish: empty states, tablet layouts, localization
