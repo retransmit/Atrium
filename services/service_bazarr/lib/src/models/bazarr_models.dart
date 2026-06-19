@@ -175,6 +175,56 @@ abstract class BazarrSubtitleSearchResult with _$BazarrSubtitleSearchResult {
       _$BazarrSubtitleSearchResultFromJson(json);
 }
 
+/// One entry from `GET /episodes/history` or `/movies/history`. [isMovie] is
+/// set by the client (not in the JSON) so the two can share a unified list.
+/// [action] is Bazarr's history action code (1 downloaded, 2 deleted,
+/// 3 upgraded, ...); [description] is the human-readable summary.
+@freezed
+abstract class BazarrHistoryItem with _$BazarrHistoryItem {
+  const factory BazarrHistoryItem({
+    @JsonKey(name: 'seriesTitle') @Default('') String seriesTitle,
+    @Default('') String title,
+    @JsonKey(name: 'episode_number') @Default('') String episodeNumber,
+    @JsonKey(name: 'episodeTitle') @Default('') String episodeTitle,
+    @Default('') String description,
+    @Default('') String timestamp,
+    @JsonKey(name: 'parsed_timestamp') @Default('') String parsedTimestamp,
+    @Default('') String provider,
+    @Default('') String score,
+    @Default(0) int action,
+    BazarrSubtitle? language,
+    @Default(false) bool blacklisted,
+    @JsonKey(includeFromJson: false, includeToJson: false)
+    @Default(false)
+    bool isMovie,
+  }) = _BazarrHistoryItem;
+
+  factory BazarrHistoryItem.fromJson(Map<String, dynamic> json) =>
+      _$BazarrHistoryItemFromJson(json);
+}
+
+/// One entry from `GET /episodes/blacklist` or `/movies/blacklist`. Removal
+/// (`DELETE`) is keyed by [provider] + [subsId]. [isMovie] is client-set.
+@freezed
+abstract class BazarrBlacklistItem with _$BazarrBlacklistItem {
+  const factory BazarrBlacklistItem({
+    @JsonKey(name: 'seriesTitle') @Default('') String seriesTitle,
+    @Default('') String title,
+    @JsonKey(name: 'episode_number') @Default('') String episodeNumber,
+    @Default('') String provider,
+    @JsonKey(name: 'subs_id') @Default('') String subsId,
+    @Default('') String timestamp,
+    @JsonKey(name: 'parsed_timestamp') @Default('') String parsedTimestamp,
+    BazarrSubtitle? language,
+    @JsonKey(includeFromJson: false, includeToJson: false)
+    @Default(false)
+    bool isMovie,
+  }) = _BazarrBlacklistItem;
+
+  factory BazarrBlacklistItem.fromJson(Map<String, dynamic> json) =>
+      _$BazarrBlacklistItemFromJson(json);
+}
+
 /// A flattened "needs subtitles" row, unifying episodes + movies for the UI.
 class BazarrWantedRow {
   const BazarrWantedRow({
