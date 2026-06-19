@@ -2,11 +2,14 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 import 'emby_client.dart';
 import 'emby_home.dart';
 import 'emby_item_detail.dart';
+import 'emby_music_screens.dart';
 import 'emby_providers.dart';
+import 'emby_season_screen.dart';
 import 'models/emby_item.dart';
 
 class EmbySearchDelegate extends SearchDelegate<void> {
@@ -21,14 +24,40 @@ class EmbySearchDelegate extends SearchDelegate<void> {
 
   @override
   List<Widget>? buildActions(BuildContext context) {
-    if (query.isEmpty) {
-      return const <Widget>[];
-    }
     return <Widget>[
-      IconButton(
-        icon: const Icon(Icons.clear),
-        onPressed: () => query = '',
+      Consumer(
+        builder: (BuildContext context, WidgetRef ref, _) {
+          return PopupMenuButton<double>(
+            icon: const Icon(Icons.grid_view),
+            tooltip: 'Grid Size',
+            onSelected: (double value) {
+              ref.read(embyGridScaleProvider.notifier).state = value;
+            },
+            itemBuilder: (BuildContext context) {
+              final double current = ref.read(embyGridScaleProvider);
+              return <PopupMenuEntry<double>>[
+                PopupMenuItem<double>(
+                  value: 80.0,
+                  child: Text('Small ${current == 80.0 ? '(Active)' : ''}'),
+                ),
+                PopupMenuItem<double>(
+                  value: 140.0,
+                  child: Text('Medium ${current == 140.0 ? '(Active)' : ''}'),
+                ),
+                PopupMenuItem<double>(
+                  value: 200.0,
+                  child: Text('Large ${current == 200.0 ? '(Active)' : ''}'),
+                ),
+              ];
+            },
+          );
+        },
       ),
+      if (query.isNotEmpty)
+        IconButton(
+          icon: const Icon(Icons.clear),
+          onPressed: () => query = '',
+        ),
     ];
   }
 
@@ -92,14 +121,12 @@ class _SearchResults extends ConsumerWidget {
           );
         }
 
-        return GridView.builder(
+        final double scale = ref.watch(embyGridScaleProvider);
+        return MasonryGridView.extent(
           padding: Insets.page,
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 140,
-            childAspectRatio: 0.52,
-            crossAxisSpacing: Insets.md,
-            mainAxisSpacing: Insets.md,
-          ),
+          maxCrossAxisExtent: scale,
+          crossAxisSpacing: Insets.md,
+          mainAxisSpacing: Insets.md,
           itemCount: list.length,
           itemBuilder: (BuildContext context, int index) {
             final EmbyItem item = list[index];
@@ -110,7 +137,34 @@ class _SearchResults extends ConsumerWidget {
               onTap: () {
                 // pushScreen = root navigator; branch-navigator pushes get
                 // swept by GoRouter shell rebuilds.
-                if (embyContainerTypes.contains(item.type)) {
+                if (item.type == 'MusicAlbum') {
+                  pushScreen<void>(
+                    context,
+                    EmbyAlbumScreen(
+                      instance: instance,
+                      albumId: item.id,
+                      albumName: item.name,
+                      albumArtist: item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
+                      albumOverview: item.overview,
+                      albumImageUrl: client.imageUrl(item),
+                    ),
+                  );
+                } else if (item.type == 'Series') {
+                  pushScreen<void>(
+                    context,
+                    EmbyItemDetailScreen(instance: instance, itemId: item.id),
+                  );
+                } else if (item.type == 'Season') {
+                  pushScreen<void>(
+                    context,
+                    EmbySeasonScreen(
+                      instance: instance,
+                      seasonId: item.id,
+                      seasonName: item.name,
+                      seasonImageUrl: client.imageUrl(item),
+                    ),
+                  );
+                } else if (embyContainerTypes.contains(item.type)) {
                   pushScreen<void>(
                     context,
                     EmbyFolderScreen(instance: instance, item: item),
