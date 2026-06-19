@@ -309,7 +309,7 @@ class _ExpandableTextState extends State<_ExpandableText> {
         InkWell(
           onTap: () => setState(() => _expanded = !_expanded),
           child: Text(
-            _expanded ? 'Read less' : 'Read more',
+            _expanded ? 'Collapse' : 'Read more',
             style: TextStyle(
               color: Theme.of(context).colorScheme.primary,
               fontWeight: FontWeight.bold,

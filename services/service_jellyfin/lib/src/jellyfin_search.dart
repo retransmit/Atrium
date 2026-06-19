@@ -2,11 +2,14 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 import 'jellyfin_client.dart';
 import 'jellyfin_home.dart';
 import 'jellyfin_item_detail.dart';
+import 'jellyfin_music_screens.dart';
 import 'jellyfin_providers.dart';
+import 'jellyfin_season_screen.dart';
 import 'models/jellyfin_item.dart';
 
 class JellyfinSearchDelegate extends SearchDelegate<void> {
@@ -21,14 +24,40 @@ class JellyfinSearchDelegate extends SearchDelegate<void> {
 
   @override
   List<Widget>? buildActions(BuildContext context) {
-    if (query.isEmpty) {
-      return const <Widget>[];
-    }
     return <Widget>[
-      IconButton(
-        icon: const Icon(Icons.clear),
-        onPressed: () => query = '',
+      Consumer(
+        builder: (BuildContext context, WidgetRef ref, _) {
+          return PopupMenuButton<double>(
+            icon: const Icon(Icons.grid_view),
+            tooltip: 'Grid Size',
+            onSelected: (double value) {
+              ref.read(jellyfinGridScaleProvider.notifier).state = value;
+            },
+            itemBuilder: (BuildContext context) {
+              final double current = ref.read(jellyfinGridScaleProvider);
+              return <PopupMenuEntry<double>>[
+                PopupMenuItem<double>(
+                  value: 80.0,
+                  child: Text('Small ${current == 80.0 ? '(Active)' : ''}'),
+                ),
+                PopupMenuItem<double>(
+                  value: 140.0,
+                  child: Text('Medium ${current == 140.0 ? '(Active)' : ''}'),
+                ),
+                PopupMenuItem<double>(
+                  value: 200.0,
+                  child: Text('Large ${current == 200.0 ? '(Active)' : ''}'),
+                ),
+              ];
+            },
+          );
+        },
       ),
+      if (query.isNotEmpty)
+        IconButton(
+          icon: const Icon(Icons.clear),
+          onPressed: () => query = '',
+        ),
     ];
   }
 
@@ -92,14 +121,12 @@ class _SearchResults extends ConsumerWidget {
           );
         }
 
-        return GridView.builder(
+        final double scale = ref.watch(jellyfinGridScaleProvider);
+        return MasonryGridView.extent(
           padding: Insets.page,
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 140,
-            childAspectRatio: 0.52,
-            crossAxisSpacing: Insets.md,
-            mainAxisSpacing: Insets.md,
-          ),
+          maxCrossAxisExtent: scale,
+          crossAxisSpacing: Insets.md,
+          mainAxisSpacing: Insets.md,
           itemCount: list.length,
           itemBuilder: (BuildContext context, int index) {
             final JellyfinItem item = list[index];
@@ -110,7 +137,35 @@ class _SearchResults extends ConsumerWidget {
               onTap: () {
                 // pushScreen = root navigator; branch-navigator pushes get
                 // swept by GoRouter shell rebuilds.
-                if (jellyfinContainerTypes.contains(item.type)) {
+                if (item.type == 'MusicAlbum') {
+                  pushScreen<void>(
+                    context,
+                    JellyfinAlbumScreen(
+                      instance: instance,
+                      albumId: item.id,
+                      albumName: item.name,
+                      albumArtist: item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
+                      albumOverview: item.overview,
+                      albumImageUrl: client.imageUrl(item),
+                    ),
+                  );
+                } else if (item.type == 'Series') {
+                  pushScreen<void>(
+                    context,
+                    JellyfinItemDetailScreen(instance: instance, itemId: item.id),
+                  );
+                } else if (item.type == 'Season') {
+                  pushScreen<void>(
+                    context,
+                    JellyfinSeasonScreen(
+                      instance: instance,
+                      seriesId: item.seriesId ?? '',
+                      seasonId: item.id,
+                      seasonName: item.name,
+                      seasonImageUrl: client.imageUrl(item),
+                    ),
+                  );
+                } else if (jellyfinContainerTypes.contains(item.type)) {
                   pushScreen<void>(
                     context,
                     JellyfinFolderScreen(instance: instance, item: item),
@@ -118,10 +173,7 @@ class _SearchResults extends ConsumerWidget {
                 } else {
                   pushScreen<void>(
                     context,
-                    JellyfinItemDetailScreen(
-                      instance: instance,
-                      itemId: item.id,
-                    ),
+                    JellyfinItemDetailScreen(instance: instance, itemId: item.id),
                   );
                 }
               },

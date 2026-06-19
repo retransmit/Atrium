@@ -41,8 +41,6 @@ class EmbyHome extends ConsumerStatefulWidget {
 }
 
 class _EmbyHomeState extends ConsumerState<EmbyHome> {
-  String? _selectedLibraryId;
-
   @override
   Widget build(BuildContext context) {
     final AsyncValue<List<EmbyView>> views =
@@ -59,131 +57,91 @@ class _EmbyHomeState extends ConsumerState<EmbyHome> {
             message: 'This Emby server has no libraries to show.',
           );
         }
-        final String selected = _selectedLibraryId ?? 'home';
-        return Column(
-          children: <Widget>[
-            _LibraryChips(
-              libraries: libraries,
-              selectedId: selected,
-              onSelect: (String id) => setState(() => _selectedLibraryId = id),
-            ),
-            Expanded(
-              child: selected == 'home'
-                  ? _HomeSections(instance: widget.instance)
-                  : (selected == 'watched' || selected == 'unwatched')
-                      ? EmbyItemsGrid(
-                          instance: widget.instance,
-                          libraryId: selected,
-                        )
-                      : EmbyLibraryGrid(
-                          instance: widget.instance,
-                          view: libraries.firstWhere((lib) => lib.id == selected),
-                        ),
-            ),
-          ],
+        return DefaultTabController(
+          key: ValueKey<int>(libraries.length),
+          length: libraries.length + 3,
+          child: Column(
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: TabBar(
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
+                      tabs: <Widget>[
+                        const Tab(text: 'Home'),
+                        for (final EmbyView lib in libraries) Tab(text: lib.name),
+                        const Tab(text: 'Watched'),
+                        const Tab(text: 'Unwatched'),
+                      ],
+                    ),
+                  ),
+                  Builder(
+                    builder: (BuildContext context) {
+                      final TabController controller = DefaultTabController.of(context);
+                      return AnimatedBuilder(
+                        animation: controller,
+                        builder: (BuildContext context, Widget? child) {
+                          if (controller.index == 0) {
+                            return const SizedBox.shrink();
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.only(right: Insets.sm),
+                            child: PopupMenuButton<double>(
+                              icon: const Icon(Icons.grid_view),
+                              tooltip: 'Grid Size',
+                              onSelected: (double value) {
+                                ref.read(embyGridScaleProvider.notifier).state = value;
+                              },
+                              itemBuilder: (BuildContext context) {
+                                final double current = ref.read(embyGridScaleProvider);
+                                return <PopupMenuEntry<double>>[
+                                  PopupMenuItem<double>(
+                                    value: 80.0,
+                                    child: Text('Small ${current == 80.0 ? '(Active)' : ''}'),
+                                  ),
+                                  PopupMenuItem<double>(
+                                    value: 140.0,
+                                    child: Text('Medium ${current == 140.0 ? '(Active)' : ''}'),
+                                  ),
+                                  PopupMenuItem<double>(
+                                    value: 200.0,
+                                    child: Text('Large ${current == 200.0 ? '(Active)' : ''}'),
+                                  ),
+                                ];
+                              },
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+              Expanded(
+                child: TabBarView(
+                  children: <Widget>[
+                    _HomeSections(instance: widget.instance),
+                    for (final EmbyView lib in libraries)
+                      EmbyLibraryGrid(
+                        instance: widget.instance,
+                        view: lib,
+                      ),
+                    EmbyItemsGrid(
+                      instance: widget.instance,
+                      libraryId: 'watched',
+                    ),
+                    EmbyItemsGrid(
+                      instance: widget.instance,
+                      libraryId: 'unwatched',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         );
       },
-    );
-  }
-}
-
-class _LibraryChips extends ConsumerWidget {
-  const _LibraryChips({
-    required this.libraries,
-    required this.selectedId,
-    required this.onSelect,
-  });
-
-  final List<EmbyView> libraries;
-  final String selectedId;
-  final ValueChanged<String> onSelect;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return SizedBox(
-      height: 48,
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
-              itemCount: libraries.length + 3,
-              separatorBuilder: (_, __) => const SizedBox(width: Insets.sm),
-              itemBuilder: (BuildContext context, int index) {
-                if (index == 0) {
-                  return Center(
-                    child: ChoiceChip(
-                      label: const Text('Home'),
-                      selected: 'home' == selectedId,
-                      onSelected: (_) => onSelect('home'),
-                    ),
-                  );
-                }
-                
-                if (index <= libraries.length) {
-                  final EmbyView lib = libraries[index - 1];
-                  return Center(
-                    child: ChoiceChip(
-                      label: Text(lib.name),
-                      selected: lib.id == selectedId,
-                      onSelected: (_) => onSelect(lib.id),
-                    ),
-                  );
-                }
-
-                if (index == libraries.length + 1) {
-                  return Center(
-                    child: ChoiceChip(
-                      label: const Text('Watched'),
-                      selected: 'watched' == selectedId,
-                      onSelected: (_) => onSelect('watched'),
-                    ),
-                  );
-                }
-
-                if (index == libraries.length + 2) {
-                  return Center(
-                    child: ChoiceChip(
-                      label: const Text('Unwatched'),
-                      selected: 'unwatched' == selectedId,
-                      onSelected: (_) => onSelect('unwatched'),
-                    ),
-                  );
-                }
-
-                return const SizedBox.shrink();
-              },
-            ),
-          ),
-          if (selectedId != 'home')
-            PopupMenuButton<double>(
-              icon: const Icon(Icons.grid_view),
-              tooltip: 'Grid Size',
-              onSelected: (double value) {
-                ref.read(embyGridScaleProvider.notifier).state = value;
-              },
-              itemBuilder: (BuildContext context) {
-                final double current = ref.read(embyGridScaleProvider);
-                return <PopupMenuEntry<double>>[
-                  PopupMenuItem<double>(
-                    value: 80.0,
-                    child: Text('Small ${current == 80.0 ? '(Active)' : ''}'),
-                  ),
-                  PopupMenuItem<double>(
-                    value: 140.0,
-                    child: Text('Medium ${current == 140.0 ? '(Active)' : ''}'),
-                  ),
-                  PopupMenuItem<double>(
-                    value: 200.0,
-                    child: Text('Large ${current == 200.0 ? '(Active)' : ''}'),
-                  ),
-                ];
-              },
-            ),
-          const SizedBox(width: Insets.sm),
-        ],
-      ),
     );
   }
 }
@@ -592,7 +550,6 @@ class EmbyPosterCard extends ConsumerWidget {
     return CachedNetworkImage(
       imageUrl: imageUrl!,
       fit: BoxFit.cover,
-      memCacheWidth: 200,
       placeholder: (BuildContext context, String url) => Container(
         color: theme.colorScheme.surfaceContainerHighest,
       ),
