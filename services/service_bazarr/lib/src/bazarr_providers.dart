@@ -195,3 +195,63 @@ DateTime? _parseHistoryTs(String s) {
     return null;
   }
 }
+
+/// System status (versions, OS, database, uptime).
+final bazarrSystemStatusProvider =
+    FutureProvider.family<BazarrSystemStatus, Instance>((
+      Ref ref,
+      Instance instance,
+    ) async {
+      final BazarrApi api = await ref.watch(bazarrApiProvider(instance).future);
+      return api.getSystemStatus();
+    });
+
+/// Active health issues (empty when healthy).
+final bazarrSystemHealthProvider =
+    FutureProvider.family<List<BazarrHealthItem>, Instance>((
+      Ref ref,
+      Instance instance,
+    ) async {
+      final BazarrApi api = await ref.watch(bazarrApiProvider(instance).future);
+      return api.getSystemHealth();
+    });
+
+/// Scheduled tasks.
+final bazarrSystemTasksProvider =
+    FutureProvider.family<List<BazarrSystemTask>, Instance>((
+      Ref ref,
+      Instance instance,
+    ) async {
+      final BazarrApi api = await ref.watch(bazarrApiProvider(instance).future);
+      return api.getSystemTasks();
+    });
+
+/// Subtitle provider statuses.
+final bazarrProviderStatusesProvider =
+    FutureProvider.family<List<BazarrProviderStatus>, Instance>((
+      Ref ref,
+      Instance instance,
+    ) async {
+      final BazarrApi api = await ref.watch(bazarrApiProvider(instance).future);
+      return api.getProviderStatuses();
+    });
+
+/// Existing backups.
+final bazarrBackupsProvider =
+    FutureProvider.family<List<BazarrBackup>, Instance>((
+      Ref ref,
+      Instance instance,
+    ) async {
+      final BazarrApi api = await ref.watch(bazarrApiProvider(instance).future);
+      return api.getBackups();
+    });
+
+/// Recent log lines, newest first.
+final bazarrLogsProvider =
+    FutureProvider.family<List<BazarrLogEntry>, Instance>((
+      Ref ref,
+      Instance instance,
+    ) async {
+      final BazarrApi api = await ref.watch(bazarrApiProvider(instance).future);
+      return api.getLogs();
+    });
