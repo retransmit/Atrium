@@ -238,4 +238,263 @@ class BazarrApi {
       throw NetworkException.fromDio(e);
     }
   }
+
+  /// Episode subtitle history (`GET /episodes/history`), newest first.
+  Future<List<BazarrHistoryItem>> getEpisodeHistory({int length = 50}) async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>(
+        'api/episodes/history',
+        queryParameters: <String, dynamic>{'start': 0, 'length': length},
+      );
+      return _parseHistory(resp.data, isMovie: false);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Movie subtitle history (`GET /movies/history`), newest first.
+  Future<List<BazarrHistoryItem>> getMovieHistory({int length = 50}) async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>(
+        'api/movies/history',
+        queryParameters: <String, dynamic>{'start': 0, 'length': length},
+      );
+      return _parseHistory(resp.data, isMovie: true);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  List<BazarrHistoryItem> _parseHistory(dynamic data, {required bool isMovie}) {
+    final List<dynamic> list = data is Map<String, dynamic>
+        ? ((data['data'] as List<dynamic>?) ?? const <dynamic>[])
+        : (data as List<dynamic>);
+    return list
+        .map(
+          (dynamic e) => BazarrHistoryItem.fromJson(e as Map<String, dynamic>)
+              .copyWith(isMovie: isMovie),
+        )
+        .toList();
+  }
+
+  /// Blacklisted episode subtitles (`GET /episodes/blacklist`). No paging params
+  /// are sent: Bazarr 500s on an empty movies blacklist when they are present.
+  Future<List<BazarrBlacklistItem>> getEpisodeBlacklist() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('api/episodes/blacklist');
+      return _parseBlacklist(resp.data, isMovie: false);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Blacklisted movie subtitles (`GET /movies/blacklist`).
+  Future<List<BazarrBlacklistItem>> getMovieBlacklist() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('api/movies/blacklist');
+      return _parseBlacklist(resp.data, isMovie: true);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  List<BazarrBlacklistItem> _parseBlacklist(
+    dynamic data, {
+    required bool isMovie,
+  }) {
+    final List<dynamic> list = data is Map<String, dynamic>
+        ? ((data['data'] as List<dynamic>?) ?? const <dynamic>[])
+        : (data as List<dynamic>);
+    return list
+        .map(
+          (dynamic e) => BazarrBlacklistItem.fromJson(e as Map<String, dynamic>)
+              .copyWith(isMovie: isMovie),
+        )
+        .toList();
+  }
+
+  /// Removes a blacklisted episode subtitle (`DELETE /episodes/blacklist`).
+  Future<void> removeEpisodeBlacklist({
+    required String provider,
+    required String subsId,
+  }) async {
+    try {
+      await _dio.delete<dynamic>(
+        'api/episodes/blacklist',
+        queryParameters: <String, dynamic>{
+          'provider': provider,
+          'subs_id': subsId,
+        },
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Removes a blacklisted movie subtitle (`DELETE /movies/blacklist`).
+  Future<void> removeMovieBlacklist({
+    required String provider,
+    required String subsId,
+  }) async {
+    try {
+      await _dio.delete<dynamic>(
+        'api/movies/blacklist',
+        queryParameters: <String, dynamic>{
+          'provider': provider,
+          'subs_id': subsId,
+        },
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  // --- System ---
+
+  /// System status (versions, OS, database, uptime).
+  Future<BazarrSystemStatus> getSystemStatus() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('api/system/status');
+      final dynamic data = resp.data;
+      final Map<String, dynamic> obj = data is Map<String, dynamic>
+          ? ((data['data'] as Map<String, dynamic>?) ?? data)
+          : <String, dynamic>{};
+      return BazarrSystemStatus.fromJson(obj);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Active health issues (`GET /system/health`); empty when healthy.
+  Future<List<BazarrHealthItem>> getSystemHealth() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('api/system/health');
+      return _listFrom(resp.data)
+          .map(
+            (dynamic e) =>
+                BazarrHealthItem.fromJson(e as Map<String, dynamic>),
+          )
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Scheduled tasks (`GET /system/tasks`).
+  Future<List<BazarrSystemTask>> getSystemTasks() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('api/system/tasks');
+      return _listFrom(resp.data)
+          .map(
+            (dynamic e) =>
+                BazarrSystemTask.fromJson(e as Map<String, dynamic>),
+          )
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Runs a scheduled task now (`POST /system/tasks?taskid=`).
+  Future<void> runTask(String taskId) async {
+    try {
+      await _dio.post<dynamic>(
+        'api/system/tasks',
+        queryParameters: <String, dynamic>{'taskid': taskId},
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Subtitle provider statuses (`GET /providers`).
+  Future<List<BazarrProviderStatus>> getProviderStatuses() async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>('api/providers');
+      return _listFrom(resp.data)
+          .map(
+            (dynamic e) =>
+                BazarrProviderStatus.fromJson(e as Map<String, dynamic>),
+          )
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Resets throttled providers (`POST /providers?action=reset`).
+  Future<void> resetProviders() async {
+    try {
+      await _dio.post<dynamic>(
+        'api/providers',
+        queryParameters: <String, dynamic>{'action': 'reset'},
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Existing backups (`GET /system/backups`).
+  Future<List<BazarrBackup>> getBackups() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('api/system/backups');
+      return _listFrom(resp.data)
+          .map((dynamic e) => BazarrBackup.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Creates a backup now (`POST /system/backups`).
+  Future<void> createBackup() async {
+    try {
+      await _dio.post<dynamic>('api/system/backups');
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Deletes a backup (`DELETE /system/backups?filename=`).
+  Future<void> deleteBackup(String filename) async {
+    try {
+      await _dio.delete<dynamic>(
+        'api/system/backups',
+        queryParameters: <String, dynamic>{'filename': filename},
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Recent log lines (`GET /system/logs`), newest first.
+  Future<List<BazarrLogEntry>> getLogs() async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>('api/system/logs');
+      return _listFrom(resp.data)
+          .map((dynamic e) => BazarrLogEntry.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Clears the logs (`DELETE /system/logs`).
+  Future<void> clearLogs() async {
+    try {
+      await _dio.delete<dynamic>('api/system/logs');
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  List<dynamic> _listFrom(dynamic data) => data is Map<String, dynamic>
+      ? ((data['data'] as List<dynamic>?) ?? const <dynamic>[])
+      : (data as List<dynamic>);
 }
