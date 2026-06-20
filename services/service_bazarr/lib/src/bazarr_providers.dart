@@ -255,3 +255,18 @@ final bazarrLogsProvider =
       final BazarrApi api = await ref.watch(bazarrApiProvider(instance).future);
       return api.getLogs();
     });
+
+/// All subtitle languages with enabled flags (Settings > Languages).
+final bazarrLanguagesProvider =
+    FutureProvider.family<List<BazarrLanguage>, Instance>((
+      Ref ref,
+      Instance instance,
+    ) async {
+      final BazarrApi api = await ref.watch(bazarrApiProvider(instance).future);
+      final List<BazarrLanguage> list = await api.getLanguages();
+      list.sort(
+        (BazarrLanguage a, BazarrLanguage b) =>
+            a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      );
+      return list;
+    });

@@ -5,6 +5,7 @@ import 'bazarr_blacklist_tab.dart';
 import 'bazarr_history_tab.dart';
 import 'bazarr_movies_tab.dart';
 import 'bazarr_series_tab.dart';
+import 'bazarr_settings_tab.dart';
 import 'bazarr_system_tab.dart';
 import 'bazarr_wanted_tab.dart';
 
@@ -29,7 +30,7 @@ class _BazarrHomeState extends State<BazarrHome>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 6, vsync: this);
+    _tab = TabController(length: 7, vsync: this);
   }
 
   @override
@@ -54,6 +55,7 @@ class _BazarrHomeState extends State<BazarrHome>
               Tab(text: 'History'),
               Tab(text: 'Blacklist'),
               Tab(text: 'System'),
+              Tab(text: 'Settings'),
             ],
           ),
           Expanded(
@@ -66,6 +68,7 @@ class _BazarrHomeState extends State<BazarrHome>
                 BazarrHistoryTab(instance: widget.instance),
                 BazarrBlacklistTab(instance: widget.instance),
                 BazarrSystemTab(instance: widget.instance),
+                BazarrSettingsTab(instance: widget.instance),
               ],
             ),
           ),

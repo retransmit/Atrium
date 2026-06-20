@@ -314,6 +314,26 @@ abstract class BazarrLogEntry with _$BazarrLogEntry {
       _$BazarrLogEntryFromJson(json);
 }
 
+/// One subtitle language from `GET /system/languages` (all ~187; [enabled]
+/// marks the active ones). [code2] is the value `languages-enabled` expects.
+@freezed
+abstract class BazarrLanguage with _$BazarrLanguage {
+  const factory BazarrLanguage({
+    @Default('') String name,
+    @Default('') String code2,
+    @Default('') String code3,
+    @Default(false) bool enabled,
+  }) = _BazarrLanguage;
+
+  factory BazarrLanguage.fromJson(Map<String, dynamic> json) =>
+      _$BazarrLanguageFromJson(json);
+
+  const BazarrLanguage._();
+
+  /// The code to send in `languages-enabled` (code2, or code3 if no code2).
+  String get code => code2.isNotEmpty ? code2 : code3;
+}
+
 /// A flattened "needs subtitles" row, unifying episodes + movies for the UI.
 class BazarrWantedRow {
   const BazarrWantedRow({

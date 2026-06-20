@@ -494,6 +494,39 @@ class BazarrApi {
     }
   }
 
+  // --- Settings: languages ---
+
+  /// All subtitle languages (`GET /system/languages`) with their enabled flag.
+  Future<List<BazarrLanguage>> getLanguages() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('api/system/languages');
+      return _listFrom(resp.data)
+          .map((dynamic e) => BazarrLanguage.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Sets the full set of enabled languages (`POST /system/settings`,
+  /// form-urlencoded, `languages-enabled` repeated for each code). A partial
+  /// POST: only this field changes, the rest of the config is untouched.
+  Future<void> setEnabledLanguages(List<String> codes) async {
+    try {
+      await _dio.post<dynamic>(
+        'api/system/settings',
+        data: <String, dynamic>{'languages-enabled': codes},
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          listFormat: ListFormat.multi,
+        ),
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
   List<dynamic> _listFrom(dynamic data) => data is Map<String, dynamic>
       ? ((data['data'] as List<dynamic>?) ?? const <dynamic>[])
       : (data as List<dynamic>);
