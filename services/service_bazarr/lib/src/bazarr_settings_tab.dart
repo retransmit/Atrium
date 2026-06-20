@@ -3,6 +3,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 
 import 'bazarr_languages_screen.dart';
+import 'bazarr_profiles_screen.dart';
 import 'bazarr_providers_screen.dart';
 
 /// The Settings tab: a menu of Bazarr configuration screens (languages, and -
@@ -34,6 +35,15 @@ class BazarrSettingsTab extends StatelessWidget {
           onTap: () => _push(
             context,
             BazarrProvidersScreen(instance: instance),
+          ),
+        ),
+        _SettingsTile(
+          icon: Icons.tune_outlined,
+          title: 'Language Profiles',
+          subtitle: 'The language sets assigned to series and movies',
+          onTap: () => _push(
+            context,
+            BazarrProfilesScreen(instance: instance),
           ),
         ),
       ],
