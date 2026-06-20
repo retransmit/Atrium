@@ -104,7 +104,7 @@ class _SonarrHomeState extends ConsumerState<SonarrHome> {
                 if (notification.overscroll < -60.0) {
                   _isPopping = true;
                   HapticFeedback.mediumImpact();
-                  Navigator.of(context).maybePop();
+                  context.pop();
                   return true;
                 }
               } else if (notification is ScrollEndNotification) {
