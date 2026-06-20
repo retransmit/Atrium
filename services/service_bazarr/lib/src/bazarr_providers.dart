@@ -281,3 +281,13 @@ final bazarrSettingsProvider =
       final BazarrApi api = await ref.watch(bazarrApiProvider(instance).future);
       return api.getBazarrSettings();
     });
+
+/// Language profiles (Settings > Language Profiles).
+final bazarrProfilesProvider =
+    FutureProvider.family<List<BazarrLanguageProfile>, Instance>((
+      Ref ref,
+      Instance instance,
+    ) async {
+      final BazarrApi api = await ref.watch(bazarrApiProvider(instance).future);
+      return api.getProfiles();
+    });
