@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:core_networking/core_networking.dart';
 import 'package:dio/dio.dart';
 
@@ -579,6 +581,43 @@ class BazarrApi {
         options: Options(contentType: Headers.formUrlEncodedContentType),
       );
     } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  // --- Settings: language profiles ---
+
+  /// All language profiles (`GET /system/languages/profiles`).
+  Future<List<BazarrLanguageProfile>> getProfiles() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('api/system/languages/profiles');
+      return _listFrom(resp.data)
+          .map((dynamic e) =>
+              BazarrLanguageProfile.fromJson(e as Map<String, dynamic>),)
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Saves the full set of profiles (`languages-profiles` JSON in the settings
+  /// POST). NOTE: Bazarr persists the profiles but returns 500 from a post-save
+  /// hook, so a 500 here is treated as success (other failures rethrow).
+  Future<void> setProfiles(List<BazarrLanguageProfile> profiles) async {
+    final String json = jsonEncode(
+      profiles.map((BazarrLanguageProfile p) => p.toJson()).toList(),
+    );
+    try {
+      await _dio.post<dynamic>(
+        'api/system/settings',
+        data: <String, dynamic>{'languages-profiles': json},
+        options: Options(contentType: Headers.formUrlEncodedContentType),
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 500) {
+        return; // saved despite the post-save hook error
+      }
       throw NetworkException.fromDio(e);
     }
   }
