@@ -46,6 +46,13 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
           ),
+          SwitchListTile(
+            secondary: const Icon(Icons.dark_mode_outlined),
+            title: const Text('OLED black'),
+            subtitle: const Text('Use pure black background in dark theme.'),
+            value: prefs.oledBlackEnabled,
+            onChanged: controller.setOledBlackEnabled,
+          ),
           const Divider(),
           const _SectionHeader('Security'),
           _BiometricTile(

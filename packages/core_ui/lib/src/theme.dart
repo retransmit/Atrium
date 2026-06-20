@@ -16,23 +16,37 @@ abstract final class AtriumTheme {
   static ThemeData light(ColorScheme? dynamicScheme) =>
       _build(dynamicScheme ?? ColorScheme.fromSeed(seedColor: seed));
 
-  static ThemeData dark(ColorScheme? dynamicScheme) => _build(
-        dynamicScheme ??
-            ColorScheme.fromSeed(
-              seedColor: seed,
-              brightness: Brightness.dark,
-            ),
-      );
+  static ThemeData dark(ColorScheme? dynamicScheme, {bool oledBlack = false}) {
+    ColorScheme scheme = dynamicScheme ??
+        ColorScheme.fromSeed(
+          seedColor: seed,
+          brightness: Brightness.dark,
+        );
 
-  static ThemeData _build(ColorScheme scheme) {
+    if (oledBlack) {
+      scheme = scheme.copyWith(
+        surface: Colors.black,
+        surfaceContainer: Colors.black,
+        surfaceContainerLow: Colors.black,
+        surfaceContainerLowest: Colors.black,
+        surfaceContainerHigh: Colors.black,
+      );
+    }
+
+    return _build(scheme, oledBlack: oledBlack);
+  }
+
+  static ThemeData _build(ColorScheme scheme, {bool oledBlack = false}) {
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      scaffoldBackgroundColor: scheme.surface,
+      scaffoldBackgroundColor: oledBlack ? Colors.black : scheme.surface,
       cardTheme: CardThemeData(
         elevation: 0,
         clipBehavior: Clip.antiAlias,
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        color: oledBlack
+            ? Colors.grey.withValues(alpha: 0.12)
+            : scheme.surfaceContainerHighest.withValues(alpha: 0.4),
         shape: const RoundedRectangleBorder(borderRadius: Radii.card),
         margin: EdgeInsets.zero,
       ),

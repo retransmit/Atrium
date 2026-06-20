@@ -35,6 +35,9 @@ class ServiceDetailScreen extends ConsumerWidget {
     if (instance == null) {
       return const _NotFound();
     }
+    if (instance.kind == ServiceKind.sonarr) {
+      return SonarrHome(instance: instance);
+    }
     return Scaffold(
       appBar: AppBar(
         title: Text(instance.name),

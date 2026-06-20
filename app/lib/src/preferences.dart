@@ -8,15 +8,22 @@ class Preferences {
   const Preferences({
     this.themeMode = ThemeMode.system,
     this.biometricEnabled = false,
+    this.oledBlackEnabled = true,
   });
 
   final ThemeMode themeMode;
   final bool biometricEnabled;
+  final bool oledBlackEnabled;
 
-  Preferences copyWith({ThemeMode? themeMode, bool? biometricEnabled}) =>
+  Preferences copyWith({
+    ThemeMode? themeMode,
+    bool? biometricEnabled,
+    bool? oledBlackEnabled,
+  }) =>
       Preferences(
         themeMode: themeMode ?? this.themeMode,
         biometricEnabled: biometricEnabled ?? this.biometricEnabled,
+        oledBlackEnabled: oledBlackEnabled ?? this.oledBlackEnabled,
       );
 }
 
@@ -35,6 +42,7 @@ final NotifierProvider<PreferencesController, Preferences> preferencesProvider =
 class PreferencesController extends Notifier<Preferences> {
   static const String _themeKey = 'pref.themeMode';
   static const String _biometricKey = 'pref.biometricEnabled';
+  static const String _oledBlackKey = 'pref.oledBlackEnabled';
 
   Box<String> get _box => ref.read(settingsBoxProvider);
 
@@ -47,6 +55,7 @@ class PreferencesController extends Notifier<Preferences> {
         _ => ThemeMode.system,
       },
       biometricEnabled: _box.get(_biometricKey) == 'true',
+      oledBlackEnabled: _box.get(_oledBlackKey) != 'false',
     );
   }
 
@@ -58,5 +67,10 @@ class PreferencesController extends Notifier<Preferences> {
   Future<void> setBiometricEnabled(bool enabled) async {
     await _box.put(_biometricKey, '$enabled');
     state = state.copyWith(biometricEnabled: enabled);
+  }
+
+  Future<void> setOledBlackEnabled(bool enabled) async {
+    await _box.put(_oledBlackKey, '$enabled');
+    state = state.copyWith(oledBlackEnabled: enabled);
   }
 }

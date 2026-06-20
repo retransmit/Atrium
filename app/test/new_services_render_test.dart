@@ -347,7 +347,7 @@ void main() {
             records: <SonarrWantedRecord>[],
           ),
         ),
-        sonarrHistoryProvider((instance, 1)).overrideWith(
+        sonarrHistoryProvider(instance).overrideWith(
           (Ref ref) async => SonarrHistoryPage(
             page: 1,
             pageSize: 50,
@@ -538,24 +538,21 @@ void main() {
     // Verify the view mode action button (grid/list toggle) is visible on Series tab
     expect(find.byTooltip('Switch to Banner List'), findsOneWidget);
 
-    // Verify all tabs are present in TabBar
-    expect(find.text('Series'), findsOneWidget);
-    expect(find.text('Queue'), findsOneWidget);
+    // Verify all tabs are present in BottomNavigationBar
+    expect(find.text('Library'), findsOneWidget);
+    expect(find.text('Activity'), findsOneWidget);
     expect(find.text('Wanted'), findsOneWidget);
-    expect(find.text('History'), findsOneWidget);
-    expect(find.text('Blocklist'), findsOneWidget);
-    expect(find.text('System'), findsOneWidget);
-    expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('More'), findsOneWidget);
 
-    // Switch to Settings tab
-    await tester.tap(find.text('Settings'));
+    // Switch to More tab
+    await tester.tap(find.text('More'));
     await tester.pumpAndSettle();
 
-    // Verify the view mode action button is now hidden on Settings tab
+    // Verify the view mode action button is now hidden on More tab
     expect(find.byTooltip('Switch to Banner List'), findsNothing);
     expect(find.byTooltip('Switch to Grid'), findsNothing);
 
-    // Verify new settings panels are rendered
+    // Verify new settings panels are rendered in More tab
     expect(find.text('General / Host Settings'), findsOneWidget);
     expect(find.text('Episode Naming'), findsOneWidget);
     expect(find.text('Media Management'), findsOneWidget);

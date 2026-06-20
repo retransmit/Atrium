@@ -6,6 +6,7 @@ import 'models/sonarr_blocklist.dart';
 import 'models/sonarr_calendar.dart';
 import 'models/sonarr_episode.dart';
 import 'models/sonarr_history.dart';
+import 'models/sonarr_manual_import.dart';
 import 'models/sonarr_queue.dart';
 import 'models/sonarr_release.dart';
 import 'models/sonarr_series.dart';
@@ -486,6 +487,43 @@ class SonarrApi {
         },
       );
       return SonarrWantedPage.fromJson(resp.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<List<SonarrManualImport>> getManualImports({
+    String? folder,
+    String? downloadId,
+    int? seriesId,
+    int? seasonNumber,
+    bool filterExistingFiles = true,
+  }) async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>(
+        '$_base/manualimport',
+        queryParameters: <String, dynamic>{
+          if (folder != null) 'folder': folder,
+          if (downloadId != null) 'downloadId': downloadId,
+          if (seriesId != null) 'seriesId': seriesId,
+          if (seasonNumber != null) 'seasonNumber': seasonNumber,
+          'filterExistingFiles': filterExistingFiles,
+        },
+      );
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => SonarrManualImport.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<void> reprocessManualImports(List<SonarrManualImportReprocess> items) async {
+    try {
+      await _dio.post<dynamic>(
+        '$_base/manualimport',
+        data: items.map((SonarrManualImportReprocess e) => e.toJson()).toList(),
+      );
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }

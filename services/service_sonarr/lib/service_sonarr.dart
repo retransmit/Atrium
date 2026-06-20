@@ -11,6 +11,7 @@ export 'src/models/sonarr_blocklist.dart';
 export 'src/models/sonarr_calendar.dart';
 export 'src/models/sonarr_episode.dart';
 export 'src/models/sonarr_history.dart';
+export 'src/models/sonarr_manual_import.dart';
 export 'src/models/sonarr_queue.dart';
 export 'src/models/sonarr_release.dart';
 export 'src/models/sonarr_series.dart';
