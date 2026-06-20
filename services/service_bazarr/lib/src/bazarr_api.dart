@@ -527,6 +527,62 @@ class BazarrApi {
     }
   }
 
+  // --- Settings: providers ---
+
+  /// The full settings object (`GET /system/settings`). Used for
+  /// `general.enabled_providers` and per-provider config sections.
+  Future<Map<String, dynamic>> getBazarrSettings() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('api/system/settings');
+      final dynamic data = resp.data;
+      if (data is Map<String, dynamic>) {
+        return (data['data'] as Map<String, dynamic>?) ?? data;
+      }
+      return <String, dynamic>{};
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Sets the full set of enabled providers (`settings-general-enabled_providers`
+  /// repeated, form-urlencoded). Partial POST: only this field changes.
+  Future<void> setEnabledProviders(List<String> keys) async {
+    try {
+      await _dio.post<dynamic>(
+        'api/system/settings',
+        data: <String, dynamic>{'settings-general-enabled_providers': keys},
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          listFormat: ListFormat.multi,
+        ),
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Saves one provider's config: each [fields] entry is posted as
+  /// `settings-<provider>-<key>` (form-urlencoded).
+  Future<void> setProviderConfig(
+    String provider,
+    Map<String, String> fields,
+  ) async {
+    try {
+      final Map<String, String> body = <String, String>{
+        for (final MapEntry<String, String> e in fields.entries)
+          'settings-$provider-${e.key}': e.value,
+      };
+      await _dio.post<dynamic>(
+        'api/system/settings',
+        data: body,
+        options: Options(contentType: Headers.formUrlEncodedContentType),
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
   List<dynamic> _listFrom(dynamic data) => data is Map<String, dynamic>
       ? ((data['data'] as List<dynamic>?) ?? const <dynamic>[])
       : (data as List<dynamic>);

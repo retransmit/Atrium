@@ -270,3 +270,14 @@ final bazarrLanguagesProvider =
       );
       return list;
     });
+
+/// Full Bazarr settings object (Settings > Providers: enabled list + per-
+/// provider config sections).
+final bazarrSettingsProvider =
+    FutureProvider.family<Map<String, dynamic>, Instance>((
+      Ref ref,
+      Instance instance,
+    ) async {
+      final BazarrApi api = await ref.watch(bazarrApiProvider(instance).future);
+      return api.getBazarrSettings();
+    });

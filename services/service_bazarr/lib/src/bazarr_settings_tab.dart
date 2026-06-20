@@ -3,6 +3,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 
 import 'bazarr_languages_screen.dart';
+import 'bazarr_providers_screen.dart';
 
 /// The Settings tab: a menu of Bazarr configuration screens (languages, and -
 /// added incrementally - providers and language profiles).
@@ -24,6 +25,15 @@ class BazarrSettingsTab extends StatelessWidget {
           onTap: () => _push(
             context,
             BazarrLanguagesScreen(instance: instance),
+          ),
+        ),
+        _SettingsTile(
+          icon: Icons.cloud_outlined,
+          title: 'Providers',
+          subtitle: 'Enable and configure subtitle providers',
+          onTap: () => _push(
+            context,
+            BazarrProvidersScreen(instance: instance),
           ),
         ),
       ],
