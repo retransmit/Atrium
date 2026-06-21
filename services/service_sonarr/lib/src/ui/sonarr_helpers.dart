@@ -52,6 +52,7 @@ Future<bool?> _showDeleteConfirm(BuildContext context, String title) {
   return showModalBottomSheet<bool>(
     context: context,
     useSafeArea: true,
+    useRootNavigator: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
     ),

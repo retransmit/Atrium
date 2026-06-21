@@ -9,7 +9,7 @@ import 'models/sonarr_blocklist.dart';
 import 'models/sonarr_calendar.dart';
 import 'models/sonarr_episode.dart';
 import 'models/sonarr_history.dart';
-import 'models/sonarr_manual_import.dart';
+
 import 'models/sonarr_queue.dart';
 import 'models/sonarr_release.dart';
 import 'models/sonarr_series.dart';
@@ -187,59 +187,7 @@ final sonarrWantedCutoffProvider =
   return api.getWantedCutoff(pageSize: 250);
 });
 
-class SonarrManualImportArgs {
-  const SonarrManualImportArgs({
-    required this.instance,
-    this.folder,
-    this.downloadId,
-    this.seriesId,
-    this.seasonNumber,
-    this.filterExistingFiles = true,
-  });
 
-  final Instance instance;
-  final String? folder;
-  final String? downloadId;
-  final int? seriesId;
-  final int? seasonNumber;
-  final bool filterExistingFiles;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is SonarrManualImportArgs &&
-          runtimeType == other.runtimeType &&
-          instance == other.instance &&
-          folder == other.folder &&
-          downloadId == other.downloadId &&
-          seriesId == other.seriesId &&
-          seasonNumber == other.seasonNumber &&
-          filterExistingFiles == other.filterExistingFiles;
-
-  @override
-  int get hashCode =>
-      instance.hashCode ^
-      folder.hashCode ^
-      downloadId.hashCode ^
-      seriesId.hashCode ^
-      seasonNumber.hashCode ^
-      filterExistingFiles.hashCode;
-}
-
-final sonarrManualImportsProvider = FutureProvider.autoDispose
-    .family<List<SonarrManualImport>, SonarrManualImportArgs>((
-  Ref ref,
-  SonarrManualImportArgs args,
-) async {
-  final SonarrApi api = await ref.watch(sonarrApiProvider(args.instance).future);
-  return api.getManualImports(
-    folder: args.folder,
-    downloadId: args.downloadId,
-    seriesId: args.seriesId,
-    seasonNumber: args.seasonNumber,
-    filterExistingFiles: args.filterExistingFiles,
-  );
-});
 
 /// Fetches system status.
 final sonarrSystemStatusProvider =

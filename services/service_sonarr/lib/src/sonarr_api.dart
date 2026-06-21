@@ -518,11 +518,30 @@ class SonarrApi {
     }
   }
 
-  Future<void> reprocessManualImports(List<SonarrManualImportReprocess> items) async {
+  Future<List<dynamic>> reprocessManualImports(List<SonarrManualImportReprocess> items) async {
     try {
-      await _dio.post<dynamic>(
+      final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/manualimport',
         data: items.map((SonarrManualImportReprocess e) => e.toJson()).toList(),
+      );
+      return resp.data as List<dynamic>;
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<void> manualImport({
+    required List<dynamic> files,
+    String importMode = 'Move',
+  }) async {
+    try {
+      await _dio.post<dynamic>(
+        '$_base/command',
+        data: <String, dynamic>{
+          'name': 'ManualImport',
+          'files': files,
+          'importMode': importMode,
+        },
       );
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);

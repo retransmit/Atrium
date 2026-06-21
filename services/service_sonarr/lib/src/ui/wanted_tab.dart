@@ -174,7 +174,7 @@ class _GroupedSeriesCardState extends State<_GroupedSeriesCard> with SingleTicke
     _expandController = AnimationController(
       duration: const Duration(milliseconds: 250),
       vsync: this,
-    );
+    )..addStatusListener(_onExpandStatusChanged);
     _expandAnimation = CurvedAnimation(
       parent: _expandController,
       curve: Curves.easeInOutCubic,
@@ -183,8 +183,16 @@ class _GroupedSeriesCardState extends State<_GroupedSeriesCard> with SingleTicke
 
   @override
   void dispose() {
-    _expandController.dispose();
+    _expandController
+      ..removeStatusListener(_onExpandStatusChanged)
+      ..dispose();
     super.dispose();
+  }
+
+  void _onExpandStatusChanged(AnimationStatus status) {
+    if (status == AnimationStatus.dismissed && mounted) {
+      setState(() {});
+    }
   }
 
   void _toggleExpand() {
@@ -206,6 +214,7 @@ class _GroupedSeriesCardState extends State<_GroupedSeriesCard> with SingleTicke
 
     final SonarrImage? poster = widget.series.images.firstWhereOrNull((img) => img.coverType == 'poster');
     final String? imageUrl = poster != null ? widget.api?.posterUrl(poster) : null;
+    final bool shouldBuildEpisodes = _isExpanded || _expandController.value > 0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
@@ -304,36 +313,38 @@ class _GroupedSeriesCardState extends State<_GroupedSeriesCard> with SingleTicke
           ),
           SizeTransition(
             sizeFactor: _expandAnimation,
-            child: Column(
-              children: [
-                Divider(
-                  height: 1,
-                  thickness: 0.5,
-                  color: colors.outlineVariant.withValues(alpha: 0.3),
-                ),
-                Column(
-                  children: [
-                    for (int i = 0; i < widget.records.length; i++) ...[
-                      _GroupedEpisodeTile(
-                        record: widget.records[i],
-                        onSearch: () => widget.onSearchEpisode(
-                          widget.records[i].id,
-                          'S${widget.records[i].seasonNumber}E${widget.records[i].episodeNumber}',
-                        ),
+            child: !shouldBuildEpisodes
+                ? const SizedBox.shrink()
+                : Column(
+                    children: [
+                      Divider(
+                        height: 1,
+                        thickness: 0.5,
+                        color: colors.outlineVariant.withValues(alpha: 0.3),
                       ),
-                      if (i < widget.records.length - 1)
-                        Divider(
-                          height: 1,
-                          thickness: 0.5,
-                          indent: 16,
-                          endIndent: 16,
-                          color: colors.outlineVariant.withValues(alpha: 0.3),
-                        ),
+                      Column(
+                        children: [
+                          for (int i = 0; i < widget.records.length; i++) ...[
+                            _GroupedEpisodeTile(
+                              record: widget.records[i],
+                              onSearch: () => widget.onSearchEpisode(
+                                widget.records[i].id,
+                                'S${widget.records[i].seasonNumber}E${widget.records[i].episodeNumber}',
+                              ),
+                            ),
+                            if (i < widget.records.length - 1)
+                              Divider(
+                                height: 1,
+                                thickness: 0.5,
+                                indent: 16,
+                                endIndent: 16,
+                                color: colors.outlineVariant.withValues(alpha: 0.3),
+                              ),
+                          ],
+                        ],
+                      ),
                     ],
-                  ],
-                ),
-              ],
-            ),
+                  ),
           ),
         ],
       ),

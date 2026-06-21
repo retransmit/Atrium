@@ -48,23 +48,13 @@ class SeriesDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: series.when(
-        data: (_) => null,
-        loading: () => AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ),
-        error: (_, __) => AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          color: Colors.white,
+          onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: AsyncValueView<SonarrSeries>(
@@ -165,6 +155,29 @@ class _BodyState extends ConsumerState<_Body> {
                   .toList(),
               orElse: () => <SonarrQueueRecord>[],
             );
+
+    // Pre-group episodes by season
+    final Map<int, List<SonarrEpisode>> episodesBySeason = episodesValue.maybeWhen(
+      data: (List<SonarrEpisode> list) {
+        final Map<int, List<SonarrEpisode>> groups = list.groupListsBy((SonarrEpisode ep) => ep.seasonNumber);
+        for (final List<SonarrEpisode> eps in groups.values) {
+          eps.sort((SonarrEpisode a, SonarrEpisode b) => a.episodeNumber.compareTo(b.episodeNumber));
+        }
+        return groups;
+      },
+      orElse: () => <int, List<SonarrEpisode>>{},
+    );
+
+    // Index queue records by episode ID for O(1) lookup
+    final Map<int, SonarrQueueRecord> queueRecordsByEpisode = seriesQueueRecords.fold(
+      <int, SonarrQueueRecord>{},
+      (Map<int, SonarrQueueRecord> map, SonarrQueueRecord record) {
+        if (record.episodeId != null) {
+          map[record.episodeId!] = record;
+        }
+        return map;
+      },
+    );
     // ──────────────────────────────────────────────────────────────────────
 
     // Resolve image URLs
@@ -300,7 +313,8 @@ class _BodyState extends ConsumerState<_Body> {
                   season: season,
                   onChanged: (_) => _refresh(),
                   episodesValue: episodesValue,
-                  seriesQueueRecords: seriesQueueRecords,
+                  seasonEps: episodesBySeason[season.seasonNumber] ?? <SonarrEpisode>[],
+                  queueRecordsByEpisode: queueRecordsByEpisode,
                 ),
               if (specials != null)
                 _SeasonTile(
@@ -309,7 +323,8 @@ class _BodyState extends ConsumerState<_Body> {
                   season: specials,
                   onChanged: (_) => _refresh(),
                   episodesValue: episodesValue,
-                  seriesQueueRecords: seriesQueueRecords,
+                  seasonEps: episodesBySeason[0] ?? <SonarrEpisode>[],
+                  queueRecordsByEpisode: queueRecordsByEpisode,
                 ),
             ],
           ),
@@ -691,7 +706,8 @@ class _SeasonTile extends ConsumerStatefulWidget {
     required this.season,
     required this.onChanged,
     required this.episodesValue,
-    required this.seriesQueueRecords,
+    required this.seasonEps,
+    required this.queueRecordsByEpisode,
   });
 
   final Instance instance;
@@ -699,8 +715,8 @@ class _SeasonTile extends ConsumerStatefulWidget {
   final SonarrSeasonStats season;
   final void Function(WidgetRef) onChanged;
   final AsyncValue<List<SonarrEpisode>> episodesValue;
-  // Pre-filtered to this series by _BodyState — no ref.watch needed here.
-  final List<SonarrQueueRecord> seriesQueueRecords;
+  final List<SonarrEpisode> seasonEps;
+  final Map<int, SonarrQueueRecord> queueRecordsByEpisode;
 
   @override
   ConsumerState<_SeasonTile> createState() => _SeasonTileState();
@@ -723,7 +739,7 @@ class _SeasonTileState extends ConsumerState<_SeasonTile>
     _expandController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 350),
-    );
+    )..addStatusListener(_onExpandStatusChanged);
     _expandAnimation = CurvedAnimation(
       parent: _expandController,
       curve: Curves.easeOutCubic,
@@ -733,8 +749,16 @@ class _SeasonTileState extends ConsumerState<_SeasonTile>
   @override
   void dispose() {
     _pulseController.dispose();
-    _expandController.dispose();
+    _expandController
+      ..removeStatusListener(_onExpandStatusChanged)
+      ..dispose();
     super.dispose();
+  }
+
+  void _onExpandStatusChanged(AnimationStatus status) {
+    if (status == AnimationStatus.dismissed && mounted) {
+      setState(() {});
+    }
   }
 
   void _syncPulse(bool hasActiveDownload) {
@@ -787,28 +811,12 @@ class _SeasonTileState extends ConsumerState<_SeasonTile>
         : '${st.episodeFileCount}/${st.totalEpisodeCount} eps'
             ' • ${_fmtSize(st.sizeOnDisk)}';
 
-    // Filter episodes/queue from pre-loaded lists — no ref.watch needed.
-    final List<SonarrEpisode> seasonEps = widget.episodesValue.maybeWhen(
-      data: (List<SonarrEpisode> list) => list
-          .where(
-            (SonarrEpisode ep) =>
-                ep.seasonNumber == widget.season.seasonNumber,
-          )
-          .toList()
-        ..sort(
-          (SonarrEpisode a, SonarrEpisode b) =>
-              a.episodeNumber - b.episodeNumber,
-        ),
-      orElse: () => <SonarrEpisode>[],
-    );
-    final Set<int> seasonEpIds =
-        seasonEps.map((SonarrEpisode ep) => ep.id).toSet();
-    final List<SonarrQueueRecord> seasonQueueRecords = widget.seriesQueueRecords
-        .where(
-          (SonarrQueueRecord r) =>
-              r.episodeId != null && seasonEpIds.contains(r.episodeId),
-        )
+    final List<SonarrEpisode> seasonEps = widget.seasonEps;
+    final List<SonarrQueueRecord> seasonQueueRecords = seasonEps
+        .map((SonarrEpisode ep) => widget.queueRecordsByEpisode[ep.id])
+        .whereType<SonarrQueueRecord>()
         .toList();
+    final bool shouldBuildEpisodes = _isExpanded || _expandController.value > 0;
 
     // Compute download progress from pre-filtered records.
     double progress = 0;
@@ -1120,58 +1128,54 @@ class _SeasonTileState extends ConsumerState<_SeasonTile>
           // ── Expandable episodes section ─────────────────────────────
           SizeTransition(
             sizeFactor: _expandAnimation,
-            child: Column(
-              children: <Widget>[
-                const Divider(height: 1),
-                widget.episodesValue.when(
-                  loading: () => const Padding(
-                    padding: EdgeInsets.symmetric(vertical: Insets.md),
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
-                  error: (Object err, StackTrace? _) => Padding(
-                    padding: const EdgeInsets.all(Insets.md),
-                    child: Center(
-                      child: Text(
-                        'Error loading episodes: $err',
-                        style:
-                            TextStyle(color: theme.colorScheme.error),
-                      ),
-                    ),
-                  ),
-                  data: (List<SonarrEpisode> _) {
-                    if (seasonEps.isEmpty) {
-                      return const Padding(
-                        padding: EdgeInsets.symmetric(
-                          vertical: Insets.md,
+            child: !shouldBuildEpisodes
+                ? const SizedBox.shrink()
+                : Column(
+                    children: <Widget>[
+                      const Divider(height: 1),
+                      widget.episodesValue.when(
+                        loading: () => const Padding(
+                          padding: EdgeInsets.symmetric(vertical: Insets.md),
+                          child: Center(child: CircularProgressIndicator()),
                         ),
-                        child: Center(child: Text('No episodes found')),
-                      );
-                    }
-                    return Column(
-                      children: <Widget>[
-                        for (int i = 0; i < seasonEps.length; i++) ...<Widget>[
-                          _EpisodeTile(
-                            instance: widget.instance,
-                            seriesId: widget.series.id,
-                            episode: seasonEps[i],
-                            // queueRecord is pre-resolved — no ref.watch
-                            // inside EpisodeTile build.
-                            queueRecord: widget.seriesQueueRecords
-                                .firstWhereOrNull(
-                              (SonarrQueueRecord r) =>
-                                  r.episodeId == seasonEps[i].id,
+                        error: (Object err, StackTrace? _) => Padding(
+                          padding: const EdgeInsets.all(Insets.md),
+                          child: Center(
+                            child: Text(
+                              'Error loading episodes: $err',
+                              style:
+                                  TextStyle(color: theme.colorScheme.error),
                             ),
                           ),
-                          if (i < seasonEps.length - 1)
-                            const Divider(height: 1, indent: Insets.xl),
-                        ],
-                        const SizedBox(height: Insets.xs),
-                      ],
-                    );
-                  },
-                ),
-              ],
-            ),
+                        ),
+                        data: (List<SonarrEpisode> _) {
+                          if (seasonEps.isEmpty) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(
+                                vertical: Insets.md,
+                              ),
+                              child: Center(child: Text('No episodes found')),
+                            );
+                          }
+                          return Column(
+                            children: <Widget>[
+                              for (int i = 0; i < seasonEps.length; i++) ...<Widget>[
+                                _EpisodeTile(
+                                  instance: widget.instance,
+                                  seriesId: widget.series.id,
+                                  episode: seasonEps[i],
+                                  queueRecord: widget.queueRecordsByEpisode[seasonEps[i].id],
+                                ),
+                                if (i < seasonEps.length - 1)
+                                  const Divider(height: 1, indent: Insets.xl),
+                              ],
+                              const SizedBox(height: Insets.xs),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
           ),
         ],
       ),

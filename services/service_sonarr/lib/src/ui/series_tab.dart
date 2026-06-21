@@ -601,11 +601,10 @@ class _SeriesBannerCard extends ConsumerWidget {
                             const SizedBox(height: 6),
                             SizedBox(
                               height: 32,
-                              child: ListView.builder(
+                              child: SingleChildScrollView(
                                 scrollDirection: Axis.horizontal,
-                                itemCount: monitoredSeasons.length,
-                                itemBuilder: (BuildContext context, int idx) {
-                                    final SonarrSeasonStats s = monitoredSeasons[idx];
+                                child: Row(
+                                  children: monitoredSeasons.map((SonarrSeasonStats s) {
                                     final double seasonProgress = (s.statistics == null || s.statistics!.totalEpisodeCount == 0)
                                         ? 0
                                         : (s.statistics!.episodeFileCount / s.statistics!.totalEpisodeCount).clamp(0, 1);
@@ -644,7 +643,8 @@ class _SeriesBannerCard extends ConsumerWidget {
                                         ],
                                       ),
                                     );
-                                },
+                                  }).toList(),
+                                ),
                               ),
                             ),
                           ],

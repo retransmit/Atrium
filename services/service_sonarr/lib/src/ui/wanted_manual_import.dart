@@ -227,7 +227,8 @@ class _WantedManualImportSubTabState
       }
 
       final SonarrApi api = await ref.read(sonarrApiProvider(widget.instance).future);
-      await api.reprocessManualImports(payload);
+      final List<dynamic> reprocessed = await api.reprocessManualImports(payload);
+      await api.manualImport(files: reprocessed);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -278,6 +279,7 @@ class _WantedManualImportSubTabState
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      useRootNavigator: true,
       builder: (BuildContext context) {
         return _AssignmentEditorSheet(
           instance: widget.instance,
@@ -720,6 +722,7 @@ class __AssignmentEditorSheetState extends ConsumerState<_AssignmentEditorSheet>
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      useRootNavigator: true,
       builder: (BuildContext context) {
         return _SeriesSelectionSheet(instance: widget.instance);
       },
