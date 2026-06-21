@@ -36,8 +36,11 @@ class ScaffoldWithNavBar extends StatelessWidget {
         }
       },
       child: Scaffold(
+        resizeToAvoidBottomInset: false,
         body: navigationShell,
-        bottomNavigationBar: showNavBar ? _buildBottomNavigationBar(context) : null,
+        bottomNavigationBar: showNavBar && MediaQuery.of(context).viewInsets.bottom == 0
+            ? _buildBottomNavigationBar(context)
+            : null,
       ),
     );
   }

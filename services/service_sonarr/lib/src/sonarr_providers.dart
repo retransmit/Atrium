@@ -167,26 +167,24 @@ final sonarrBlocklistProvider =
   return api.getBlocklist(page: page);
 });
 
-/// Fetches wanted missing episodes. family key is (Instance, page).
+/// Fetches wanted missing episodes. family key is Instance.
 final sonarrWantedMissingProvider =
-    FutureProvider.autoDispose.family<SonarrWantedPage, (Instance, int)>((
+    FutureProvider.autoDispose.family<SonarrWantedPage, Instance>((
   Ref ref,
-  (Instance, int) key,
+  Instance instance,
 ) async {
-  final (Instance instance, int page) = key;
   final SonarrApi api = await ref.watch(sonarrApiProvider(instance).future);
-  return api.getWantedMissing(page: page);
+  return api.getWantedMissing(pageSize: 250);
 });
 
-/// Fetches wanted cutoff unmet episodes. family key is (Instance, page).
+/// Fetches wanted cutoff unmet episodes. family key is Instance.
 final sonarrWantedCutoffProvider =
-    FutureProvider.autoDispose.family<SonarrWantedPage, (Instance, int)>((
+    FutureProvider.autoDispose.family<SonarrWantedPage, Instance>((
   Ref ref,
-  (Instance, int) key,
+  Instance instance,
 ) async {
-  final (Instance instance, int page) = key;
   final SonarrApi api = await ref.watch(sonarrApiProvider(instance).future);
-  return api.getWantedCutoff(page: page);
+  return api.getWantedCutoff(pageSize: 250);
 });
 
 class SonarrManualImportArgs {

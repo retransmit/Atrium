@@ -10,8 +10,6 @@ class _WantedTab extends StatefulWidget {
 }
 
 class _WantedTabState extends State<_WantedTab> {
-  int _missingPage = 1;
-  int _cutoffPage = 1;
   int _wantedSubTab = 0;
   late final ScrollController _scrollController;
   bool _showScrollUp = false;
@@ -91,13 +89,9 @@ class _WantedTabState extends State<_WantedTab> {
                   children: <Widget>[
                     _WantedMissingSubTab(
                       instance: widget.instance,
-                      page: _missingPage,
-                      onPageChanged: (p) => setState(() => _missingPage = p),
                     ),
                     _WantedCutoffSubTab(
                       instance: widget.instance,
-                      page: _cutoffPage,
-                      onPageChanged: (p) => setState(() => _cutoffPage = p),
                     ),
                     _WantedManualImportSubTab(
                       instance: widget.instance,
@@ -146,30 +140,225 @@ class _WantedTabState extends State<_WantedTab> {
   }
 }
 
-class _WantedEpisodeCard extends StatefulWidget {
-  const _WantedEpisodeCard({
+class _GroupedSeriesCard extends StatefulWidget {
+  const _GroupedSeriesCard({
+    required this.series,
+    required this.records,
+    required this.subtitle,
+    required this.api,
+    required this.onSearchEpisode,
+    required this.onTapSeries,
+    required this.statusColor,
+  });
+
+  final SonarrSeries series;
+  final List<SonarrWantedRecord> records;
+  final String subtitle;
+  final SonarrApi? api;
+  final Future<void> Function(int episodeId, String label) onSearchEpisode;
+  final VoidCallback onTapSeries;
+  final Color statusColor;
+
+  @override
+  State<_GroupedSeriesCard> createState() => _GroupedSeriesCardState();
+}
+
+class _GroupedSeriesCardState extends State<_GroupedSeriesCard> with SingleTickerProviderStateMixin {
+  bool _isExpanded = false;
+  late AnimationController _expandController;
+  late Animation<double> _expandAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _expandController = AnimationController(
+      duration: const Duration(milliseconds: 250),
+      vsync: this,
+    );
+    _expandAnimation = CurvedAnimation(
+      parent: _expandController,
+      curve: Curves.easeInOutCubic,
+    );
+  }
+
+  @override
+  void dispose() {
+    _expandController.dispose();
+    super.dispose();
+  }
+
+  void _toggleExpand() {
+    HapticFeedback.lightImpact();
+    setState(() {
+      _isExpanded = !_isExpanded;
+      if (_isExpanded) {
+        _expandController.forward();
+      } else {
+        _expandController.reverse();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
+    final SonarrImage? poster = widget.series.images.firstWhereOrNull((img) => img.coverType == 'poster');
+    final String? imageUrl = poster != null ? widget.api?.posterUrl(poster) : null;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      decoration: BoxDecoration(
+        color: colors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: colors.outlineVariant.withValues(alpha: theme.brightness == Brightness.dark ? 0.12 : 0.2),
+          width: 0.8,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header: Series Title and Poster
+          InkWell(
+            onTap: _toggleExpand,
+            splashFactory: InkRipple.splashFactory,
+            borderRadius: BorderRadius.vertical(
+              top: const Radius.circular(24),
+              bottom: Radius.circular(_isExpanded ? 0 : 24),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: SizedBox(
+                      width: 40,
+                      height: 60,
+                      child: imageUrl == null
+                          ? Container(
+                              color: colors.surfaceContainerHighest,
+                              child: Icon(Icons.live_tv, color: colors.outline, size: 20),
+                            )
+                          : CachedNetworkImage(
+                              imageUrl: imageUrl,
+                              fit: BoxFit.cover,
+                              errorWidget: (_, __, ___) => Container(
+                                color: colors.surfaceContainerHighest,
+                                child: Icon(Icons.live_tv, color: colors.outline, size: 20),
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.series.title,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.subtitle,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: widget.statusColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Dedicated Info Button to go to Series detail
+                  IconButton(
+                    icon: const Icon(Icons.info_outline_rounded, size: 20),
+                    color: colors.onSurfaceVariant,
+                    tooltip: 'View series details',
+                    onPressed: widget.onTapSeries,
+                  ),
+                  // Expand arrow rotating
+                  RotationTransition(
+                    turns: Tween<double>(begin: 0.0, end: 0.5).animate(_expandAnimation),
+                    child: const Icon(Icons.keyboard_arrow_down_rounded),
+                  ),
+                  const SizedBox(width: 4),
+                ],
+              ),
+            ),
+          ),
+          SizeTransition(
+            sizeFactor: _expandAnimation,
+            child: Column(
+              children: [
+                Divider(
+                  height: 1,
+                  thickness: 0.5,
+                  color: colors.outlineVariant.withValues(alpha: 0.3),
+                ),
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: EdgeInsets.zero,
+                  itemCount: widget.records.length,
+                  separatorBuilder: (context, index) => Divider(
+                    height: 1,
+                    thickness: 0.5,
+                    indent: 16,
+                    endIndent: 16,
+                    color: colors.outlineVariant.withValues(alpha: 0.3),
+                  ),
+                  itemBuilder: (context, index) {
+                    final record = widget.records[index];
+                    return _GroupedEpisodeTile(
+                      record: record,
+                      onSearch: () => widget.onSearchEpisode(record.id, 'S${record.seasonNumber}E${record.episodeNumber}'),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GroupedEpisodeTile extends StatefulWidget {
+  const _GroupedEpisodeTile({
     required this.record,
-    required this.imageUrl,
     required this.onSearch,
-    required this.onTap,
-    super.key,
   });
 
   final SonarrWantedRecord record;
-  final String? imageUrl;
   final Future<void> Function() onSearch;
-  final VoidCallback onTap;
 
   @override
-  State<_WantedEpisodeCard> createState() => _WantedEpisodeCardState();
+  State<_GroupedEpisodeTile> createState() => _GroupedEpisodeTileState();
 }
 
-class _WantedEpisodeCardState extends State<_WantedEpisodeCard> {
+class _GroupedEpisodeTileState extends State<_GroupedEpisodeTile> {
   bool _isSearching = false;
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
+    final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
     String formattedAirDate = 'Unknown';
@@ -184,152 +373,102 @@ class _WantedEpisodeCardState extends State<_WantedEpisodeCard> {
 
     final String epCode = 'S${widget.record.seasonNumber.toString().padLeft(2, '0')}E${widget.record.episodeNumber.toString().padLeft(2, '0')}';
 
-    return InkWell(
-      onTap: widget.onTap,
-      splashFactory: InkRipple.splashFactory, // Uniform circular splash
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16), // Padding matching One UI 8.5 list elements
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12), // 12dp rounded corner
-              child: SizedBox(
-                width: 68,
-                height: 102,
-                child: widget.imageUrl == null
-                    ? Container(
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        child: Icon(
-                          Icons.live_tv_outlined,
-                          color: theme.colorScheme.outline,
-                          size: 24,
-                        ),
-                      )
-                    : CachedNetworkImage(
-                        imageUrl: widget.imageUrl!,
-                        fit: BoxFit.cover,
-                        placeholder: (BuildContext context, String url) => Container(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          child: const Center(
-                            child: SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 1.5),
-                            ),
-                          ),
-                        ),
-                        errorWidget: (_, __, ___) => Container(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          child: Icon(
-                            Icons.live_tv_outlined,
-                            color: theme.colorScheme.outline,
-                          ),
-                        ),
-                      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: colors.onSurface.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: colors.onSurface.withValues(alpha: 0.08),
+                width: 0.5,
               ),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    widget.record.series?.title ?? 'Unknown Series',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+            child: Text(
+              epCode,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: colors.onSurfaceVariant,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.record.title ?? 'Episode ${widget.record.episodeNumber}',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today_outlined,
+                      size: 11,
+                      color: colors.outline,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: <Widget>[
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: colors.secondaryContainer, // Tonal fill, no borders
-                          borderRadius: BorderRadius.circular(8), // 8dp corners
-                        ),
-                        child: Text(
-                          epCode,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: colors.onSecondaryContainer,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Aired: $formattedAirDate',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colors.outline,
+                        fontSize: 12,
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          widget.record.title ?? '',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: <Widget>[
-                      Icon(
-                        Icons.calendar_today_outlined,
-                        size: 12,
-                        color: theme.colorScheme.outline,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Aired: $formattedAirDate',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.outline,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            Align(
-              child: SizedBox(
-                width: 40,
-                height: 40,
-                child: _isSearching
-                    ? Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: theme.colorScheme.primary,
-                        ),
-                      )
-                    : IconButton(
-                        icon: const Icon(Icons.search_rounded), // Rounded icon
-                        color: colors.onSurfaceVariant, // Subtle coloring
-                        tooltip: 'Search for this episode',
-                        onPressed: () async {
-                          setState(() {
-                            _isSearching = true;
-                          });
-                          try {
-                            await widget.onSearch();
-                          } finally {
-                            if (mounted) {
-                              setState(() {
-                                _isSearching = false;
-                              });
-                            }
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 38,
+            height: 38,
+            child: _isSearching
+                ? Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: colors.primary,
+                    ),
+                  )
+                : Container(
+                    decoration: BoxDecoration(
+                      color: colors.primary.withValues(alpha: 0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.search_rounded, size: 18),
+                      color: colors.primary,
+                      tooltip: 'Search for this episode',
+                      onPressed: () async {
+                        setState(() {
+                          _isSearching = true;
+                        });
+                        try {
+                          await widget.onSearch();
+                        } finally {
+                          if (mounted) {
+                            setState(() {
+                              _isSearching = false;
+                            });
                           }
-                        },
-                      ),
-              ),
-            ),
-          ],
-        ),
+                        }
+                      },
+                    ),
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -338,13 +477,9 @@ class _WantedEpisodeCardState extends State<_WantedEpisodeCard> {
 class _WantedMissingSubTab extends ConsumerStatefulWidget {
   const _WantedMissingSubTab({
     required this.instance,
-    required this.page,
-    required this.onPageChanged,
   });
 
   final Instance instance;
-  final int page;
-  final ValueChanged<int> onPageChanged;
 
   @override
   ConsumerState<_WantedMissingSubTab> createState() => _WantedMissingSubTabState();
@@ -356,17 +491,18 @@ class _WantedMissingSubTabState extends ConsumerState<_WantedMissingSubTab> {
   @override
   Widget build(BuildContext context) {
     final AsyncValue<SonarrWantedPage> missing =
-        ref.watch(sonarrWantedMissingProvider((widget.instance, widget.page)));
+        ref.watch(sonarrWantedMissingProvider(widget.instance));
     final SonarrApi? api = ref.watch(sonarrApiProvider(widget.instance)).value;
+    final theme = Theme.of(context);
 
     return RefreshIndicator(
       onRefresh: () async {
-        ref.invalidate(sonarrWantedMissingProvider((widget.instance, widget.page)));
-        await ref.read(sonarrWantedMissingProvider((widget.instance, widget.page)).future);
+        ref.invalidate(sonarrWantedMissingProvider(widget.instance));
+        await ref.read(sonarrWantedMissingProvider(widget.instance).future);
       },
       child: AsyncValueView<SonarrWantedPage>(
         value: missing,
-        onRetry: () => ref.invalidate(sonarrWantedMissingProvider((widget.instance, widget.page))),
+        onRetry: () => ref.invalidate(sonarrWantedMissingProvider(widget.instance)),
         data: (SonarrWantedPage dataPage) {
           if (dataPage.records.isEmpty) {
             return const EmptyView(
@@ -376,7 +512,18 @@ class _WantedMissingSubTabState extends ConsumerState<_WantedMissingSubTab> {
             );
           }
 
-          final int totalPages = (dataPage.totalRecords / dataPage.pageSize).ceil().clamp(1, double.infinity).toInt();
+          // Group records by seriesId
+          final Map<int, List<SonarrWantedRecord>> grouped = {};
+          for (final record in dataPage.records) {
+            grouped.putIfAbsent(record.seriesId, () => []).add(record);
+          }
+
+          final List<int> sortedSeriesIds = grouped.keys.toList()
+            ..sort((a, b) {
+              final titleA = grouped[a]!.first.series?.title ?? '';
+              final titleB = grouped[b]!.first.series?.title ?? '';
+              return titleA.toLowerCase().compareTo(titleB.toLowerCase());
+            });
 
           return Column(
             children: <Widget>[
@@ -428,45 +575,41 @@ class _WantedMissingSubTabState extends ConsumerState<_WantedMissingSubTab> {
                 ),
               ),
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.only(left: 16, right: 16, bottom: 100), // padding bottom for bottom nav
-                  children: <Widget>[
-                    _OneUIGroupCard(
-                      margin: EdgeInsets.zero,
-                      children: dataPage.records.map((SonarrWantedRecord record) {
-                        final SonarrImage? poster = record.series?.images.firstWhereOrNull((SonarrImage img) => img.coverType == 'poster');
-                        final String? imageUrl = poster != null ? api?.posterUrl(poster) : null;
+                child: ListView.builder(
+                  padding: const EdgeInsets.only(left: 16, right: 16, bottom: 100),
+                  itemCount: sortedSeriesIds.length,
+                  itemBuilder: (context, index) {
+                    final seriesId = sortedSeriesIds[index];
+                    final records = grouped[seriesId]!;
+                    final series = records.first.series ?? SonarrSeries(id: seriesId, title: 'Unknown Series');
+                    final Color statusColor = theme.brightness == Brightness.dark
+                        ? Colors.orangeAccent
+                        : Colors.orange.shade800;
 
-                        return _WantedEpisodeCard(
-                          key: ValueKey<int>(record.id),
-                          record: record,
-                          imageUrl: imageUrl,
-                          onSearch: () async {
-                            final SonarrApi apiObj = await ref.read(sonarrApiProvider(widget.instance).future);
-                            await apiObj.searchEpisode(record.id);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Search triggered for S${record.seasonNumber}E${record.episodeNumber}')),
-                              );
-                            }
-                          },
-                          onTap: () => _pushSeriesDetail(
-                            context,
-                            widget.instance,
-                            record.seriesId,
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
+                    return _GroupedSeriesCard(
+                      series: series,
+                      records: records,
+                      subtitle: '${records.length} missing ${records.length == 1 ? 'episode' : 'episodes'}',
+                      statusColor: statusColor,
+                      api: api,
+                      onSearchEpisode: (episodeId, label) async {
+                        final SonarrApi apiObj = await ref.read(sonarrApiProvider(widget.instance).future);
+                        await apiObj.searchEpisode(episodeId);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Search triggered for $label')),
+                          );
+                        }
+                      },
+                      onTapSeries: () => _pushSeriesDetail(
+                        context,
+                        widget.instance,
+                        seriesId,
+                      ),
+                    );
+                  },
                 ),
               ),
-              if (totalPages > 1)
-                _PaginationBar(
-                  currentPage: widget.page,
-                  totalPages: totalPages,
-                  onPageChanged: widget.onPageChanged,
-                ),
             ],
           );
         },
@@ -478,13 +621,9 @@ class _WantedMissingSubTabState extends ConsumerState<_WantedMissingSubTab> {
 class _WantedCutoffSubTab extends ConsumerStatefulWidget {
   const _WantedCutoffSubTab({
     required this.instance,
-    required this.page,
-    required this.onPageChanged,
   });
 
   final Instance instance;
-  final int page;
-  final ValueChanged<int> onPageChanged;
 
   @override
   ConsumerState<_WantedCutoffSubTab> createState() => _WantedCutoffSubTabState();
@@ -496,17 +635,19 @@ class _WantedCutoffSubTabState extends ConsumerState<_WantedCutoffSubTab> {
   @override
   Widget build(BuildContext context) {
     final AsyncValue<SonarrWantedPage> cutoff =
-        ref.watch(sonarrWantedCutoffProvider((widget.instance, widget.page)));
+        ref.watch(sonarrWantedCutoffProvider(widget.instance));
     final SonarrApi? api = ref.watch(sonarrApiProvider(widget.instance)).value;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
 
     return RefreshIndicator(
       onRefresh: () async {
-        ref.invalidate(sonarrWantedCutoffProvider((widget.instance, widget.page)));
-        await ref.read(sonarrWantedCutoffProvider((widget.instance, widget.page)).future);
+        ref.invalidate(sonarrWantedCutoffProvider(widget.instance));
+        await ref.read(sonarrWantedCutoffProvider(widget.instance).future);
       },
       child: AsyncValueView<SonarrWantedPage>(
         value: cutoff,
-        onRetry: () => ref.invalidate(sonarrWantedCutoffProvider((widget.instance, widget.page))),
+        onRetry: () => ref.invalidate(sonarrWantedCutoffProvider(widget.instance)),
         data: (SonarrWantedPage dataPage) {
           if (dataPage.records.isEmpty) {
             return const EmptyView(
@@ -516,7 +657,18 @@ class _WantedCutoffSubTabState extends ConsumerState<_WantedCutoffSubTab> {
             );
           }
 
-          final int totalPages = (dataPage.totalRecords / dataPage.pageSize).ceil().clamp(1, double.infinity).toInt();
+          // Group records by seriesId
+          final Map<int, List<SonarrWantedRecord>> grouped = {};
+          for (final record in dataPage.records) {
+            grouped.putIfAbsent(record.seriesId, () => []).add(record);
+          }
+
+          final List<int> sortedSeriesIds = grouped.keys.toList()
+            ..sort((a, b) {
+              final titleA = grouped[a]!.first.series?.title ?? '';
+              final titleB = grouped[b]!.first.series?.title ?? '';
+              return titleA.toLowerCase().compareTo(titleB.toLowerCase());
+            });
 
           return Column(
             children: <Widget>[
@@ -568,45 +720,39 @@ class _WantedCutoffSubTabState extends ConsumerState<_WantedCutoffSubTab> {
                 ),
               ),
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.only(left: 16, right: 16, bottom: 100), // padding bottom for bottom nav
-                  children: <Widget>[
-                    _OneUIGroupCard(
-                      margin: EdgeInsets.zero,
-                      children: dataPage.records.map((SonarrWantedRecord record) {
-                        final SonarrImage? poster = record.series?.images.firstWhereOrNull((SonarrImage img) => img.coverType == 'poster');
-                        final String? imageUrl = poster != null ? api?.posterUrl(poster) : null;
+                child: ListView.builder(
+                  padding: const EdgeInsets.only(left: 16, right: 16, bottom: 100),
+                  itemCount: sortedSeriesIds.length,
+                  itemBuilder: (context, index) {
+                    final seriesId = sortedSeriesIds[index];
+                    final records = grouped[seriesId]!;
+                    final series = records.first.series ?? SonarrSeries(id: seriesId, title: 'Unknown Series');
+                    final Color statusColor = colors.secondary;
 
-                        return _WantedEpisodeCard(
-                          key: ValueKey<int>(record.id),
-                          record: record,
-                          imageUrl: imageUrl,
-                          onSearch: () async {
-                            final SonarrApi apiObj = await ref.read(sonarrApiProvider(widget.instance).future);
-                            await apiObj.searchEpisode(record.id);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Search triggered for S${record.seasonNumber}E${record.episodeNumber}')),
-                              );
-                            }
-                          },
-                          onTap: () => _pushSeriesDetail(
-                            context,
-                            widget.instance,
-                            record.seriesId,
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ],
+                    return _GroupedSeriesCard(
+                      series: series,
+                      records: records,
+                      subtitle: '${records.length} cutoff unmet ${records.length == 1 ? 'episode' : 'episodes'}',
+                      statusColor: statusColor,
+                      api: api,
+                      onSearchEpisode: (episodeId, label) async {
+                        final SonarrApi apiObj = await ref.read(sonarrApiProvider(widget.instance).future);
+                        await apiObj.searchEpisode(episodeId);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Search triggered for $label')),
+                          );
+                        }
+                      },
+                      onTapSeries: () => _pushSeriesDetail(
+                        context,
+                        widget.instance,
+                        seriesId,
+                      ),
+                    );
+                  },
                 ),
               ),
-              if (totalPages > 1)
-                _PaginationBar(
-                  currentPage: widget.page,
-                  totalPages: totalPages,
-                  onPageChanged: widget.onPageChanged,
-                ),
             ],
           );
         },

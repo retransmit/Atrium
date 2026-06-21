@@ -11,9 +11,12 @@ class _WantedManualImportSubTab extends ConsumerStatefulWidget {
 }
 
 class _WantedManualImportSubTabState
-    extends ConsumerState<_WantedManualImportSubTab> {
+    extends ConsumerState<_WantedManualImportSubTab> with WidgetsBindingObserver {
   final TextEditingController _folderController = TextEditingController();
   final TextEditingController _downloadIdController = TextEditingController();
+  late final FocusNode _folderFocusNode;
+  late final FocusNode _downloadIdFocusNode;
+  double _lastBottomInset = 0;
   bool _filterExistingFiles = true;
   bool _isScanning = false;
   bool _isImporting = false;
@@ -23,7 +26,56 @@ class _WantedManualImportSubTabState
       <int, SonarrManualImportReprocess>{};
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _folderFocusNode = FocusNode();
+    _downloadIdFocusNode = FocusNode();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (mounted) {
+      _lastBottomInset = View.of(context).viewInsets.bottom / View.of(context).devicePixelRatio;
+    }
+  }
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    if (!mounted) return;
+    final double bottomInset = View.of(context).viewInsets.bottom / View.of(context).devicePixelRatio;
+    if (bottomInset == 0 && _lastBottomInset > 0) {
+      // Keyboard went from open to closed
+      final bool hadFocus = _folderFocusNode.hasFocus || _downloadIdFocusNode.hasFocus;
+      if (_folderFocusNode.hasFocus) {
+        _folderFocusNode.unfocus();
+      }
+      if (_downloadIdFocusNode.hasFocus) {
+        _downloadIdFocusNode.unfocus();
+      }
+      if (hadFocus) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final ScrollController? controller = PrimaryScrollController.maybeOf(context);
+          if (controller != null && controller.hasClients) {
+            controller.animateTo(
+              0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+            );
+          }
+        });
+      }
+    }
+    _lastBottomInset = bottomInset;
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _folderFocusNode.dispose();
+    _downloadIdFocusNode.dispose();
     _folderController.dispose();
     _downloadIdController.dispose();
     super.dispose();
@@ -248,8 +300,15 @@ class _WantedManualImportSubTabState
     final ThemeData theme = Theme.of(context);
     final ColorScheme colors = theme.colorScheme;
 
-    return CustomScrollView(
-      slivers: <Widget>[
+    return NotificationListener<ScrollStartNotification>(
+      onNotification: (ScrollStartNotification notification) {
+        if (notification.dragDetails != null) {
+          FocusScope.of(context).unfocus();
+        }
+        return false;
+      },
+      child: CustomScrollView(
+        slivers: <Widget>[
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: Insets.lg, vertical: Insets.md),
           sliver: SliverToBoxAdapter(
@@ -268,6 +327,8 @@ class _WantedManualImportSubTabState
                         Expanded(
                           child: TextField(
                             controller: _folderController,
+                            focusNode: _folderFocusNode,
+                            scrollPadding: const EdgeInsets.only(top: 140, bottom: 40),
                             decoration: InputDecoration(
                               labelText: 'Folder Path',
                               hintText: 'e.g. /data/downloads',
@@ -289,6 +350,8 @@ class _WantedManualImportSubTabState
                         Expanded(
                           child: TextField(
                             controller: _downloadIdController,
+                            focusNode: _downloadIdFocusNode,
+                            scrollPadding: const EdgeInsets.only(top: 140, bottom: 40),
                             decoration: const InputDecoration(
                               labelText: 'Download ID (optional)',
                               hintText: 'e.g. torrent hash or Usenet ID',
@@ -344,6 +407,7 @@ class _WantedManualImportSubTabState
         ),
         ..._buildResultsSlivers(theme, colors),
       ],
+    ),
     );
   }
 
@@ -717,6 +781,7 @@ class __AssignmentEditorSheetState extends ConsumerState<_AssignmentEditorSheet>
           const SizedBox(height: 6),
           InkWell(
             onTap: _selectSeries,
+            borderRadius: BorderRadius.circular(8),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: Insets.md, vertical: Insets.sm),
               decoration: BoxDecoration(

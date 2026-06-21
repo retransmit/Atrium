@@ -316,7 +316,7 @@ void main() {
             records: <SonarrQueueRecord>[],
           ),
         ),
-        sonarrWantedMissingProvider((instance, 1)).overrideWith(
+        sonarrWantedMissingProvider(instance).overrideWith(
           (Ref ref) async => const SonarrWantedPage(
             page: 1,
             pageSize: 50,
@@ -339,7 +339,7 @@ void main() {
             ],
           ),
         ),
-        sonarrWantedCutoffProvider((instance, 1)).overrideWith(
+        sonarrWantedCutoffProvider(instance).overrideWith(
           (Ref ref) async => const SonarrWantedPage(
             page: 1,
             pageSize: 50,

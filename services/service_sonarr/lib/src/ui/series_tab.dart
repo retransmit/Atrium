@@ -59,8 +59,10 @@ class _SeriesTabState extends ConsumerState<_SeriesTab> {
 
     return Scaffold(
       body: NotificationListener<ScrollStartNotification>(
-        onNotification: (_) {
-          FocusScope.of(context).unfocus();
+        onNotification: (ScrollStartNotification notification) {
+          if (notification.dragDetails != null) {
+            FocusScope.of(context).unfocus();
+          }
           return false;
         },
         child: RefreshIndicator(
@@ -85,7 +87,10 @@ class _SeriesTabState extends ConsumerState<_SeriesTab> {
                       SliverPadding(
                         padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                         sliver: SliverToBoxAdapter(
-                          child: _SearchBar(instance: widget.instance),
+                          child: _SearchBar(
+                            instance: widget.instance,
+                            scrollController: _scrollController,
+                          ),
                         ),
                       ),
                       SliverToBoxAdapter(
@@ -261,6 +266,7 @@ class _SeriesCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
           splashFactory: InkRipple.splashFactory, // Uniform circular ripple splash
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -450,6 +456,7 @@ class _SeriesBannerCard extends ConsumerWidget {
       elevation: 0,
       child: InkWell(
         onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
         splashFactory: InkRipple.splashFactory, // Uniform circular splash
         child: SizedBox(
           height: 142,
@@ -694,28 +701,85 @@ String _fmtSize(int bytes) {
 }
 
 class _SearchBar extends ConsumerStatefulWidget {
-  const _SearchBar({required this.instance});
+  const _SearchBar({
+    required this.instance,
+    required this.scrollController,
+  });
 
   final Instance instance;
+  final ScrollController scrollController;
 
   @override
   ConsumerState<_SearchBar> createState() => _SearchBarState();
 }
 
-class _SearchBarState extends ConsumerState<_SearchBar> {
+class _SearchBarState extends ConsumerState<_SearchBar> with WidgetsBindingObserver {
   late final TextEditingController _controller;
   late final FocusNode _focusNode;
+  double _lastBottomInset = 0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final String initialQuery = ref.read(sonarrSearchQueryProvider(widget.instance));
     _controller = TextEditingController(text: initialQuery);
     _focusNode = FocusNode(skipTraversal: true);
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (mounted) {
+      _lastBottomInset = View.of(context).viewInsets.bottom / View.of(context).devicePixelRatio;
+    }
+  }
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    if (!mounted) return;
+    final double bottomInset = View.of(context).viewInsets.bottom / View.of(context).devicePixelRatio;
+    if (bottomInset == 0 && _lastBottomInset > 0) {
+      // Keyboard went from open to closed
+      if (_focusNode.hasFocus) {
+        _focusNode.unfocus();
+      }
+    }
+    _lastBottomInset = bottomInset;
+  }
+
+  void _onFocusChange() {
+    if (_focusNode.hasFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (widget.scrollController.hasClients) {
+          widget.scrollController.animateTo(
+            224, // 280 (expandedHeight) - 56 (collapsedHeight)
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+          );
+        }
+      });
+    } else {
+      if (_controller.text.isEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (widget.scrollController.hasClients) {
+            widget.scrollController.animateTo(
+              0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+            );
+          }
+        });
+      }
+    }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _focusNode.removeListener(_onFocusChange);
     _controller.dispose();
     _focusNode.dispose();
     super.dispose();
@@ -1017,24 +1081,33 @@ class _FloatingActionCapsuleState extends State<_FloatingActionCapsule> {
     return Positioned(
       top: safeTop + 8,
       right: 16,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 100),
-        padding: EdgeInsets.symmetric(
-          horizontal: t > 0.1 ? 8 : 0,
-          vertical: t > 0.1 ? 4 : 0,
-        ),
-        decoration: BoxDecoration(
-          color: t > 0.1
-              ? colors.surfaceContainerHighest.withValues(alpha: 0.75)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          border: t > 0.1
-              ? Border.all(color: colors.outlineVariant.withValues(alpha: 0.2), width: 0.5)
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: widget.actions,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(
+            sigmaX: t > 0.1 ? 12.0 : 0.0,
+            sigmaY: t > 0.1 ? 12.0 : 0.0,
+          ),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 100),
+            padding: EdgeInsets.symmetric(
+              horizontal: t > 0.1 ? 8 : 0,
+              vertical: t > 0.1 ? 4 : 0,
+            ),
+            decoration: BoxDecoration(
+              color: t > 0.1
+                  ? colors.surfaceContainerHighest.withValues(alpha: 0.65)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
+              border: t > 0.1
+                  ? Border.all(color: colors.outlineVariant.withValues(alpha: 0.2), width: 0.5)
+                  : null,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: widget.actions,
+            ),
+          ),
         ),
       ),
     );

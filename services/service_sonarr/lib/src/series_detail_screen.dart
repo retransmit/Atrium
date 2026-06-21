@@ -36,17 +36,24 @@ class SeriesDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        actions: <Widget>[
-          if (series.hasValue)
-            _SeriesMenu(
-              instance: instance,
-              series: series.requireValue,
-            ),
-        ],
+      appBar: series.when(
+        data: (_) => null, // Managed by custom sliver app bar in _Body
+        loading: () => AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
+        error: (_, __) => AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
       ),
       body: AsyncValueView<SonarrSeries>(
         value: series,
@@ -97,56 +104,76 @@ class _Body extends ConsumerWidget {
 
     return Stack(
       children: <Widget>[
-        // Backdrop Image Banner
-         if (fanartUrl != null)
+        // Static fading fanart background covering more area (420dp)
+        if (fanartUrl != null)
           Positioned(
             top: 0,
             left: 0,
             right: 0,
-            height: 260,
+            height: 420,
             child: ShaderMask(
               shaderCallback: (Rect rect) {
-                return LinearGradient(
+                return const LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: <Color>[
-                    Colors.black.withValues(alpha: 0.5),
+                    Colors.black,
+                    Colors.black,
                     Colors.transparent,
                   ],
-                ).createShader(Rect.fromLTRB(0, 0, rect.width, rect.height));
+                  stops: <double>[0.0, 0.75, 1.0],
+                ).createShader(rect);
               },
               blendMode: BlendMode.dstIn,
-              child: CachedNetworkImage(
-                imageUrl: fanartUrl,
-                fit: BoxFit.cover,
-                memCacheWidth: 800,
-                errorWidget: (_, __, ___) => const SizedBox(),
+              child: Opacity(
+                opacity: isDark ? 0.35 : 0.6,
+                child: CachedNetworkImage(
+                  imageUrl: fanartUrl,
+                  fit: BoxFit.cover,
+                  errorWidget: (_, __, ___) => const SizedBox(),
+                ),
               ),
             ),
           ),
-
-        // Main Screen Content
+        // Ambient dark fade gradient at the very top for icon legibility
+        if (fanartUrl != null)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 120,
+            child: IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[
+                      Colors.black.withValues(alpha: 0.5),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
         RefreshIndicator(
           onRefresh: () async => _refresh(ref),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(Insets.lg, Insets.sm, Insets.lg, Insets.lg),
+            padding: const EdgeInsets.fromLTRB(16, 180, 16, 24),
             children: <Widget>[
-              // Top padding to show the backdrop beautiful top half
-              const SizedBox(height: 110),
               _Header(instance: instance, series: series, imageUrl: imageUrl),
-              const SizedBox(height: Insets.md),
+              const SizedBox(height: 16),
               _ActionsRow(instance: instance, series: series, onChanged: _refresh),
-              if (series.overview != null && series.overview!.isNotEmpty) ...<
-                  Widget>[
-                const SizedBox(height: Insets.md),
-                // Overview Text Card for better readability over the backdrop
+              if (series.overview != null && series.overview!.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(Insets.md),
                   decoration: BoxDecoration(
                     color: isDark 
                         ? theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.8)
                         : theme.colorScheme.surfaceContainerLowest.withValues(alpha: 0.9),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(24),
                     border: Border.all(
                       color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
                     ),
@@ -159,9 +186,14 @@ class _Body extends ConsumerWidget {
                   ),
                 ),
               ],
-              const SizedBox(height: Insets.lg),
-              Text('Seasons', style: theme.textTheme.titleMedium),
-              const SizedBox(height: Insets.sm),
+              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.only(left: 8, bottom: 8),
+                child: Text(
+                  'Seasons',
+                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ),
               for (final SonarrSeasonStats season in seasons)
                 _SeasonTile(
                   instance: instance,
@@ -178,7 +210,6 @@ class _Body extends ConsumerWidget {
                   onChanged: _refresh,
                   episodesValue: episodesValue,
                 ),
-              const SizedBox(height: Insets.xl),
             ],
           ),
         ),
@@ -213,7 +244,7 @@ class _Header extends ConsumerWidget {
     );
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(24),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
@@ -221,7 +252,7 @@ class _Header extends ConsumerWidget {
             color: isDark
                 ? theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.65)
                 : theme.colorScheme.surfaceContainerLowest.withValues(alpha: 0.75),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(24),
             border: Border.all(
               color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
             ),
@@ -371,6 +402,10 @@ class _Header extends ConsumerWidget {
               ],
             ),
           ),
+          _SeriesMenu(
+            instance: instance,
+            series: series,
+          ),
         ],
       ),
     ),
@@ -433,7 +468,7 @@ class _ActionsRow extends ConsumerWidget {
                     foregroundColor: theme.colorScheme.onPrimaryContainer,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(24),
                     ),
                   ),
                   icon: const Icon(Icons.bookmark, size: 20),
@@ -445,7 +480,7 @@ class _ActionsRow extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     side: BorderSide(color: theme.colorScheme.outline),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(24),
                     ),
                   ),
                   icon: const Icon(Icons.bookmark_border, size: 20),
@@ -460,7 +495,7 @@ class _ActionsRow extends ConsumerWidget {
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 12),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(24),
               ),
             ),
             icon: const Icon(Icons.search, size: 20),
@@ -511,8 +546,10 @@ class _SeasonTile extends ConsumerStatefulWidget {
   ConsumerState<_SeasonTile> createState() => _SeasonTileState();
 }
 
-class _SeasonTileState extends ConsumerState<_SeasonTile> with SingleTickerProviderStateMixin {
+class _SeasonTileState extends ConsumerState<_SeasonTile> with TickerProviderStateMixin {
   late final AnimationController _animationController;
+  late final AnimationController _expandController;
+  late final Animation<double> _expandAnimation;
   bool _isExpanded = false;
 
   @override
@@ -522,12 +559,33 @@ class _SeasonTileState extends ConsumerState<_SeasonTile> with SingleTickerProvi
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
+
+    _expandController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+    _expandAnimation = CurvedAnimation(
+      parent: _expandController,
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
   void dispose() {
     _animationController.dispose();
+    _expandController.dispose();
     super.dispose();
+  }
+
+  void _toggleExpand() {
+    setState(() {
+      _isExpanded = !_isExpanded;
+      if (_isExpanded) {
+        _expandController.forward();
+      } else {
+        _expandController.reverse();
+      }
+    });
   }
 
   Future<void> _toggleSeason() async {
@@ -613,7 +671,7 @@ class _SeasonTileState extends ConsumerState<_SeasonTile> with SingleTickerProvi
       margin: const EdgeInsets.only(bottom: Insets.sm),
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         side: BorderSide(
           color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
         ),
@@ -664,11 +722,7 @@ class _SeasonTileState extends ConsumerState<_SeasonTile> with SingleTickerProvi
                   ),
                 ),
               ListTile(
-                onTap: () {
-                  setState(() {
-                    _isExpanded = !_isExpanded;
-                  });
-                },
+                onTap: _toggleExpand,
                 title: Text(
                   label,
                   style: theme.textTheme.titleMedium?.copyWith(
@@ -846,54 +900,59 @@ class _SeasonTileState extends ConsumerState<_SeasonTile> with SingleTickerProvi
               ),
             ],
           ),
-          if (_isExpanded) ...<Widget>[
-            const Divider(height: 1),
-            widget.episodesValue.when(
-              loading: () => const Padding(
-                padding: EdgeInsets.symmetric(vertical: Insets.md),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              error: (Object err, StackTrace? stack) => Padding(
-                padding: const EdgeInsets.all(Insets.md),
-                child: Center(
-                  child: Text(
-                    'Error loading episodes: $err',
-                    style: TextStyle(color: theme.colorScheme.error),
-                  ),
-                ),
-              ),
-              data: (List<SonarrEpisode> list) {
-                final List<SonarrEpisode> seasonEpisodes = list
-                    .where((SonarrEpisode ep) => ep.seasonNumber == widget.season.seasonNumber)
-                    .toList();
-
-                if (seasonEpisodes.isEmpty) {
-                  return const Padding(
+          SizeTransition(
+            sizeFactor: _expandAnimation,
+            child: Column(
+              children: <Widget>[
+                const Divider(height: 1),
+                widget.episodesValue.when(
+                  loading: () => const Padding(
                     padding: EdgeInsets.symmetric(vertical: Insets.md),
-                    child: Center(child: Text('No episodes found')),
-                  );
-                }
-
-                // Sort by episode number ascending
-                seasonEpisodes.sort((SonarrEpisode a, SonarrEpisode b) =>
-                    a.episodeNumber - b.episodeNumber,);
-
-                return Column(
-                  children: <Widget>[
-                    for (final SonarrEpisode ep in seasonEpisodes) ...[
-                      _EpisodeTile(
-                        instance: widget.instance,
-                        seriesId: widget.series.id,
-                        episode: ep,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  error: (Object err, StackTrace? stack) => Padding(
+                    padding: const EdgeInsets.all(Insets.md),
+                    child: Center(
+                      child: Text(
+                        'Error loading episodes: $err',
+                        style: TextStyle(color: theme.colorScheme.error),
                       ),
-                      if (ep != seasonEpisodes.last) const Divider(height: 1, indent: Insets.xl),
-                    ],
-                    const SizedBox(height: Insets.xs),
-                  ],
-                );
-              },
+                    ),
+                  ),
+                  data: (List<SonarrEpisode> list) {
+                    final List<SonarrEpisode> seasonEpisodes = list
+                        .where((SonarrEpisode ep) => ep.seasonNumber == widget.season.seasonNumber)
+                        .toList();
+
+                    if (seasonEpisodes.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: Insets.md),
+                        child: Center(child: Text('No episodes found')),
+                      );
+                    }
+
+                    // Sort by episode number ascending
+                    seasonEpisodes.sort((SonarrEpisode a, SonarrEpisode b) =>
+                        a.episodeNumber - b.episodeNumber,);
+
+                    return Column(
+                      children: <Widget>[
+                        for (final SonarrEpisode ep in seasonEpisodes) ...[
+                          _EpisodeTile(
+                            instance: widget.instance,
+                            seriesId: widget.series.id,
+                            episode: ep,
+                          ),
+                          if (ep != seasonEpisodes.last) const Divider(height: 1, indent: Insets.xl),
+                        ],
+                        const SizedBox(height: Insets.xs),
+                      ],
+                    );
+                  },
+                ),
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -1607,3 +1666,5 @@ String _fmtSize(int bytes) {
       value >= 100 || unit == 0 ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
   return '$text ${units[unit]}';
 }
+
+
