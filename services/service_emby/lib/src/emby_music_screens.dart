@@ -1,12 +1,11 @@
-import 'emby_client.dart';
-import 'emby_deep_link.dart';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'emby_client.dart';
+import 'emby_deep_link.dart';
 import 'emby_providers.dart';
 import 'models/emby_item.dart';
 

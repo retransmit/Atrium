@@ -4,13 +4,16 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 import 'jellyfin_music_screens.dart';
 import 'jellyfin_season_screen.dart';
 
 import 'jellyfin_client.dart';
 import 'jellyfin_item_detail.dart';
+import 'jellyfin_music_screens.dart';
 import 'jellyfin_providers.dart';
+import 'jellyfin_season_screen.dart';
 import 'models/jellyfin_item.dart';
 import 'models/jellyfin_session.dart';
 import 'models/jellyfin_view.dart';

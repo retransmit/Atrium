@@ -314,6 +314,62 @@ abstract class BazarrLogEntry with _$BazarrLogEntry {
       _$BazarrLogEntryFromJson(json);
 }
 
+/// One subtitle language from `GET /system/languages` (all ~187; [enabled]
+/// marks the active ones). [code2] is the value `languages-enabled` expects.
+@freezed
+abstract class BazarrLanguage with _$BazarrLanguage {
+  const factory BazarrLanguage({
+    @Default('') String name,
+    @Default('') String code2,
+    @Default('') String code3,
+    @Default(false) bool enabled,
+  }) = _BazarrLanguage;
+
+  factory BazarrLanguage.fromJson(Map<String, dynamic> json) =>
+      _$BazarrLanguageFromJson(json);
+
+  const BazarrLanguage._();
+
+  /// The code to send in `languages-enabled` (code2, or code3 if no code2).
+  String get code => code2.isNotEmpty ? code2 : code3;
+}
+
+/// One language entry inside a [BazarrLanguageProfile]. Bazarr stores the flags
+/// as "True"/"False" strings.
+@freezed
+abstract class BazarrProfileItem with _$BazarrProfileItem {
+  const factory BazarrProfileItem({
+    @Default(0) int id,
+    @Default('') String language,
+    @Default('False') String hi,
+    @Default('False') String forced,
+    @JsonKey(name: 'audio_exclude') @Default('False') String audioExclude,
+  }) = _BazarrProfileItem;
+
+  factory BazarrProfileItem.fromJson(Map<String, dynamic> json) =>
+      _$BazarrProfileItemFromJson(json);
+}
+
+/// A language profile from `GET /system/languages/profiles`. Saved (full list)
+/// via the `languages-profiles` JSON string in the settings POST. The model's
+/// `toJson` round-trips the exact shape Bazarr expects.
+@freezed
+abstract class BazarrLanguageProfile with _$BazarrLanguageProfile {
+  const factory BazarrLanguageProfile({
+    @Default(0) int profileId,
+    @Default('') String name,
+    @Default(<BazarrProfileItem>[]) List<BazarrProfileItem> items,
+    int? cutoff,
+    @Default(<String>[]) List<String> mustContain,
+    @Default(<String>[]) List<String> mustNotContain,
+    int? originalFormat,
+    String? tag,
+  }) = _BazarrLanguageProfile;
+
+  factory BazarrLanguageProfile.fromJson(Map<String, dynamic> json) =>
+      _$BazarrLanguageProfileFromJson(json);
+}
+
 /// A flattened "needs subtitles" row, unifying episodes + movies for the UI.
 class BazarrWantedRow {
   const BazarrWantedRow({
