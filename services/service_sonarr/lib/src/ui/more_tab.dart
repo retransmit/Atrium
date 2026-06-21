@@ -455,14 +455,20 @@ class _BlocklistTabState extends ConsumerState<_BlocklistTab> {
                           },
                         ),
                         onTap: record.seriesId > 0
-                            ? () => Navigator.of(context, rootNavigator: true).push(
+                            ? () {
+                                final ThemeData sonarrTheme = Theme.of(context);
+                                Navigator.of(context, rootNavigator: true).push(
                                   MaterialPageRoute<void>(
-                                    builder: (_) => SeriesDetailScreen(
-                                      instance: widget.instance,
-                                      seriesId: record.seriesId,
+                                    builder: (_) => Theme(
+                                      data: sonarrTheme,
+                                      child: SeriesDetailScreen(
+                                        instance: widget.instance,
+                                        seriesId: record.seriesId,
+                                      ),
                                     ),
                                   ),
-                                )
+                                );
+                              }
                             : null,
                       ),
                     );

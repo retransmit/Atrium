@@ -1,4 +1,15 @@
-import 'dart:ui';
+// series_detail_screen.dart
+//
+// Performance architecture:
+//   • _BodyState is the ONLY ConsumerState that calls ref.watch.
+//   • All child widgets (_Header, _SeasonTile, _EpisodeTile) receive plain
+//     pre-resolved data — zero Riverpod subscriptions inside list items.
+//   • Background uses CachedNetworkImage color/colorBlendMode instead of
+//     Opacity()+ShaderMask() to avoid two GPU saveLayer passes per frame.
+//   • The download-pulse AnimatedBuilder is wrapped in RepaintBoundary so
+//     only those pixels are repainted during animation, not the whole Card.
+
+import 'dart:ui' show lerpDouble;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:collection/collection.dart';
@@ -17,9 +28,9 @@ import 'sonarr_api.dart';
 import 'sonarr_providers.dart';
 import 'sonarr_release_search_screen.dart';
 
-/// Detail view for one Sonarr series: poster header, stats, season list with
-/// per-season monitor toggles and search, plus series-level actions
-/// (monitor toggle, search all, delete).
+// ─────────────────────────────────────────────────────────────────────────────
+// SeriesDetailScreen — thin shell. Loads the series by ID, then delegates.
+// ─────────────────────────────────────────────────────────────────────────────
 class SeriesDetailScreen extends ConsumerWidget {
   const SeriesDetailScreen({
     required this.instance,
@@ -38,7 +49,7 @@ class SeriesDetailScreen extends ConsumerWidget {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: series.when(
-        data: (_) => null, // Managed by custom sliver app bar in _Body
+        data: (_) => null,
         loading: () => AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -66,6 +77,12 @@ class SeriesDetailScreen extends ConsumerWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// _Body — THE single ConsumerStatefulWidget.
+//
+// ALL ref.watch calls live here. Children receive plain data so they have
+// zero Riverpod subscription overhead in their build methods.
+// ─────────────────────────────────────────────────────────────────────────────
 class _Body extends ConsumerStatefulWidget {
   const _Body({required this.instance, required this.series});
 
@@ -83,24 +100,20 @@ class _BodyState extends ConsumerState<_Body> {
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController();
-    _scrollController.addListener(_scrollListener);
+    _scrollController = ScrollController()..addListener(_onScroll);
   }
 
   @override
   void dispose() {
-    _scrollController.removeListener(_scrollListener);
-    _scrollController.dispose();
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
     super.dispose();
   }
 
-  void _scrollListener() {
-    if (_scrollController.hasClients) {
-      final bool show = _scrollController.offset > 300;
-      if (show != _showScrollUp) {
-        setState(() => _showScrollUp = show);
-      }
-    }
+  void _onScroll() {
+    final bool show = _scrollController.offset > 300;
+    if (show != _showScrollUp) setState(() => _showScrollUp = show);
   }
 
   void _scrollToTop() {
@@ -122,15 +135,49 @@ class _BodyState extends ConsumerState<_Body> {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
+    final ColorScheme colors = theme.colorScheme;
+
+    // ── All provider watches in one place ─────────────────────────────────
     final SonarrApi? api = ref.watch(sonarrApiProvider(widget.instance)).value;
-    final SonarrImage? poster = widget.series.images
+
+    final String profileName =
+        ref.watch(sonarrQualityProfilesProvider(widget.instance)).maybeWhen(
+              data: (List<SonarrQualityProfile> profiles) =>
+                  profiles
+                      .firstWhereOrNull(
+                        (SonarrQualityProfile p) =>
+                            p.id == widget.series.qualityProfileId,
+                      )
+                      ?.name ??
+                  'Unknown',
+              orElse: () => '...',
+            );
+
+    final AsyncValue<List<SonarrEpisode>> episodesValue =
+        ref.watch(sonarrEpisodesProvider((widget.instance, widget.series.id)));
+
+    // Pre-filter queue records to this series so season/episode tiles receive
+    // a plain List with no ref.watch of their own.
+    final List<SonarrQueueRecord> seriesQueueRecords =
+        ref.watch(sonarrQueueProvider(widget.instance)).maybeWhen(
+              data: (SonarrQueuePage page) => page.records
+                  .where((SonarrQueueRecord r) => r.seriesId == widget.series.id)
+                  .toList(),
+              orElse: () => <SonarrQueueRecord>[],
+            );
+    // ──────────────────────────────────────────────────────────────────────
+
+    // Resolve image URLs
+    final SonarrImage? posterImg = widget.series.images
         .firstWhereOrNull((SonarrImage i) => i.coverType == 'poster');
-    final String? imageUrl = poster == null ? null : api?.posterUrl(poster);
-
-    final SonarrImage? fanart = widget.series.images
+    final SonarrImage? fanartImg = widget.series.images
         .firstWhereOrNull((SonarrImage i) => i.coverType == 'fanart');
-    final String? fanartUrl = fanart == null ? null : api?.posterUrl(fanart);
+    final String? imageUrl =
+        posterImg == null ? null : api?.posterUrl(posterImg);
+    final String? fanartUrl =
+        fanartImg == null ? null : api?.posterUrl(fanartImg);
 
+    // Season lists
     final List<SonarrSeasonStats> seasons = widget.series.seasons
         .where((SonarrSeasonStats s) => s.seasonNumber > 0)
         .sorted(
@@ -140,93 +187,100 @@ class _BodyState extends ConsumerState<_Body> {
     final SonarrSeasonStats? specials = widget.series.seasons
         .firstWhereOrNull((SonarrSeasonStats s) => s.seasonNumber == 0);
 
-    final AsyncValue<List<SonarrEpisode>> episodesValue =
-        ref.watch(sonarrEpisodesProvider((widget.instance, widget.series.id)));
-
-    final ColorScheme colors = theme.colorScheme;
-
     return Stack(
       children: <Widget>[
-        // Static fading fanart background covering more area (420dp)
+        // ── Static fanart background ────────────────────────────────────
+        // Uses CachedNetworkImage color/colorBlendMode instead of
+        // Opacity() + ShaderMask() — avoids two GPU saveLayer passes.
         if (fanartUrl != null)
           Positioned(
             top: 0,
             left: 0,
             right: 0,
             height: 420,
-            child: ShaderMask(
-              shaderCallback: (Rect rect) {
-                return const LinearGradient(
+            child: RepaintBoundary(
+              child: Stack(
+                fit: StackFit.expand,
+                children: <Widget>[
+                  CachedNetworkImage(
+                    imageUrl: fanartUrl,
+                    fit: BoxFit.cover,
+                    // Blend-mode darkening — no Opacity saveLayer.
+                    color: Colors.black
+                        .withValues(alpha: isDark ? 0.65 : 0.40),
+                    colorBlendMode: BlendMode.darken,
+                    errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                  // Bottom-fade via a simple gradient box (no saveLayer).
+                  const DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: <Color>[Colors.black, Colors.transparent],
+                        stops: <double>[0.0, 0.45],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // ── Status-bar protection gradient ─────────────────────────────
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 100,
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: <Color>[
-                    Colors.black,
-                    Colors.black,
+                    Colors.black.withValues(alpha: 0.45),
                     Colors.transparent,
                   ],
-                  stops: <double>[0.0, 0.75, 1.0],
-                ).createShader(rect);
-              },
-              blendMode: BlendMode.dstIn,
-              child: Opacity(
-                opacity: isDark ? 0.35 : 0.6,
-                child: CachedNetworkImage(
-                  imageUrl: fanartUrl,
-                  fit: BoxFit.cover,
-                  errorWidget: (_, __, ___) => const SizedBox(),
                 ),
               ),
             ),
           ),
-        // Ambient dark fade gradient at the very top for icon legibility
-        if (fanartUrl != null)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 120,
-            child: IgnorePointer(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: <Color>[
-                      Colors.black.withValues(alpha: 0.5),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
+        ),
+
+        // ── Scrollable content ─────────────────────────────────────────
         RefreshIndicator(
           onRefresh: () async => _refresh(),
           child: ListView(
             controller: _scrollController,
-            padding: const EdgeInsets.fromLTRB(16, 280, 16, 24),
+            padding: const EdgeInsets.fromLTRB(16, 280, 16, 120),
             children: <Widget>[
-              _Header(instance: widget.instance, series: widget.series, imageUrl: imageUrl),
+              // RepaintBoundary: only rebuilds when series data/profileName
+              // changes, not when queue or episodes update.
+              RepaintBoundary(
+                child: _Header(
+                  instance: widget.instance,
+                  series: widget.series,
+                  imageUrl: imageUrl,
+                  profileName: profileName,
+                ),
+              ),
               const SizedBox(height: 16),
-              _ActionsRow(instance: widget.instance, series: widget.series, onChanged: (_) => _refresh()),
-              if (widget.series.overview != null && widget.series.overview!.isNotEmpty) ...<Widget>[
+              RepaintBoundary(
+                child: _ActionsRow(
+                  instance: widget.instance,
+                  series: widget.series,
+                  onChanged: (_) => _refresh(),
+                ),
+              ),
+              if (widget.series.overview?.isNotEmpty == true) ...<Widget>[
                 const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(Insets.md),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.8)
-                        : theme.colorScheme.surfaceContainerLowest.withValues(alpha: 0.9),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  child: Text(
-                    widget.series.overview!,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      height: 1.4,
-                    ),
+                RepaintBoundary(
+                  child: _OverviewCard(
+                    overview: widget.series.overview!,
+                    isDark: isDark,
+                    colors: colors,
                   ),
                 ),
               ],
@@ -235,7 +289,8 @@ class _BodyState extends ConsumerState<_Body> {
                 padding: const EdgeInsets.only(left: 8, bottom: 8),
                 child: Text(
                   'Seasons',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
               ),
               for (final SonarrSeasonStats season in seasons)
@@ -245,6 +300,7 @@ class _BodyState extends ConsumerState<_Body> {
                   season: season,
                   onChanged: (_) => _refresh(),
                   episodesValue: episodesValue,
+                  seriesQueueRecords: seriesQueueRecords,
                 ),
               if (specials != null)
                 _SeasonTile(
@@ -253,11 +309,13 @@ class _BodyState extends ConsumerState<_Body> {
                   season: specials,
                   onChanged: (_) => _refresh(),
                   episodesValue: episodesValue,
+                  seriesQueueRecords: seriesQueueRecords,
                 ),
             ],
           ),
         ),
-        // Floating scroll-to-top button
+
+        // ── Scroll-to-top FAB ──────────────────────────────────────────
         AnimatedPositioned(
           duration: const Duration(milliseconds: 250),
           curve: Curves.easeOutCubic,
@@ -268,26 +326,16 @@ class _BodyState extends ConsumerState<_Body> {
             opacity: _showScrollUp ? 1.0 : 0.0,
             child: IgnorePointer(
               ignoring: !_showScrollUp,
-              child: Container(
-                decoration: BoxDecoration(
-                  boxShadow: <BoxShadow>[
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+              child: FloatingActionButton.small(
+                heroTag: 'scroll_up_series_detail',
+                onPressed: _scrollToTop,
+                backgroundColor: colors.secondaryContainer,
+                foregroundColor: colors.onSecondaryContainer,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                child: FloatingActionButton.small(
-                  heroTag: 'scroll_up_series_detail',
-                  onPressed: _scrollToTop,
-                  backgroundColor: colors.secondaryContainer,
-                  foregroundColor: colors.onSecondaryContainer,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Icon(Icons.keyboard_arrow_up_rounded, size: 24),
-                ),
+                child:
+                    const Icon(Icons.keyboard_arrow_up_rounded, size: 24),
               ),
             ),
           ),
@@ -297,112 +345,122 @@ class _BodyState extends ConsumerState<_Body> {
   }
 }
 
-class _Header extends ConsumerWidget {
+// ─────────────────────────────────────────────────────────────────────────────
+// _OverviewCard — pure StatelessWidget
+// ─────────────────────────────────────────────────────────────────────────────
+class _OverviewCard extends StatelessWidget {
+  const _OverviewCard({
+    required this.overview,
+    required this.isDark,
+    required this.colors,
+  });
+
+  final String overview;
+  final bool isDark;
+  final ColorScheme colors;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(Insets.md),
+      decoration: BoxDecoration(
+        color: isDark
+            ? colors.surfaceContainerLow.withValues(alpha: 0.88)
+            : colors.surfaceContainerLowest.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: colors.outlineVariant.withValues(alpha: 0.5),
+        ),
+      ),
+      child: Text(
+        overview,
+        style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _Header — pure StatelessWidget. All data pre-resolved by _BodyState.
+// ─────────────────────────────────────────────────────────────────────────────
+class _Header extends StatelessWidget {
   const _Header({
     required this.instance,
     required this.series,
     required this.imageUrl,
+    required this.profileName,
   });
 
   final Instance instance;
   final SonarrSeries series;
   final String? imageUrl;
+  final String profileName;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
     final SonarrSeriesStatistics? st = series.statistics;
 
-    final AsyncValue<List<SonarrQualityProfile>> profilesVal =
-        ref.watch(sonarrQualityProfilesProvider(instance));
-    final String profileName = profilesVal.maybeWhen(
-      data: (List<SonarrQualityProfile> profiles) =>
-          profiles.firstWhereOrNull((SonarrQualityProfile p) => p.id == series.qualityProfileId)?.name ?? 'Unknown',
-      orElse: () => '...',
-    );
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          decoration: BoxDecoration(
-            color: isDark
-                ? theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.65)
-                : theme.colorScheme.surfaceContainerLowest.withValues(alpha: 0.75),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
-            ),
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark
+            ? theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.92)
+            : theme.colorScheme.surfaceContainerLowest.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.07),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          padding: const EdgeInsets.all(Insets.md),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-          // Premium Poster Design
+        ],
+      ),
+      padding: const EdgeInsets.all(Insets.md),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          // Poster
           Hero(
             tag: 'poster-${series.id}',
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: <BoxShadow>[
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: SizedBox(
-                  width: 110,
-                  height: 165,
-                  child: imageUrl == null
-                      ? Container(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                width: 110,
+                height: 165,
+                child: imageUrl == null
+                    ? ColoredBox(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        child: Icon(
+                          Icons.live_tv_outlined,
+                          color: theme.colorScheme.outline,
+                          size: 32,
+                        ),
+                      )
+                    : CachedNetworkImage(
+                        imageUrl: imageUrl!,
+                        fit: BoxFit.cover,
+                        memCacheWidth: 220,
+                        placeholder: (_, __) => ColoredBox(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                        ),
+                        errorWidget: (_, __, ___) => ColoredBox(
                           color: theme.colorScheme.surfaceContainerHighest,
                           child: Icon(
                             Icons.live_tv_outlined,
                             color: theme.colorScheme.outline,
-                            size: 32,
-                          ),
-                        )
-                      : CachedNetworkImage(
-                          imageUrl: imageUrl!,
-                          fit: BoxFit.cover,
-                          memCacheWidth: 200,
-                          placeholder: (BuildContext context, String url) => Container(
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            child: const Center(
-                              child: SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              ),
-                            ),
-                          ),
-                          errorWidget: (_, __, ___) => Container(
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            child: Icon(
-                              Icons.live_tv_outlined,
-                              color: theme.colorScheme.outline,
-                            ),
                           ),
                         ),
-                ),
+                      ),
               ),
             ),
           ),
           const SizedBox(width: Insets.lg),
-          // Text & Stats Info
+          // Info column
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -416,28 +474,30 @@ class _Header extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: Insets.xs),
-                // Tags row (Network, Year, Status)
                 Wrap(
                   spacing: Insets.xs,
                   runSpacing: 4,
                   children: <Widget>[
                     if (series.year != null)
                       _InfoChip(label: '${series.year}'),
-                    if (series.network != null && series.network!.isNotEmpty)
+                    if (series.network?.isNotEmpty == true)
                       _InfoChip(label: series.network!),
                     if (series.status != null)
                       _InfoChip(
                         label: series.status!,
-                        isPrimary: series.status?.toLowerCase() == 'continuing',
+                        isPrimary:
+                            series.status?.toLowerCase() == 'continuing',
                       ),
                   ],
                 ),
                 const SizedBox(height: Insets.sm),
                 // Quality profile pill
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
+                    color: theme.colorScheme.primaryContainer
+                        .withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: theme.colorScheme.primary.withValues(alpha: 0.1),
@@ -446,7 +506,11 @@ class _Header extends ConsumerWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
-                      Icon(Icons.video_settings, size: 14, color: theme.colorScheme.primary),
+                      Icon(
+                        Icons.video_settings,
+                        size: 14,
+                        color: theme.colorScheme.primary,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         profileName,
@@ -481,20 +545,19 @@ class _Header extends ConsumerWidget {
               ],
             ),
           ),
-          _SeriesMenu(
-            instance: instance,
-            series: series,
-          ),
+          _SeriesMenu(instance: instance, series: series),
         ],
       ),
-    ),
-  ),
-);
+    );
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// _InfoChip — pure StatelessWidget
+// ─────────────────────────────────────────────────────────────────────────────
 class _InfoChip extends StatelessWidget {
   const _InfoChip({required this.label, this.isPrimary = false});
+
   final String label;
   final bool isPrimary;
 
@@ -522,6 +585,9 @@ class _InfoChip extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// _ActionsRow — ConsumerWidget using only ref.read in handlers (no ref.watch).
+// ─────────────────────────────────────────────────────────────────────────────
 class _ActionsRow extends ConsumerWidget {
   const _ActionsRow({
     required this.instance,
@@ -538,12 +604,12 @@ class _ActionsRow extends ConsumerWidget {
     final ThemeData theme = Theme.of(context);
     return Row(
       children: <Widget>[
-        // Monitored Action Button
         Expanded(
           child: series.monitored
               ? FilledButton.tonalIcon(
                   style: FilledButton.styleFrom(
-                    backgroundColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
+                    backgroundColor: theme.colorScheme.primaryContainer
+                        .withValues(alpha: 0.8),
                     foregroundColor: theme.colorScheme.onPrimaryContainer,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
@@ -551,7 +617,10 @@ class _ActionsRow extends ConsumerWidget {
                     ),
                   ),
                   icon: const Icon(Icons.bookmark, size: 20),
-                  label: const Text('Monitored', style: TextStyle(fontWeight: FontWeight.bold)),
+                  label: const Text(
+                    'Monitored',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   onPressed: () => _toggleMonitored(ref),
                 )
               : OutlinedButton.icon(
@@ -568,7 +637,6 @@ class _ActionsRow extends ConsumerWidget {
                 ),
         ),
         const SizedBox(width: Insets.md),
-        // Search All Action Button
         Expanded(
           child: FilledButton.icon(
             style: FilledButton.styleFrom(
@@ -578,7 +646,10 @@ class _ActionsRow extends ConsumerWidget {
               ),
             ),
             icon: const Icon(Icons.search, size: 20),
-            label: const Text('Search all', style: TextStyle(fontWeight: FontWeight.bold)),
+            label: const Text(
+              'Search all',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             onPressed: () async {
               final SonarrApi api =
                   await ref.read(sonarrApiProvider(instance).future);
@@ -606,6 +677,13 @@ class _ActionsRow extends ConsumerWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// _SeasonTile — ConsumerStatefulWidget.
+//
+// KEY CHANGE: ref.watch(sonarrQueueProvider) has been REMOVED from build().
+// The pre-filtered seriesQueueRecords list is passed from _BodyState instead.
+// This means N season tiles no longer create N queue-provider subscriptions.
+// ─────────────────────────────────────────────────────────────────────────────
 class _SeasonTile extends ConsumerStatefulWidget {
   const _SeasonTile({
     required this.instance,
@@ -613,6 +691,7 @@ class _SeasonTile extends ConsumerStatefulWidget {
     required this.season,
     required this.onChanged,
     required this.episodesValue,
+    required this.seriesQueueRecords,
   });
 
   final Instance instance;
@@ -620,13 +699,16 @@ class _SeasonTile extends ConsumerStatefulWidget {
   final SonarrSeasonStats season;
   final void Function(WidgetRef) onChanged;
   final AsyncValue<List<SonarrEpisode>> episodesValue;
+  // Pre-filtered to this series by _BodyState — no ref.watch needed here.
+  final List<SonarrQueueRecord> seriesQueueRecords;
 
   @override
   ConsumerState<_SeasonTile> createState() => _SeasonTileState();
 }
 
-class _SeasonTileState extends ConsumerState<_SeasonTile> with TickerProviderStateMixin {
-  late final AnimationController _animationController;
+class _SeasonTileState extends ConsumerState<_SeasonTile>
+    with TickerProviderStateMixin {
+  late final AnimationController _pulseController;
   late final AnimationController _expandController;
   late final Animation<double> _expandAnimation;
   bool _isExpanded = false;
@@ -634,12 +716,10 @@ class _SeasonTileState extends ConsumerState<_SeasonTile> with TickerProviderSta
   @override
   void initState() {
     super.initState();
-    // Pulsing animation for active downloads — starts stopped, only runs when needed
-    _animationController = AnimationController(
+    _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
     );
-
     _expandController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 350),
@@ -652,18 +732,18 @@ class _SeasonTileState extends ConsumerState<_SeasonTile> with TickerProviderSta
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _pulseController.dispose();
     _expandController.dispose();
     super.dispose();
   }
 
-  /// Called by build to sync the pulse animation with download activity.
-  void _syncPulseAnimation(bool hasActiveDownload) {
-    if (hasActiveDownload && !_animationController.isAnimating) {
-      _animationController.repeat(reverse: true);
-    } else if (!hasActiveDownload && _animationController.isAnimating) {
-      _animationController.stop();
-      _animationController.value = 0;
+  void _syncPulse(bool hasActiveDownload) {
+    if (hasActiveDownload && !_pulseController.isAnimating) {
+      _pulseController.repeat(reverse: true);
+    } else if (!hasActiveDownload && _pulseController.isAnimating) {
+      _pulseController
+        ..stop()
+        ..value = 0;
     }
   }
 
@@ -679,7 +759,8 @@ class _SeasonTileState extends ConsumerState<_SeasonTile> with TickerProviderSta
   }
 
   Future<void> _toggleSeason() async {
-    final SonarrApi api = await ref.read(sonarrApiProvider(widget.instance).future);
+    final SonarrApi api =
+        await ref.read(sonarrApiProvider(widget.instance).future);
     final Map<String, dynamic> raw = await api.getSeriesRaw(widget.series.id);
     final List<dynamic> seasons = raw['seasons'] as List<dynamic>;
     for (final dynamic s in seasons) {
@@ -703,65 +784,66 @@ class _SeasonTileState extends ConsumerState<_SeasonTile> with TickerProviderSta
 
     final String statsStr = st == null
         ? ''
-        : '${st.episodeFileCount}/${st.totalEpisodeCount} eps • ${_fmtSize(st.sizeOnDisk)}';
+        : '${st.episodeFileCount}/${st.totalEpisodeCount} eps'
+            ' • ${_fmtSize(st.sizeOnDisk)}';
 
-    final AsyncValue<SonarrQueuePage> queueValue = ref.watch(sonarrQueueProvider(widget.instance));
-    final List<SonarrQueueRecord> seriesRecords = queueValue.maybeWhen(
-      data: (SonarrQueuePage page) => page.records
-          .where((SonarrQueueRecord r) => r.seriesId == widget.series.id)
-          .toList(),
-      orElse: () => <SonarrQueueRecord>[],
-    );
-
+    // Filter episodes/queue from pre-loaded lists — no ref.watch needed.
     final List<SonarrEpisode> seasonEps = widget.episodesValue.maybeWhen(
       data: (List<SonarrEpisode> list) => list
-          .where((SonarrEpisode ep) => ep.seasonNumber == widget.season.seasonNumber)
-          .toList(),
+          .where(
+            (SonarrEpisode ep) =>
+                ep.seasonNumber == widget.season.seasonNumber,
+          )
+          .toList()
+        ..sort(
+          (SonarrEpisode a, SonarrEpisode b) =>
+              a.episodeNumber - b.episodeNumber,
+        ),
       orElse: () => <SonarrEpisode>[],
     );
-    final Set<int> seasonEpIds = seasonEps.map((SonarrEpisode ep) => ep.id).toSet();
-    final List<SonarrQueueRecord> seasonQueueRecords = seriesRecords
-        .where((SonarrQueueRecord r) => r.episodeId != null && seasonEpIds.contains(r.episodeId))
+    final Set<int> seasonEpIds =
+        seasonEps.map((SonarrEpisode ep) => ep.id).toSet();
+    final List<SonarrQueueRecord> seasonQueueRecords = widget.seriesQueueRecords
+        .where(
+          (SonarrQueueRecord r) =>
+              r.episodeId != null && seasonEpIds.contains(r.episodeId),
+        )
         .toList();
 
+    // Compute download progress from pre-filtered records.
     double progress = 0;
     int progressPct = 0;
     String downloadStatusStr = '';
     if (seasonQueueRecords.isNotEmpty) {
       final double totalSize = seasonQueueRecords.fold<double>(
         0,
-        (double prev, SonarrQueueRecord r) => prev + r.size,
+        (double p, SonarrQueueRecord r) => p + r.size,
       );
       final double totalLeft = seasonQueueRecords.fold<double>(
         0,
-        (double prev, SonarrQueueRecord r) => prev + r.sizeleft,
+        (double p, SonarrQueueRecord r) => p + r.sizeleft,
       );
       progress = totalSize <= 0
           ? 0
           : ((totalSize - totalLeft) / totalSize).clamp(0, 1).toDouble();
       progressPct = (progress * 100).round();
-
-      final bool hasSessional = seasonQueueRecords.any(
-        (SonarrQueueRecord r) => r.downloadId != null && r.downloadId!.isNotEmpty,
-      );
-      if (hasSessional) {
-        downloadStatusStr = 'Season Grab: $progressPct%';
-      } else {
-        downloadStatusStr = 'Downloading ${seasonQueueRecords.length} ep(s): $progressPct%';
-      }
+      final bool isSeasonal = seasonQueueRecords
+          .any((SonarrQueueRecord r) => r.downloadId?.isNotEmpty == true);
+      downloadStatusStr = isSeasonal
+          ? 'Season Grab: $progressPct%'
+          : 'Downloading ${seasonQueueRecords.length} ep(s): $progressPct%';
     }
 
     final double cardProgress = (st == null || st.totalEpisodeCount == 0)
         ? 0
-        : (st.episodeFileCount / st.totalEpisodeCount)
-            .clamp(0, 1)
-            .toDouble();
+        : (st.episodeFileCount / st.totalEpisodeCount).clamp(0, 1).toDouble();
 
-    // Sync the pulse animation outside build scheduling by scheduling a post-frame callback
-    // so we never call setState or animation methods during a build.
-    final bool hasActiveDownload = seasonQueueRecords.isNotEmpty && progress > 0;
+    final bool hasActiveDownload =
+        seasonQueueRecords.isNotEmpty && progress > 0;
+
+    // Sync pulse animation after build without calling setState inside build.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _syncPulseAnimation(hasActiveDownload);
+      if (mounted) _syncPulse(hasActiveDownload);
     });
 
     return Card(
@@ -778,14 +860,14 @@ class _SeasonTileState extends ConsumerState<_SeasonTile> with TickerProviderSta
         children: <Widget>[
           Stack(
             children: <Widget>[
-              // Library progress static background
-              if (cardProgress > 0 && seasonQueueRecords.isEmpty)
+              // Static library-progress fill (no animation).
+              if (cardProgress > 0 && !hasActiveDownload)
                 Positioned.fill(
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: FractionallySizedBox(
                       widthFactor: cardProgress,
-                      child: Container(
+                      child: ColoredBox(
                         color: theme.colorScheme.primary.withValues(
                           alpha: isDark ? 0.08 : 0.06,
                         ),
@@ -793,40 +875,44 @@ class _SeasonTileState extends ConsumerState<_SeasonTile> with TickerProviderSta
                     ),
                   ),
                 ),
-              // Active download progress pulsing background
-              if (seasonQueueRecords.isNotEmpty && progress > 0)
+
+              // Animated download-progress fill.
+              // RepaintBoundary ensures ONLY these pixels repaint during
+              // the pulse animation — not the ListTile, text, or icons.
+              if (hasActiveDownload)
                 Positioned.fill(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: AnimatedBuilder(
-                      animation: _animationController,
-                      builder: (BuildContext context, Widget? child) {
-                        final double alpha = lerpDouble(
-                          isDark ? 0.08 : 0.05,
-                          isDark ? 0.20 : 0.15,
-                          _animationController.value,
-                        )!;
-                        return FractionallySizedBox(
-                          widthFactor: progress,
-                          child: Container(
-                            color: theme.colorScheme.primary.withValues(
-                              alpha: alpha,
-                            ),
-                          ),
-                        );
-                      },
+                  child: RepaintBoundary(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: FractionallySizedBox(
+                        widthFactor: progress,
+                        child: AnimatedBuilder(
+                          animation: _pulseController,
+                          builder: (BuildContext context, Widget? child) {
+                            return ColoredBox(
+                              color: theme.colorScheme.primary.withValues(
+                                alpha: lerpDouble(
+                                  isDark ? 0.08 : 0.05,
+                                  isDark ? 0.22 : 0.16,
+                                  _pulseController.value,
+                                )!,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                     ),
                   ),
                 ),
+
               ListTile(
                 onTap: _toggleExpand,
                 title: Text(
                   label,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
-                subtitle: statsStr.isNotEmpty || downloadStatusStr.isNotEmpty
+                subtitle: (statsStr.isNotEmpty || downloadStatusStr.isNotEmpty)
                     ? Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Text.rich(
@@ -856,13 +942,18 @@ class _SeasonTileState extends ConsumerState<_SeasonTile> with TickerProviderSta
                   decoration: BoxDecoration(
                     color: widget.season.monitored
                         ? theme.colorScheme.primary.withValues(alpha: 0.1)
-                        : theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
+                        : theme.colorScheme.outlineVariant
+                            .withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: IconButton(
-                    tooltip: widget.season.monitored ? 'Unmonitor season' : 'Monitor season',
+                    tooltip: widget.season.monitored
+                        ? 'Unmonitor season'
+                        : 'Monitor season',
                     icon: Icon(
-                      widget.season.monitored ? Icons.bookmark : Icons.bookmark_border,
+                      widget.season.monitored
+                          ? Icons.bookmark
+                          : Icons.bookmark_border,
                       color: widget.season.monitored
                           ? theme.colorScheme.primary
                           : theme.colorScheme.outline,
@@ -879,7 +970,8 @@ class _SeasonTileState extends ConsumerState<_SeasonTile> with TickerProviderSta
                       tooltip: 'Season actions',
                       onSelected: (String value) async {
                         if (value == 'manual') {
-                          await Navigator.of(context, rootNavigator: true).push(
+                          await Navigator.of(context, rootNavigator: true)
+                              .push(
                             MaterialPageRoute<void>(
                               builder: (_) => SonarrReleaseSearchScreen(
                                 instance: widget.instance,
@@ -890,12 +982,19 @@ class _SeasonTileState extends ConsumerState<_SeasonTile> with TickerProviderSta
                             ),
                           );
                         } else if (value == 'search') {
-                          final SonarrApi api =
-                              await ref.read(sonarrApiProvider(widget.instance).future);
-                          await api.searchSeason(widget.series.id, widget.season.seasonNumber);
+                          final SonarrApi api = await ref.read(
+                            sonarrApiProvider(widget.instance).future,
+                          );
+                          await api.searchSeason(
+                            widget.series.id,
+                            widget.season.seasonNumber,
+                          );
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Search started for $label')),
+                              SnackBar(
+                                content:
+                                    Text('Search started for $label'),
+                              ),
                             );
                           }
                         } else if (value == 'delete') {
@@ -904,53 +1003,68 @@ class _SeasonTileState extends ConsumerState<_SeasonTile> with TickerProviderSta
                             builder: (BuildContext context) => AlertDialog(
                               title: Text('Delete $label files?'),
                               content: Text(
-                                'Are you sure you want to delete all $label files on disk?\n'
-                                'This will delete ${st!.episodeFileCount} file(s).',
+                                'Are you sure you want to delete all '
+                                '$label files on disk?\n'
+                                'This will delete '
+                                '${st!.episodeFileCount} file(s).',
                               ),
                               actions: <Widget>[
                                 TextButton(
-                                  onPressed: () => Navigator.pop(context, false),
+                                  onPressed: () =>
+                                      Navigator.pop(context, false),
                                   child: const Text('Cancel'),
                                 ),
                                 FilledButton(
                                   style: FilledButton.styleFrom(
-                                    backgroundColor: theme.colorScheme.error,
-                                    foregroundColor: theme.colorScheme.onError,
+                                    backgroundColor:
+                                        theme.colorScheme.error,
+                                    foregroundColor:
+                                        theme.colorScheme.onError,
                                   ),
-                                  onPressed: () => Navigator.pop(context, true),
+                                  onPressed: () =>
+                                      Navigator.pop(context, true),
                                   child: const Text('Delete'),
                                 ),
                               ],
                             ),
                           );
-
                           if (confirm == true && context.mounted) {
-                            final SonarrApi api = await ref.read(sonarrApiProvider(widget.instance).future);
-                            final List<SonarrEpisode> episodes = await api.getEpisodes(widget.series.id);
-                            final List<SonarrEpisode> seasonEpisodes = episodes
-                                .where((ep) =>
-                                    ep.seasonNumber == widget.season.seasonNumber &&
-                                    ep.hasFile &&
-                                    ep.episodeFileId > 0,)
+                            final SonarrApi api = await ref.read(
+                              sonarrApiProvider(widget.instance).future,
+                            );
+                            final List<SonarrEpisode> episodes =
+                                await api.getEpisodes(widget.series.id);
+                            final List<SonarrEpisode> toDelete = episodes
+                                .where(
+                                  (SonarrEpisode ep) =>
+                                      ep.seasonNumber ==
+                                          widget.season.seasonNumber &&
+                                      ep.hasFile &&
+                                      ep.episodeFileId > 0,
+                                )
                                 .toList();
-
-                            if (seasonEpisodes.isNotEmpty) {
+                            if (toDelete.isNotEmpty) {
                               await Future.wait(
-                                seasonEpisodes.map((ep) => api.deleteEpisodeFile(ep.episodeFileId)),
+                                toDelete.map(
+                                  (SonarrEpisode ep) =>
+                                      api.deleteEpisodeFile(ep.episodeFileId),
+                                ),
                               );
                             }
-
                             widget.onChanged(ref);
-
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('All $label files deleted')),
+                                SnackBar(
+                                  content:
+                                      Text('All $label files deleted'),
+                                ),
                               );
                             }
                           }
                         }
                       },
-                      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                      itemBuilder: (BuildContext context) =>
+                          <PopupMenuEntry<String>>[
                         const PopupMenuItem<String>(
                           value: 'manual',
                           child: Row(
@@ -976,11 +1090,16 @@ class _SeasonTileState extends ConsumerState<_SeasonTile> with TickerProviderSta
                             value: 'delete',
                             child: Row(
                               children: <Widget>[
-                                Icon(Icons.delete_outline, color: theme.colorScheme.error),
+                                Icon(
+                                  Icons.delete_outline,
+                                  color: theme.colorScheme.error,
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Delete season files',
-                                  style: TextStyle(color: theme.colorScheme.error),
+                                  style: TextStyle(
+                                    color: theme.colorScheme.error,
+                                  ),
                                 ),
                               ],
                             ),
@@ -997,6 +1116,8 @@ class _SeasonTileState extends ConsumerState<_SeasonTile> with TickerProviderSta
               ),
             ],
           ),
+
+          // ── Expandable episodes section ─────────────────────────────
           SizeTransition(
             sizeFactor: _expandAnimation,
             child: Column(
@@ -1007,40 +1128,42 @@ class _SeasonTileState extends ConsumerState<_SeasonTile> with TickerProviderSta
                     padding: EdgeInsets.symmetric(vertical: Insets.md),
                     child: Center(child: CircularProgressIndicator()),
                   ),
-                  error: (Object err, StackTrace? stack) => Padding(
+                  error: (Object err, StackTrace? _) => Padding(
                     padding: const EdgeInsets.all(Insets.md),
                     child: Center(
                       child: Text(
                         'Error loading episodes: $err',
-                        style: TextStyle(color: theme.colorScheme.error),
+                        style:
+                            TextStyle(color: theme.colorScheme.error),
                       ),
                     ),
                   ),
-                  data: (List<SonarrEpisode> list) {
-                    final List<SonarrEpisode> seasonEpisodes = list
-                        .where((SonarrEpisode ep) => ep.seasonNumber == widget.season.seasonNumber)
-                        .toList();
-
-                    if (seasonEpisodes.isEmpty) {
+                  data: (List<SonarrEpisode> _) {
+                    if (seasonEps.isEmpty) {
                       return const Padding(
-                        padding: EdgeInsets.symmetric(vertical: Insets.md),
+                        padding: EdgeInsets.symmetric(
+                          vertical: Insets.md,
+                        ),
                         child: Center(child: Text('No episodes found')),
                       );
                     }
-
-                    // Sort by episode number ascending
-                    seasonEpisodes.sort((SonarrEpisode a, SonarrEpisode b) =>
-                        a.episodeNumber - b.episodeNumber,);
-
                     return Column(
                       children: <Widget>[
-                        for (final SonarrEpisode ep in seasonEpisodes) ...[
+                        for (int i = 0; i < seasonEps.length; i++) ...<Widget>[
                           _EpisodeTile(
                             instance: widget.instance,
                             seriesId: widget.series.id,
-                            episode: ep,
+                            episode: seasonEps[i],
+                            // queueRecord is pre-resolved — no ref.watch
+                            // inside EpisodeTile build.
+                            queueRecord: widget.seriesQueueRecords
+                                .firstWhereOrNull(
+                              (SonarrQueueRecord r) =>
+                                  r.episodeId == seasonEps[i].id,
+                            ),
                           ),
-                          if (ep != seasonEpisodes.last) const Divider(height: 1, indent: Insets.xl),
+                          if (i < seasonEps.length - 1)
+                            const Divider(height: 1, indent: Insets.xl),
                         ],
                         const SizedBox(height: Insets.xs),
                       ],
@@ -1056,27 +1179,40 @@ class _SeasonTileState extends ConsumerState<_SeasonTile> with TickerProviderSta
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// _EpisodeTile — ConsumerWidget using only ref.read in handlers (no ref.watch).
+//
+// KEY CHANGE: ref.watch(sonarrQueueProvider) has been REMOVED from build().
+// The pre-resolved queueRecord is passed from _SeasonTileState instead.
+// This eliminates N*episodes simultaneous subscriptions on the queue provider.
+// ─────────────────────────────────────────────────────────────────────────────
 class _EpisodeTile extends ConsumerWidget {
   const _EpisodeTile({
     required this.instance,
     required this.seriesId,
     required this.episode,
+    required this.queueRecord,
   });
 
   final Instance instance;
   final int seriesId;
   final SonarrEpisode episode;
+  // Pre-resolved by _SeasonTileState — no provider watch needed here.
+  final SonarrQueueRecord? queueRecord;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
-    final String epCode = 'E${episode.episodeNumber.toString().padLeft(2, '0')}';
+    final String epCode =
+        'E${episode.episodeNumber.toString().padLeft(2, '0')}';
     final DateTime? airDate = episode.airDateUtc?.toLocal();
     final String airDateStr = airDate != null
         ? DateFormat('yMMMd').format(airDate)
         : 'Unknown air date';
 
-    final bool isFuture = airDate != null && airDate.isAfter(DateTime.now());
+    final bool isFuture =
+        airDate != null && airDate.isAfter(DateTime.now());
+
     final (String label, Color bg, Color fg) = episode.hasFile
         ? (
             'Downloaded',
@@ -1086,7 +1222,8 @@ class _EpisodeTile extends ConsumerWidget {
         : isFuture
             ? (
                 'Upcoming',
-                theme.colorScheme.secondaryContainer.withValues(alpha: 0.4),
+                theme.colorScheme.secondaryContainer
+                    .withValues(alpha: 0.4),
                 theme.colorScheme.onSecondaryContainer,
               )
             : (
@@ -1095,60 +1232,59 @@ class _EpisodeTile extends ConsumerWidget {
                 theme.colorScheme.onErrorContainer,
               );
 
-    final AsyncValue<SonarrQueuePage> queueValue = ref.watch(sonarrQueueProvider(instance));
-    final SonarrQueueRecord? queueRecord = queueValue.maybeWhen(
-      data: (SonarrQueuePage page) => page.records
-          .firstWhereOrNull((SonarrQueueRecord r) => r.episodeId == episode.id),
-      orElse: () => null,
-    );
-
+    // Resolve download state from the passed-in record.
     double progress = 0;
-    int progressPct = 0;
     String detailText = '';
     String labelOverride = '';
     Color bgOverride = Colors.transparent;
     Color fgOverride = Colors.transparent;
 
     if (queueRecord != null) {
-      progress = queueRecord.size <= 0
+      progress = queueRecord!.size <= 0
           ? 0
-          : ((queueRecord.size - queueRecord.sizeleft) / queueRecord.size).clamp(0, 1).toDouble();
-      progressPct = (progress * 100).round();
-
-      final bool hasWarning = queueRecord.trackedDownloadStatus?.toLowerCase() == 'warning' ||
-          queueRecord.statusMessages.isNotEmpty;
-      final bool hasError = queueRecord.trackedDownloadStatus?.toLowerCase() == 'error';
+          : ((queueRecord!.size - queueRecord!.sizeleft) / queueRecord!.size)
+              .clamp(0, 1)
+              .toDouble();
+      final int progressPct = (progress * 100).round();
+      final bool hasWarning =
+          queueRecord!.trackedDownloadStatus?.toLowerCase() == 'warning' ||
+              queueRecord!.statusMessages.isNotEmpty;
+      final bool hasError =
+          queueRecord!.trackedDownloadStatus?.toLowerCase() == 'error';
 
       if (hasError) {
         labelOverride = 'Error';
-        bgOverride = theme.colorScheme.errorContainer.withValues(alpha: 0.4);
+        bgOverride =
+            theme.colorScheme.errorContainer.withValues(alpha: 0.4);
         fgOverride = theme.colorScheme.onErrorContainer;
       } else if (hasWarning) {
         labelOverride = 'Warning';
         bgOverride = Colors.orange.withValues(alpha: 0.2);
         fgOverride = Colors.orange[800] ?? Colors.orange;
-      } else if (queueRecord.status?.toLowerCase() == 'paused') {
+      } else if (queueRecord!.status?.toLowerCase() == 'paused') {
         labelOverride = 'Paused';
-        bgOverride = theme.colorScheme.outlineVariant.withValues(alpha: 0.4);
+        bgOverride =
+            theme.colorScheme.outlineVariant.withValues(alpha: 0.4);
         fgOverride = theme.colorScheme.outline;
-      } else if (queueRecord.status?.toLowerCase() == 'completed' || progress >= 0.999) {
+      } else if (queueRecord!.status?.toLowerCase() == 'completed' ||
+          progress >= 0.999) {
         labelOverride = 'Completed';
         bgOverride = Colors.green.withValues(alpha: 0.15);
         fgOverride = Colors.green[800] ?? Colors.green;
       } else {
         labelOverride = 'Downloading ($progressPct%)';
-        bgOverride = theme.colorScheme.primaryContainer.withValues(alpha: 0.4);
+        bgOverride = theme.colorScheme.primaryContainer
+            .withValues(alpha: 0.4);
         fgOverride = theme.colorScheme.onPrimaryContainer;
       }
 
       final List<String> details = <String>[];
-      if (queueRecord.timeleft != null && queueRecord.timeleft!.isNotEmpty) {
-        details.add(queueRecord.timeleft!);
+      if (queueRecord!.timeleft?.isNotEmpty == true) {
+        details.add(queueRecord!.timeleft!);
       }
-      if (queueRecord.status != null &&
-          queueRecord.status!.isNotEmpty &&
-          queueRecord.status!.toLowerCase() != 'downloading') {
-        details.add(queueRecord.status!);
+      if (queueRecord!.status?.isNotEmpty == true &&
+          queueRecord!.status?.toLowerCase() != 'downloading') {
+        details.add(queueRecord!.status!);
       }
       detailText = details.join(' • ');
     }
@@ -1169,26 +1305,36 @@ class _EpisodeTile extends ConsumerWidget {
         );
       },
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: Insets.sm),
+        padding: const EdgeInsets.symmetric(
+          vertical: 8,
+          horizontal: Insets.sm,
+        ),
         child: Row(
           children: <Widget>[
-            // Monitored Toggle
             IconButton(
               icon: Icon(
                 episode.monitored ? Icons.bookmark : Icons.bookmark_border,
                 size: 20,
-                color: episode.monitored ? theme.colorScheme.primary : theme.colorScheme.outline,
+                color: episode.monitored
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.outline,
               ),
               visualDensity: VisualDensity.compact,
-              tooltip: episode.monitored ? 'Stop monitoring' : 'Monitor episode',
+              tooltip: episode.monitored
+                  ? 'Stop monitoring'
+                  : 'Monitor episode',
               onPressed: () async {
-                final SonarrApi api = await ref.read(sonarrApiProvider(instance).future);
-                await api.updateEpisode(episode.copyWith(monitored: !episode.monitored));
-                ref.invalidate(sonarrEpisodesProvider((instance, seriesId)));
+                final SonarrApi api =
+                    await ref.read(sonarrApiProvider(instance).future);
+                await api.updateEpisode(
+                  episode.copyWith(monitored: !episode.monitored),
+                );
+                ref.invalidate(
+                  sonarrEpisodesProvider((instance, seriesId)),
+                );
               },
             ),
             const SizedBox(width: Insets.xs),
-            // Episode info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1209,7 +1355,10 @@ class _EpisodeTile extends ConsumerWidget {
                     runSpacing: 4,
                     children: <Widget>[
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: activeBg,
                           borderRadius: BorderRadius.circular(4),
@@ -1234,20 +1383,23 @@ class _EpisodeTile extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  if (queueRecord != null) ...[
+                  if (queueRecord != null) ...<Widget>[
                     const SizedBox(height: 6),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(2),
                       child: LinearProgressIndicator(
                         value: progress,
                         minHeight: 4,
-                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                        backgroundColor:
+                            theme.colorScheme.surfaceContainerHighest,
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          activeFg == Colors.transparent ? theme.colorScheme.primary : activeFg,
+                          activeFg == Colors.transparent
+                              ? theme.colorScheme.primary
+                              : activeFg,
                         ),
                       ),
                     ),
-                    if (detailText.isNotEmpty) ...[
+                    if (detailText.isNotEmpty) ...<Widget>[
                       const SizedBox(height: 2),
                       Text(
                         detailText,
@@ -1262,7 +1414,6 @@ class _EpisodeTile extends ConsumerWidget {
               ),
             ),
             const SizedBox(width: Insets.xs),
-            // Primary Action: Manual Search
             IconButton(
               icon: const Icon(Icons.manage_search, size: 20),
               tooltip: 'Manual search',
@@ -1278,18 +1429,19 @@ class _EpisodeTile extends ConsumerWidget {
                 );
               },
             ),
-            // Secondary Actions Dropdown
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert, size: 20),
               onSelected: (String val) async {
-                final SonarrApi api = await ref.read(sonarrApiProvider(instance).future);
+                final SonarrApi api =
+                    await ref.read(sonarrApiProvider(instance).future);
                 if (val == 'search') {
                   await api.searchEpisode(episode.id);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          'Search started for $epCode • ${episode.title ?? "Episode"}',
+                          'Search started for $epCode'
+                          ' • ${episode.title ?? "Episode"}',
                         ),
                       ),
                     );
@@ -1306,7 +1458,8 @@ class _EpisodeTile extends ConsumerWidget {
                       ),
                       actions: <Widget>[
                         TextButton(
-                          onPressed: () => Navigator.of(context).pop(false),
+                          onPressed: () =>
+                              Navigator.of(context).pop(false),
                           child: const Text('Cancel'),
                         ),
                         FilledButton(
@@ -1314,7 +1467,8 @@ class _EpisodeTile extends ConsumerWidget {
                             backgroundColor: theme.colorScheme.error,
                             foregroundColor: theme.colorScheme.onError,
                           ),
-                          onPressed: () => Navigator.of(context).pop(true),
+                          onPressed: () =>
+                              Navigator.of(context).pop(true),
                           child: const Text('Delete'),
                         ),
                       ],
@@ -1322,18 +1476,25 @@ class _EpisodeTile extends ConsumerWidget {
                   );
                   if (confirm == true) {
                     await api.deleteEpisodeFile(episode.episodeFileId);
-                    ref.invalidate(sonarrEpisodesProvider((instance, seriesId)));
-                    ref.invalidate(sonarrSeriesByIdProvider((instance, seriesId)));
+                    ref.invalidate(
+                      sonarrEpisodesProvider((instance, seriesId)),
+                    );
+                    ref.invalidate(
+                      sonarrSeriesByIdProvider((instance, seriesId)),
+                    );
                     ref.invalidate(sonarrSeriesProvider(instance));
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Episode file deleted')),
+                        const SnackBar(
+                          content: Text('Episode file deleted'),
+                        ),
                       );
                     }
                   }
                 }
               },
-              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              itemBuilder: (BuildContext context) =>
+                  <PopupMenuEntry<String>>[
                 const PopupMenuItem<String>(
                   value: 'search',
                   child: ListTile(
@@ -1347,8 +1508,16 @@ class _EpisodeTile extends ConsumerWidget {
                   PopupMenuItem<String>(
                     value: 'delete',
                     child: ListTile(
-                      leading: Icon(Icons.delete_outline, color: theme.colorScheme.error, size: 20),
-                      title: Text('Delete episode file', style: TextStyle(color: theme.colorScheme.error)),
+                      leading: Icon(
+                        Icons.delete_outline,
+                        color: theme.colorScheme.error,
+                        size: 20,
+                      ),
+                      title: Text(
+                        'Delete episode file',
+                        style:
+                            TextStyle(color: theme.colorScheme.error),
+                      ),
                       contentPadding: EdgeInsets.zero,
                       dense: true,
                     ),
@@ -1362,6 +1531,10 @@ class _EpisodeTile extends ConsumerWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// _SeriesMenu — three-dot menu: delete, rename, change quality profile.
+// Uses ref.read only in action handlers — no subscriptions in build.
+// ─────────────────────────────────────────────────────────────────────────────
 class _SeriesMenu extends ConsumerWidget {
   const _SeriesMenu({required this.instance, required this.series});
 
@@ -1375,7 +1548,7 @@ class _SeriesMenu extends ConsumerWidget {
         if (v == 'delete') {
           await _confirmDelete(context, ref);
         } else if (v == 'rename') {
-          _showRenameDialog(context, ref);
+          _showRenameDialog(context);
         } else if (v == 'profile') {
           _showChangeProfileDialog(context, ref);
         }
@@ -1412,85 +1585,91 @@ class _SeriesMenu extends ConsumerWidget {
   void _showChangeProfileDialog(BuildContext context, WidgetRef ref) {
     showDialog<void>(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Change Quality Profile'),
-          content: Consumer(
-            builder: (BuildContext context, WidgetRef ref, Widget? child) {
-              final AsyncValue<List<SonarrQualityProfile>> profilesVal =
-                  ref.watch(sonarrQualityProfilesProvider(instance));
-              return profilesVal.when(
-                loading: () => const SizedBox(
-                  height: 100,
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                error: (Object err, StackTrace? stack) => Text('Error: $err'),
-                data: (List<SonarrQualityProfile> profiles) {
-                  if (profiles.isEmpty) {
-                    return const Text('No profiles available.');
-                  }
-                  return SizedBox(
-                    width: double.maxFinite,
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: profiles.length,
-                      itemBuilder: (BuildContext context, int index) {
-                        final SonarrQualityProfile p = profiles[index];
-                        final bool isSelected = p.id == series.qualityProfileId;
-                        return ListTile(
-                          title: Text(p.name),
-                          trailing: isSelected
-                              ? const Icon(Icons.check, color: Colors.green)
-                              : null,
-                          selected: isSelected,
-                          onTap: () async {
-                            final SonarrApi api =
-                                await ref.read(sonarrApiProvider(instance).future);
-                            final Map<String, dynamic> raw =
-                                await api.getSeriesRaw(series.id);
-                            raw['qualityProfileId'] = p.id;
-                            await api.updateSeriesRaw(raw);
-                            ref.invalidate(
-                              sonarrSeriesByIdProvider((instance, series.id)),
-                            );
-                            ref.invalidate(sonarrSeriesProvider(instance));
-                            if (context.mounted) {
-                              Navigator.of(context).pop();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Quality profile changed to ${p.name}',
-                                  ),
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Change Quality Profile'),
+        content: Consumer(
+          builder: (BuildContext context, WidgetRef ref, Widget? child) {
+            return ref
+                .watch(sonarrQualityProfilesProvider(instance))
+                .when(
+                  loading: () => const SizedBox(
+                    height: 100,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                  error: (Object err, _) => Text('Error: $err'),
+                  data: (List<SonarrQualityProfile> profiles) {
+                    if (profiles.isEmpty) {
+                      return const Text('No profiles available.');
+                    }
+                    return SizedBox(
+                      width: double.maxFinite,
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: profiles.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          final SonarrQualityProfile p = profiles[index];
+                          final bool isSelected =
+                              p.id == series.qualityProfileId;
+                          return ListTile(
+                            title: Text(p.name),
+                            trailing: isSelected
+                                ? const Icon(
+                                    Icons.check,
+                                    color: Colors.green,
+                                  )
+                                : null,
+                            selected: isSelected,
+                            onTap: () async {
+                              final SonarrApi api = await ref.read(
+                                sonarrApiProvider(instance).future,
+                              );
+                              final Map<String, dynamic> raw =
+                                  await api.getSeriesRaw(series.id);
+                              raw['qualityProfileId'] = p.id;
+                              await api.updateSeriesRaw(raw);
+                              ref.invalidate(
+                                sonarrSeriesByIdProvider(
+                                  (instance, series.id),
                                 ),
                               );
-                            }
-                          },
-                        );
-                      },
-                    ),
-                  );
-                },
-              );
-            },
+                              ref.invalidate(
+                                sonarrSeriesProvider(instance),
+                              );
+                              if (context.mounted) {
+                                Navigator.of(context).pop();
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Quality profile changed to ${p.name}',
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                          );
+                        },
+                      ),
+                    );
+                  },
+                );
+          },
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
           ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-          ],
-        );
-      },
+        ],
+      ),
     );
   }
 
-  void _showRenameDialog(BuildContext context, WidgetRef ref) {
+  void _showRenameDialog(BuildContext context) {
     showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
-        return _RenameDialog(instance: instance, series: series);
-      },
+      builder: (_) => _RenameDialog(instance: instance, series: series),
     );
   }
 
@@ -1529,7 +1708,8 @@ class _SeriesMenu extends ConsumerWidget {
       ),
     );
     if (ok ?? false) {
-      final SonarrApi api = await ref.read(sonarrApiProvider(instance).future);
+      final SonarrApi api =
+          await ref.read(sonarrApiProvider(instance).future);
       await api.deleteSeries(series.id, deleteFiles: deleteFiles);
       ref.invalidate(sonarrSeriesProvider(instance));
       if (context.mounted) {
@@ -1539,6 +1719,9 @@ class _SeriesMenu extends ConsumerWidget {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// _RenameDialog — ConsumerStatefulWidget for async rename previews.
+// ─────────────────────────────────────────────────────────────────────────────
 class _RenameDialog extends ConsumerStatefulWidget {
   const _RenameDialog({required this.instance, required this.series});
 
@@ -1552,8 +1735,8 @@ class _RenameDialog extends ConsumerStatefulWidget {
 class _RenameDialogState extends ConsumerState<_RenameDialog> {
   bool _loading = true;
   String? _error;
-  List<Map<String, dynamic>> _previews = [];
-  final Set<int> _selectedFileIds = {};
+  List<Map<String, dynamic>> _previews = <Map<String, dynamic>>[];
+  final Set<int> _selectedFileIds = <int>{};
 
   @override
   void initState() {
@@ -1563,15 +1746,20 @@ class _RenameDialogState extends ConsumerState<_RenameDialog> {
 
   Future<void> _fetchPreviews() async {
     try {
-      final SonarrApi api = await ref.read(sonarrApiProvider(widget.instance).future);
-      final List<Map<String, dynamic>> list = await api.getRenamePreviews(widget.series.id);
+      final SonarrApi api =
+          await ref.read(sonarrApiProvider(widget.instance).future);
+      final List<Map<String, dynamic>> list =
+          await api.getRenamePreviews(widget.series.id);
       if (mounted) {
         setState(() {
           _previews = list;
-          _selectedFileIds.clear();
-          _selectedFileIds.addAll(
-            list.map((Map<String, dynamic> e) => e['episodeFileId'] as int),
-          );
+          _selectedFileIds
+            ..clear()
+            ..addAll(
+              list.map(
+                (Map<String, dynamic> e) => e['episodeFileId'] as int,
+              ),
+            );
           _loading = false;
         });
       }
@@ -1585,15 +1773,13 @@ class _RenameDialogState extends ConsumerState<_RenameDialog> {
     }
   }
 
-  String _getFilename(String path) {
-    return path.split(RegExp(r'[/\\]')).last;
-  }
+  String _filename(String path) => path.split(RegExp(r'[/\\]')).last;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
 
-    Widget content;
+    final Widget content;
     if (_loading) {
       content = const SizedBox(
         height: 200,
@@ -1609,10 +1795,15 @@ class _RenameDialogState extends ConsumerState<_RenameDialog> {
             const SizedBox(height: Insets.sm),
             Text(
               'Error loading rename previews',
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: Insets.xs),
-            Text(_error!, style: theme.textTheme.bodySmall, textAlign: TextAlign.center),
+            Text(
+              _error!,
+              style: theme.textTheme.bodySmall,
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       );
@@ -1638,13 +1829,19 @@ class _RenameDialogState extends ConsumerState<_RenameDialog> {
         child: Column(
           children: <Widget>[
             CheckboxListTile(
-              title: const Text('Select All', style: TextStyle(fontWeight: FontWeight.bold)),
+              title: const Text(
+                'Select All',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               value: _selectedFileIds.length == _previews.length,
               onChanged: (bool? checked) {
                 setState(() {
                   if (checked == true) {
                     _selectedFileIds.addAll(
-                      _previews.map((Map<String, dynamic> e) => e['episodeFileId'] as int),
+                      _previews.map(
+                        (Map<String, dynamic> e) =>
+                            e['episodeFileId'] as int,
+                      ),
                     );
                   } else {
                     _selectedFileIds.clear();
@@ -1656,18 +1853,21 @@ class _RenameDialogState extends ConsumerState<_RenameDialog> {
             Expanded(
               child: ListView.separated(
                 itemCount: _previews.length,
-                separatorBuilder: (BuildContext context, int index) => const Divider(height: 1),
+                separatorBuilder: (_, __) => const Divider(height: 1),
                 itemBuilder: (BuildContext context, int index) {
                   final Map<String, dynamic> preview = _previews[index];
                   final int fileId = preview['episodeFileId'] as int;
                   final bool isSelected = _selectedFileIds.contains(fileId);
-                  
                   final int season = preview['seasonNumber'] as int;
-                  final List<dynamic> epNums = preview['episodeNumbers'] as List<dynamic>;
-                  final String epLabel = 'S${season.toString().padLeft(2, '0')}E${epNums.map((dynamic e) => e.toString().padLeft(2, '0')).join('-')}';
-
-                  final String existingName = _getFilename(preview['existingPath'] as String);
-                  final String newName = _getFilename(preview['newPath'] as String);
+                  final List<dynamic> epNums =
+                      preview['episodeNumbers'] as List<dynamic>;
+                  final String epLabel =
+                      'S${season.toString().padLeft(2, '0')}'
+                      'E${epNums.map((dynamic e) => e.toString().padLeft(2, '0')).join('-')}';
+                  final String existingName =
+                      _filename(preview['existingPath'] as String);
+                  final String newName =
+                      _filename(preview['newPath'] as String);
 
                   return CheckboxListTile(
                     value: isSelected,
@@ -1682,7 +1882,8 @@ class _RenameDialogState extends ConsumerState<_RenameDialog> {
                     },
                     title: Text(
                       epLabel,
-                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1727,15 +1928,30 @@ class _RenameDialogState extends ConsumerState<_RenameDialog> {
             onPressed: _selectedFileIds.isEmpty
                 ? null
                 : () async {
-                    final SonarrApi api = await ref.read(sonarrApiProvider(widget.instance).future);
-                    await api.executeRename(widget.series.id, _selectedFileIds.toList());
-                    ref.invalidate(sonarrEpisodesProvider((widget.instance, widget.series.id)));
-                    ref.invalidate(sonarrSeriesByIdProvider((widget.instance, widget.series.id)));
+                    final SonarrApi api = await ref.read(
+                      sonarrApiProvider(widget.instance).future,
+                    );
+                    await api.executeRename(
+                      widget.series.id,
+                      _selectedFileIds.toList(),
+                    );
+                    ref.invalidate(
+                      sonarrEpisodesProvider(
+                        (widget.instance, widget.series.id),
+                      ),
+                    );
+                    ref.invalidate(
+                      sonarrSeriesByIdProvider(
+                        (widget.instance, widget.series.id),
+                      ),
+                    );
                     ref.invalidate(sonarrSeriesProvider(widget.instance));
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Rename started for ${_selectedFileIds.length} files'),
+                          content: Text(
+                            'Rename started for ${_selectedFileIds.length} files',
+                          ),
                         ),
                       );
                       Navigator.of(context).pop();
@@ -1748,10 +1964,11 @@ class _RenameDialogState extends ConsumerState<_RenameDialog> {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
 String _fmtSize(int bytes) {
-  if (bytes <= 0) {
-    return '0 B';
-  }
+  if (bytes <= 0) return '0 B';
   const List<String> units = <String>['B', 'KB', 'MB', 'GB', 'TB'];
   double value = bytes.toDouble();
   int unit = 0;
@@ -1759,9 +1976,8 @@ String _fmtSize(int bytes) {
     value /= 1024;
     unit++;
   }
-  final String text =
-      value >= 100 || unit == 0 ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
+  final String text = value >= 100 || unit == 0
+      ? value.toStringAsFixed(0)
+      : value.toStringAsFixed(1);
   return '$text ${units[unit]}';
 }
-
-

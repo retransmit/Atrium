@@ -311,25 +311,26 @@ class _GroupedSeriesCardState extends State<_GroupedSeriesCard> with SingleTicke
                   thickness: 0.5,
                   color: colors.outlineVariant.withValues(alpha: 0.3),
                 ),
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  padding: EdgeInsets.zero,
-                  itemCount: widget.records.length,
-                  separatorBuilder: (context, index) => Divider(
-                    height: 1,
-                    thickness: 0.5,
-                    indent: 16,
-                    endIndent: 16,
-                    color: colors.outlineVariant.withValues(alpha: 0.3),
-                  ),
-                  itemBuilder: (context, index) {
-                    final record = widget.records[index];
-                    return _GroupedEpisodeTile(
-                      record: record,
-                      onSearch: () => widget.onSearchEpisode(record.id, 'S${record.seasonNumber}E${record.episodeNumber}'),
-                    );
-                  },
+                Column(
+                  children: [
+                    for (int i = 0; i < widget.records.length; i++) ...[
+                      _GroupedEpisodeTile(
+                        record: widget.records[i],
+                        onSearch: () => widget.onSearchEpisode(
+                          widget.records[i].id,
+                          'S${widget.records[i].seasonNumber}E${widget.records[i].episodeNumber}',
+                        ),
+                      ),
+                      if (i < widget.records.length - 1)
+                        Divider(
+                          height: 1,
+                          thickness: 0.5,
+                          indent: 16,
+                          endIndent: 16,
+                          color: colors.outlineVariant.withValues(alpha: 0.3),
+                        ),
+                    ],
+                  ],
                 ),
               ],
             ),

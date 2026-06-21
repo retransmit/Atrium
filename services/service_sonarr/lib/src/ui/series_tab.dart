@@ -1033,7 +1033,10 @@ class _FloatingActionCapsule extends StatefulWidget {
 }
 
 class _FloatingActionCapsuleState extends State<_FloatingActionCapsule> {
-  double _scrollOffset = 0;
+  // Only track whether we are in the "blurred" state, not the raw pixel offset.
+  // This means setState is called at most twice (false→true, true→false) during
+  // any given scroll session instead of 60+ times per second.
+  bool _isBlurred = false;
 
   @override
   void initState() {
@@ -1057,13 +1060,11 @@ class _FloatingActionCapsuleState extends State<_FloatingActionCapsule> {
   }
 
   void _onScroll() {
-    if (widget.scrollController.hasClients) {
-      final offset = widget.scrollController.offset;
-      if (offset <= 150 || _scrollOffset <= 150) {
-        setState(() {
-          _scrollOffset = offset;
-        });
-      }
+    if (!widget.scrollController.hasClients) return;
+    final bool blurred = widget.scrollController.offset > 120;
+    // Only rebuild when the boolean state actually flips.
+    if (blurred != _isBlurred) {
+      setState(() => _isBlurred = blurred);
     }
   }
 
@@ -1075,39 +1076,40 @@ class _FloatingActionCapsuleState extends State<_FloatingActionCapsule> {
     final colors = theme.colorScheme;
     final double safeTop = MediaQuery.of(context).padding.top;
 
-    // Calculate transition progress: 0 at offset 0, 1 at offset 120
-    final double t = (_scrollOffset / 120).clamp(0.0, 1.0);
+    final Widget capsuleContent = AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: EdgeInsets.symmetric(
+        horizontal: _isBlurred ? 8 : 0,
+        vertical: _isBlurred ? 4 : 0,
+      ),
+      decoration: BoxDecoration(
+        color: _isBlurred
+            ? colors.surfaceContainerHighest.withValues(alpha: 0.65)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        border: _isBlurred
+            ? Border.all(color: colors.outlineVariant.withValues(alpha: 0.2), width: 0.5)
+            : null,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: widget.actions,
+      ),
+    );
 
     return Positioned(
       top: safeTop + 8,
       right: 16,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(
-            sigmaX: t > 0.1 ? 12.0 : 0.0,
-            sigmaY: t > 0.1 ? 12.0 : 0.0,
-          ),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 100),
-            padding: EdgeInsets.symmetric(
-              horizontal: t > 0.1 ? 8 : 0,
-              vertical: t > 0.1 ? 4 : 0,
-            ),
-            decoration: BoxDecoration(
-              color: t > 0.1
-                  ? colors.surfaceContainerHighest.withValues(alpha: 0.65)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(20),
-              border: t > 0.1
-                  ? Border.all(color: colors.outlineVariant.withValues(alpha: 0.2), width: 0.5)
-                  : null,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: widget.actions,
-            ),
-          ),
+      child: RepaintBoundary(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          // Only pay the BackdropFilter saveLayer cost when blur is actually needed.
+          child: _isBlurred
+              ? BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
+                  child: capsuleContent,
+                )
+              : capsuleContent,
         ),
       ),
     );

@@ -5,12 +5,19 @@ part of '../sonarr_home.dart';
 // ──────────────────────────────────────────────────────
 
 /// Pushes [SeriesDetailScreen] using a smooth One UI-style fade + micro-slide.
+/// Captures the Sonarr-tinted [ThemeData] from [context] at call-time (which
+/// is still inside the SonarrHome Theme subtree) and re-applies it on the
+/// new route so the detail screen inherits the Sonarr color scheme even though
+/// it is pushed onto the root navigator (which sits above the Theme widget).
 void _pushSeriesDetail(BuildContext context, Instance instance, int seriesId) {
+  final ThemeData sonarrTheme = Theme.of(context);
   Navigator.of(context, rootNavigator: true).push(
     PageRouteBuilder<void>(
       transitionDuration: const Duration(milliseconds: 350),
-      pageBuilder: (_, __, ___) =>
-          SeriesDetailScreen(instance: instance, seriesId: seriesId),
+      pageBuilder: (_, __, ___) => Theme(
+        data: sonarrTheme,
+        child: SeriesDetailScreen(instance: instance, seriesId: seriesId),
+      ),
       transitionsBuilder: (_, anim, __, child) => FadeTransition(
         opacity: anim.drive(CurveTween(curve: Curves.easeOut)),
         child: SlideTransition(
