@@ -40,9 +40,6 @@ class AddTorrentSheet extends ConsumerStatefulWidget {
   }) async {
     final bool? added = await showDialog<bool>(
       context: context,
-      // Root navigator so the dialog isn't swept when GoRouter rebuilds the
-      // shell branch navigators (same issue as imperative page pushes).
-      useRootNavigator: true,
       builder: (_) => AddTorrentSheet(
         instance: instance,
         initialMode: initialMode,

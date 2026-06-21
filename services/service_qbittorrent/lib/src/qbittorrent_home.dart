@@ -20,7 +20,7 @@ class QbittorrentHome extends ConsumerWidget {
   final Instance instance;
 
   void _refresh(WidgetRef ref) {
-    ref.invalidate(qbitTorrentsProvider(instance));
+    ref.invalidate(qbitRawTorrentsProvider(instance));
     ref.invalidate(qbitTransferProvider(instance));
   }
 
@@ -28,7 +28,6 @@ class QbittorrentHome extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<QbitTorrent>> torrents =
         ref.watch(qbitTorrentsProvider(instance));
-    final Set<String> selection = ref.watch(qbitSelectionProvider(instance));
 
     return Scaffold(
       bottomNavigationBar: _BottomControlBar(instance: instance),
@@ -39,7 +38,7 @@ class QbittorrentHome extends ConsumerWidget {
               onRefresh: () async => _refresh(ref),
               child: AsyncValueView<List<QbitTorrent>>(
                 value: torrents,
-                onRetry: () => ref.invalidate(qbitTorrentsProvider(instance)),
+                onRetry: () => ref.invalidate(qbitRawTorrentsProvider(instance)),
                 data: (List<QbitTorrent> list) {
                   if (list.isEmpty) {
                     return const EmptyView(
@@ -69,7 +68,6 @@ class QbittorrentHome extends ConsumerWidget {
               final bool added = await AddTorrentSheet.show(
                 context,
                 instance,
-                initialMode: AddTorrentMode.link,
               );
               if (added) {
                 _refresh(ref);
@@ -131,8 +129,8 @@ class _BottomControlBarState extends ConsumerState<_BottomControlBar> {
         ref.watch(qbitTransferProvider(widget.instance)).value;
     final ThemeData theme = Theme.of(context);
     final Color contrastColor = theme.brightness == Brightness.dark
-        ? Colors.white.withOpacity(0.04)
-        : Colors.black.withOpacity(0.02);
+        ? Colors.white.withValues(alpha: 0.04)
+        : Colors.black.withValues(alpha: 0.02);
 
     return BottomAppBar(
       height: 56,
@@ -217,7 +215,7 @@ class QbittorrentAppBarActions extends ConsumerWidget {
   Future<void> _run(WidgetRef ref, Future<void> Function(QbittorrentClient) action) async {
     final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
     await action(client);
-    ref.invalidate(qbitTorrentsProvider(instance));
+    ref.invalidate(qbitRawTorrentsProvider(instance));
     ref.invalidate(qbitSelectionProvider(instance));
   }
 
@@ -259,7 +257,7 @@ class QbittorrentAppBarActions extends ConsumerWidget {
           await ref.read(qbittorrentClientProvider(instance).future);
       await client.delete(selectedHashes.toList(), deleteFiles: deleteFiles);
       ref.invalidate(qbitSelectionProvider(instance));
-      ref.invalidate(qbitTorrentsProvider(instance));
+      ref.invalidate(qbitRawTorrentsProvider(instance));
     }
   }
 
@@ -299,7 +297,7 @@ class QbittorrentAppBarActions extends ConsumerWidget {
           decoration: const InputDecoration(hintText: 'tag1, tag2'),
         ),
         actions: <Widget>[
-          TextButton(onPressed: () => Navigator.of(context).pop(null), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
           FilledButton(onPressed: () => Navigator.of(context).pop(ctrl.text), child: const Text('Save')),
         ],
       ),
@@ -320,7 +318,7 @@ class QbittorrentAppBarActions extends ConsumerWidget {
           decoration: const InputDecoration(hintText: '/downloads/new_path'),
         ),
         actions: <Widget>[
-          TextButton(onPressed: () => Navigator.of(context).pop(null), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
           FilledButton(onPressed: () => Navigator.of(context).pop(ctrl.text), child: const Text('Save')),
         ],
       ),
@@ -341,7 +339,7 @@ class QbittorrentAppBarActions extends ConsumerWidget {
           decoration: const InputDecoration(hintText: 'New name'),
         ),
         actions: <Widget>[
-          TextButton(onPressed: () => Navigator.of(context).pop(null), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
           FilledButton(onPressed: () => Navigator.of(context).pop(ctrl.text), child: const Text('Save')),
         ],
       ),
@@ -354,6 +352,7 @@ class QbittorrentAppBarActions extends ConsumerWidget {
   void _showSortMenu(BuildContext context, WidgetRef ref) {
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       builder: (BuildContext context) {
         return Consumer(
           builder: (BuildContext context, WidgetRef ref, Widget? child) {
@@ -562,7 +561,6 @@ class _TorrentTile extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: Insets.md, vertical: Insets.sm),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: <Widget>[
                   Padding(
                     padding: const EdgeInsets.only(right: Insets.md),
@@ -653,7 +651,7 @@ class _TorrentTile extends ConsumerWidget {
                           value: torrent.progress,
                           minHeight: 4,
                           borderRadius: BorderRadius.circular(2),
-                          backgroundColor: theme.colorScheme.onSurface.withOpacity(0.12),
+                          backgroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.12),
                         ),
                       ],
                     ],
@@ -813,7 +811,7 @@ class _ExpandableFabState extends State<_ExpandableFab>
   List<Widget> _buildExpandingActionButtons() {
     final List<Widget> children = widget.builder(context, _close);
     final int count = children.length;
-    final double step = 68.0;
+    const double step = 68.0;
     for (int i = 0; i < count; i++) {
       children[i] = _ExpandingActionButton(
         maxDistance: (i + 1) * step,
