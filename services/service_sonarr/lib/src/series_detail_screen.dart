@@ -219,20 +219,25 @@ class _BodyState extends ConsumerState<_Body> {
                     imageUrl: fanartUrl,
                     fit: BoxFit.cover,
                     memCacheWidth: 1000,
-                    // Blend-mode darkening — no Opacity saveLayer.
+                    // In dark mode: darken heavily so art merges into black scaffold.
+                    // In light mode: lighter darken — art stays visible but muted.
                     color: Colors.black
-                        .withValues(alpha: isDark ? 0.65 : 0.40),
+                        .withValues(alpha: isDark ? 0.65 : 0.45),
                     colorBlendMode: BlendMode.darken,
                     errorWidget: (_, __, ___) => const SizedBox.shrink(),
                   ),
-                  // Bottom-fade via a simple gradient box (no saveLayer).
-                  const DecoratedBox(
+                  // Bottom-fade: blend to scaffoldBackgroundColor so there's
+                  // no black→white seam in light mode.
+                  DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.bottomCenter,
                         end: Alignment.topCenter,
-                        colors: <Color>[Colors.black, Colors.transparent],
-                        stops: <double>[0.0, 0.45],
+                        colors: <Color>[
+                          theme.scaffoldBackgroundColor,
+                          theme.scaffoldBackgroundColor.withValues(alpha: 0.0),
+                        ],
+                        stops: const <double>[0.0, 0.55],
                       ),
                     ),
                   ),
@@ -381,9 +386,7 @@ class _OverviewCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(Insets.md),
       decoration: BoxDecoration(
-        color: isDark
-            ? colors.surfaceContainerLow.withValues(alpha: 0.88)
-            : colors.surfaceContainerLowest.withValues(alpha: 0.95),
+        color: colors.surfaceContainerLow,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: colors.outlineVariant.withValues(alpha: 0.5),
@@ -858,6 +861,8 @@ class _SeasonTileState extends ConsumerState<_SeasonTile>
     return Card(
       margin: const EdgeInsets.only(bottom: Insets.sm),
       elevation: 0,
+      // Explicit opaque color so artwork never bleeds through in light mode.
+      color: theme.colorScheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(24),
         side: BorderSide(
