@@ -23,6 +23,8 @@ abstract class QbitTorrent with _$QbitTorrent {
     @Default(0) int upspeed,
     /// Total size of selected files, bytes.
     @Default(0) int size,
+    @Default(0) int downloaded,
+    @Default(0) int uploaded,
     /// ETA in seconds; 8640000 means infinity / unknown.
     @Default(8640000) int eta,
     @Default('') String category,
@@ -30,6 +32,10 @@ abstract class QbitTorrent with _$QbitTorrent {
     @JsonKey(name: 'num_seeds') @Default(0) int numSeeds,
     @JsonKey(name: 'num_leechs') @Default(0) int numLeechs,
     @JsonKey(name: 'added_on') @Default(0) int addedOn,
+    @Default(0) int priority,
+    @JsonKey(name: 'completion_on') @Default(0) int completionOn,
+    @JsonKey(name: 'downloaded_session') @Default(0) int downloadedSession,
+    @JsonKey(name: 'uploaded_session') @Default(0) int uploadedSession,
   }) = _QbitTorrent;
 
   factory QbitTorrent.fromJson(Map<String, dynamic> json) =>

@@ -11,11 +11,15 @@ import 'screens/profiles_screen.dart';
 import 'screens/service_detail_screen.dart';
 import 'screens/settings_screen.dart';
 
+final GlobalKey<NavigatorState> _rootNavigatorKey =
+    GlobalKey<NavigatorState>(debugLabel: 'root');
+
 /// The app [GoRouter]. A stateful shell hosts the four bottom-nav branches;
 /// instance-management and service-detail screens push over the Dashboard
 /// branch.
 final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
   return GoRouter(
+    navigatorKey: _rootNavigatorKey,
     initialLocation: AtriumRoutes.dashboard,
     routes: <RouteBase>[
       StatefulShellRoute.indexedStack(
@@ -36,12 +40,14 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
                 routes: <RouteBase>[
                   GoRoute(
                     path: AtriumRoutes.addInstance,
+                    parentNavigatorKey: _rootNavigatorKey,
                     name: AtriumRoutes.addInstanceName,
                     builder: (BuildContext context, GoRouterState state) =>
                         const InstanceFormScreen(),
                   ),
                   GoRoute(
                     path: AtriumRoutes.editInstance,
+                    parentNavigatorKey: _rootNavigatorKey,
                     name: AtriumRoutes.editInstanceName,
                     builder: (BuildContext context, GoRouterState state) =>
                         InstanceFormScreen(
@@ -50,12 +56,14 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
                   ),
                   GoRoute(
                     path: AtriumRoutes.profiles,
+                    parentNavigatorKey: _rootNavigatorKey,
                     name: AtriumRoutes.profilesName,
                     builder: (BuildContext context, GoRouterState state) =>
                         const ProfilesScreen(),
                   ),
                   GoRoute(
                     path: AtriumRoutes.service,
+                    parentNavigatorKey: _rootNavigatorKey,
                     name: AtriumRoutes.serviceName,
                     builder: (BuildContext context, GoRouterState state) =>
                         ServiceDetailScreen(

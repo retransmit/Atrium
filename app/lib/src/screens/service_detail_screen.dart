@@ -87,13 +87,25 @@ class ServiceDetailScreen extends ConsumerWidget {
                 );
               },
             ),
-          IconButton(
-            tooltip: 'Edit',
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: () => context.goNamed(
-              'edit-instance',
-              pathParameters: <String, String>{'instanceId': instance.id},
-            ),
+          if (instance.kind == ServiceKind.qbittorrent)
+            QbittorrentAppBarActions(instance: instance),
+          Consumer(
+            builder: (BuildContext context, WidgetRef ref, Widget? child) {
+              if (instance.kind == ServiceKind.qbittorrent) {
+                final Set<String> selectedHashes = ref.watch(qbitSelectionProvider(instance));
+                if (selectedHashes.isNotEmpty) {
+                  return const SizedBox.shrink();
+                }
+              }
+              return IconButton(
+                tooltip: 'Edit',
+                icon: const Icon(Icons.edit_outlined),
+                onPressed: () => context.goNamed(
+                  'edit-instance',
+                  pathParameters: <String, String>{'instanceId': instance.id},
+                ),
+              );
+            },
           ),
         ],
       ),
