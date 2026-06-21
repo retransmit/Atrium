@@ -786,6 +786,29 @@ class _SeasonTileState extends ConsumerState<_SeasonTile>
     });
   }
 
+  bool _hasActiveDownload() {
+    final List<SonarrQueueRecord> records = widget.seasonEps
+        .map((SonarrEpisode ep) => widget.queueRecordsByEpisode[ep.id])
+        .whereType<SonarrQueueRecord>()
+        .toList();
+    if (records.isEmpty) return false;
+    final double totalSize = records.fold<double>(0, (double p, SonarrQueueRecord r) => p + r.size);
+    final double totalLeft = records.fold<double>(0, (double p, SonarrQueueRecord r) => p + r.sizeleft);
+    final double progress = totalSize <= 0 ? 0 : ((totalSize - totalLeft) / totalSize).clamp(0, 1).toDouble();
+    return progress > 0;
+  }
+
+  @override
+  void didUpdateWidget(covariant _SeasonTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only sync the pulse when the download state actually changes.
+    // This avoids the addPostFrameCallback-in-build() feedback loop.
+    if (oldWidget.queueRecordsByEpisode != widget.queueRecordsByEpisode ||
+        oldWidget.seasonEps != widget.seasonEps) {
+      _syncPulse(_hasActiveDownload());
+    }
+  }
+
   Future<void> _toggleSeason() async {
     final SonarrApi api =
         await ref.read(sonarrApiProvider(widget.instance).future);
@@ -853,10 +876,6 @@ class _SeasonTileState extends ConsumerState<_SeasonTile>
     final bool hasActiveDownload =
         seasonQueueRecords.isNotEmpty && progress > 0;
 
-    // Sync pulse animation after build without calling setState inside build.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _syncPulse(hasActiveDownload);
-    });
 
     return Card(
       margin: const EdgeInsets.only(bottom: Insets.sm),
