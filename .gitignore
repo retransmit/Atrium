@@ -79,6 +79,13 @@ lcov.info
 # Logs
 *.log
 flutter_*.log
+adb_logs.txt
+
+# Web is not a build target
+app/web/
+
+# Stray debug scripts (this is a Dart/Flutter repo)
+*.py
 
 # Local scratch screenshots from device testing
 look*.png
