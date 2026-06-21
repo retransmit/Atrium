@@ -36,7 +36,7 @@ class ScaffoldWithNavBar extends StatelessWidget {
         }
       },
       child: Scaffold(
-        resizeToAvoidBottomInset: false,
+        resizeToAvoidBottomInset: true,
         body: navigationShell,
         bottomNavigationBar: showNavBar && MediaQuery.of(context).viewInsets.bottom == 0
             ? _buildBottomNavigationBar(context)
@@ -48,9 +48,10 @@ class ScaffoldWithNavBar extends StatelessWidget {
   Widget _buildBottomNavigationBar(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme colors = theme.colorScheme;
+    final double bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      margin: EdgeInsets.fromLTRB(20, 0, 20, bottomPadding > 0 ? bottomPadding : 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
         boxShadow: <BoxShadow>[
@@ -61,11 +62,12 @@ class ScaffoldWithNavBar extends StatelessWidget {
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
+      child: RepaintBoundary(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Container(
             color: theme.brightness == Brightness.dark
                 ? colors.surfaceContainer.withValues(alpha: 0.7)
                 : colors.surface.withValues(alpha: 0.85),
@@ -82,6 +84,7 @@ class ScaffoldWithNavBar extends StatelessWidget {
           ),
         ),
       ),
+     ),
     );
   }
 

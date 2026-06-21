@@ -224,9 +224,10 @@ class _SonarrHomeState extends ConsumerState<SonarrHome> {
   Widget _buildBottomNavigationBar(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme colors = theme.colorScheme;
+    final double bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+      margin: EdgeInsets.fromLTRB(20, 0, 20, bottomPadding > 0 ? bottomPadding : 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
         boxShadow: <BoxShadow>[

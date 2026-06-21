@@ -913,115 +913,119 @@ class _QualityProfileSettingsPanel extends ConsumerWidget {
 
     final nameController = TextEditingController(text: payload['name'] as String? ?? '');
     
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            final theme = Theme.of(context);
-            final itemsList = (payload['items'] as List<dynamic>?) ?? [];
-            final allowedQualities = _getAllowedQualities(itemsList);
-            
-            int cutoffId = (payload['cutoff'] as num? ?? 0).toInt();
-            if (cutoffId == 0 && allowedQualities.isNotEmpty) {
-              cutoffId = _getItemId(allowedQualities.first);
-              payload['cutoff'] = cutoffId;
-            } else if (allowedQualities.isNotEmpty && !allowedQualities.any((q) => _getItemId(q) == cutoffId)) {
-              cutoffId = _getItemId(allowedQualities.first);
-              payload['cutoff'] = cutoffId;
-            }
+    try {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) {
+          return StatefulBuilder(
+            builder: (context, setState) {
+              final theme = Theme.of(context);
+              final itemsList = (payload['items'] as List<dynamic>?) ?? [];
+              final allowedQualities = _getAllowedQualities(itemsList);
+              
+              int cutoffId = (payload['cutoff'] as num? ?? 0).toInt();
+              if (cutoffId == 0 && allowedQualities.isNotEmpty) {
+                cutoffId = _getItemId(allowedQualities.first);
+                payload['cutoff'] = cutoffId;
+              } else if (allowedQualities.isNotEmpty && !allowedQualities.any((q) => _getItemId(q) == cutoffId)) {
+                cutoffId = _getItemId(allowedQualities.first);
+                payload['cutoff'] = cutoffId;
+              }
 
-            return AlertDialog(
-              title: Text(profile != null ? (readOnly ? 'View Quality Profile' : 'Edit Quality Profile') : 'Add Quality Profile'),
-              content: SizedBox(
-                width: double.maxFinite,
-                height: 500,
-                child: ListView(
-                  children: [
-                    TextField(
-                      controller: nameController,
-                      enabled: !readOnly,
-                      decoration: const InputDecoration(
-                        labelText: 'Profile Name',
-                        border: OutlineInputBorder(),
-                      ),
-                      onChanged: (val) => payload['name'] = val.trim(),
-                    ),
-                    const SizedBox(height: Insets.md),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Upgrades Allowed'),
-                      value: (payload['upgradeAllowed'] as bool?) ?? false,
-                      onChanged: readOnly ? null : (val) => setState(() => payload['upgradeAllowed'] = val),
-                    ),
-                    if (payload['upgradeAllowed'] == true && allowedQualities.isNotEmpty) ...[
-                      const SizedBox(height: Insets.sm),
-                      DropdownButtonFormField<int>(
-                        initialValue: cutoffId,
+              return AlertDialog(
+                title: Text(profile != null ? (readOnly ? 'View Quality Profile' : 'Edit Quality Profile') : 'Add Quality Profile'),
+                content: SizedBox(
+                  width: double.maxFinite,
+                  height: 500,
+                  child: ListView(
+                    children: [
+                      TextField(
+                        controller: nameController,
+                        enabled: !readOnly,
                         decoration: const InputDecoration(
-                          labelText: 'Upgrade Cutoff',
+                          labelText: 'Profile Name',
                           border: OutlineInputBorder(),
                         ),
-                        items: allowedQualities.map((q) {
-                          final qId = _getItemId(q);
-                          final qName = _getItemName(q);
-                          return DropdownMenuItem<int>(
-                            value: qId,
-                            child: Text(qName),
-                          );
-                        }).toList(),
-                        onChanged: readOnly ? null : (val) {
-                          if (val != null) {
-                            setState(() => payload['cutoff'] = val);
-                          }
-                        },
+                        onChanged: (val) => payload['name'] = val.trim(),
                       ),
+                      const SizedBox(height: Insets.md),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Upgrades Allowed'),
+                        value: (payload['upgradeAllowed'] as bool?) ?? false,
+                        onChanged: readOnly ? null : (val) => setState(() => payload['upgradeAllowed'] = val),
+                      ),
+                      if (payload['upgradeAllowed'] == true && allowedQualities.isNotEmpty) ...[
+                        const SizedBox(height: Insets.sm),
+                        DropdownButtonFormField<int>(
+                          initialValue: cutoffId,
+                          decoration: const InputDecoration(
+                            labelText: 'Upgrade Cutoff',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: allowedQualities.map((q) {
+                            final qId = _getItemId(q);
+                            final qName = _getItemName(q);
+                            return DropdownMenuItem<int>(
+                              value: qId,
+                              child: Text(qName),
+                            );
+                          }).toList(),
+                          onChanged: readOnly ? null : (val) {
+                            if (val != null) {
+                              setState(() => payload['cutoff'] = val);
+                            }
+                          },
+                        ),
+                      ],
+                      const SizedBox(height: Insets.md),
+                      Text('Allowed Qualities', style: theme.textTheme.titleSmall),
+                      const SizedBox(height: Insets.xs),
+                      ...itemsList.map((dynamic item) => _buildQualityItemTile(context, item as Map<String, dynamic>, setState, readOnly: readOnly)),
                     ],
-                    const SizedBox(height: Insets.md),
-                    Text('Allowed Qualities', style: theme.textTheme.titleSmall),
-                    const SizedBox(height: Insets.xs),
-                    ...itemsList.map((dynamic item) => _buildQualityItemTile(context, item as Map<String, dynamic>, setState, readOnly: readOnly)),
-                  ],
+                  ),
                 ),
-              ),
-              actions: [
-                if (readOnly)
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Close'),
-                  )
-                else ...[
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Cancel'),
-                  ),
-                  TextButton(
-                    onPressed: () async {
-                      final name = nameController.text.trim();
-                      if (name.isNotEmpty) {
-                        payload['name'] = name;
-                        if (profile != null) {
-                          await api.updateQualityProfileRaw(payload);
-                        } else {
-                          await api.createQualityProfileRaw(payload);
+                actions: [
+                  if (readOnly)
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Close'),
+                    )
+                  else ...[
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        final name = nameController.text.trim();
+                        if (name.isNotEmpty) {
+                          payload['name'] = name;
+                          if (profile != null) {
+                            await api.updateQualityProfileRaw(payload);
+                          } else {
+                            await api.createQualityProfileRaw(payload);
+                          }
+                          ref.invalidate(sonarrQualityProfilesRawProvider(instance));
+                          ref.invalidate(sonarrQualityProfilesProvider(instance));
                         }
-                        ref.invalidate(sonarrQualityProfilesRawProvider(instance));
-                        ref.invalidate(sonarrQualityProfilesProvider(instance));
-                      }
-                      if (context.mounted) {
-                        Navigator.of(context).pop();
-                      }
-                    },
-                    child: Text(profile != null ? 'Save' : 'Add'),
-                  ),
+                        if (context.mounted) {
+                          Navigator.of(context).pop();
+                        }
+                      },
+                      child: Text(profile != null ? 'Save' : 'Add'),
+                    ),
+                  ],
                 ],
-              ],
-            );
-          },
-        );
-      },
-    );
+              );
+            },
+          );
+        },
+      );
+    } finally {
+      nameController.dispose();
+    }
   }
 
   @override
