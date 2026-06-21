@@ -73,3 +73,22 @@ abstract class QbitTracker with _$QbitTracker {
   factory QbitTracker.fromJson(Map<String, dynamic> json) =>
       _$QbitTrackerFromJson(json);
 }
+
+/// One peer row from `GET /api/v2/sync/torrentPeers`.
+@freezed
+abstract class QbitPeer with _$QbitPeer {
+  const factory QbitPeer({
+    @Default('') String client,
+    @Default('') String connection,
+    @Default('') String country,
+    @JsonKey(name: 'country_code') @Default('') String countryCode,
+    @JsonKey(name: 'dl_speed') @Default(0) int dlSpeed,
+    @JsonKey(name: 'up_speed') @Default(0) int upSpeed,
+    @Default(0) double progress,
+    @Default('') String ip,
+    @Default(0) int port,
+  }) = _QbitPeer;
+
+  factory QbitPeer.fromJson(Map<String, dynamic> json) =>
+      _$QbitPeerFromJson(json);
+}

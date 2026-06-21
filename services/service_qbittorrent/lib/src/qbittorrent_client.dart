@@ -141,15 +141,15 @@ class QbittorrentClient {
         return QbitTransferInfo.fromJson(resp.data as Map<String, dynamic>);
       });
 
-  Future<void> pause(String hash) => _torrentCommand(hash, stop: true);
+  Future<void> pause(List<String> hashes) => _torrentCommand(hashes.join('|'), stop: true);
 
-  Future<void> resume(String hash) => _torrentCommand(hash, stop: false);
+  Future<void> resume(List<String> hashes) => _torrentCommand(hashes.join('|'), stop: false);
 
-  Future<void> delete(String hash, {required bool deleteFiles}) =>
+  Future<void> delete(List<String> hashes, {required bool deleteFiles}) =>
       _guarded(() async {
         await _dio.post<dynamic>(
           'api/v2/torrents/delete',
-          data: <String, dynamic>{'hashes': hash, 'deleteFiles': deleteFiles},
+          data: <String, dynamic>{'hashes': hashes.join('|'), 'deleteFiles': deleteFiles},
           options: Options(contentType: Headers.formUrlEncodedContentType),
         );
       });
@@ -241,6 +241,38 @@ class QbittorrentClient {
             .toList();
       });
 
+  /// Peers list of one torrent (`/sync/torrentPeers`).
+  Future<List<QbitPeer>> getPeers(String hash) => _guarded(() async {
+        final Response<dynamic> resp = await _dio.get<dynamic>(
+          'api/v2/sync/torrentPeers',
+          queryParameters: <String, dynamic>{'hash': hash, 'rid': 0},
+        );
+        final Map<String, dynamic> data = resp.data as Map<String, dynamic>;
+        final Map<String, dynamic>? peersMap =
+            data['peers'] as Map<String, dynamic>?;
+        if (peersMap == null) return <QbitPeer>[];
+
+        final List<QbitPeer> results = <QbitPeer>[];
+        for (final MapEntry<String, dynamic> entry in peersMap.entries) {
+          final String ipPort = entry.key;
+          final Map<String, dynamic> peerData =
+              entry.value as Map<String, dynamic>;
+          
+          String ip = ipPort;
+          int port = 0;
+          if (ipPort.contains(':')) {
+            final int lastColon = ipPort.lastIndexOf(':');
+            ip = ipPort.substring(0, lastColon);
+            port = int.tryParse(ipPort.substring(lastColon + 1)) ?? 0;
+          }
+
+          peerData['ip'] = ip;
+          peerData['port'] = port;
+          results.add(QbitPeer.fromJson(peerData));
+        }
+        return results;
+      });
+
   /// Sets download priority for files within a torrent.
   ///
   /// [priority]: 0 = don't download, 1 = normal, 6 = high, 7 = maximal.
@@ -273,19 +305,19 @@ class QbittorrentClient {
       });
 
   /// Moves a torrent into [category] (empty string clears it).
-  Future<void> setCategory(String hash, String category) => _guarded(() async {
+  Future<void> setCategory(List<String> hashes, String category) => _guarded(() async {
         await _dio.post<dynamic>(
           'api/v2/torrents/setCategory',
-          data: <String, dynamic>{'hashes': hash, 'category': category},
+          data: <String, dynamic>{'hashes': hashes.join('|'), 'category': category},
           options: Options(contentType: Headers.formUrlEncodedContentType),
         );
       });
 
   /// Forces a re-check of a torrent's data.
-  Future<void> recheck(String hash) => _guarded(() async {
+  Future<void> recheck(List<String> hashes) => _guarded(() async {
         await _dio.post<dynamic>(
           'api/v2/torrents/recheck',
-          data: <String, dynamic>{'hashes': hash},
+          data: <String, dynamic>{'hashes': hashes.join('|')},
           options: Options(contentType: Headers.formUrlEncodedContentType),
         );
       });
@@ -301,6 +333,55 @@ class QbittorrentClient {
           data: <String, dynamic>{'hashes': hash},
           options: Options(contentType: Headers.formUrlEncodedContentType),
         );
+      });
+
+  Future<void> reannounce(List<String> hashes) => _guarded(() async {
+        await _dio.post<dynamic>(
+          'api/v2/torrents/reannounce',
+          data: <String, dynamic>{'hashes': hashes.join('|')},
+          options: Options(contentType: Headers.formUrlEncodedContentType),
+        );
+      });
+
+  Future<void> setForceStart(List<String> hashes, {required bool value}) => _guarded(() async {
+        await _dio.post<dynamic>(
+          'api/v2/torrents/setForceStart',
+          data: <String, dynamic>{'hashes': hashes.join('|'), 'value': value},
+          options: Options(contentType: Headers.formUrlEncodedContentType),
+        );
+      });
+
+  Future<void> rename(String hash, String name) => _guarded(() async {
+        await _dio.post<dynamic>(
+          'api/v2/torrents/rename',
+          data: <String, dynamic>{'hash': hash, 'name': name},
+          options: Options(contentType: Headers.formUrlEncodedContentType),
+        );
+      });
+
+  Future<void> setLocation(List<String> hashes, String location) => _guarded(() async {
+        await _dio.post<dynamic>(
+          'api/v2/torrents/setLocation',
+          data: <String, dynamic>{'hashes': hashes.join('|'), 'location': location},
+          options: Options(contentType: Headers.formUrlEncodedContentType),
+        );
+      });
+
+  Future<void> addTags(List<String> hashes, String tags) => _guarded(() async {
+        await _dio.post<dynamic>(
+          'api/v2/torrents/addTags',
+          data: <String, dynamic>{'hashes': hashes.join('|'), 'tags': tags},
+          options: Options(contentType: Headers.formUrlEncodedContentType),
+        );
+      });
+
+  Future<Uint8List> exportTorrent(String hash) => _guarded(() async {
+        final Response<List<int>> resp = await _dio.get<List<int>>(
+          'api/v2/torrents/export',
+          queryParameters: <String, dynamic>{'hash': hash},
+          options: Options(responseType: ResponseType.bytes),
+        );
+        return Uint8List.fromList(resp.data!);
       });
 
   /// Pauses or resumes every torrent. qBit 5.0 renamed the global endpoints
