@@ -161,10 +161,18 @@ class _QueueTab extends ConsumerWidget {
         onRetry: () => ref.invalidate(sonarrQueueProvider(instance)),
         data: (SonarrQueuePage page) {
           if (page.records.isEmpty) {
-            return const EmptyView(
-              icon: Icons.download_done_outlined,
-              title: 'Queue is empty',
-              message: 'Nothing downloading right now.',
+            return const CustomScrollView(
+              physics: AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: EmptyView(
+                    icon: Icons.download_done_outlined,
+                    title: 'Queue is empty',
+                    message: 'Nothing downloading right now.',
+                  ),
+                ),
+              ],
             );
           }
 
@@ -575,10 +583,18 @@ class _HistoryTabState extends ConsumerState<_HistoryTab> {
             onRetry: () => ref.invalidate(sonarrHistoryProvider(widget.instance)),
             data: (SonarrHistoryPage dataPage) {
               if (dataPage.records.isEmpty) {
-                return const EmptyView(
-                  icon: Icons.history,
-                  title: 'History is empty',
-                  message: 'No actions have been logged yet.',
+                return const CustomScrollView(
+                  physics: AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: EmptyView(
+                        icon: Icons.history,
+                        title: 'History is empty',
+                        message: 'No actions have been logged yet.',
+                      ),
+                    ),
+                  ],
                 );
               }
 

@@ -386,10 +386,18 @@ class _BlocklistTabState extends ConsumerState<_BlocklistTab> {
         onRetry: () => ref.invalidate(sonarrBlocklistProvider((widget.instance, _page))),
         data: (SonarrBlocklistPage dataPage) {
           if (dataPage.records.isEmpty) {
-            return const EmptyView(
-              icon: Icons.block,
-              title: 'Blocklist is empty',
-              message: 'No releases have been blocklisted.',
+            return const CustomScrollView(
+              physics: AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: EmptyView(
+                    icon: Icons.block,
+                    title: 'Blocklist is empty',
+                    message: 'No releases have been blocklisted.',
+                  ),
+                ),
+              ],
             );
           }
 

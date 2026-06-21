@@ -112,10 +112,10 @@ class _SeriesTabState extends ConsumerState<_SeriesTab> {
                           sliver: SliverGrid(
                             gridDelegate:
                                 const SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: 150, // Slightly smaller grid cards
-                              childAspectRatio: 0.58,
-                              crossAxisSpacing: 16, // One UI 8.5 Spacing
-                              mainAxisSpacing: 20, // One UI 8.5 Spacing
+                              maxCrossAxisExtent: 140, // Match other services (e.g. Radarr)
+                              childAspectRatio: 0.52, // Match other services (e.g. Radarr)
+                              crossAxisSpacing: Insets.md, // Match Radarr (12)
+                              mainAxisSpacing: Insets.md, // Match Radarr (12)
                             ),
                             delegate: SliverChildBuilderDelegate(
                               (BuildContext context, int index) {
@@ -245,33 +245,21 @@ class _SeriesCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final colors = theme.colorScheme;
+
     final List<SonarrSeasonStats> monitoredSeasons = series.seasons
         .where((SonarrSeasonStats s) => s.monitored)
         .sorted((SonarrSeasonStats a, SonarrSeasonStats b) => b.seasonNumber.compareTo(a.seasonNumber));
 
-    return Container(
-      decoration: BoxDecoration(
-        color: colors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16), // Rounded matching One UI 8.5
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 6,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          splashFactory: InkRipple.splashFactory, // Uniform circular ripple splash
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Expanded(
+    return RepaintBoundary(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: Radii.card,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Expanded(
+              child: ClipRRect(
+                borderRadius: Radii.card,
                 child: Stack(
                   fit: StackFit.expand,
                   children: <Widget>[
@@ -343,39 +331,31 @@ class _SeriesCard extends StatelessWidget {
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
-                child: Text(
-                  series.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
-                child: Text(
-                  _subtitle(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelSmall
-                      ?.copyWith(color: theme.colorScheme.outline),
-                ),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: Insets.xs),
+            Text(
+              series.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            Text(
+              _subtitle(monitoredSeasons),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelSmall
+                  ?.copyWith(color: theme.colorScheme.outline),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  String _subtitle() {
+  String _subtitle(List<SonarrSeasonStats> monitoredSeasons) {
     final List<String> parts = <String>[
       if (series.year != null) '${series.year}',
     ];
-    final List<SonarrSeasonStats> monitoredSeasons = series.seasons
-        .where((SonarrSeasonStats s) => s.monitored)
-        .sorted((SonarrSeasonStats a, SonarrSeasonStats b) => b.seasonNumber.compareTo(a.seasonNumber));
     if (monitoredSeasons.isNotEmpty) {
       final String seasonStatsList = monitoredSeasons.map((SonarrSeasonStats s) {
         final String label = s.seasonNumber == 0 ? 'Specials' : 'S${s.seasonNumber}';
@@ -444,8 +424,9 @@ class _SeriesBannerCard extends ConsumerWidget {
       );
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+    return RepaintBoundary(
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12), // Reduced from 16 to reduce gaps
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16), // 16dp rounded corners
@@ -459,7 +440,7 @@ class _SeriesBannerCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         splashFactory: InkRipple.splashFactory, // Uniform circular splash
         child: SizedBox(
-          height: 142,
+          height: 150, // Increased from 142 to accommodate larger poster with proper padding
           child: Stack(
             fit: StackFit.expand,
             children: <Widget>[
@@ -470,6 +451,7 @@ class _SeriesBannerCard extends ConsumerWidget {
                     imageUrl: bannerUrl,
                     fit: BoxFit.cover,
                     alignment: Alignment.centerRight,
+                    memCacheHeight: 284,
                     errorWidget: (_, __, ___) => Container(
                       color: theme.colorScheme.surfaceContainerHighest,
                     ),
@@ -503,8 +485,8 @@ class _SeriesBannerCard extends ConsumerWidget {
                   children: <Widget>[
                     // Show Cover (Poster) on the left
                     Container(
-                      width: 75,
-                      height: 112,
+                      width: 84, // Increased from 75 to make posters feel larger in list view
+                      height: 126, // Increased from 112 to keep 2:3 aspect ratio
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
                         boxShadow: <BoxShadow>[
@@ -521,6 +503,7 @@ class _SeriesBannerCard extends ConsumerWidget {
                             ? CachedNetworkImage(
                                 imageUrl: posterUrl,
                                 fit: BoxFit.cover,
+                                memCacheWidth: 150,
                                 placeholder: (_, __) => Container(
                                   color: theme.colorScheme.surfaceContainerHighest,
                                 ),
@@ -680,7 +663,7 @@ class _SeriesBannerCard extends ConsumerWidget {
           ),
         ),
       ),
-    );
+    ),);
   }
 }
 
@@ -1084,7 +1067,7 @@ class _FloatingActionCapsuleState extends State<_FloatingActionCapsule> {
       ),
       decoration: BoxDecoration(
         color: _isBlurred
-            ? colors.surfaceContainerHighest.withValues(alpha: 0.65)
+            ? colors.surfaceContainerHighest.withValues(alpha: 0.95)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(20),
         border: _isBlurred
@@ -1103,13 +1086,7 @@ class _FloatingActionCapsuleState extends State<_FloatingActionCapsule> {
       child: RepaintBoundary(
         child: ClipRRect(
           borderRadius: BorderRadius.circular(20),
-          // Only pay the BackdropFilter saveLayer cost when blur is actually needed.
-          child: _isBlurred
-              ? BackdropFilter(
-                  filter: ui.ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
-                  child: capsuleContent,
-                )
-              : capsuleContent,
+          child: capsuleContent,
         ),
       ),
     );

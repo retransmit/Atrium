@@ -218,6 +218,7 @@ class _BodyState extends ConsumerState<_Body> {
                   CachedNetworkImage(
                     imageUrl: fanartUrl,
                     fit: BoxFit.cover,
+                    memCacheWidth: 1000,
                     // Blend-mode darkening — no Opacity saveLayer.
                     color: Colors.black
                         .withValues(alpha: isDark ? 0.65 : 0.40),

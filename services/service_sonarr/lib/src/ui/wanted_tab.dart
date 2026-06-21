@@ -216,7 +216,8 @@ class _GroupedSeriesCardState extends State<_GroupedSeriesCard> with SingleTicke
     final String? imageUrl = poster != null ? widget.api?.posterUrl(poster) : null;
     final bool shouldBuildEpisodes = _isExpanded || _expandController.value > 0;
 
-    return Container(
+    return RepaintBoundary(
+      child: Container(
       margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
         color: colors.surfaceContainerLow,
@@ -262,6 +263,7 @@ class _GroupedSeriesCardState extends State<_GroupedSeriesCard> with SingleTicke
                           : CachedNetworkImage(
                               imageUrl: imageUrl,
                               fit: BoxFit.cover,
+                              memCacheWidth: 80,
                               errorWidget: (_, __, ___) => Container(
                                 color: colors.surfaceContainerHighest,
                                 child: Icon(Icons.live_tv, color: colors.outline, size: 20),
@@ -348,7 +350,7 @@ class _GroupedSeriesCardState extends State<_GroupedSeriesCard> with SingleTicke
           ),
         ],
       ),
-    );
+    ),);
   }
 }
 
@@ -517,10 +519,18 @@ class _WantedMissingSubTabState extends ConsumerState<_WantedMissingSubTab> {
         onRetry: () => ref.invalidate(sonarrWantedMissingProvider(widget.instance)),
         data: (SonarrWantedPage dataPage) {
           if (dataPage.records.isEmpty) {
-            return const EmptyView(
-              icon: Icons.check_circle_outline,
-              title: 'No missing episodes',
-              message: 'Everything is up to date!',
+            return const CustomScrollView(
+              physics: AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: EmptyView(
+                    icon: Icons.check_circle_outline,
+                    title: 'No missing episodes',
+                    message: 'Everything is up to date!',
+                  ),
+                ),
+              ],
             );
           }
 
@@ -662,10 +672,18 @@ class _WantedCutoffSubTabState extends ConsumerState<_WantedCutoffSubTab> {
         onRetry: () => ref.invalidate(sonarrWantedCutoffProvider(widget.instance)),
         data: (SonarrWantedPage dataPage) {
           if (dataPage.records.isEmpty) {
-            return const EmptyView(
-              icon: Icons.check_circle_outline,
-              title: 'No cutoff unmet episodes',
-              message: 'All episodes meet the cutoff!',
+            return const CustomScrollView(
+              physics: AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: EmptyView(
+                    icon: Icons.check_circle_outline,
+                    title: 'No cutoff unmet episodes',
+                    message: 'All episodes meet the cutoff!',
+                  ),
+                ),
+              ],
             );
           }
 

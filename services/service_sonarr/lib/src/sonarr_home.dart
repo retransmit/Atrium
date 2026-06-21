@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
-import 'dart:ui' as ui;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:collection/collection.dart';
 import 'package:core_models/core_models.dart';
@@ -240,22 +239,19 @@ class _SonarrHomeState extends ConsumerState<SonarrHome> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            color: theme.brightness == Brightness.dark
-                ? colors.surfaceContainer.withValues(alpha: 0.7)
-                : colors.surface.withValues(alpha: 0.85),
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: <Widget>[
-                _buildNavItem(context, 0, Icons.movie_filter_outlined, Icons.movie_filter, 'Library'),
-                _buildNavItem(context, 1, Icons.insights_outlined, Icons.insights, 'Activity'),
-                _buildNavItem(context, 2, Icons.find_in_page_outlined, Icons.find_in_page, 'Wanted'),
-                _buildNavItem(context, 3, Icons.grid_view_outlined, Icons.grid_view, 'More'),
-              ],
-            ),
+        child: Container(
+          color: theme.brightness == Brightness.dark
+              ? colors.surfaceContainer.withValues(alpha: 0.95)
+              : colors.surface.withValues(alpha: 0.98),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: <Widget>[
+              _buildNavItem(context, 0, Icons.movie_filter_outlined, Icons.movie_filter, 'Library'),
+              _buildNavItem(context, 1, Icons.insights_outlined, Icons.insights, 'Activity'),
+              _buildNavItem(context, 2, Icons.find_in_page_outlined, Icons.find_in_page, 'Wanted'),
+              _buildNavItem(context, 3, Icons.grid_view_outlined, Icons.grid_view, 'More'),
+            ],
           ),
         ),
       ),

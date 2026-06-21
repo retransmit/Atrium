@@ -41,13 +41,14 @@ class _OneUIAppBar extends StatelessWidget {
 
           // t = 0 (expanded), t = 1 (collapsed/scrolling off)
 
+          final double opacity = (1.0 - t * 1.5).clamp(0.0, 1.0);
+
           return Stack(
             fit: StackFit.expand,
             children: [
               // Large centered title (fades out during scroll-down)
-              Opacity(
-                opacity: (1.0 - t * 1.5).clamp(0.0, 1.0),
-                child: Center(
+              if (opacity > 0.0)
+                Center(
                   child: Padding(
                     padding: EdgeInsets.only(top: safeTop + 20, left: 24, right: 24),
                     child: Text(
@@ -55,7 +56,7 @@ class _OneUIAppBar extends StatelessWidget {
                       style: theme.textTheme.headlineLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                         fontSize: 32,
-                        color: colors.onSurface,
+                        color: colors.onSurface.withValues(alpha: opacity),
                         height: 1.1,
                       ),
                       textAlign: TextAlign.center,
@@ -64,22 +65,21 @@ class _OneUIAppBar extends StatelessWidget {
                     ),
                   ),
                 ),
-              ),
 
               // Leading/Back Button (fades out or floats on top-left)
-              if (showLeading)
+              if (showLeading && opacity > 0.0)
                 Positioned(
                   top: safeTop + 8,
                   left: 16,
-                  child: Opacity(
-                    opacity: (1.0 - t * 1.5).clamp(0.0, 1.0),
-                    child: IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                      onPressed: () {
-                        HapticFeedback.lightImpact();
-                        context.pop();
-                      },
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: colors.onSurface.withValues(alpha: opacity),
                     ),
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      context.pop();
+                    },
                   ),
                 ),
             ],
