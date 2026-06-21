@@ -140,7 +140,7 @@ final qbitTorrentsProvider = Provider.autoDispose
 
     if (searchQuery.isNotEmpty) {
       torrents.retainWhere(
-          (QbitTorrent t) => t.name.toLowerCase().contains(searchQuery));
+          (QbitTorrent t) => t.name.toLowerCase().contains(searchQuery),);
     }
 
     torrents.sort((QbitTorrent a, QbitTorrent b) {

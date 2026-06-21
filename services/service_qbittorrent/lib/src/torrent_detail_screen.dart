@@ -369,7 +369,7 @@ class _TrackersTab extends ConsumerWidget {
 
 String _getCountryFlag(String countryCode) {
   if (countryCode.isEmpty || countryCode.length != 2) return '❓';
-  final int offset = 127397;
+  const int offset = 127397;
   final int c1 = countryCode.toUpperCase().codeUnitAt(0) + offset;
   final int c2 = countryCode.toUpperCase().codeUnitAt(1) + offset;
   return String.fromCharCode(c1) + String.fromCharCode(c2);
