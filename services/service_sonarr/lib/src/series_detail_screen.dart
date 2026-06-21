@@ -5,6 +5,7 @@ import 'package:collection/collection.dart';
 import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -65,42 +66,84 @@ class SeriesDetailScreen extends ConsumerWidget {
   }
 }
 
-class _Body extends ConsumerWidget {
+class _Body extends ConsumerStatefulWidget {
   const _Body({required this.instance, required this.series});
 
   final Instance instance;
   final SonarrSeries series;
 
-  void _refresh(WidgetRef ref) {
-    ref.invalidate(sonarrSeriesByIdProvider((instance, series.id)));
-    ref.invalidate(sonarrSeriesProvider(instance));
-    ref.invalidate(sonarrEpisodesProvider((instance, series.id)));
+  @override
+  ConsumerState<_Body> createState() => _BodyState();
+}
+
+class _BodyState extends ConsumerState<_Body> {
+  late final ScrollController _scrollController;
+  bool _showScrollUp = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_scrollListener);
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void dispose() {
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollListener() {
+    if (_scrollController.hasClients) {
+      final bool show = _scrollController.offset > 300;
+      if (show != _showScrollUp) {
+        setState(() => _showScrollUp = show);
+      }
+    }
+  }
+
+  void _scrollToTop() {
+    HapticFeedback.lightImpact();
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _refresh() {
+    ref.invalidate(sonarrSeriesByIdProvider((widget.instance, widget.series.id)));
+    ref.invalidate(sonarrSeriesProvider(widget.instance));
+    ref.invalidate(sonarrEpisodesProvider((widget.instance, widget.series.id)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
-    final SonarrApi? api = ref.watch(sonarrApiProvider(instance)).value;
-    final SonarrImage? poster = series.images
+    final SonarrApi? api = ref.watch(sonarrApiProvider(widget.instance)).value;
+    final SonarrImage? poster = widget.series.images
         .firstWhereOrNull((SonarrImage i) => i.coverType == 'poster');
     final String? imageUrl = poster == null ? null : api?.posterUrl(poster);
 
-    final SonarrImage? fanart = series.images
+    final SonarrImage? fanart = widget.series.images
         .firstWhereOrNull((SonarrImage i) => i.coverType == 'fanart');
     final String? fanartUrl = fanart == null ? null : api?.posterUrl(fanart);
 
-    final List<SonarrSeasonStats> seasons = series.seasons
+    final List<SonarrSeasonStats> seasons = widget.series.seasons
         .where((SonarrSeasonStats s) => s.seasonNumber > 0)
         .sorted(
           (SonarrSeasonStats a, SonarrSeasonStats b) =>
               b.seasonNumber - a.seasonNumber,
         );
-    final SonarrSeasonStats? specials = series.seasons
+    final SonarrSeasonStats? specials = widget.series.seasons
         .firstWhereOrNull((SonarrSeasonStats s) => s.seasonNumber == 0);
 
     final AsyncValue<List<SonarrEpisode>> episodesValue =
-        ref.watch(sonarrEpisodesProvider((instance, series.id)));
+        ref.watch(sonarrEpisodesProvider((widget.instance, widget.series.id)));
+
+    final ColorScheme colors = theme.colorScheme;
 
     return Stack(
       children: <Widget>[
@@ -158,19 +201,20 @@ class _Body extends ConsumerWidget {
             ),
           ),
         RefreshIndicator(
-          onRefresh: () async => _refresh(ref),
+          onRefresh: () async => _refresh(),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 180, 16, 24),
+            controller: _scrollController,
+            padding: const EdgeInsets.fromLTRB(16, 280, 16, 24),
             children: <Widget>[
-              _Header(instance: instance, series: series, imageUrl: imageUrl),
+              _Header(instance: widget.instance, series: widget.series, imageUrl: imageUrl),
               const SizedBox(height: 16),
-              _ActionsRow(instance: instance, series: series, onChanged: _refresh),
-              if (series.overview != null && series.overview!.isNotEmpty) ...<Widget>[
+              _ActionsRow(instance: widget.instance, series: widget.series, onChanged: (_) => _refresh()),
+              if (widget.series.overview != null && widget.series.overview!.isNotEmpty) ...<Widget>[
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(Insets.md),
                   decoration: BoxDecoration(
-                    color: isDark 
+                    color: isDark
                         ? theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.8)
                         : theme.colorScheme.surfaceContainerLowest.withValues(alpha: 0.9),
                     borderRadius: BorderRadius.circular(24),
@@ -179,7 +223,7 @@ class _Body extends ConsumerWidget {
                     ),
                   ),
                   child: Text(
-                    series.overview!,
+                    widget.series.overview!,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       height: 1.4,
                     ),
@@ -196,21 +240,56 @@ class _Body extends ConsumerWidget {
               ),
               for (final SonarrSeasonStats season in seasons)
                 _SeasonTile(
-                  instance: instance,
-                  series: series,
+                  instance: widget.instance,
+                  series: widget.series,
                   season: season,
-                  onChanged: _refresh,
+                  onChanged: (_) => _refresh(),
                   episodesValue: episodesValue,
                 ),
               if (specials != null)
                 _SeasonTile(
-                  instance: instance,
-                  series: series,
+                  instance: widget.instance,
+                  series: widget.series,
                   season: specials,
-                  onChanged: _refresh,
+                  onChanged: (_) => _refresh(),
                   episodesValue: episodesValue,
                 ),
             ],
+          ),
+        ),
+        // Floating scroll-to-top button
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOutCubic,
+          bottom: _showScrollUp ? 96 : 40,
+          right: 24,
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 200),
+            opacity: _showScrollUp ? 1.0 : 0.0,
+            child: IgnorePointer(
+              ignoring: !_showScrollUp,
+              child: Container(
+                decoration: BoxDecoration(
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: FloatingActionButton.small(
+                  heroTag: 'scroll_up_series_detail',
+                  onPressed: _scrollToTop,
+                  backgroundColor: colors.secondaryContainer,
+                  foregroundColor: colors.onSecondaryContainer,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.keyboard_arrow_up_rounded, size: 24),
+                ),
+              ),
+            ),
           ),
         ),
       ],
@@ -555,10 +634,11 @@ class _SeasonTileState extends ConsumerState<_SeasonTile> with TickerProviderSta
   @override
   void initState() {
     super.initState();
+    // Pulsing animation for active downloads — starts stopped, only runs when needed
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
+    );
 
     _expandController = AnimationController(
       vsync: this,
@@ -575,6 +655,16 @@ class _SeasonTileState extends ConsumerState<_SeasonTile> with TickerProviderSta
     _animationController.dispose();
     _expandController.dispose();
     super.dispose();
+  }
+
+  /// Called by build to sync the pulse animation with download activity.
+  void _syncPulseAnimation(bool hasActiveDownload) {
+    if (hasActiveDownload && !_animationController.isAnimating) {
+      _animationController.repeat(reverse: true);
+    } else if (!hasActiveDownload && _animationController.isAnimating) {
+      _animationController.stop();
+      _animationController.value = 0;
+    }
   }
 
   void _toggleExpand() {
@@ -666,6 +756,13 @@ class _SeasonTileState extends ConsumerState<_SeasonTile> with TickerProviderSta
         : (st.episodeFileCount / st.totalEpisodeCount)
             .clamp(0, 1)
             .toDouble();
+
+    // Sync the pulse animation outside build scheduling by scheduling a post-frame callback
+    // so we never call setState or animation methods during a build.
+    final bool hasActiveDownload = seasonQueueRecords.isNotEmpty && progress > 0;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncPulseAnimation(hasActiveDownload);
+    });
 
     return Card(
       margin: const EdgeInsets.only(bottom: Insets.sm),
