@@ -52,20 +52,32 @@ class ScaffoldWithNavBar extends StatelessWidget {
       margin: EdgeInsets.fromLTRB(20, 0, 20, bottomPadding > 0 ? bottomPadding : 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        border: theme.brightness == Brightness.dark
+            ? Border.all(
+                color: colors.outlineVariant.withValues(alpha: 0.4),
+              )
+            : null,
+        boxShadow: theme.brightness == Brightness.dark
+            ? null
+            : <BoxShadow>[
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.10),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.12),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
         child: Container(
-          color: theme.brightness == Brightness.dark
-              ? colors.surfaceContainer.withValues(alpha: 0.95)
-              : colors.surface.withValues(alpha: 0.98),
+          color: colors.surfaceContainer.withValues(
+            alpha: theme.brightness == Brightness.dark ? 0.92 : 0.96,
+          ),
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,

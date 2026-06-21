@@ -92,6 +92,7 @@ class SonarrNotification {
 
   int get id => ((raw['id'] as num?) ?? 0).toInt();
   String get name => (raw['name'] as String?) ?? '';
+  bool get enable => (raw['enable'] as bool?) ?? false;
   bool get onGrab => (raw['onGrab'] as bool?) ?? false;
   bool get onDownload => (raw['onDownload'] as bool?) ?? false;
   bool get onUpgrade => (raw['onUpgrade'] as bool?) ?? false;

@@ -1062,13 +1062,13 @@ class _FloatingActionCapsuleState extends State<_FloatingActionCapsule> {
     final Widget capsuleContent = AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       padding: EdgeInsets.symmetric(
-        horizontal: _isBlurred ? 8 : 0,
-        vertical: _isBlurred ? 4 : 0,
+        horizontal: _isBlurred ? 8 : 4,
+        vertical: _isBlurred ? 4 : 2,
       ),
       decoration: BoxDecoration(
         color: _isBlurred
             ? colors.surfaceContainerHighest.withValues(alpha: 0.95)
-            : Colors.transparent,
+            : colors.surfaceContainerHighest.withValues(alpha: 0.0),
         borderRadius: BorderRadius.circular(20),
         border: _isBlurred
             ? Border.all(color: colors.outlineVariant.withValues(alpha: 0.2), width: 0.5)
@@ -1076,7 +1076,14 @@ class _FloatingActionCapsuleState extends State<_FloatingActionCapsule> {
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        children: widget.actions,
+        children: widget.actions.map((action) {
+          // Wrap each action in IconTheme so icons inherit onSurface
+          // regardless of whether there's a pill background behind them.
+          return IconTheme(
+            data: IconThemeData(color: colors.onSurface),
+            child: action,
+          );
+        }).toList(),
       ),
     );
 

@@ -286,6 +286,15 @@ class _NotificationSettingsPanel extends ConsumerWidget {
 
                   return ListTile(
                     contentPadding: EdgeInsets.zero,
+                    leading: Switch(
+                      value: notification.enable,
+                      onChanged: (val) async {
+                        final api = await ref.read(sonarrApiProvider(instance).future);
+                        final newRaw = Map<String, dynamic>.of(notification.raw)..['enable'] = val;
+                        await api.updateNotificationRaw(newRaw);
+                        ref.invalidate(sonarrNotificationsProvider(instance));
+                      },
+                    ),
                     title: Text(notification.name, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
                     subtitle: Text('Triggers: ${activeTriggers.isEmpty ? "None" : activeTriggers.join(", ")}'),
                     trailing: Row(

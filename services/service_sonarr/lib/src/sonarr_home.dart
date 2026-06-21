@@ -80,144 +80,101 @@ class _SonarrHomeState extends ConsumerState<SonarrHome> {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData parentTheme = Theme.of(context);
-    final bool isOled = parentTheme.scaffoldBackgroundColor == Colors.black;
-
-    // Create a brand-aligned color scheme for Sonarr (signature Steel Blue/Cyan seed)
-    ColorScheme sonarrScheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF0084C2),
-      brightness: parentTheme.brightness,
-    );
-
-    if (isOled) {
-      sonarrScheme = sonarrScheme.copyWith(
-        surface: Colors.black,
-        surfaceContainer: Colors.black,
-        surfaceContainerLow: Colors.black,
-        surfaceContainerLowest: Colors.black,
-        surfaceContainerHigh: Colors.black,
-      );
-    }
-
-    final ThemeData sonarrTheme = parentTheme.copyWith(
-      colorScheme: sonarrScheme,
-      scaffoldBackgroundColor: isOled ? Colors.black : sonarrScheme.surface,
-      splashFactory: InkRipple.splashFactory,
-      cardTheme: parentTheme.cardTheme.copyWith(
-        color: isOled
-            ? Colors.grey.withValues(alpha: 0.12)
-            : sonarrScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-      ),
-      inputDecorationTheme: parentTheme.inputDecorationTheme.copyWith(
-        fillColor: sonarrScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-      ),
-      chipTheme: parentTheme.chipTheme.copyWith(
-        backgroundColor: sonarrScheme.surfaceContainerHighest,
-      ),
-    );
-
-    return Theme(
-      data: sonarrTheme,
-      child: Builder(
-        builder: (BuildContext localContext) {
-          return Scaffold(
-            extendBody: true,
-            body: Stack(
-              children: [
-                NotificationListener<ScrollNotification>(
-                  onNotification: (ScrollNotification notification) {
-                    // Only listen to depth-0 horizontal scroll — that is the PageView itself.
-                    if (notification.depth == 0 && notification.metrics.axis == Axis.horizontal) {
-                      if (notification is ScrollStartNotification) {
-                        // Record whether the drag started at pixel 0 (Library page boundary).
-                        _startedAtZero = _currentIndex == 0 && notification.metrics.pixels == 0.0;
-                        _isPopping = false;
-                      } else if (notification is OverscrollNotification &&
-                          notification.overscroll < 0 &&
-                          _startedAtZero &&
-                          !_isPopping) {
-                        // A right-drag past 60 logical pixels beyond the left boundary
-                        // triggers a back-navigation to the Atrium dashboard.
-                        if (notification.overscroll < -60.0) {
-                          _isPopping = true;
-                          HapticFeedback.mediumImpact();
-                          context.pop();
-                          return true;
-                        }
-                      } else if (notification is ScrollEndNotification) {
-                        _startedAtZero = false;
-                        _isPopping = false;
-                      }
-                    }
-                    return false;
-                  },
-                  child: PageView(
-                    controller: _pageController,
-                    // BouncingScrollPhysics is required on Android/Windows so that
-                    // the OverscrollNotification actually fires at the left boundary.
-                    physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-                    onPageChanged: (int index) {
-                      setState(() {
-                        _currentIndex = index;
-                      });
-                      ref.read(sonarrActiveTabBarIndexProvider(widget.instance).notifier).state = index;
-                    },
-                    children: <Widget>[
-                      _SeriesTab(instance: widget.instance),
-                      _ActivityTab(instance: widget.instance),
-                      _WantedTab(instance: widget.instance),
-                      _MoreTab(instance: widget.instance),
+    return Scaffold(
+      extendBody: true,
+      body: Stack(
+        children: [
+          NotificationListener<ScrollNotification>(
+            onNotification: (ScrollNotification notification) {
+              // Only listen to depth-0 horizontal scroll — that is the PageView itself.
+              if (notification.depth == 0 && notification.metrics.axis == Axis.horizontal) {
+                if (notification is ScrollStartNotification) {
+                  // Record whether the drag started at pixel 0 (Library page boundary).
+                  _startedAtZero = _currentIndex == 0 && notification.metrics.pixels == 0.0;
+                  _isPopping = false;
+                } else if (notification is OverscrollNotification &&
+                    notification.overscroll < 0 &&
+                    _startedAtZero &&
+                    !_isPopping) {
+                  // A right-drag past 60 logical pixels beyond the left boundary
+                  // triggers a back-navigation to the Atrium dashboard.
+                  if (notification.overscroll < -60.0) {
+                    _isPopping = true;
+                    HapticFeedback.mediumImpact();
+                    context.pop();
+                    return true;
+                  }
+                } else if (notification is ScrollEndNotification) {
+                  _startedAtZero = false;
+                  _isPopping = false;
+                }
+              }
+              return false;
+            },
+            child: PageView(
+              controller: _pageController,
+              // BouncingScrollPhysics is required on Android/Windows so that
+              // the OverscrollNotification actually fires at the left boundary.
+              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+              onPageChanged: (int index) {
+                setState(() {
+                  _currentIndex = index;
+                });
+                ref.read(sonarrActiveTabBarIndexProvider(widget.instance).notifier).state = index;
+              },
+              children: <Widget>[
+                _SeriesTab(instance: widget.instance),
+                _ActivityTab(instance: widget.instance),
+                _WantedTab(instance: widget.instance),
+                _MoreTab(instance: widget.instance),
+              ],
+            ),
+          ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: Container(
+                height: MediaQuery.of(context).padding.top + 24.0,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Theme.of(context).scaffoldBackgroundColor,
+                      Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.0),
                     ],
                   ),
                 ),
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: IgnorePointer(
-                    child: Container(
-                      height: MediaQuery.of(localContext).padding.top + 24.0,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Theme.of(localContext).scaffoldBackgroundColor,
-                            Theme.of(localContext).scaffoldBackgroundColor.withValues(alpha: 0.0),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: IgnorePointer(
-                    child: Container(
-                      height: 140.0,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Theme.of(localContext).scaffoldBackgroundColor.withValues(alpha: 0.0),
-                            Theme.of(localContext).scaffoldBackgroundColor,
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-            bottomNavigationBar: MediaQuery.of(localContext).viewInsets.bottom == 0
-                ? _buildBottomNavigationBar(localContext)
-                : null,
-          );
-        },
+          ),
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: Container(
+                height: 140.0,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.0),
+                      Theme.of(context).scaffoldBackgroundColor,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
+      bottomNavigationBar: MediaQuery.of(context).viewInsets.bottom == 0
+          ? _buildBottomNavigationBar(context)
+          : null,
     );
   }
 
@@ -230,20 +187,32 @@ class _SonarrHomeState extends ConsumerState<SonarrHome> {
       margin: EdgeInsets.fromLTRB(20, 0, 20, bottomPadding > 0 ? bottomPadding : 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        border: theme.brightness == Brightness.dark
+            ? Border.all(
+                color: colors.outlineVariant.withValues(alpha: 0.4),
+              )
+            : null,
+        boxShadow: theme.brightness == Brightness.dark
+            ? null
+            : <BoxShadow>[
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.10),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.12),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
         child: Container(
-          color: theme.brightness == Brightness.dark
-              ? colors.surfaceContainer.withValues(alpha: 0.95)
-              : colors.surface.withValues(alpha: 0.98),
+          color: colors.surfaceContainer.withValues(
+            alpha: theme.brightness == Brightness.dark ? 0.92 : 0.96,
+          ),
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,

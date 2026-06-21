@@ -24,6 +24,8 @@ class _OneUIAppBar extends StatelessWidget {
     final double safeTop = MediaQuery.of(context).padding.top;
     const double collapsedHeight = 56;
 
+    final bool isDark = theme.brightness == Brightness.dark;
+
     return SliverAppBar(
       expandedHeight: expandedHeight,
       collapsedHeight: collapsedHeight,
@@ -31,6 +33,13 @@ class _OneUIAppBar extends StatelessWidget {
       elevation: 0,
       scrolledUnderElevation: 0,
       automaticallyImplyLeading: false,
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        // In light mode the scaffold is white → need dark (visible) icons.
+        // In dark mode the scaffold is dark → need light (visible) icons.
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+      ),
       flexibleSpace: LayoutBuilder(
         builder: (ctx, c) {
           final double expandedH = expandedHeight + safeTop;
