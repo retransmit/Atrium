@@ -1,6 +1,5 @@
 import 'package:core_models/core_models.dart';
 import 'package:core_profile/core_profile.dart';
-import 'package:core_router/core_router.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -36,81 +35,72 @@ class ServiceDetailScreen extends ConsumerWidget {
     if (instance == null) {
       return const _NotFound();
     }
-
-    final Widget child = instance.kind == ServiceKind.sonarr
-        ? SonarrHome(instance: instance)
-        : Scaffold(
-            appBar: AppBar(
-              title: Text(instance.name),
-              actions: <Widget>[
-                if (instance.kind == ServiceKind.emby ||
-                    instance.kind == ServiceKind.jellyfin ||
-                    instance.kind == ServiceKind.plex ||
-                    instance.kind == ServiceKind.seerr)
-                  IconButton(
-                    tooltip: 'Search',
-                    icon: const Icon(Icons.search),
-                    onPressed: () {
-                      showSearch<void>(
-                        context: context,
-                        // Root navigator: the search page is pushed imperatively,
-                        // so it must not ride the branch navigator (GoRouter shell
-                        // rebuilds sweep it).
-                        useRootNavigator: true,
-                        delegate: switch (instance.kind) {
-                          ServiceKind.emby => EmbySearchDelegate(instance: instance),
-                          ServiceKind.plex => PlexSearchDelegate(instance: instance),
-                          ServiceKind.seerr => SeerrSearchDelegate(instance: instance),
-                          _ => JellyfinSearchDelegate(instance: instance),
-                        },
-                      );
-                    },
-                  ),
-                if (instance.kind == ServiceKind.sonarr)
-                  Consumer(
-                    builder: (BuildContext context, WidgetRef ref, Widget? child) {
-                      final int activeTab = ref.watch(sonarrActiveTabBarIndexProvider(instance));
-                      if (activeTab != 0) {
-                        return const SizedBox.shrink();
-                      }
-                      final SonarrViewMode viewMode = ref.watch(sonarrViewModeProvider(instance));
-                      return IconButton(
-                        tooltip: viewMode == SonarrViewMode.grid
-                            ? 'Switch to Banner List'
-                            : 'Switch to Grid',
-                        icon: Icon(viewMode == SonarrViewMode.grid
-                            ? Icons.view_headline
-                            : Icons.grid_view),
-                        onPressed: () {
-                          ref.read(sonarrViewModeProvider(instance).notifier).setViewMode(
-                                viewMode == SonarrViewMode.grid
-                                    ? SonarrViewMode.banner
-                                    : SonarrViewMode.grid,
-                              );
-                        },
-                      );
-                    },
-                  ),
-                IconButton(
-                  tooltip: 'Edit',
-                  icon: const Icon(Icons.edit_outlined),
-                  onPressed: () => context.goNamed(
-                    'edit-instance',
-                    pathParameters: <String, String>{'instanceId': instance.id},
-                  ),
-                ),
-              ],
+    if (instance.kind == ServiceKind.sonarr) {
+      return SonarrHome(instance: instance);
+    }
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(instance.name),
+        actions: <Widget>[
+          if (instance.kind == ServiceKind.emby ||
+              instance.kind == ServiceKind.jellyfin ||
+              instance.kind == ServiceKind.plex ||
+              instance.kind == ServiceKind.seerr)
+            IconButton(
+              tooltip: 'Search',
+              icon: const Icon(Icons.search),
+              onPressed: () {
+                showSearch<void>(
+                  context: context,
+                  // Root navigator: the search page is pushed imperatively,
+                  // so it must not ride the branch navigator (GoRouter shell
+                  // rebuilds sweep it).
+                  useRootNavigator: true,
+                  delegate: switch (instance.kind) {
+                    ServiceKind.emby => EmbySearchDelegate(instance: instance),
+                    ServiceKind.plex => PlexSearchDelegate(instance: instance),
+                    ServiceKind.seerr => SeerrSearchDelegate(instance: instance),
+                    _ => JellyfinSearchDelegate(instance: instance),
+                  },
+                );
+              },
             ),
-            body: _bodyFor(instance),
-          );
-
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (bool didPop, dynamic result) {
-        if (didPop) return;
-        context.go(AtriumRoutes.dashboard);
-      },
-      child: child,
+          if (instance.kind == ServiceKind.sonarr)
+            Consumer(
+              builder: (BuildContext context, WidgetRef ref, Widget? child) {
+                final int activeTab = ref.watch(sonarrActiveTabBarIndexProvider(instance));
+                if (activeTab != 0) {
+                  return const SizedBox.shrink();
+                }
+                final SonarrViewMode viewMode = ref.watch(sonarrViewModeProvider(instance));
+                return IconButton(
+                  tooltip: viewMode == SonarrViewMode.grid
+                      ? 'Switch to Banner List'
+                      : 'Switch to Grid',
+                  icon: Icon(viewMode == SonarrViewMode.grid
+                      ? Icons.view_headline
+                      : Icons.grid_view),
+                  onPressed: () {
+                    ref.read(sonarrViewModeProvider(instance).notifier).setViewMode(
+                          viewMode == SonarrViewMode.grid
+                              ? SonarrViewMode.banner
+                              : SonarrViewMode.grid,
+                        );
+                  },
+                );
+              },
+            ),
+          IconButton(
+            tooltip: 'Edit',
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: () => context.goNamed(
+              'edit-instance',
+              pathParameters: <String, String>{'instanceId': instance.id},
+            ),
+          ),
+        ],
+      ),
+      body: _bodyFor(instance),
     );
   }
 

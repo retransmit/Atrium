@@ -1,7 +1,10 @@
 import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+
+import 'routes.dart';
 
 /// The bottom-navigation shell that hosts the four top-level branches.
 ///
@@ -17,10 +20,25 @@ class ScaffoldWithNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final String location = GoRouterState.of(context).uri.path;
     final bool showNavBar = !location.contains('/service/');
+    final bool isDashboardRoot = navigationShell.currentIndex == 0 && location == AtriumRoutes.dashboard;
 
-    return Scaffold(
-      body: navigationShell,
-      bottomNavigationBar: showNavBar ? _buildBottomNavigationBar(context) : null,
+    return PopScope(
+      canPop: isDashboardRoot,
+      onPopInvokedWithResult: (bool didPop, dynamic result) {
+        if (didPop) return;
+
+        if (navigationShell.currentIndex != 0) {
+          // Pressing back from any other tab goes to Dashboard
+          navigationShell.goBranch(0);
+        } else {
+          // Pressing back from any sub-page under Dashboard goes back to Dashboard root
+          context.go(AtriumRoutes.dashboard);
+        }
+      },
+      child: Scaffold(
+        body: navigationShell,
+        bottomNavigationBar: showNavBar ? _buildBottomNavigationBar(context) : null,
+      ),
     );
   }
 
