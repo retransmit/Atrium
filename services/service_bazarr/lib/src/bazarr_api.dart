@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:core_networking/core_networking.dart';
 import 'package:dio/dio.dart';
 
@@ -490,6 +492,132 @@ class BazarrApi {
     try {
       await _dio.delete<dynamic>('api/system/logs');
     } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  // --- Settings: languages ---
+
+  /// All subtitle languages (`GET /system/languages`) with their enabled flag.
+  Future<List<BazarrLanguage>> getLanguages() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('api/system/languages');
+      return _listFrom(resp.data)
+          .map((dynamic e) => BazarrLanguage.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Sets the full set of enabled languages (`POST /system/settings`,
+  /// form-urlencoded, `languages-enabled` repeated for each code). A partial
+  /// POST: only this field changes, the rest of the config is untouched.
+  Future<void> setEnabledLanguages(List<String> codes) async {
+    try {
+      await _dio.post<dynamic>(
+        'api/system/settings',
+        data: <String, dynamic>{'languages-enabled': codes},
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          listFormat: ListFormat.multi,
+        ),
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  // --- Settings: providers ---
+
+  /// The full settings object (`GET /system/settings`). Used for
+  /// `general.enabled_providers` and per-provider config sections.
+  Future<Map<String, dynamic>> getBazarrSettings() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('api/system/settings');
+      final dynamic data = resp.data;
+      if (data is Map<String, dynamic>) {
+        return (data['data'] as Map<String, dynamic>?) ?? data;
+      }
+      return <String, dynamic>{};
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Sets the full set of enabled providers (`settings-general-enabled_providers`
+  /// repeated, form-urlencoded). Partial POST: only this field changes.
+  Future<void> setEnabledProviders(List<String> keys) async {
+    try {
+      await _dio.post<dynamic>(
+        'api/system/settings',
+        data: <String, dynamic>{'settings-general-enabled_providers': keys},
+        options: Options(
+          contentType: Headers.formUrlEncodedContentType,
+          listFormat: ListFormat.multi,
+        ),
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Saves one provider's config: each [fields] entry is posted as
+  /// `settings-<provider>-<key>` (form-urlencoded).
+  Future<void> setProviderConfig(
+    String provider,
+    Map<String, String> fields,
+  ) async {
+    try {
+      final Map<String, String> body = <String, String>{
+        for (final MapEntry<String, String> e in fields.entries)
+          'settings-$provider-${e.key}': e.value,
+      };
+      await _dio.post<dynamic>(
+        'api/system/settings',
+        data: body,
+        options: Options(contentType: Headers.formUrlEncodedContentType),
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  // --- Settings: language profiles ---
+
+  /// All language profiles (`GET /system/languages/profiles`).
+  Future<List<BazarrLanguageProfile>> getProfiles() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('api/system/languages/profiles');
+      return _listFrom(resp.data)
+          .map((dynamic e) =>
+              BazarrLanguageProfile.fromJson(e as Map<String, dynamic>),)
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Saves the full set of profiles (`languages-profiles` JSON in the settings
+  /// POST). NOTE: Bazarr persists the profiles but returns 500 from a post-save
+  /// hook, so a 500 here is treated as success (other failures rethrow).
+  Future<void> setProfiles(List<BazarrLanguageProfile> profiles) async {
+    final String json = jsonEncode(
+      profiles.map((BazarrLanguageProfile p) => p.toJson()).toList(),
+    );
+    try {
+      await _dio.post<dynamic>(
+        'api/system/settings',
+        data: <String, dynamic>{'languages-profiles': json},
+        options: Options(contentType: Headers.formUrlEncodedContentType),
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 500) {
+        return; // saved despite the post-save hook error
+      }
       throw NetworkException.fromDio(e);
     }
   }

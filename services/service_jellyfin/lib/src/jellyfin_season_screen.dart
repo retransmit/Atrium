@@ -1,14 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'jellyfin_client.dart';
-import 'jellyfin_deep_link.dart';
 import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'jellyfin_client.dart';
+import 'jellyfin_deep_link.dart';
 import 'jellyfin_item_detail.dart';
-
-
 import 'jellyfin_providers.dart';
 import 'models/jellyfin_item.dart';
 

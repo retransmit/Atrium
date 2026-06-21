@@ -1,9 +1,7 @@
-import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'emby_client.dart';
-import 'models/emby_item.dart';
 
 /// Launches the Emby app for a given item.
 Future<void> launchEmbyDeepLink(BuildContext context, EmbyClient client, String itemId) async {
