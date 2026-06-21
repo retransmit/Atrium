@@ -228,7 +228,24 @@ class _WantedManualImportSubTabState
 
       final SonarrApi api = await ref.read(sonarrApiProvider(widget.instance).future);
       final List<dynamic> reprocessed = await api.reprocessManualImports(payload);
-      await api.manualImport(files: reprocessed);
+      final List<dynamic> files = reprocessed.map((dynamic e) {
+        final m = e as Map<String, dynamic>;
+        return <String, dynamic>{
+          'path': m['path'],
+          'folderName': m['folderName'],
+          'seriesId': (m['series'] as Map<String, dynamic>?)?['id'],
+          'episodeIds': ((m['episodes'] as List<dynamic>?) ?? const <dynamic>[])
+              .map((dynamic ep) => (ep as Map<String, dynamic>)['id'])
+              .toList(),
+          'quality': m['quality'],
+          'languages': m['languages'],
+          'releaseGroup': m['releaseGroup'],
+          'downloadId': m['downloadId'],
+          'indexerFlags': m['indexerFlags'],
+          'releaseType': m['releaseType'],
+        };
+      }).toList();
+      await api.manualImport(files: files);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
