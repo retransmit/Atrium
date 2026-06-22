@@ -174,6 +174,7 @@ class _SeriesTab extends ConsumerWidget {
                                 ),
                               ),
                             ),
+                            onLongPress: () => _showQuickActions(context, ref, s),
                           );
                         },
                       );
@@ -194,6 +195,7 @@ class _SeriesTab extends ConsumerWidget {
                                 ),
                               ),
                             ),
+                            onLongPress: () => _showQuickActions(context, ref, s),
                           );
                         },
                       );
@@ -216,6 +218,95 @@ class _SeriesTab extends ConsumerWidget {
       ),
     );
   }
+
+  Future<void> _toggleMonitored(WidgetRef ref, SonarrSeries s) async {
+    final SonarrApi api = await ref.read(sonarrApiProvider(instance).future);
+    final Map<String, dynamic> raw = await api.getSeriesRaw(s.id);
+    raw['monitored'] = !s.monitored;
+    await api.updateSeriesRaw(raw);
+    ref.invalidate(sonarrSeriesProvider(instance));
+  }
+
+  void _showQuickActions(BuildContext context, WidgetRef ref, SonarrSeries s) {
+    showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      builder: (BuildContext sheetContext) {
+        final ThemeData theme = Theme.of(sheetContext);
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              ListTile(
+                title: Text(
+                  s.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                subtitle: s.year != null ? Text('${s.year}') : null,
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: Icon(
+                  s.monitored ? Icons.bookmark : Icons.bookmark_border,
+                ),
+                title: Text(s.monitored ? 'Unmonitor' : 'Monitor'),
+                onTap: () async {
+                  Navigator.of(sheetContext).pop();
+                  await _toggleMonitored(ref, s);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          s.monitored
+                              ? 'Stopped monitoring ${s.title}'
+                              : 'Monitoring ${s.title}',
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.search),
+                title: const Text('Search all episodes'),
+                onTap: () async {
+                  Navigator.of(sheetContext).pop();
+                  final SonarrApi api =
+                      await ref.read(sonarrApiProvider(instance).future);
+                  await api.searchSeries(s.id);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Search started for ${s.title}')),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.open_in_new),
+                title: const Text('Open details'),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  Navigator.of(context, rootNavigator: true).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => SeriesDetailScreen(
+                        instance: instance,
+                        seriesId: s.id,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: Insets.sm),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
 
 /// Poster card for a single series.
@@ -227,11 +318,13 @@ class _SeriesCard extends StatelessWidget {
     required this.series,
     required this.imageUrl,
     required this.onTap,
+    this.onLongPress,
   });
 
   final SonarrSeries series;
   final String? imageUrl;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -247,6 +340,7 @@ class _SeriesCard extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
@@ -355,11 +449,13 @@ class _SeriesBannerCard extends ConsumerWidget {
     required this.instance,
     required this.series,
     required this.onTap,
+    this.onLongPress,
   });
 
   final Instance instance;
   final SonarrSeries series;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -414,6 +510,7 @@ class _SeriesBannerCard extends ConsumerWidget {
       elevation: 0,
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         child: SizedBox(
           height: 142,
           child: Stack(
@@ -713,6 +810,42 @@ class _SearchBarState extends ConsumerState<_SearchBar> {
   }
 }
 
+/// Sort field, decoupled from direction so the chip can flip asc/desc in place.
+enum _SortField { title, year, size, progress }
+
+_SortField _sortFieldOf(SonarrSortOption o) => switch (o) {
+  SonarrSortOption.titleAsc || SonarrSortOption.titleDesc => _SortField.title,
+  SonarrSortOption.yearAsc || SonarrSortOption.yearDesc => _SortField.year,
+  SonarrSortOption.sizeAsc || SonarrSortOption.sizeDesc => _SortField.size,
+  SonarrSortOption.progressAsc ||
+  SonarrSortOption.progressDesc =>
+    _SortField.progress,
+};
+
+bool _sortIsAsc(SonarrSortOption o) => switch (o) {
+  SonarrSortOption.titleAsc ||
+  SonarrSortOption.yearAsc ||
+  SonarrSortOption.sizeAsc ||
+  SonarrSortOption.progressAsc =>
+    true,
+  _ => false,
+};
+
+SonarrSortOption _composeSort(_SortField field, bool asc) => switch (field) {
+  _SortField.title => asc ? SonarrSortOption.titleAsc : SonarrSortOption.titleDesc,
+  _SortField.year => asc ? SonarrSortOption.yearAsc : SonarrSortOption.yearDesc,
+  _SortField.size => asc ? SonarrSortOption.sizeAsc : SonarrSortOption.sizeDesc,
+  _SortField.progress =>
+    asc ? SonarrSortOption.progressAsc : SonarrSortOption.progressDesc,
+};
+
+String _sortFieldLabel(_SortField f) => switch (f) {
+  _SortField.title => 'Title',
+  _SortField.year => 'Year',
+  _SortField.size => 'Size',
+  _SortField.progress => 'Progress',
+};
+
 class _FilterChipsRow extends ConsumerWidget {
   const _FilterChipsRow({required this.instance});
 
@@ -720,33 +853,33 @@ class _FilterChipsRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
     final SonarrSortOption sortOption = ref.watch(sonarrSortOptionProvider(instance));
     final SonarrStatusFilter statusFilter = ref.watch(sonarrStatusFilterProvider(instance));
     final SonarrMonitoredFilter monitoredFilter = ref.watch(sonarrMonitoredFilterProvider(instance));
-    final SonarrViewMode viewMode = ref.watch(sonarrViewModeProvider(instance));
 
-    String sortLabel(SonarrSortOption opt) => switch (opt) {
-      SonarrSortOption.titleAsc => 'Title (A-Z)',
-      SonarrSortOption.titleDesc => 'Title (Z-A)',
-      SonarrSortOption.yearAsc => 'Year (Oldest)',
-      SonarrSortOption.yearDesc => 'Year (Newest)',
-      SonarrSortOption.sizeAsc => 'Size (Smallest)',
-      SonarrSortOption.sizeDesc => 'Size (Largest)',
-      SonarrSortOption.progressAsc => 'Progress (Lowest)',
-      SonarrSortOption.progressDesc => 'Progress (Highest)',
-    };
+    final _SortField sortField = _sortFieldOf(sortOption);
+    final bool asc = _sortIsAsc(sortOption);
 
     String statusLabel(SonarrStatusFilter flt) => switch (flt) {
-      SonarrStatusFilter.all => 'Status: All',
-      SonarrStatusFilter.continuing => 'Status: Continuing',
-      SonarrStatusFilter.ended => 'Status: Ended',
+      SonarrStatusFilter.all => 'All',
+      SonarrStatusFilter.continuing => 'Continuing',
+      SonarrStatusFilter.ended => 'Ended',
     };
 
     String monitoredLabel(SonarrMonitoredFilter flt) => switch (flt) {
-      SonarrMonitoredFilter.all => 'Monitored: All',
-      SonarrMonitoredFilter.monitored => 'Monitored: Yes',
-      SonarrMonitoredFilter.unmonitored => 'Monitored: No',
+      SonarrMonitoredFilter.all => 'All',
+      SonarrMonitoredFilter.monitored => 'Monitored',
+      SonarrMonitoredFilter.unmonitored => 'Unmonitored',
     };
+
+    void unfocusSoon() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          FocusScope.of(context).unfocus();
+        }
+      });
+    }
 
     return SizedBox(
       height: 48,
@@ -754,136 +887,129 @@ class _FilterChipsRow extends ConsumerWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
         children: <Widget>[
-          // Grid / list view toggle
-          SegmentedButton<SonarrViewMode>(
-            segments: const <ButtonSegment<SonarrViewMode>>[
-              ButtonSegment<SonarrViewMode>(
-                value: SonarrViewMode.grid,
-                icon: Icon(Icons.grid_view_rounded),
-              ),
-              ButtonSegment<SonarrViewMode>(
-                value: SonarrViewMode.banner,
-                icon: Icon(Icons.view_list_rounded),
-              ),
+          // Sort field (menu) + direction (tap to flip A-Z / Z-A).
+          MenuAnchor(
+            builder:
+                (BuildContext context, MenuController controller, Widget? _) =>
+                    ActionChip(
+              avatar: const Icon(Icons.sort, size: 18),
+              label: Text('Sort: ${_sortFieldLabel(sortField)}'),
+              onPressed: () {
+                if (controller.isOpen) {
+                  controller.close();
+                } else {
+                  controller.open();
+                }
+                unfocusSoon();
+              },
+            ),
+            menuChildren: <Widget>[
+              for (final _SortField f in _SortField.values)
+                MenuItemButton(
+                  leadingIcon: Icon(
+                    f == sortField ? Icons.check : Icons.sort,
+                    size: 18,
+                  ),
+                  onPressed: () => ref
+                      .read(sonarrSortOptionProvider(instance).notifier)
+                      .state = _composeSort(f, asc),
+                  child: Text(_sortFieldLabel(f)),
+                ),
             ],
-            selected: <SonarrViewMode>{viewMode},
-            onSelectionChanged: (Set<SonarrViewMode> selection) => ref
-                .read(sonarrViewModeProvider(instance).notifier)
-                .setViewMode(selection.first),
-            showSelectedIcon: false,
-            style: const ButtonStyle(
-              visualDensity: VisualDensity.compact,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
           ),
           const SizedBox(width: Insets.sm),
-          // Sort Chip
-          PopupMenuButton<SonarrSortOption>(
-            onSelected: (SonarrSortOption opt) {
-              ref.read(sonarrSortOptionProvider(instance).notifier).state = opt;
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (context.mounted) {
-                  FocusScope.of(context).unfocus();
-                }
-              });
-            },
-            itemBuilder: (BuildContext context) => SonarrSortOption.values.map(
-              (SonarrSortOption opt) => PopupMenuItem<SonarrSortOption>(
-                value: opt,
-                child: Text(sortLabel(opt)),
-              ),
-            ).toList(),
-            child: IgnorePointer(
-              child: ChoiceChip(
-                avatar: const Icon(Icons.sort, size: 16),
-                label: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Text('Sort: ${sortLabel(sortOption)}'),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.arrow_drop_down, size: 16),
-                  ],
-                ),
-                selected: true,
-                onSelected: (_) {},
-              ),
+          ActionChip(
+            avatar: Icon(
+              asc ? Icons.arrow_upward : Icons.arrow_downward,
+              size: 18,
             ),
+            label: Text(asc ? 'Asc' : 'Desc'),
+            onPressed: () {
+              ref.read(sonarrSortOptionProvider(instance).notifier).state =
+                  _composeSort(sortField, !asc);
+              unfocusSoon();
+            },
           ),
           const SizedBox(width: Insets.sm),
-          // Status Filter Chip
-          PopupMenuButton<SonarrStatusFilter>(
-            onSelected: (SonarrStatusFilter flt) {
-              ref.read(sonarrStatusFilterProvider(instance).notifier).state = flt;
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (context.mounted) {
-                  FocusScope.of(context).unfocus();
+          // Status filter.
+          MenuAnchor(
+            builder:
+                (BuildContext context, MenuController controller, Widget? _) =>
+                    ActionChip(
+              avatar: Icon(
+                statusFilter == SonarrStatusFilter.all
+                    ? Icons.filter_alt_outlined
+                    : Icons.filter_alt,
+                size: 18,
+              ),
+              label: Text('Status: ${statusLabel(statusFilter)}'),
+              backgroundColor: statusFilter != SonarrStatusFilter.all
+                  ? theme.colorScheme.secondaryContainer
+                  : null,
+              onPressed: () {
+                if (controller.isOpen) {
+                  controller.close();
+                } else {
+                  controller.open();
                 }
-              });
-            },
-            itemBuilder: (BuildContext context) => SonarrStatusFilter.values.map(
-              (SonarrStatusFilter flt) => PopupMenuItem<SonarrStatusFilter>(
-                value: flt,
-                child: Text(statusLabel(flt)),
-              ),
-            ).toList(),
-            child: IgnorePointer(
-              child: ChoiceChip(
-                avatar: Icon(
-                  statusFilter == SonarrStatusFilter.all
-                      ? Icons.filter_alt_outlined
-                      : Icons.filter_alt,
-                  size: 16,
-                ),
-                label: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Text(statusLabel(statusFilter)),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.arrow_drop_down, size: 16),
-                  ],
-                ),
-                selected: statusFilter != SonarrStatusFilter.all,
-                onSelected: (_) {},
-              ),
+                unfocusSoon();
+              },
             ),
+            menuChildren: <Widget>[
+              for (final SonarrStatusFilter flt in SonarrStatusFilter.values)
+                MenuItemButton(
+                  leadingIcon: Icon(
+                    flt == statusFilter ? Icons.check : Icons.tv_outlined,
+                    size: 18,
+                  ),
+                  onPressed: () => ref
+                      .read(sonarrStatusFilterProvider(instance).notifier)
+                      .state = flt,
+                  child: Text(statusLabel(flt)),
+                ),
+            ],
           ),
           const SizedBox(width: Insets.sm),
-          // Monitored Filter Chip
-          PopupMenuButton<SonarrMonitoredFilter>(
-            onSelected: (SonarrMonitoredFilter flt) {
-              ref.read(sonarrMonitoredFilterProvider(instance).notifier).state = flt;
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (context.mounted) {
-                  FocusScope.of(context).unfocus();
+          // Monitored filter.
+          MenuAnchor(
+            builder:
+                (BuildContext context, MenuController controller, Widget? _) =>
+                    ActionChip(
+              avatar: Icon(
+                monitoredFilter == SonarrMonitoredFilter.all
+                    ? Icons.bookmark_border
+                    : Icons.bookmark,
+                size: 18,
+              ),
+              label: Text('Monitored: ${monitoredLabel(monitoredFilter)}'),
+              backgroundColor: monitoredFilter != SonarrMonitoredFilter.all
+                  ? theme.colorScheme.secondaryContainer
+                  : null,
+              onPressed: () {
+                if (controller.isOpen) {
+                  controller.close();
+                } else {
+                  controller.open();
                 }
-              });
-            },
-            itemBuilder: (BuildContext context) => SonarrMonitoredFilter.values.map(
-              (SonarrMonitoredFilter flt) => PopupMenuItem<SonarrMonitoredFilter>(
-                value: flt,
-                child: Text(monitoredLabel(flt)),
-              ),
-            ).toList(),
-            child: IgnorePointer(
-              child: ChoiceChip(
-                avatar: Icon(
-                  monitoredFilter == SonarrMonitoredFilter.all
-                      ? Icons.bookmark_border
-                      : Icons.bookmark,
-                  size: 16,
-                ),
-                label: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Text(monitoredLabel(monitoredFilter)),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.arrow_drop_down, size: 16),
-                  ],
-                ),
-                selected: monitoredFilter != SonarrMonitoredFilter.all,
-                onSelected: (_) {},
-              ),
+                unfocusSoon();
+              },
             ),
+            menuChildren: <Widget>[
+              for (final SonarrMonitoredFilter flt
+                  in SonarrMonitoredFilter.values)
+                MenuItemButton(
+                  leadingIcon: Icon(
+                    flt == monitoredFilter
+                        ? Icons.check
+                        : Icons.bookmark_border,
+                    size: 18,
+                  ),
+                  onPressed: () => ref
+                      .read(sonarrMonitoredFilterProvider(instance).notifier)
+                      .state = flt,
+                  child: Text(monitoredLabel(flt)),
+                ),
+            ],
           ),
         ],
       ),
