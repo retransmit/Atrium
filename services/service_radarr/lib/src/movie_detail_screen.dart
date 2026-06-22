@@ -88,7 +88,7 @@ class _Body extends ConsumerWidget {
                       : CachedNetworkImage(
                           imageUrl: imageUrl,
                           fit: BoxFit.cover,
-                          memCacheWidth: 200,
+                          memCacheWidth: 500,
                           errorWidget: (_, __, ___) => Container(
                             color: theme.colorScheme.surfaceContainerHighest,
                             child: Icon(

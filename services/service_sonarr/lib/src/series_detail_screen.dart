@@ -282,7 +282,7 @@ class _Header extends ConsumerWidget {
                       : CachedNetworkImage(
                           imageUrl: imageUrl!,
                           fit: BoxFit.cover,
-                          memCacheWidth: 200,
+                          memCacheWidth: 500,
                           placeholder: (BuildContext context, String url) => Container(
                             color: theme.colorScheme.surfaceContainerHighest,
                             child: const Center(
@@ -428,7 +428,7 @@ class _Backdrop extends StatelessWidget {
           CachedNetworkImage(
             imageUrl: fanartUrl!,
             fit: BoxFit.cover,
-            memCacheWidth: 800,
+            memCacheWidth: 1080,
             errorWidget: (_, __, ___) =>
                 ColoredBox(color: cs.surfaceContainerHigh),
           )
