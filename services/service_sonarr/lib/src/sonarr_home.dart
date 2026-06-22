@@ -240,83 +240,92 @@ class _SeriesCard extends StatelessWidget {
         .where((SonarrSeasonStats s) => s.monitored)
         .sorted((SonarrSeasonStats a, SonarrSeasonStats b) => b.seasonNumber.compareTo(a.seasonNumber));
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: Radii.card,
-      child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Expanded(
-          child: ClipRRect(
-            borderRadius: Radii.card,
-            child: Stack(
-              fit: StackFit.expand,
-              children: <Widget>[
-                _Poster(imageUrl: imageUrl, theme: theme),
-                if (series.monitored)
-                  Positioned(
-                    top: 4,
-                    right: 4,
-                    child: _Badge(
-                      color: theme.colorScheme.primary,
-                      child: Icon(
-                        Icons.bookmark,
-                        size: 12,
-                        color: theme.colorScheme.onPrimary,
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      color: theme.colorScheme.surfaceContainerHigh,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: <Widget>[
+                  _Poster(imageUrl: imageUrl, theme: theme),
+                  if (series.monitored)
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: _Badge(
+                        color: theme.colorScheme.primary,
+                        child: Icon(
+                          Icons.bookmark,
+                          size: 12,
+                          color: theme.colorScheme.onPrimary,
+                        ),
                       ),
                     ),
-                  ),
-                if (monitoredSeasons.isNotEmpty)
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
-                      child: Row(
-                        children: monitoredSeasons.map((SonarrSeasonStats s) {
-                          final double seasonProgress = (s.statistics == null || s.statistics!.totalEpisodeCount == 0)
-                              ? 0
-                              : (s.statistics!.episodeFileCount / s.statistics!.totalEpisodeCount).clamp(0, 1);
-                          return Expanded(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 1),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(1),
-                                child: LinearProgressIndicator(
-                                  value: seasonProgress.toDouble(),
-                                  minHeight: 3,
-                                  backgroundColor: theme.brightness == Brightness.dark
-                                      ? Colors.white12
-                                      : Colors.black12,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    theme.colorScheme.primary,
+                  if (monitoredSeasons.isNotEmpty)
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Padding(
+                        padding: const EdgeInsets.all(3),
+                        child: Row(
+                          children: monitoredSeasons.map((SonarrSeasonStats s) {
+                            final double seasonProgress = (s.statistics == null || s.statistics!.totalEpisodeCount == 0)
+                                ? 0
+                                : (s.statistics!.episodeFileCount / s.statistics!.totalEpisodeCount).clamp(0, 1);
+                            return Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 1),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(2),
+                                  child: LinearProgressIndicator(
+                                    value: seasonProgress.toDouble(),
+                                    minHeight: 4,
+                                    backgroundColor: Colors.black.withValues(alpha: 0.35),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      theme.colorScheme.primary,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          );
-                        }).toList(),
+                            );
+                          }).toList(),
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
-          ),
+            Padding(
+              padding: const EdgeInsets.all(Insets.sm),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    series.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelLarge
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _subtitle(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: Insets.xs),
-        Text(
-          series.title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.labelMedium,
-        ),
-        Text(
-          _subtitle(),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.labelSmall
-              ?.copyWith(color: theme.colorScheme.outline),
-        ),
-      ],
       ),
     );
   }
@@ -400,10 +409,7 @@ class _SeriesBannerCard extends ConsumerWidget {
       margin: const EdgeInsets.only(bottom: Insets.md),
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
+        borderRadius: BorderRadius.circular(20),
       ),
       elevation: 0,
       child: InkWell(
@@ -694,15 +700,10 @@ class _SearchBarState extends ConsumerState<_SearchBar> {
       ],
       elevation: const WidgetStatePropertyAll<double>(0),
       backgroundColor: WidgetStatePropertyAll<Color>(
-        theme.colorScheme.surfaceContainerLow,
+        theme.colorScheme.surfaceContainerHigh,
       ),
-      shape: WidgetStatePropertyAll<OutlinedBorder>(
-        RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-          ),
-        ),
+      shape: const WidgetStatePropertyAll<OutlinedBorder>(
+        StadiumBorder(),
       ),
       onChanged: (String val) {
         setState(() {}); // to show/hide the clear button
@@ -722,6 +723,7 @@ class _FilterChipsRow extends ConsumerWidget {
     final SonarrSortOption sortOption = ref.watch(sonarrSortOptionProvider(instance));
     final SonarrStatusFilter statusFilter = ref.watch(sonarrStatusFilterProvider(instance));
     final SonarrMonitoredFilter monitoredFilter = ref.watch(sonarrMonitoredFilterProvider(instance));
+    final SonarrViewMode viewMode = ref.watch(sonarrViewModeProvider(instance));
 
     String sortLabel(SonarrSortOption opt) => switch (opt) {
       SonarrSortOption.titleAsc => 'Title (A-Z)',
@@ -752,6 +754,29 @@ class _FilterChipsRow extends ConsumerWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
         children: <Widget>[
+          // Grid / list view toggle
+          SegmentedButton<SonarrViewMode>(
+            segments: const <ButtonSegment<SonarrViewMode>>[
+              ButtonSegment<SonarrViewMode>(
+                value: SonarrViewMode.grid,
+                icon: Icon(Icons.grid_view_rounded),
+              ),
+              ButtonSegment<SonarrViewMode>(
+                value: SonarrViewMode.banner,
+                icon: Icon(Icons.view_list_rounded),
+              ),
+            ],
+            selected: <SonarrViewMode>{viewMode},
+            onSelectionChanged: (Set<SonarrViewMode> selection) => ref
+                .read(sonarrViewModeProvider(instance).notifier)
+                .setViewMode(selection.first),
+            showSelectedIcon: false,
+            style: const ButtonStyle(
+              visualDensity: VisualDensity.compact,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          const SizedBox(width: Insets.sm),
           // Sort Chip
           PopupMenuButton<SonarrSortOption>(
             onSelected: (SonarrSortOption opt) {

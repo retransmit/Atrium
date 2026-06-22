@@ -35,25 +35,48 @@ class SeriesDetailScreen extends ConsumerWidget {
         ref.watch(sonarrSeriesByIdProvider((instance, seriesId)));
 
     return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        actions: <Widget>[
-          if (series.hasValue)
-            _SeriesMenu(
-              instance: instance,
-              series: series.requireValue,
-            ),
-        ],
-      ),
-      body: AsyncValueView<SonarrSeries>(
-        value: series,
-        onRetry: () =>
-            ref.invalidate(sonarrSeriesByIdProvider((instance, seriesId))),
+      body: series.when(
         data: (SonarrSeries s) => _Body(instance: instance, series: s),
+        loading: () => const _DetailShell(
+          child: Center(child: CircularProgressIndicator()),
+        ),
+        error: (Object e, StackTrace _) => _DetailShell(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(Insets.xl),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text('$e', textAlign: TextAlign.center),
+                  const SizedBox(height: Insets.md),
+                  FilledButton.tonal(
+                    onPressed: () => ref.invalidate(
+                      sonarrSeriesByIdProvider((instance, seriesId)),
+                    ),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
+    );
+  }
+}
+
+class _DetailShell extends StatelessWidget {
+  const _DetailShell({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      slivers: <Widget>[
+        const SliverAppBar(pinned: true, title: Text('Series')),
+        SliverFillRemaining(hasScrollBody: false, child: child),
+      ],
     );
   }
 }
@@ -73,7 +96,7 @@ class _Body extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
-    final bool isDark = theme.brightness == Brightness.dark;
+    final ColorScheme cs = theme.colorScheme;
     final SonarrApi? api = ref.watch(sonarrApiProvider(instance)).value;
     final SonarrImage? poster = series.images
         .firstWhereOrNull((SonarrImage i) => i.coverType == 'poster');
@@ -91,98 +114,89 @@ class _Body extends ConsumerWidget {
         );
     final SonarrSeasonStats? specials = series.seasons
         .firstWhereOrNull((SonarrSeasonStats s) => s.seasonNumber == 0);
+    final int seasonCount = seasons.length + (specials != null ? 1 : 0);
 
     final AsyncValue<List<SonarrEpisode>> episodesValue =
         ref.watch(sonarrEpisodesProvider((instance, series.id)));
 
-    return Stack(
-      children: <Widget>[
-        // Backdrop Image Banner
-         if (fanartUrl != null)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 260,
-            child: ShaderMask(
-              shaderCallback: (Rect rect) {
-                return LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: <Color>[
-                    Colors.black.withValues(alpha: 0.5),
-                    Colors.transparent,
-                  ],
-                ).createShader(Rect.fromLTRB(0, 0, rect.width, rect.height));
-              },
-              blendMode: BlendMode.dstIn,
-              child: CachedNetworkImage(
-                imageUrl: fanartUrl,
-                fit: BoxFit.cover,
-                memCacheWidth: 800,
-                errorWidget: (_, __, ___) => const SizedBox(),
+    return RefreshIndicator(
+      onRefresh: () async => _refresh(ref),
+      child: CustomScrollView(
+        slivers: <Widget>[
+          SliverAppBar(
+            expandedHeight: 300,
+            pinned: true,
+            stretch: true,
+            backgroundColor: cs.surface,
+            surfaceTintColor: cs.surfaceTint,
+            actions: <Widget>[
+              _SeriesMenu(instance: instance, series: series),
+            ],
+            flexibleSpace: FlexibleSpaceBar(
+              centerTitle: false,
+              titlePadding: const EdgeInsetsDirectional.only(
+                start: 56,
+                bottom: 16,
+                end: 16,
               ),
+              title: Text(
+                series.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                ),
+              ),
+              background: _Backdrop(fanartUrl: fanartUrl),
             ),
           ),
-
-        // Main Screen Content
-        RefreshIndicator(
-          onRefresh: () async => _refresh(ref),
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(Insets.lg, Insets.sm, Insets.lg, Insets.lg),
-            children: <Widget>[
-              // Top padding to show the backdrop beautiful top half
-              const SizedBox(height: 110),
-              _Header(instance: instance, series: series, imageUrl: imageUrl),
-              const SizedBox(height: Insets.md),
-              _ActionsRow(instance: instance, series: series, onChanged: _refresh),
-              if (series.overview != null && series.overview!.isNotEmpty) ...<
-                  Widget>[
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              Insets.lg,
+              Insets.md,
+              Insets.lg,
+              Insets.lg,
+            ),
+            sliver: SliverList.list(
+              children: <Widget>[
+                _Header(instance: instance, series: series, imageUrl: imageUrl),
                 const SizedBox(height: Insets.md),
-                // Overview Text Card for better readability over the backdrop
-                Container(
-                  padding: const EdgeInsets.all(Insets.md),
-                  decoration: BoxDecoration(
-                    color: isDark 
-                        ? theme.colorScheme.surfaceContainerLow.withValues(alpha: 0.8)
-                        : theme.colorScheme.surfaceContainerLowest.withValues(alpha: 0.9),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-                    ),
-                  ),
-                  child: Text(
-                    series.overview!,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      height: 1.4,
-                    ),
-                  ),
+                _ActionsRow(
+                  instance: instance,
+                  series: series,
+                  onChanged: _refresh,
                 ),
+                if (series.overview != null &&
+                    series.overview!.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: Insets.md),
+                  _OverviewCard(text: series.overview!),
+                ],
+                const SizedBox(height: Insets.lg),
+                _SectionHeader(label: 'Seasons', count: seasonCount),
+                const SizedBox(height: Insets.sm),
+                for (final SonarrSeasonStats season in seasons)
+                  _SeasonTile(
+                    instance: instance,
+                    series: series,
+                    season: season,
+                    onChanged: _refresh,
+                    episodesValue: episodesValue,
+                  ),
+                if (specials != null)
+                  _SeasonTile(
+                    instance: instance,
+                    series: series,
+                    season: specials,
+                    onChanged: _refresh,
+                    episodesValue: episodesValue,
+                  ),
+                const SizedBox(height: Insets.xl),
               ],
-              const SizedBox(height: Insets.lg),
-              Text('Seasons', style: theme.textTheme.titleMedium),
-              const SizedBox(height: Insets.sm),
-              for (final SonarrSeasonStats season in seasons)
-                _SeasonTile(
-                  instance: instance,
-                  series: series,
-                  season: season,
-                  onChanged: _refresh,
-                  episodesValue: episodesValue,
-                ),
-              if (specials != null)
-                _SeasonTile(
-                  instance: instance,
-                  series: series,
-                  season: specials,
-                  onChanged: _refresh,
-                  episodesValue: episodesValue,
-                ),
-              const SizedBox(height: Insets.xl),
-            ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -297,15 +311,6 @@ class _Header extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
-                  series.title,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: Insets.xs),
                 // Tags row (Network, Year, Status)
                 Wrap(
                   spacing: Insets.xs,
@@ -404,6 +409,108 @@ class _InfoChip extends StatelessWidget {
           fontWeight: isPrimary ? FontWeight.bold : FontWeight.normal,
         ),
       ),
+    );
+  }
+}
+
+class _Backdrop extends StatelessWidget {
+  const _Backdrop({required this.fanartUrl});
+
+  final String? fanartUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    return Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        if (fanartUrl != null)
+          CachedNetworkImage(
+            imageUrl: fanartUrl!,
+            fit: BoxFit.cover,
+            memCacheWidth: 800,
+            errorWidget: (_, __, ___) =>
+                ColoredBox(color: cs.surfaceContainerHigh),
+          )
+        else
+          ColoredBox(color: cs.surfaceContainerHigh),
+        // Scrim so the title stays legible and the image melts into the surface.
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[
+                cs.surface.withValues(alpha: 0.0),
+                cs.surface.withValues(alpha: 0.55),
+                cs.surface,
+              ],
+              stops: const <double>[0.35, 0.75, 1.0],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _OverviewCard extends StatelessWidget {
+  const _OverviewCard({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(Insets.lg),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(Radii.lg),
+      ),
+      child: Text(
+        text,
+        style: theme.textTheme.bodyMedium?.copyWith(height: 1.45),
+      ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.label, this.count});
+
+  final String label;
+  final int? count;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Row(
+      children: <Widget>[
+        Text(
+          label,
+          style:
+              theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        if (count != null) ...<Widget>[
+          const SizedBox(width: Insets.sm),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.secondaryContainer,
+              borderRadius: BorderRadius.circular(Radii.xl),
+            ),
+            child: Text(
+              '$count',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.onSecondaryContainer,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
