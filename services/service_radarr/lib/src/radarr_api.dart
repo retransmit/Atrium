@@ -2,10 +2,12 @@ import 'package:core_networking/core_networking.dart';
 import 'package:dio/dio.dart';
 
 import 'models/radarr_add_models.dart';
+import 'models/radarr_blocklist.dart';
 import 'models/radarr_history.dart';
 import 'models/radarr_movie.dart';
 import 'models/radarr_queue.dart';
 import 'models/radarr_release.dart';
+import 'models/radarr_wanted.dart';
 
 /// Thin typed client over the Radarr v3 REST API.
 ///
@@ -80,6 +82,78 @@ class RadarrApi {
         },
       );
       return RadarrHistoryPage.fromJson(resp.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Wanted: missing monitored movies, paginated.
+  Future<RadarrWantedPage> getWantedMissing({
+    int page = 1,
+    int pageSize = 50,
+  }) async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>(
+        '$_base/wanted/missing',
+        queryParameters: <String, dynamic>{
+          'page': page,
+          'pageSize': pageSize,
+          'sortKey': 'title',
+          'sortDirection': 'ascending',
+        },
+      );
+      return RadarrWantedPage.fromJson(resp.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Wanted: monitored movies below their quality cutoff, paginated.
+  Future<RadarrWantedPage> getWantedCutoff({
+    int page = 1,
+    int pageSize = 50,
+  }) async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>(
+        '$_base/wanted/cutoff',
+        queryParameters: <String, dynamic>{
+          'page': page,
+          'pageSize': pageSize,
+          'sortKey': 'title',
+          'sortDirection': 'ascending',
+        },
+      );
+      return RadarrWantedPage.fromJson(resp.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Paginated blocklist of rejected/failed releases, newest first.
+  Future<RadarrBlocklistPage> getBlocklist({
+    int page = 1,
+    int pageSize = 50,
+  }) async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>(
+        '$_base/blocklist',
+        queryParameters: <String, dynamic>{
+          'page': page,
+          'pageSize': pageSize,
+          'sortKey': 'date',
+          'sortDirection': 'descending',
+        },
+      );
+      return RadarrBlocklistPage.fromJson(resp.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Removes one blocklist entry.
+  Future<void> deleteBlocklist(int id) async {
+    try {
+      await _dio.delete<dynamic>('$_base/blocklist/$id');
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }

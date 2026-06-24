@@ -6,9 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'add_movie_screen.dart';
+import 'models/radarr_blocklist.dart';
 import 'models/radarr_history.dart';
 import 'models/radarr_movie.dart';
 import 'models/radarr_queue.dart';
+import 'models/radarr_wanted.dart';
 import 'movie_detail_screen.dart';
 import 'radarr_api.dart';
 import 'radarr_providers.dart';
@@ -22,7 +24,7 @@ class RadarrHome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 5,
       child: Scaffold(
         body: Column(
           children: <Widget>[
@@ -32,7 +34,9 @@ class RadarrHome extends StatelessWidget {
               tabs: <Widget>[
                 Tab(text: 'Movies'),
                 Tab(text: 'Queue'),
+                Tab(text: 'Wanted'),
                 Tab(text: 'History'),
+                Tab(text: 'Blocklist'),
               ],
             ),
             Expanded(
@@ -40,7 +44,9 @@ class RadarrHome extends StatelessWidget {
                 children: <Widget>[
                   _MoviesTab(instance: instance),
                   _QueueTab(instance: instance),
+                  _WantedTab(instance: instance),
                   _HistoryTab(instance: instance),
+                  _BlocklistTab(instance: instance),
                 ],
               ),
             ),
@@ -842,3 +848,255 @@ IconData _eventIcon(String e) => switch (e) {
 String _fmtDate(DateTime d) =>
     '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')} '
     '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
+// Wanted -------------------------------------------------------------------
+
+class _WantedTab extends StatelessWidget {
+  const _WantedTab({required this.instance});
+
+  final Instance instance;
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        children: <Widget>[
+          const TabBar(
+            tabs: <Widget>[
+              Tab(text: 'Missing'),
+              Tab(text: 'Cutoff Unmet'),
+            ],
+          ),
+          Expanded(
+            child: TabBarView(
+              children: <Widget>[
+                _WantedList(instance: instance, cutoff: false),
+                _WantedList(instance: instance, cutoff: true),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WantedList extends ConsumerStatefulWidget {
+  const _WantedList({required this.instance, required this.cutoff});
+
+  final Instance instance;
+  final bool cutoff;
+
+  @override
+  ConsumerState<_WantedList> createState() => _WantedListState();
+}
+
+class _WantedListState extends ConsumerState<_WantedList> {
+  int _page = 1;
+
+  void _invalidate() {
+    if (widget.cutoff) {
+      ref.invalidate(radarrWantedCutoffProvider((widget.instance, _page)));
+    } else {
+      ref.invalidate(radarrWantedMissingProvider((widget.instance, _page)));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final AsyncValue<RadarrWantedPage> wanted = widget.cutoff
+        ? ref.watch(radarrWantedCutoffProvider((widget.instance, _page)))
+        : ref.watch(radarrWantedMissingProvider((widget.instance, _page)));
+    final RadarrApi? api = ref.watch(radarrApiProvider(widget.instance)).value;
+    return RefreshIndicator(
+      onRefresh: () async => _invalidate(),
+      child: AsyncValueView<RadarrWantedPage>(
+        value: wanted,
+        onRetry: _invalidate,
+        data: (RadarrWantedPage wp) {
+          if (wp.records.isEmpty) {
+            return EmptyView(
+              icon: Icons.check_circle_outline,
+              title: widget.cutoff ? 'Nothing below cutoff' : 'Nothing missing',
+              message: 'All caught up.',
+            );
+          }
+          final int totalPages = wp.pageSize > 0
+              ? ((wp.totalRecords + wp.pageSize - 1) ~/ wp.pageSize)
+              : 1;
+          return Column(
+            children: <Widget>[
+              Expanded(
+                child: ListView.separated(
+                  padding: Insets.page,
+                  itemCount: wp.records.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (BuildContext context, int index) => _MovieRow(
+                    instance: widget.instance,
+                    movie: wp.records[index],
+                    api: api,
+                  ),
+                ),
+              ),
+              if (totalPages > 1)
+                _PaginationBar(
+                  page: _page,
+                  totalPages: totalPages,
+                  onPrev: _page > 1 ? () => setState(() => _page--) : null,
+                  onNext: _page < totalPages
+                      ? () => setState(() => _page++)
+                      : null,
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _MovieRow extends StatelessWidget {
+  const _MovieRow({
+    required this.instance,
+    required this.movie,
+    required this.api,
+  });
+
+  final Instance instance;
+  final RadarrMovie movie;
+  final RadarrApi? api;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final RadarrImage? poster =
+        movie.images.firstWhereOrNull((RadarrImage i) => i.coverType == 'poster');
+    final String? url = poster == null ? null : api?.posterUrl(poster);
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: SizedBox(
+        width: 40,
+        height: 60,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: url == null
+              ? Container(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  child: Icon(
+                    Icons.movie_outlined,
+                    color: theme.colorScheme.outline,
+                    size: 18,
+                  ),
+                )
+              : CachedNetworkImage(
+                  imageUrl: url,
+                  fit: BoxFit.cover,
+                  memCacheWidth: 120,
+                  errorWidget: (_, __, ___) => Container(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                  ),
+                ),
+        ),
+      ),
+      title: Text(movie.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: movie.year != null ? Text('${movie.year}') : null,
+      onTap: () => Navigator.of(context, rootNavigator: true).push(
+        MaterialPageRoute<void>(
+          builder: (_) => MovieDetailScreen(instance: instance, movieId: movie.id),
+        ),
+      ),
+    );
+  }
+}
+
+// Blocklist ----------------------------------------------------------------
+
+class _BlocklistTab extends ConsumerStatefulWidget {
+  const _BlocklistTab({required this.instance});
+
+  final Instance instance;
+
+  @override
+  ConsumerState<_BlocklistTab> createState() => _BlocklistTabState();
+}
+
+class _BlocklistTabState extends ConsumerState<_BlocklistTab> {
+  int _page = 1;
+
+  @override
+  Widget build(BuildContext context) {
+    final AsyncValue<RadarrBlocklistPage> blocklist =
+        ref.watch(radarrBlocklistProvider((widget.instance, _page)));
+    return RefreshIndicator(
+      onRefresh: () async =>
+          ref.invalidate(radarrBlocklistProvider((widget.instance, _page))),
+      child: AsyncValueView<RadarrBlocklistPage>(
+        value: blocklist,
+        onRetry: () =>
+            ref.invalidate(radarrBlocklistProvider((widget.instance, _page))),
+        data: (RadarrBlocklistPage bp) {
+          if (bp.records.isEmpty) {
+            return const EmptyView(
+              icon: Icons.block,
+              title: 'Blocklist is empty',
+              message: 'Rejected releases will appear here.',
+            );
+          }
+          final int totalPages = bp.pageSize > 0
+              ? ((bp.totalRecords + bp.pageSize - 1) ~/ bp.pageSize)
+              : 1;
+          return Column(
+            children: <Widget>[
+              Expanded(
+                child: ListView.separated(
+                  padding: Insets.page,
+                  itemCount: bp.records.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (BuildContext context, int index) {
+                    final RadarrBlocklistRecord r = bp.records[index];
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        r.sourceTitle ?? 'Unknown',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        <String>[
+                          if (r.indexer != null) r.indexer!,
+                          if (r.date != null) _fmtDate(r.date!.toLocal()),
+                        ].join(' • '),
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.close),
+                        tooltip: 'Remove from blocklist',
+                        onPressed: () async {
+                          final RadarrApi api = await ref
+                              .read(radarrApiProvider(widget.instance).future);
+                          await api.deleteBlocklist(r.id);
+                          ref.invalidate(
+                            radarrBlocklistProvider((widget.instance, _page)),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+              if (totalPages > 1)
+                _PaginationBar(
+                  page: _page,
+                  totalPages: totalPages,
+                  onPrev: _page > 1 ? () => setState(() => _page--) : null,
+                  onNext: _page < totalPages
+                      ? () => setState(() => _page++)
+                      : null,
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
