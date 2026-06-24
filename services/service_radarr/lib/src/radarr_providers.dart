@@ -428,6 +428,143 @@ final radarrAutoTaggingRulesProvider =
   return api.getAutoTaggingRules();
 });
 
+// ---------------------------------------------------------------------------
+// Raw settings providers
+//
+// The settings panels round-trip the FULL server object on edit/toggle/test,
+// so they read these raw maps rather than the read-only typed projections.
+// ---------------------------------------------------------------------------
+
+/// Fetches indexers as raw maps.
+final radarrIndexersRawProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getIndexersRaw();
+});
+
+/// Fetches download clients as raw maps.
+final radarrDownloadClientsRawProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getDownloadClientsRaw();
+});
+
+/// Fetches notification connections as raw maps.
+final radarrNotificationsRawProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getNotificationsRaw();
+});
+
+/// Fetches import lists as raw maps.
+final radarrImportListsRawProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getImportListsRaw();
+});
+
+/// Fetches metadata consumers as raw maps.
+final radarrMetadataProvidersRawProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getMetadataProvidersRaw();
+});
+
+/// Fetches delay profiles as raw maps.
+final radarrDelayProfilesRawProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getDelayProfilesRaw();
+});
+
+/// Fetches release profiles as raw maps.
+final radarrReleaseProfilesRawProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getReleaseProfilesRaw();
+});
+
+/// Fetches auto-tagging rules as raw maps.
+final radarrAutoTaggingRulesRawProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getAutoTaggingRulesRaw();
+});
+
+/// Fetches quality definitions as raw maps.
+final radarrQualityDefinitionsRawProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getQualityDefinitionsRaw();
+});
+
+/// Fetches host config as a raw map.
+final radarrHostConfigRawProvider =
+    FutureProvider.autoDispose.family<Map<String, dynamic>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getHostConfigRaw();
+});
+
+/// Fetches naming config as a raw map.
+final radarrNamingConfigRawProvider =
+    FutureProvider.autoDispose.family<Map<String, dynamic>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getNamingConfigRaw();
+});
+
+/// Fetches media management config as a raw map.
+final radarrMediaManagementConfigRawProvider =
+    FutureProvider.autoDispose.family<Map<String, dynamic>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getMediaManagementConfigRaw();
+});
+
+/// Fetches UI config as a raw map.
+final radarrUiConfigRawProvider =
+    FutureProvider.autoDispose.family<Map<String, dynamic>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getUiConfigRaw();
+});
+
 /// Sort options for the Radarr movie list.
 enum RadarrSortOption { titleAsc, titleDesc, yearAsc, yearDesc, sizeAsc, sizeDesc }
 
