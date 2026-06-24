@@ -120,57 +120,100 @@ class _ActivitySummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Insets.md),
-      child: Wrap(
-        spacing: Insets.sm,
-        runSpacing: Insets.xs,
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.only(bottom: Insets.md),
+      padding: const EdgeInsets.symmetric(
+        horizontal: Insets.md,
+        vertical: Insets.md,
+      ),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
         children: <Widget>[
-          _MetricChip(
-            icon: Icons.sensors,
-            label: '${activity.streamCount} '
-                'stream${activity.streamCount == 1 ? '' : 's'}',
-          ),
-          _MetricChip(
-            icon: Icons.speed,
-            label: fmtTautulliKbps(activity.totalBandwidth),
-          ),
-          if (activity.transcodeCount > 0)
-            _MetricChip(
-              icon: Icons.transform,
-              label: '${activity.transcodeCount} transcoding',
+          Expanded(
+            child: _StatTile(
+              icon: Icons.sensors,
+              value: '${activity.streamCount}',
+              label: activity.streamCount == 1 ? 'Stream' : 'Streams',
+              color: cs.primary,
             ),
+          ),
+          const _StatDivider(),
+          Expanded(
+            child: _StatTile(
+              icon: Icons.speed,
+              value: fmtTautulliKbps(activity.totalBandwidth),
+              label: 'Bandwidth',
+              color: cs.tertiary,
+            ),
+          ),
+          const _StatDivider(),
+          Expanded(
+            child: _StatTile(
+              icon: Icons.transform,
+              value: '${activity.transcodeCount}',
+              label: 'Transcoding',
+              color: cs.secondary,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _MetricChip extends StatelessWidget {
-  const _MetricChip({required this.icon, required this.label});
+class _StatTile extends StatelessWidget {
+  const _StatTile({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+  });
 
   final IconData icon;
+  final String value;
   final String label;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, size: 14, color: theme.colorScheme.primary),
-          const SizedBox(width: 6),
-          Text(label, style: theme.textTheme.labelMedium),
-        ],
-      ),
+    return Column(
+      children: <Widget>[
+        Icon(icon, size: 20, color: color),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleMedium
+              ?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.labelSmall
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+      ],
     );
   }
+}
+
+class _StatDivider extends StatelessWidget {
+  const _StatDivider();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 1,
+        height: 36,
+        color: Theme.of(context).colorScheme.outlineVariant,
+      );
 }
 
 class _SessionCard extends StatelessWidget {
@@ -199,10 +242,13 @@ class _SessionCard extends StatelessWidget {
     ].join(' • ');
 
     return Card(
-      margin: const EdgeInsets.only(bottom: Insets.sm),
+      margin: const EdgeInsets.only(bottom: Insets.md),
+      color: theme.colorScheme.surfaceContainerHigh,
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: InkWell(
         onTap: onTap,
-        borderRadius: Radii.card,
+        borderRadius: BorderRadius.circular(20),
         child: Padding(
           padding: const EdgeInsets.all(Insets.md),
           child: Row(
@@ -247,10 +293,15 @@ class _SessionCard extends StatelessWidget {
                       ),
                     const SizedBox(height: Insets.sm),
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(6),
                       child: LinearProgressIndicator(
                         value: pct.clamp(0, 1),
-                        minHeight: 5,
+                        minHeight: 6,
+                        color: playing
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.outline,
+                        backgroundColor:
+                            theme.colorScheme.surfaceContainerHighest,
                       ),
                     ),
                     const SizedBox(height: Insets.sm),
@@ -743,6 +794,9 @@ class _StatSection extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: Insets.md),
+      color: theme.colorScheme.surfaceContainerHigh,
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(Insets.md),
         child: Column(
@@ -768,12 +822,20 @@ class _StatSection extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 5),
                 child: Row(
                   children: <Widget>[
-                    SizedBox(
-                      width: 18,
+                    Container(
+                      width: 22,
+                      height: 22,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.secondaryContainer,
+                        shape: BoxShape.circle,
+                      ),
                       child: Text(
                         '${i + 1}',
-                        style: theme.textTheme.labelMedium
-                            ?.copyWith(color: theme.colorScheme.outline),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSecondaryContainer,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     const SizedBox(width: Insets.xs),
