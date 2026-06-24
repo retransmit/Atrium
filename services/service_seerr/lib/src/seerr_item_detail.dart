@@ -28,6 +28,7 @@ class SeerrItemDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
     final SeerrDiscoverResult full = ref
             .watch(seerrMediaDetailsProvider((
               instance: instance,
@@ -43,114 +44,81 @@ class SeerrItemDetailScreen extends ConsumerWidget {
         .where((String n) => n.isNotEmpty)
         .toList();
 
-    // The card overlaps the bottom of the backdrop banner. It is painted AFTER
-    // the backdrop (later in the Stack), so its solid surface covers the
-    // overlap and the title stays fully visible.
-    const double backdropHeight = 230;
-    const double overlap = 52;
-
     return Scaffold(
-      body: Stack(
-        children: <Widget>[
-          SingleChildScrollView(
-            child: Stack(
-              children: <Widget>[
-                SizedBox(
-                  height: backdropHeight,
-                  width: double.infinity,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: <Widget>[
-                      if (backdrop != null)
-                        Image.network(
-                          'https://image.tmdb.org/t/p/w780$backdrop',
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => ColoredBox(
-                            color: theme.colorScheme.surfaceContainerHighest,
-                          ),
-                        )
-                      else
-                        ColoredBox(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                        ),
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            stops: const <double>[0.0, 0.55, 1.0],
-                            colors: <Color>[
-                              Colors.black.withValues(alpha: 0.3),
-                              Colors.transparent,
-                              theme.colorScheme.surface,
-                            ],
-                          ),
-                        ),
+      body: CustomScrollView(
+        slivers: <Widget>[
+          SliverAppBar(
+            expandedHeight: 260,
+            pinned: true,
+            stretch: true,
+            backgroundColor: cs.surface,
+            surfaceTintColor: cs.surfaceTint,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Stack(
+                fit: StackFit.expand,
+                children: <Widget>[
+                  if (backdrop != null)
+                    Image.network(
+                      'https://image.tmdb.org/t/p/w780$backdrop',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          ColoredBox(color: cs.surfaceContainerHighest),
+                    )
+                  else
+                    ColoredBox(color: cs.surfaceContainerHighest),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        stops: const <double>[0.0, 0.55, 1.0],
+                        colors: <Color>[
+                          Colors.black.withValues(alpha: 0.25),
+                          Colors.transparent,
+                          cs.surface,
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    Insets.lg,
-                    backdropHeight - overlap,
-                    Insets.lg,
-                    Insets.lg,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      SeerrMediaCard(
-                        item: full,
-                        action:
-                            _RequestButton(instance: instance, item: full),
-                      ),
-                      if (genreNames.isNotEmpty) ...<Widget>[
-                        const SizedBox(height: Insets.lg),
-                        Wrap(
-                          spacing: Insets.sm,
-                          runSpacing: Insets.xs,
-                          children: <Widget>[
-                            for (final String g in genreNames)
-                              SeerrInfoPill(label: g),
-                          ],
-                        ),
-                      ],
-                      const SizedBox(height: Insets.lg),
-                      Text(
-                        'Overview',
-                        style: theme.textTheme.titleLarge
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: Insets.sm),
-                      Text(
-                        (full.overview != null && full.overview!.isNotEmpty)
-                            ? full.overview!
-                            : 'No overview available.',
-                        style: theme.textTheme.bodyLarge,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-          // Pinned back button, always on top and tappable.
-          Positioned(
-            top: 0,
-            left: 0,
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(Insets.sm),
-                child: Material(
-                  color: Colors.black.withValues(alpha: 0.4),
-                  shape: const CircleBorder(),
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => Navigator.of(context).maybePop(),
-                  ),
+          SliverPadding(
+            padding:
+                const EdgeInsets.fromLTRB(Insets.lg, 0, Insets.lg, Insets.lg),
+            sliver: SliverList.list(
+              children: <Widget>[
+                SeerrMediaCard(
+                  item: full,
+                  action: _RequestButton(instance: instance, item: full),
                 ),
-              ),
+                if (genreNames.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: Insets.lg),
+                  Wrap(
+                    spacing: Insets.sm,
+                    runSpacing: Insets.xs,
+                    children: <Widget>[
+                      for (final String g in genreNames)
+                        SeerrInfoPill(label: g),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: Insets.lg),
+                Text(
+                  'Overview',
+                  style: theme.textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: Insets.sm),
+                Text(
+                  (full.overview != null && full.overview!.isNotEmpty)
+                      ? full.overview!
+                      : 'No overview available.',
+                  style: theme.textTheme.bodyLarge,
+                ),
+                const SizedBox(height: Insets.xl),
+              ],
             ),
           ),
         ],
