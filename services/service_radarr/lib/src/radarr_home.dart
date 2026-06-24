@@ -10,6 +10,7 @@ import 'models/radarr_blocklist.dart';
 import 'models/radarr_history.dart';
 import 'models/radarr_movie.dart';
 import 'models/radarr_queue.dart';
+import 'models/radarr_system.dart';
 import 'models/radarr_wanted.dart';
 import 'movie_detail_screen.dart';
 import 'radarr_api.dart';
@@ -24,7 +25,7 @@ class RadarrHome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 5,
+      length: 6,
       child: Scaffold(
         body: Column(
           children: <Widget>[
@@ -37,6 +38,7 @@ class RadarrHome extends StatelessWidget {
                 Tab(text: 'Wanted'),
                 Tab(text: 'History'),
                 Tab(text: 'Blocklist'),
+                Tab(text: 'System'),
               ],
             ),
             Expanded(
@@ -47,6 +49,7 @@ class RadarrHome extends StatelessWidget {
                   _WantedTab(instance: instance),
                   _HistoryTab(instance: instance),
                   _BlocklistTab(instance: instance),
+                  _SystemTab(instance: instance),
                 ],
               ),
             ),
@@ -1099,4 +1102,255 @@ class _BlocklistTabState extends ConsumerState<_BlocklistTab> {
       ),
     );
   }
+}
+
+// System -------------------------------------------------------------------
+
+class _SystemTab extends ConsumerWidget {
+  const _SystemTab({required this.instance});
+
+  final Instance instance;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(radarrHealthProvider(instance));
+        ref.invalidate(radarrSystemStatusProvider(instance));
+        ref.invalidate(radarrDiskSpaceProvider(instance));
+        ref.invalidate(radarrSystemTasksProvider(instance));
+        ref.invalidate(radarrBackupsProvider(instance));
+      },
+      child: ListView(
+        padding: Insets.page,
+        children: <Widget>[
+          const _SectionTitle('Health'),
+          ref.watch(radarrHealthProvider(instance)).when(
+                data: (List<RadarrHealth> items) => items.isEmpty
+                    ? const ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(Icons.check_circle_outline),
+                        title: Text('All healthy'),
+                      )
+                    : Column(
+                        children: items
+                            .map(
+                              (RadarrHealth h) => ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: Icon(
+                                  Icons.warning_amber,
+                                  color: theme.colorScheme.error,
+                                ),
+                                title: Text(h.message),
+                                subtitle: Text(h.source),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                loading: () => const _Loading(),
+                error: (Object e, _) => _ErrText('$e'),
+              ),
+          const SizedBox(height: Insets.lg),
+          const _SectionTitle('Status'),
+          ref.watch(radarrSystemStatusProvider(instance)).when(
+                data: (RadarrSystemStatus s) => Column(
+                  children: <Widget>[
+                    _kv('Version', s.version),
+                    _kv('App', s.appName),
+                    _kv('OS', '${s.osName} ${s.osVersion}'.trim()),
+                    if (s.databaseType != null)
+                      _kv(
+                        'Database',
+                        '${s.databaseType} ${s.databaseVersion ?? ''}'.trim(),
+                      ),
+                    if (s.runtimeName != null)
+                      _kv(
+                        'Runtime',
+                        '${s.runtimeName} ${s.runtimeVersion ?? ''}'.trim(),
+                      ),
+                  ],
+                ),
+                loading: () => const _Loading(),
+                error: (Object e, _) => _ErrText('$e'),
+              ),
+          const SizedBox(height: Insets.lg),
+          const _SectionTitle('Disk space'),
+          ref.watch(radarrDiskSpaceProvider(instance)).when(
+                data: (List<RadarrDiskSpace> disks) => Column(
+                  children: disks.map((RadarrDiskSpace d) {
+                    final double used = d.totalSpace <= 0
+                        ? 0
+                        : (d.totalSpace - d.freeSpace) / d.totalSpace;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: Insets.xs),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            d.label.isNotEmpty ? d.label : d.path,
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 4),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(4),
+                            child: LinearProgressIndicator(
+                              value: used,
+                              minHeight: 6,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${_fmtBytes(d.freeSpace)} free of ${_fmtBytes(d.totalSpace)}',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+                loading: () => const _Loading(),
+                error: (Object e, _) => _ErrText('$e'),
+              ),
+          const SizedBox(height: Insets.lg),
+          const _SectionTitle('Tasks'),
+          ref.watch(radarrSystemTasksProvider(instance)).when(
+                data: (List<RadarrSystemTask> tasks) => Column(
+                  children: tasks
+                      .map(
+                        (RadarrSystemTask t) => ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(t.name),
+                          subtitle: t.nextExecution != null
+                              ? Text('Next: ${_fmtDate(t.nextExecution!.toLocal())}')
+                              : null,
+                          trailing: IconButton(
+                            icon: const Icon(Icons.play_arrow),
+                            tooltip: 'Run now',
+                            onPressed: () async {
+                              final RadarrApi api = await ref
+                                  .read(radarrApiProvider(instance).future);
+                              await api.runSystemTask(t.taskName);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Started ${t.name}')),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+                loading: () => const _Loading(),
+                error: (Object e, _) => _ErrText('$e'),
+              ),
+          const SizedBox(height: Insets.lg),
+          const _SectionTitle('Backups'),
+          ref.watch(radarrBackupsProvider(instance)).when(
+                data: (List<RadarrBackup> backups) => backups.isEmpty
+                    ? const ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text('No backups'),
+                      )
+                    : Column(
+                        children: backups
+                            .map(
+                              (RadarrBackup b) => ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(b.name),
+                                subtitle: b.time != null
+                                    ? Text(_fmtDate(b.time!.toLocal()))
+                                    : null,
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.delete_outline),
+                                  onPressed: () async {
+                                    final RadarrApi api = await ref
+                                        .read(radarrApiProvider(instance).future);
+                                    await api.deleteBackup(b.id);
+                                    ref.invalidate(radarrBackupsProvider(instance));
+                                  },
+                                ),
+                              ),
+                            )
+                            .toList(),
+                      ),
+                loading: () => const _Loading(),
+                error: (Object e, _) => _ErrText('$e'),
+              ),
+          const SizedBox(height: Insets.xl),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: Insets.xs),
+        child: Text(
+          text,
+          style: Theme.of(context)
+              .textTheme
+              .titleMedium
+              ?.copyWith(fontWeight: FontWeight.bold),
+        ),
+      );
+}
+
+class _Loading extends StatelessWidget {
+  const _Loading();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+        padding: EdgeInsets.all(Insets.md),
+        child: Center(child: CircularProgressIndicator()),
+      );
+}
+
+class _ErrText extends StatelessWidget {
+  const _ErrText(this.message);
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: Insets.sm),
+        child: Text(
+          message,
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
+        ),
+      );
+}
+
+Widget _kv(String k, String v) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          SizedBox(width: 96, child: Text(k)),
+          Expanded(child: Text(v)),
+        ],
+      ),
+    );
+
+String _fmtBytes(int bytes) {
+  if (bytes <= 0) return '0 B';
+  const List<String> units = <String>['B', 'KB', 'MB', 'GB', 'TB'];
+  double v = bytes.toDouble();
+  int u = 0;
+  while (v >= 1024 && u < units.length - 1) {
+    v /= 1024;
+    u++;
+  }
+  final String text =
+      v >= 100 || u == 0 ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+  return '$text ${units[u]}';
 }
