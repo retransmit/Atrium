@@ -602,7 +602,7 @@ class _TorrentTile extends ConsumerWidget {
                           Row(
                             children: <Widget>[
                               _StatePill(
-                                label: _friendlyState(torrent.state),
+                                label: friendlyState(torrent.state),
                                 visual: v,
                               ),
                               const SizedBox(width: Insets.sm),
@@ -848,7 +848,7 @@ class _SpeedPill extends StatelessWidget {
 }
 
 /// Maps a raw qBittorrent state to a short friendly label.
-String _friendlyState(String state) {
+String friendlyState(String state) {
   switch (state) {
     case 'downloading':
     case 'forcedDL':
