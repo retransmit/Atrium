@@ -7,6 +7,7 @@ import 'models/radarr_history.dart';
 import 'models/radarr_movie.dart';
 import 'models/radarr_queue.dart';
 import 'models/radarr_release.dart';
+import 'models/radarr_system.dart';
 import 'models/radarr_wanted.dart';
 
 /// Thin typed client over the Radarr v3 REST API.
@@ -154,6 +155,87 @@ class RadarrApi {
   Future<void> deleteBlocklist(int id) async {
     try {
       await _dio.delete<dynamic>('$_base/blocklist/$id');
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// System status (version, OS, database, runtime).
+  Future<RadarrSystemStatus> getSystemStatus() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/system/status');
+      return RadarrSystemStatus.fromJson(resp.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Disk space per mapped root/drive.
+  Future<List<RadarrDiskSpace>> getDiskSpace() async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/diskspace');
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => RadarrDiskSpace.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Active health warnings.
+  Future<List<RadarrHealth>> getHealth() async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/health');
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => RadarrHealth.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Scheduled tasks.
+  Future<List<RadarrSystemTask>> getSystemTasks() async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/system/task');
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => RadarrSystemTask.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Runs a scheduled task now (by its command name).
+  Future<void> runSystemTask(String taskName) async {
+    try {
+      await _dio.post<dynamic>(
+        '$_base/command',
+        data: <String, dynamic>{'name': taskName},
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Server backups.
+  Future<List<RadarrBackup>> getBackups() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/system/backup');
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => RadarrBackup.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Deletes a server backup.
+  Future<void> deleteBackup(int id) async {
+    try {
+      await _dio.delete<dynamic>('$_base/system/backup/$id');
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
