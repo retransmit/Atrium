@@ -2,10 +2,12 @@ import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'models/radarr_blocklist.dart';
 import 'models/radarr_history.dart';
 import 'models/radarr_movie.dart';
 import 'models/radarr_queue.dart';
 import 'models/radarr_release.dart';
+import 'models/radarr_wanted.dart';
 import 'radarr_api.dart';
 
 /// How often the download queue refreshes while a Radarr screen is visible.
@@ -115,6 +117,39 @@ final radarrHistoryProvider =
   final (Instance instance, int page) = key;
   final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
   return api.getHistory(page: page);
+});
+
+/// Wanted: missing movies, paginated. family key is (Instance, page).
+final radarrWantedMissingProvider =
+    FutureProvider.autoDispose.family<RadarrWantedPage, (Instance, int)>((
+  Ref ref,
+  (Instance, int) key,
+) async {
+  final (Instance instance, int page) = key;
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getWantedMissing(page: page);
+});
+
+/// Wanted: cutoff-unmet movies, paginated. family key is (Instance, page).
+final radarrWantedCutoffProvider =
+    FutureProvider.autoDispose.family<RadarrWantedPage, (Instance, int)>((
+  Ref ref,
+  (Instance, int) key,
+) async {
+  final (Instance instance, int page) = key;
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getWantedCutoff(page: page);
+});
+
+/// Paginated blocklist. family key is (Instance, page).
+final radarrBlocklistProvider =
+    FutureProvider.autoDispose.family<RadarrBlocklistPage, (Instance, int)>((
+  Ref ref,
+  (Instance, int) key,
+) async {
+  final (Instance instance, int page) = key;
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getBlocklist(page: page);
 });
 
 /// Sort options for the Radarr movie list.
