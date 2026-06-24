@@ -7,6 +7,7 @@ import 'models/radarr_history.dart';
 import 'models/radarr_movie.dart';
 import 'models/radarr_queue.dart';
 import 'models/radarr_release.dart';
+import 'models/radarr_system.dart';
 import 'models/radarr_wanted.dart';
 import 'radarr_api.dart';
 
@@ -150,6 +151,56 @@ final radarrBlocklistProvider =
   final (Instance instance, int page) = key;
   final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
   return api.getBlocklist(page: page);
+});
+
+/// System status.
+final radarrSystemStatusProvider =
+    FutureProvider.autoDispose.family<RadarrSystemStatus, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getSystemStatus();
+});
+
+/// Disk space.
+final radarrDiskSpaceProvider =
+    FutureProvider.autoDispose.family<List<RadarrDiskSpace>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getDiskSpace();
+});
+
+/// Active health warnings.
+final radarrHealthProvider =
+    FutureProvider.autoDispose.family<List<RadarrHealth>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getHealth();
+});
+
+/// Scheduled tasks.
+final radarrSystemTasksProvider =
+    FutureProvider.autoDispose.family<List<RadarrSystemTask>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getSystemTasks();
+});
+
+/// Server backups.
+final radarrBackupsProvider =
+    FutureProvider.autoDispose.family<List<RadarrBackup>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getBackups();
 });
 
 /// Sort options for the Radarr movie list.
