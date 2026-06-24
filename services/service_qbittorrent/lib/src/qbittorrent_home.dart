@@ -183,11 +183,18 @@ class _BottomControlBarState extends ConsumerState<_BottomControlBar> {
                   onPressed: () => setState(() => _isSearching = true),
                 ),
                 const SizedBox(width: Insets.xs),
-                Text(
-                  info == null
-                      ? '↓ 0 B/s   ↑ 0 B/s'
-                      : '↓ ${fmtBytes(info.dlSpeed)}/s   ↑ ${fmtBytes(info.upSpeed)}/s',
-                  style: theme.textTheme.bodyMedium,
+                _SpeedPill(
+                  icon: Icons.south,
+                  label: '${fmtBytes(info?.dlSpeed ?? 0)}/s',
+                  color: theme.colorScheme.primary,
+                  active: (info?.dlSpeed ?? 0) > 0,
+                ),
+                const SizedBox(width: Insets.sm),
+                _SpeedPill(
+                  icon: Icons.north,
+                  label: '${fmtBytes(info?.upSpeed ?? 0)}/s',
+                  color: theme.colorScheme.tertiary,
+                  active: (info?.upSpeed ?? 0) > 0,
                 ),
                 const Spacer(),
                 IconButton(
@@ -491,20 +498,6 @@ class _TorrentTile extends ConsumerWidget {
   final Instance instance;
   final QbitTorrent torrent;
 
-  IconData _getStateIcon(String state) {
-    state = state.toLowerCase();
-    if (state.contains('error') || state.contains('missingfiles')) {
-      return Icons.error_outline;
-    }
-    if (state.contains('paused') || state.contains('stopped')) {
-      return Icons.pause;
-    }
-    if (state.contains('uploading') || state.contains('up')) {
-      return Icons.check;
-    }
-    return Icons.download;
-  }
-
   String _formatEta(int eta) {
     if (eta >= 8640000 || eta < 0) {
       return '∞';
@@ -519,150 +512,336 @@ class _TorrentTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
     final Set<String> selection = ref.watch(qbitSelectionProvider(instance));
     final bool selectionMode = selection.isNotEmpty;
     final bool isSelected = selection.contains(torrent.hash);
+    final _QbitVisual v = _visualFor(torrent.state, cs);
+    final double progress = torrent.progress.clamp(0, 1).toDouble();
+    final bool complete = progress >= 1.0;
+    final bool dlActive = torrent.dlspeed > 0;
+    final bool upActive = torrent.upspeed > 0;
     
-    return InkWell(
-      onLongPress: () {
-        if (!selectionMode) {
-          ref.read(qbitSelectionProvider(instance).notifier).update(
-                (Set<String> s) => <String>{...s, torrent.hash},
-              );
-        }
-      },
-      onTap: () {
-        if (selectionMode) {
-          ref.read(qbitSelectionProvider(instance).notifier).update((Set<String> s) {
-            final Set<String> next = Set<String>.of(s);
-            if (next.contains(torrent.hash)) {
-              next.remove(torrent.hash);
-            } else {
-              next.add(torrent.hash);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Insets.md, Insets.xs, Insets.md, Insets.xs),
+      child: Material(
+        color: isSelected ? cs.primaryContainer : cs.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onLongPress: () {
+            if (!selectionMode) {
+              ref.read(qbitSelectionProvider(instance).notifier).update(
+                    (Set<String> s) => <String>{...s, torrent.hash},
+                  );
             }
-            return next;
-          });
-        } else {
-          Navigator.of(context, rootNavigator: true).push(
-            MaterialPageRoute<void>(
-              builder: (_) => TorrentDetailScreen(
-                instance: instance,
-                torrent: torrent,
-              ),
-            ),
-          );
-        }
-      },
-      child: ColoredBox(
-        color: isSelected ? theme.colorScheme.primaryContainer : Colors.transparent,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Insets.md, vertical: Insets.sm),
-              child: Row(
-                children: <Widget>[
-                  Padding(
-                    padding: const EdgeInsets.only(right: Insets.md),
-                    child: Icon(
-                      _getStateIcon(torrent.state),
-                      size: 32,
-                      color: isSelected ? theme.colorScheme.onPrimaryContainer : Colors.grey,
+          },
+          onTap: () {
+            if (selectionMode) {
+              ref.read(qbitSelectionProvider(instance).notifier)
+                  .update((Set<String> s) {
+                final Set<String> next = Set<String>.of(s);
+                if (next.contains(torrent.hash)) {
+                  next.remove(torrent.hash);
+                } else {
+                  next.add(torrent.hash);
+                }
+                return next;
+              });
+            } else {
+              Navigator.of(context, rootNavigator: true).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => TorrentDetailScreen(
+                    instance: instance,
+                    torrent: torrent,
+                  ),
+                ),
+              );
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(Insets.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Container(
+                      width: 44,
+                      height: 44,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? cs.onPrimaryContainer.withValues(alpha: 0.15)
+                            : v.container,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        isSelected ? Icons.check : v.icon,
+                        size: 22,
+                        color:
+                            isSelected ? cs.onPrimaryContainer : v.onContainer,
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
+                    const SizedBox(width: Insets.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            torrent.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: isSelected ? cs.onPrimaryContainer : null,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: <Widget>[
+                              _StatePill(
+                                label: _friendlyState(torrent.state),
+                                visual: v,
+                              ),
+                              const SizedBox(width: Insets.sm),
+                              Expanded(
+                                child: Text(
+                                  '${fmtBytes(torrent.downloaded)} / ${fmtBytes(torrent.size)}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: isSelected
+                                        ? cs.onPrimaryContainer
+                                            .withValues(alpha: 0.8)
+                                        : cs.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: Insets.md),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 8,
+                          color: complete ? cs.tertiary : v.color,
+                          backgroundColor: isSelected
+                              ? cs.onPrimaryContainer.withValues(alpha: 0.15)
+                              : cs.surfaceContainerHighest,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: Insets.sm),
+                    Text(
+                      '${(progress * 100).toStringAsFixed(0)}%',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: isSelected ? cs.onPrimaryContainer : v.color,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: Insets.md),
+                Row(
+                  children: <Widget>[
+                    _SpeedPill(
+                      icon: Icons.south,
+                      label: '${fmtBytes(torrent.dlspeed)}/s',
+                      color: cs.primary,
+                      active: dlActive,
+                    ),
+                    const SizedBox(width: Insets.sm),
+                    _SpeedPill(
+                      icon: Icons.north,
+                      label: '${fmtBytes(torrent.upspeed)}/s',
+                      color: cs.tertiary,
+                      active: upActive,
+                    ),
+                    const Spacer(),
+                    Icon(Icons.swap_vert, size: 14, color: cs.onSurfaceVariant),
+                    const SizedBox(width: 2),
+                    Text(
+                      torrent.ratio.toStringAsFixed(2),
+                      style: theme.textTheme.labelSmall
+                          ?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                    if (!complete) ...<Widget>[
+                      const SizedBox(width: Insets.sm),
+                      Icon(Icons.schedule, size: 14, color: cs.onSurfaceVariant),
+                      const SizedBox(width: 2),
                       Text(
-                        torrent.name,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontSize: 15,
-                        ),
+                        _formatEta(torrent.eta),
+                        style: theme.textTheme.labelSmall
+                            ?.copyWith(color: cs.onSurfaceVariant),
                       ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: <Widget>[
-                          const Icon(Icons.folder, size: 14, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Text(
-                            torrent.category.isNotEmpty ? torrent.category : 'none',
-                            style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: <Widget>[
-                          Text(
-                            '${fmtBytes(torrent.downloaded)} (total: ${fmtBytes(torrent.size)})',
-                            style: theme.textTheme.bodySmall,
-                          ),
-                          Text.rich(
-                            TextSpan(
-                              children: <TextSpan>[
-                                TextSpan(text: '${fmtBytes(torrent.dlspeed)}/s '),
-                                const TextSpan(text: '↓', style: TextStyle(color: Colors.green)),
-                              ],
-                            ),
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: <Widget>[
-                          Text(
-                            '${fmtBytes(torrent.uploaded)} (ratio: ${torrent.ratio.toStringAsFixed(2)})',
-                            style: theme.textTheme.bodySmall,
-                          ),
-                          Text.rich(
-                            TextSpan(
-                              children: <TextSpan>[
-                                TextSpan(text: '${fmtBytes(torrent.upspeed)}/s '),
-                                const TextSpan(text: '↑', style: TextStyle(color: Colors.redAccent)),
-                              ],
-                            ),
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: <Widget>[
-                          Text(
-                            _friendlyState(torrent.state),
-                            style: theme.textTheme.bodySmall,
-                          ),
-                          Text(
-                            _formatEta(torrent.eta),
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                      if (torrent.progress < 1.0) ...<Widget>[
-                        const SizedBox(height: 6),
-                        LinearProgressIndicator(
-                          value: torrent.progress,
-                          minHeight: 4,
-                          borderRadius: BorderRadius.circular(2),
-                          backgroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.12),
-                        ),
-                      ],
                     ],
-                  ),
+                  ],
                 ),
               ],
             ),
           ),
-          const Divider(height: 1),
-        ],
+        ),
       ),
+    );
+  }
+}
+
+/// Per-state color + icon mapping for the torrent card (downloading -> primary,
+/// seeding -> tertiary, completed/queued -> secondary, error -> error, and a
+/// muted outline look for paused/stalled).
+class _QbitVisual {
+  const _QbitVisual({
+    required this.color,
+    required this.container,
+    required this.onContainer,
+    required this.icon,
+  });
+
+  final Color color;
+  final Color container;
+  final Color onContainer;
+  final IconData icon;
+}
+
+_QbitVisual _visualFor(String state, ColorScheme cs) {
+  switch (state) {
+    case 'downloading':
+    case 'forcedDL':
+    case 'metaDL':
+      return _QbitVisual(
+        color: cs.primary,
+        container: cs.primaryContainer,
+        onContainer: cs.onPrimaryContainer,
+        icon: Icons.download_rounded,
+      );
+    case 'uploading':
+    case 'forcedUP':
+    case 'stalledUP':
+      return _QbitVisual(
+        color: cs.tertiary,
+        container: cs.tertiaryContainer,
+        onContainer: cs.onTertiaryContainer,
+        icon: Icons.upload_rounded,
+      );
+    case 'pausedUP':
+    case 'stoppedUP':
+      return _QbitVisual(
+        color: cs.secondary,
+        container: cs.secondaryContainer,
+        onContainer: cs.onSecondaryContainer,
+        icon: Icons.check_rounded,
+      );
+    case 'queuedDL':
+    case 'queuedUP':
+      return _QbitVisual(
+        color: cs.secondary,
+        container: cs.secondaryContainer,
+        onContainer: cs.onSecondaryContainer,
+        icon: Icons.schedule_rounded,
+      );
+    case 'checkingDL':
+    case 'checkingUP':
+    case 'checkingResumeData':
+      return _QbitVisual(
+        color: cs.tertiary,
+        container: cs.tertiaryContainer,
+        onContainer: cs.onTertiaryContainer,
+        icon: Icons.sync_rounded,
+      );
+    case 'error':
+    case 'missingFiles':
+      return _QbitVisual(
+        color: cs.error,
+        container: cs.errorContainer,
+        onContainer: cs.onErrorContainer,
+        icon: Icons.error_outline_rounded,
+      );
+    default:
+      return _QbitVisual(
+        color: cs.outline,
+        container: cs.surfaceContainerHighest,
+        onContainer: cs.onSurfaceVariant,
+        icon: state.contains('paused') || state.contains('stopped')
+            ? Icons.pause_rounded
+            : Icons.hourglass_empty_rounded,
+      );
+  }
+}
+
+class _StatePill extends StatelessWidget {
+  const _StatePill({required this.label, required this.visual});
+
+  final String label;
+  final _QbitVisual visual;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: visual.container,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: visual.onContainer,
+              fontWeight: FontWeight.w600,
+            ),
+      ),
+    );
+  }
+}
+
+class _SpeedPill extends StatelessWidget {
+  const _SpeedPill({
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.active = true,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    final Color fg = active ? color : cs.onSurfaceVariant;
+    final Color bg =
+        active ? color.withValues(alpha: 0.12) : cs.surfaceContainerHighest;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 13, color: fg),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: fg,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
       ),
     );
   }
