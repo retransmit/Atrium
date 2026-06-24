@@ -2,6 +2,7 @@ import 'package:core_networking/core_networking.dart';
 import 'package:dio/dio.dart';
 
 import 'models/radarr_add_models.dart';
+import 'models/radarr_history.dart';
 import 'models/radarr_movie.dart';
 import 'models/radarr_queue.dart';
 import 'models/radarr_release.dart';
@@ -61,6 +62,24 @@ class RadarrApi {
         },
       );
       return RadarrQueuePage.fromJson(resp.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Paginated download/import history, newest first.
+  Future<RadarrHistoryPage> getHistory({int page = 1, int pageSize = 50}) async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>(
+        '$_base/history',
+        queryParameters: <String, dynamic>{
+          'page': page,
+          'pageSize': pageSize,
+          'sortKey': 'date',
+          'sortDirection': 'descending',
+        },
+      );
+      return RadarrHistoryPage.fromJson(resp.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }

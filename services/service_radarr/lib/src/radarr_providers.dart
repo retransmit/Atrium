@@ -2,6 +2,7 @@ import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'models/radarr_history.dart';
 import 'models/radarr_movie.dart';
 import 'models/radarr_queue.dart';
 import 'models/radarr_release.dart';
@@ -103,6 +104,17 @@ final radarrReleasesProvider =
   final (Instance instance, int movieId) = key;
   final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
   return api.getReleases(movieId);
+});
+
+/// Paginated history. family key is (Instance, page).
+final radarrHistoryProvider =
+    FutureProvider.autoDispose.family<RadarrHistoryPage, (Instance, int)>((
+  Ref ref,
+  (Instance, int) key,
+) async {
+  final (Instance instance, int page) = key;
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getHistory(page: page);
 });
 
 /// Sort options for the Radarr movie list.
