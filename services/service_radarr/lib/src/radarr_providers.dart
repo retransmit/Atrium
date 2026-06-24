@@ -7,6 +7,7 @@ import 'models/radarr_history.dart';
 import 'models/radarr_movie.dart';
 import 'models/radarr_queue.dart';
 import 'models/radarr_release.dart';
+import 'models/radarr_settings_models.dart';
 import 'models/radarr_system.dart';
 import 'models/radarr_wanted.dart';
 import 'radarr_api.dart';
@@ -201,6 +202,230 @@ final radarrBackupsProvider =
 ) async {
   final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
   return api.getBackups();
+});
+
+// ---------------------------------------------------------------------------
+// Settings providers
+// ---------------------------------------------------------------------------
+
+/// Fetches tags.
+final radarrTagsProvider =
+    FutureProvider.autoDispose.family<List<RadarrTag>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getTags();
+});
+
+/// Fetches indexers.
+final radarrIndexersProvider =
+    FutureProvider.autoDispose.family<List<RadarrIndexer>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getIndexers();
+});
+
+/// Fetches indexer schemas.
+final radarrIndexerSchemaProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getIndexerSchema();
+});
+
+/// Fetches download clients.
+final radarrDownloadClientsProvider =
+    FutureProvider.autoDispose.family<List<RadarrDownloadClient>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getDownloadClients();
+});
+
+/// Fetches download client schemas.
+final radarrDownloadClientSchemaProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getDownloadClientSchema();
+});
+
+/// Fetches notification connections.
+final radarrNotificationsProvider =
+    FutureProvider.autoDispose.family<List<RadarrNotification>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getNotifications();
+});
+
+/// Fetches notification schemas.
+final radarrNotificationSchemaProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getNotificationSchema();
+});
+
+/// Fetches import lists.
+final radarrImportListsProvider =
+    FutureProvider.autoDispose.family<List<RadarrImportList>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getImportLists();
+});
+
+/// Fetches import list schemas.
+final radarrImportListSchemaProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getImportListSchema();
+});
+
+/// Fetches host config settings.
+final radarrHostConfigProvider =
+    FutureProvider.autoDispose.family<RadarrHostConfig, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getHostConfig();
+});
+
+/// Fetches naming config settings.
+final radarrNamingConfigProvider =
+    FutureProvider.autoDispose.family<RadarrNamingConfig, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getNamingConfig();
+});
+
+/// Fetches media management config settings.
+final radarrMediaManagementConfigProvider =
+    FutureProvider.autoDispose.family<RadarrMediaManagementConfig, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getMediaManagementConfig();
+});
+
+/// Fetches UI config settings.
+final radarrUiConfigProvider =
+    FutureProvider.autoDispose.family<RadarrUiConfig, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getUiConfig();
+});
+
+/// Fetches metadata consumers.
+final radarrMetadataProvidersProvider =
+    FutureProvider.autoDispose.family<List<RadarrMetadataProvider>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getMetadataProviders();
+});
+
+/// Fetches delay profiles.
+final radarrDelayProfilesProvider =
+    FutureProvider.autoDispose.family<List<RadarrDelayProfile>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getDelayProfiles();
+});
+
+/// Fetches custom formats.
+final radarrCustomFormatsProvider =
+    FutureProvider.autoDispose.family<List<RadarrCustomFormat>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getCustomFormats();
+});
+
+/// Fetches quality definitions.
+final radarrQualityDefinitionsProvider =
+    FutureProvider.autoDispose.family<List<RadarrQualityDefinition>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getQualityDefinitions();
+});
+
+/// Fetches quality profiles (raw).
+final radarrQualityProfilesRawProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getQualityProfilesRaw();
+});
+
+/// Fetches quality profile schema.
+final radarrQualityProfileSchemaProvider =
+    FutureProvider.autoDispose.family<Map<String, dynamic>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getQualityProfileSchema();
+});
+
+/// Fetches release profiles.
+final radarrReleaseProfilesProvider =
+    FutureProvider.autoDispose.family<List<RadarrReleaseProfile>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getReleaseProfiles();
+});
+
+/// Fetches import list exclusions.
+final radarrImportListExclusionsProvider =
+    FutureProvider.autoDispose.family<List<RadarrImportListExclusion>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getImportListExclusions();
+});
+
+/// Fetches auto-tagging rules.
+final radarrAutoTaggingRulesProvider =
+    FutureProvider.autoDispose.family<List<RadarrAutoTaggingRule>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getAutoTaggingRules();
 });
 
 /// Sort options for the Radarr movie list.
