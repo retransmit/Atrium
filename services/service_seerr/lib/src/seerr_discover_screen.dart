@@ -82,7 +82,7 @@ class _DiscoverSection extends ConsumerWidget {
         ),
         const SizedBox(height: Insets.sm),
         SizedBox(
-          height: 220,
+          height: 250,
           child: AsyncValueView<List<SeerrDiscoverResult>>(
             value: items,
             onRetry: () => ref.invalidate(provider),
@@ -97,59 +97,81 @@ class _DiscoverSection extends ConsumerWidget {
                 itemBuilder: (BuildContext context, int index) {
                   final SeerrDiscoverResult item = list[index];
                   return Container(
-                    width: 120,
+                    width: 128,
                     margin: const EdgeInsets.only(right: Insets.md),
-                    child: GestureDetector(
-                      onTap: () {
-                        pushScreen<void>(
-                          context,
-                          SeerrItemDetailScreen(instance: instance, item: item),
-                        );
-                      },
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Expanded(
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: <Widget>[
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(Insets.sm),
-                                child: item.posterPath != null
-                                    ? Image.network(
-                                        'https://image.tmdb.org/t/p/w500${item.posterPath}',
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) =>
-                                            const _Placeholder(),
-                                      )
-                                    : const _Placeholder(),
-                              ),
-                              Positioned(
-                                top: 6,
-                                right: 6,
-                                child: SeerrStatusBadge(
-                                  status: item.mediaInfo?.status,
+                          child: Material(
+                            color:
+                                Theme.of(context).colorScheme.surfaceContainerHigh,
+                            borderRadius: BorderRadius.circular(16),
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              onTap: () => pushScreen<void>(
+                                context,
+                                SeerrItemDetailScreen(
+                                  instance: instance,
+                                  item: item,
                                 ),
                               ),
-                            ],
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: <Widget>[
+                                  item.posterPath != null
+                                      ? Image.network(
+                                          'https://image.tmdb.org/t/p/w500${item.posterPath}',
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) =>
+                                              const _Placeholder(),
+                                        )
+                                      : const _Placeholder(),
+                                  Positioned(
+                                    top: 6,
+                                    right: 6,
+                                    child: SeerrStatusBadge(
+                                      status: item.mediaInfo?.status,
+                                    ),
+                                  ),
+                                  if (item.voteAverage != null &&
+                                      item.voteAverage! > 0)
+                                    Positioned(
+                                      bottom: 6,
+                                      left: 6,
+                                      child:
+                                          _RatingBadge(value: item.voteAverage!),
+                                    ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                        const SizedBox(height: Insets.xs),
+                        const SizedBox(height: Insets.sm),
                         Text(
                           item.displayTitle,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
                         ),
                         if (item.displayDate != null)
                           Text(
                             item.displayDate!,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
                           ),
                       ],
-                    ),
                     ),
                   );
                 },
@@ -171,6 +193,39 @@ class _Placeholder extends StatelessWidget {
     return Container(
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       child: const Center(child: Icon(Icons.movie_outlined)),
+    );
+  }
+}
+
+/// A small rating pill (star + score) overlaid on a poster.
+class _RatingBadge extends StatelessWidget {
+  const _RatingBadge({required this.value});
+
+  final double value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          const Icon(Icons.star, size: 11, color: Colors.amber),
+          const SizedBox(width: 3),
+          Text(
+            value.toStringAsFixed(1),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
