@@ -105,3 +105,89 @@ final radarrReleasesProvider =
   return api.getReleases(movieId);
 });
 
+/// Sort options for the Radarr movie list.
+enum RadarrSortOption { titleAsc, titleDesc, yearAsc, yearDesc, sizeAsc, sizeDesc }
+
+/// Filter by download status (uses hasFile).
+enum RadarrStatusFilter { all, downloaded, missing }
+
+/// Filter by monitored status.
+enum RadarrMonitoredFilter { all, monitored, unmonitored }
+
+/// Search query per instance.
+final radarrSearchQueryProvider =
+    StateProvider.family<String, Instance>((Ref ref, Instance instance) => '');
+
+/// Sort option per instance.
+final radarrSortOptionProvider =
+    StateProvider.family<RadarrSortOption, Instance>(
+  (Ref ref, Instance instance) => RadarrSortOption.titleAsc,
+);
+
+/// Status filter per instance.
+final radarrStatusFilterProvider =
+    StateProvider.family<RadarrStatusFilter, Instance>(
+  (Ref ref, Instance instance) => RadarrStatusFilter.all,
+);
+
+/// Monitored filter per instance.
+final radarrMonitoredFilterProvider =
+    StateProvider.family<RadarrMonitoredFilter, Instance>(
+  (Ref ref, Instance instance) => RadarrMonitoredFilter.all,
+);
+
+/// Filters, searches, and sorts the movie list per user preferences.
+final radarrFilteredMoviesProvider =
+    Provider.autoDispose.family<AsyncValue<List<RadarrMovie>>, Instance>(
+        (Ref ref, Instance instance) {
+  final AsyncValue<List<RadarrMovie>> moviesVal =
+      ref.watch(radarrMoviesProvider(instance));
+  return moviesVal.whenData((List<RadarrMovie> list) {
+    final String query =
+        ref.watch(radarrSearchQueryProvider(instance)).trim().toLowerCase();
+    final RadarrSortOption sortOption =
+        ref.watch(radarrSortOptionProvider(instance));
+    final RadarrStatusFilter statusFilter =
+        ref.watch(radarrStatusFilterProvider(instance));
+    final RadarrMonitoredFilter monitoredFilter =
+        ref.watch(radarrMonitoredFilterProvider(instance));
+
+    final List<RadarrMovie> filtered = list.where((RadarrMovie m) {
+      if (query.isNotEmpty && !m.title.toLowerCase().contains(query)) {
+        return false;
+      }
+      if (statusFilter == RadarrStatusFilter.downloaded && !m.hasFile) {
+        return false;
+      }
+      if (statusFilter == RadarrStatusFilter.missing && m.hasFile) {
+        return false;
+      }
+      if (monitoredFilter == RadarrMonitoredFilter.monitored && !m.monitored) {
+        return false;
+      }
+      if (monitoredFilter == RadarrMonitoredFilter.unmonitored && m.monitored) {
+        return false;
+      }
+      return true;
+    }).toList();
+
+    filtered.sort((RadarrMovie a, RadarrMovie b) {
+      switch (sortOption) {
+        case RadarrSortOption.titleAsc:
+          return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+        case RadarrSortOption.titleDesc:
+          return b.title.toLowerCase().compareTo(a.title.toLowerCase());
+        case RadarrSortOption.yearAsc:
+          return (a.year ?? 0).compareTo(b.year ?? 0);
+        case RadarrSortOption.yearDesc:
+          return (b.year ?? 0).compareTo(a.year ?? 0);
+        case RadarrSortOption.sizeAsc:
+          return a.sizeOnDisk.compareTo(b.sizeOnDisk);
+        case RadarrSortOption.sizeDesc:
+          return b.sizeOnDisk.compareTo(a.sizeOnDisk);
+      }
+    });
+    return filtered;
+  });
+});
+
