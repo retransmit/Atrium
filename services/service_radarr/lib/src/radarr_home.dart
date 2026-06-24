@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'add_movie_screen.dart';
+import 'models/radarr_history.dart';
 import 'models/radarr_movie.dart';
 import 'models/radarr_queue.dart';
 import 'movie_detail_screen.dart';
@@ -21,7 +22,7 @@ class RadarrHome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         body: Column(
           children: <Widget>[
@@ -31,6 +32,7 @@ class RadarrHome extends StatelessWidget {
               tabs: <Widget>[
                 Tab(text: 'Movies'),
                 Tab(text: 'Queue'),
+                Tab(text: 'History'),
               ],
             ),
             Expanded(
@@ -38,6 +40,7 @@ class RadarrHome extends StatelessWidget {
                 children: <Widget>[
                   _MoviesTab(instance: instance),
                   _QueueTab(instance: instance),
+                  _HistoryTab(instance: instance),
                 ],
               ),
             ),
@@ -701,3 +704,141 @@ class _QueueTab extends ConsumerWidget {
     );
   }
 }
+
+// History ------------------------------------------------------------------
+
+class _HistoryTab extends ConsumerStatefulWidget {
+  const _HistoryTab({required this.instance});
+
+  final Instance instance;
+
+  @override
+  ConsumerState<_HistoryTab> createState() => _HistoryTabState();
+}
+
+class _HistoryTabState extends ConsumerState<_HistoryTab> {
+  int _page = 1;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final AsyncValue<RadarrHistoryPage> history =
+        ref.watch(radarrHistoryProvider((widget.instance, _page)));
+    return RefreshIndicator(
+      onRefresh: () async =>
+          ref.invalidate(radarrHistoryProvider((widget.instance, _page))),
+      child: AsyncValueView<RadarrHistoryPage>(
+        value: history,
+        onRetry: () =>
+            ref.invalidate(radarrHistoryProvider((widget.instance, _page))),
+        data: (RadarrHistoryPage hp) {
+          if (hp.records.isEmpty) {
+            return const EmptyView(
+              icon: Icons.history,
+              title: 'No history',
+              message: 'Grabs and imports will show up here.',
+            );
+          }
+          final int totalPages = hp.pageSize > 0
+              ? ((hp.totalRecords + hp.pageSize - 1) ~/ hp.pageSize)
+              : 1;
+          return Column(
+            children: <Widget>[
+              Expanded(
+                child: ListView.separated(
+                  padding: Insets.page,
+                  itemCount: hp.records.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (BuildContext context, int index) {
+                    final RadarrHistoryRecord r = hp.records[index];
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        _eventIcon(r.eventType),
+                        color: theme.colorScheme.primary,
+                      ),
+                      title: Text(
+                        r.sourceTitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        <String>[
+                          _eventLabel(r.eventType),
+                          if (r.date != null) _fmtDate(r.date!.toLocal()),
+                        ].where((String s) => s.isNotEmpty).join(' • '),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              if (totalPages > 1)
+                _PaginationBar(
+                  page: _page,
+                  totalPages: totalPages,
+                  onPrev: _page > 1 ? () => setState(() => _page--) : null,
+                  onNext: _page < totalPages
+                      ? () => setState(() => _page++)
+                      : null,
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _PaginationBar extends StatelessWidget {
+  const _PaginationBar({
+    required this.page,
+    required this.totalPages,
+    this.onPrev,
+    this.onNext,
+  });
+
+  final int page;
+  final int totalPages;
+  final VoidCallback? onPrev;
+  final VoidCallback? onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: Insets.lg,
+        vertical: Insets.sm,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: <Widget>[
+          TextButton(onPressed: onPrev, child: const Text('Prev')),
+          Text('Page $page of $totalPages'),
+          TextButton(onPressed: onNext, child: const Text('Next')),
+        ],
+      ),
+    );
+  }
+}
+
+String _eventLabel(String e) => switch (e) {
+  'grabbed' => 'Grabbed',
+  'downloadFolderImported' => 'Imported',
+  'downloadFailed' => 'Download failed',
+  'movieFileDeleted' => 'File deleted',
+  'movieFileRenamed' => 'Renamed',
+  _ => e,
+};
+
+IconData _eventIcon(String e) => switch (e) {
+  'grabbed' => Icons.download,
+  'downloadFolderImported' => Icons.check_circle_outline,
+  'downloadFailed' => Icons.error_outline,
+  'movieFileDeleted' => Icons.delete_outline,
+  'movieFileRenamed' => Icons.drive_file_rename_outline,
+  _ => Icons.history,
+};
+
+String _fmtDate(DateTime d) =>
+    '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')} '
+    '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
