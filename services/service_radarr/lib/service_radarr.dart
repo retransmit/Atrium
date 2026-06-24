@@ -15,3 +15,4 @@ export 'src/radarr_api.dart';
 export 'src/radarr_home.dart';
 export 'src/radarr_providers.dart';
 export 'src/radarr_release_search_screen.dart';
+export 'src/radarr_settings_form_screen.dart';

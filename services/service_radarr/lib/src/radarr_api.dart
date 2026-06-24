@@ -479,6 +479,160 @@ class RadarrApi {
   }
 
   // ---------------------------------------------------------------------------
+  // Settings: raw list/config getters
+  //
+  // The typed settings models are read-only projections that drop the many
+  // provider-specific fields the server validates and stores. Edit, toggle,
+  // and test flows need the FULL object, so they read these raw maps and
+  // round-trip them back unchanged (apart from the one field they touch).
+  // ---------------------------------------------------------------------------
+
+  Future<List<Map<String, dynamic>>> getIndexersRaw() async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/indexer');
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => e as Map<String, dynamic>)
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getDownloadClientsRaw() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/downloadclient');
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => e as Map<String, dynamic>)
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getNotificationsRaw() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/notification');
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => e as Map<String, dynamic>)
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getImportListsRaw() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/importlist');
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => e as Map<String, dynamic>)
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getMetadataProvidersRaw() async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/metadata');
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => e as Map<String, dynamic>)
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getDelayProfilesRaw() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/delayprofile');
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => e as Map<String, dynamic>)
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getReleaseProfilesRaw() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/releaseprofile');
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => e as Map<String, dynamic>)
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getAutoTaggingRulesRaw() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/autotagging');
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => e as Map<String, dynamic>)
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getQualityDefinitionsRaw() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/qualitydefinition');
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => e as Map<String, dynamic>)
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> getHostConfigRaw() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/config/host');
+      return resp.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> getNamingConfigRaw() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/config/naming');
+      return resp.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> getMediaManagementConfigRaw() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/config/mediamanagement');
+      return resp.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> getUiConfigRaw() async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/config/ui');
+      return resp.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Settings: tags
   // ---------------------------------------------------------------------------
 
