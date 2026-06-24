@@ -9,6 +9,7 @@ export 'src/models/radarr_add_models.dart';
 export 'src/models/radarr_movie.dart';
 export 'src/models/radarr_queue.dart';
 export 'src/models/radarr_release.dart';
+export 'src/models/radarr_settings_models.dart';
 export 'src/movie_detail_screen.dart';
 export 'src/radarr_api.dart';
 export 'src/radarr_home.dart';
