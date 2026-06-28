@@ -35,10 +35,19 @@ class TorrentDetailScreen extends ConsumerWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          bottom: const TabBar(
+          bottom: TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
-            tabs: <Widget>[
+            dividerColor: Colors.transparent,
+            indicatorSize: TabBarIndicatorSize.tab,
+            indicator: BoxDecoration(
+              color: Theme.of(context).colorScheme.secondaryContainer,
+              borderRadius: BorderRadius.circular(50),
+            ),
+            labelColor: Theme.of(context).colorScheme.onSecondaryContainer,
+            unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
+            splashBorderRadius: BorderRadius.circular(50),
+            tabs: const <Widget>[
               Tab(text: 'Overview'),
               Tab(text: 'Files'),
               Tab(text: 'Trackers'),

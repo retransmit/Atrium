@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:core_networking/core_networking.dart';
@@ -47,7 +48,8 @@ class EmbyClient {
     required bool allowSelfSigned,
   }) {
     final String baseUrlStr = baseUrl.toString();
-    final String normalizedBaseUrl = baseUrlStr.endsWith('/') ? baseUrlStr : '$baseUrlStr/';
+    final String normalizedBaseUrl =
+        baseUrlStr.endsWith('/') ? baseUrlStr : '$baseUrlStr/';
     final Dio dio = Dio(
       BaseOptions(
         baseUrl: normalizedBaseUrl,
@@ -62,6 +64,37 @@ class EmbyClient {
         ..badCertificateCallback =
             (X509Certificate _, String __, int ___) => true;
     }
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onResponse:
+            (Response<dynamic> response, ResponseInterceptorHandler handler) {
+          if (response.data == null) {
+            response.data = <String, dynamic>{};
+          } else if (response.data is String) {
+            final String str = (response.data as String).trim();
+            if (str.isEmpty) {
+              response.data = <String, dynamic>{};
+            } else {
+              try {
+                response.data = jsonDecode(str);
+              } catch (_) {
+                handler.reject(
+                  DioException(
+                    requestOptions: response.requestOptions,
+                    response: response,
+                    type: DioExceptionType.badResponse,
+                    error:
+                        'Server returned invalid JSON (possibly an HTML error page).',
+                  ),
+                );
+                return;
+              }
+            }
+          }
+          handler.next(response);
+        },
+      ),
+    );
     return EmbyClient(
       dio: dio,
       baseUrl: baseUrl,
@@ -108,7 +141,9 @@ class EmbyClient {
             .toList();
       });
 
-  Future<List<EmbyItem>> getLibraryItems(String parentId, String? collectionType) => _guarded(() async {
+  Future<List<EmbyItem>> getLibraryItems(
+          String parentId, String? collectionType) =>
+      _guarded(() async {
         String? includeItemTypes;
         switch (collectionType) {
           case 'movies':
@@ -133,13 +168,15 @@ class EmbyClient {
             'IncludeItemTypes': includeItemTypes,
             'SortBy': 'SortName',
             'SortOrder': 'Ascending',
-            'Fields': 'PrimaryImageAspectRatio,ImageTags,Overview,CommunityRating,ParentId',
+            'Fields':
+                'PrimaryImageAspectRatio,ImageTags,Overview,CommunityRating,ParentId',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
             'Limit': 200,
           },
         );
-        return EmbyItemsResult.fromJson(resp.data as Map<String, dynamic>).items;
+        return EmbyItemsResult.fromJson(resp.data as Map<String, dynamic>)
+            .items;
       });
 
   Future<List<EmbyItem>> getItems(String parentId) => _guarded(() async {
@@ -155,10 +192,13 @@ class EmbyClient {
             'Limit': 200,
           },
         );
-        return EmbyItemsResult.fromJson(resp.data as Map<String, dynamic>).items;
+        return EmbyItemsResult.fromJson(resp.data as Map<String, dynamic>)
+            .items;
       });
 
-  Future<List<EmbyItem>> getWatchedItems({int startIndex = 0, int limit = 200}) => _guarded(() async {
+  Future<List<EmbyItem>> getWatchedItems(
+          {int startIndex = 0, int limit = 200}) =>
+      _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
           'Users/$_userId/Items',
           queryParameters: <String, dynamic>{
@@ -174,10 +214,13 @@ class EmbyClient {
             'Limit': limit,
           },
         );
-        return EmbyItemsResult.fromJson(resp.data as Map<String, dynamic>).items;
+        return EmbyItemsResult.fromJson(resp.data as Map<String, dynamic>)
+            .items;
       });
 
-  Future<List<EmbyItem>> getUnwatchedItems({int startIndex = 0, int limit = 200}) => _guarded(() async {
+  Future<List<EmbyItem>> getUnwatchedItems(
+          {int startIndex = 0, int limit = 200}) =>
+      _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
           'Users/$_userId/Items',
           queryParameters: <String, dynamic>{
@@ -193,7 +236,8 @@ class EmbyClient {
             'Limit': limit,
           },
         );
-        return EmbyItemsResult.fromJson(resp.data as Map<String, dynamic>).items;
+        return EmbyItemsResult.fromJson(resp.data as Map<String, dynamic>)
+            .items;
       });
 
   Future<void> markAsWatched(String itemId) => _guarded(() async {
@@ -220,54 +264,87 @@ class EmbyClient {
         ).items;
       });
 
+  Future<void> pauseSession(String sessionId) => _guarded(() async {
+        await _dio.post<dynamic>('Sessions/$sessionId/Playing/Pause');
+      });
+
+  Future<void> unpauseSession(String sessionId) => _guarded(() async {
+        await _dio.post<dynamic>('Sessions/$sessionId/Playing/Unpause');
+      });
+
+  Future<void> nextTrack(String sessionId) => _guarded(() async {
+        await _dio.post<dynamic>('Sessions/$sessionId/Playing/NextTrack');
+      });
+
+  Future<void> previousTrack(String sessionId) => _guarded(() async {
+        await _dio.post<dynamic>('Sessions/$sessionId/Playing/PreviousTrack');
+      });
+
   Future<List<ActiveSession>> getSessions() => _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>('Sessions');
-        final List<dynamic> list = resp.data as List<dynamic>;
+        final dynamic data = resp.data;
+        final List<dynamic> list = data is List<dynamic> ? data : <dynamic>[];
 
         final List<ActiveSession> active = <ActiveSession>[];
         for (final dynamic element in list) {
           if (element is! Map<String, dynamic>) continue;
-          
+
           if (element['NowPlayingItem'] == null) continue;
-          final Map<String, dynamic> nowPlaying = element['NowPlayingItem'] as Map<String, dynamic>;
-          final Map<String, dynamic> playState = element['PlayState'] as Map<String, dynamic>;
+          final Map<String, dynamic> nowPlaying =
+              element['NowPlayingItem'] as Map<String, dynamic>;
+          final Map<String, dynamic> playState =
+              element['PlayState'] as Map<String, dynamic>? ??
+                  <String, dynamic>{};
 
           final int posTicks = playState['PositionTicks'] as int? ?? 0;
           final int posSec = posTicks ~/ 10000000;
-          
+
           final int durTicks = nowPlaying['RunTimeTicks'] as int? ?? 0;
           final int durSec = durTicks ~/ 10000000;
-          
+
           String formatTime(int sec) {
             final int h = sec ~/ 3600;
             final int m = (sec % 3600) ~/ 60;
             final int s = sec % 60;
             return '${h > 0 ? '$h:' : ''}${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
           }
-          
-          final List<dynamic>? artistsList = nowPlaying['Artists'] as List<dynamic>?;
-          final String? artistName = artistsList != null && artistsList.isNotEmpty 
-              ? artistsList.join(', ') 
-              : null;
-              
+
+          final List<dynamic>? artistsList =
+              nowPlaying['Artists'] as List<dynamic>?;
+          final String? artistName =
+              artistsList != null && artistsList.isNotEmpty
+                  ? artistsList.join(', ')
+                  : null;
+
           final String type = nowPlaying['Type'] as String? ?? '';
-          final double computedAspectRatio = type == 'Episode' 
-              ? (2 / 3) 
-              : ((nowPlaying['PrimaryImageAspectRatio'] as num?)?.toDouble() ?? 
-                (type == 'Audio' || type == 'MusicAlbum' || type == 'MusicArtist' ? 1.0 : (2 / 3)));
-          
-          active.add(ActiveSession(
-            user: element['UserName'] as String? ?? 'Unknown',
-            device: element['Client'] as String? ?? 'Unknown',
-            status: playState['IsPaused'] == true ? 'Paused' : 'Playing',
-            showTitle: nowPlaying['Name'] as String? ?? 'Unknown',
-            episodeName: type == 'Audio' ? artistName : nowPlaying['SeriesName'] as String?,
-            progressPercent: durTicks > 0 ? ((posTicks / durTicks) * 100).toInt() : 0,
-            timePosition: formatTime(posSec),
-            timeDuration: formatTime(durSec),
-            posterUrl: '$_baseStr/Items/${nowPlaying['SeriesId'] ?? nowPlaying['Id']}/Images/Primary?quality=100${_token == null ? '' : '&api_key=$_token'}',
-            aspectRatio: computedAspectRatio,
-          ),);
+          final double computedAspectRatio = type == 'Episode'
+              ? (2 / 3)
+              : ((nowPlaying['PrimaryImageAspectRatio'] as num?)?.toDouble() ??
+                  (type == 'Audio' ||
+                          type == 'MusicAlbum' ||
+                          type == 'MusicArtist'
+                      ? 1.0
+                      : (2 / 3)));
+
+          active.add(
+            ActiveSession(
+              id: element['Id'] as String? ?? '',
+              user: element['UserName'] as String? ?? 'Unknown',
+              device: element['Client'] as String? ?? 'Unknown',
+              status: playState['IsPaused'] == true ? 'Paused' : 'Playing',
+              showTitle: nowPlaying['Name'] as String? ?? 'Unknown',
+              episodeName: type == 'Audio'
+                  ? artistName
+                  : nowPlaying['SeriesName'] as String?,
+              progressPercent:
+                  durTicks > 0 ? ((posTicks / durTicks) * 100).toInt() : 0,
+              timePosition: formatTime(posSec),
+              timeDuration: formatTime(durSec),
+              posterUrl:
+                  '$_baseStr/Items/${nowPlaying['SeriesId'] ?? nowPlaying['Id']}/Images/Primary?quality=100${_token == null ? '' : '&api_key=$_token'}',
+              aspectRatio: computedAspectRatio,
+            ),
+          );
         }
         return active;
       });
@@ -323,11 +400,13 @@ class EmbyClient {
         ).items;
       });
 
-  Future<EmbyUserData> markFavorite(String itemId, bool isFavorite) => _guarded(() async {
-        final Response<dynamic> resp = isFavorite 
+  Future<EmbyUserData> markFavorite(String itemId, bool isFavorite) =>
+      _guarded(() async {
+        final Response<dynamic> resp = isFavorite
             ? await _dio.post<dynamic>('Users/$_userId/FavoriteItems/$itemId')
-            : await _dio.delete<dynamic>('Users/$_userId/FavoriteItems/$itemId');
-            
+            : await _dio
+                .delete<dynamic>('Users/$_userId/FavoriteItems/$itemId');
+
         return EmbyUserData.fromJson(
           resp.data as Map<String, dynamic>,
         );
@@ -353,7 +432,8 @@ class EmbyClient {
         final Response<dynamic> resp = await _dio.get<dynamic>(
           'Users/$_userId/Items/$itemId',
           queryParameters: <String, dynamic>{
-            'Fields': 'Overview,People,CommunityRating,OfficialRating,RunTimeTicks',
+            'Fields':
+                'Overview,People,CommunityRating,OfficialRating,RunTimeTicks',
           },
         );
         return EmbyItem.fromJson(resp.data as Map<String, dynamic>);
@@ -375,14 +455,14 @@ class EmbyClient {
         ).items;
       });
 
-  Future<List<EmbyItem>> getEpisodes(String seasonId) =>
-      _guarded(() async {
+  Future<List<EmbyItem>> getEpisodes(String seasonId) => _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
           'Users/$_userId/Items',
           queryParameters: <String, dynamic>{
             'ParentId': seasonId,
             'IncludeItemTypes': 'Episode',
-            'Fields': 'PrimaryImageAspectRatio,Overview,RunTimeTicks,CommunityRating,ImageTags',
+            'Fields':
+                'PrimaryImageAspectRatio,Overview,RunTimeTicks,CommunityRating,ImageTags',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -426,8 +506,6 @@ class EmbyClient {
 
   String get _baseStr => baseUrl.toString().replaceAll(RegExp(r'/+$'), '');
 
-
-
   /// Builds a primary-image (poster) URL for [item], or null if it has none.
   String? imageUrl(EmbyItem item, {int maxHeight = 420}) {
     final String key = _token == null ? '' : '&api_key=$_token';
@@ -445,15 +523,16 @@ class EmbyClient {
       final String targetId = item.albumId ?? item.parentId ?? item.id;
       final String tagParam = item.albumPrimaryImageTag != null
           ? '&tag=${item.albumPrimaryImageTag}'
-          : (item.parentPrimaryImageTag != null ? '&tag=${item.parentPrimaryImageTag}' : '');
+          : (item.parentPrimaryImageTag != null
+              ? '&tag=${item.parentPrimaryImageTag}'
+              : '');
       return '$_baseStr/Items/$targetId/Images/Primary'
           '?quality=100$tagParam$key';
     }
 
     if (item.primaryImageItemId != null) {
-      final String tagParam = item.primaryImageTag != null
-          ? '&tag=${item.primaryImageTag}'
-          : '';
+      final String tagParam =
+          item.primaryImageTag != null ? '&tag=${item.primaryImageTag}' : '';
       return '$_baseStr/Items/${item.primaryImageItemId}/Images/Primary'
           '?quality=100$tagParam$key';
     }
@@ -470,8 +549,6 @@ class EmbyClient {
           '?tag=$tag&quality=100$key';
     }
 
-
-
     if (item.parentPrimaryImageTag != null && item.parentId != null) {
       final String tag = item.parentPrimaryImageTag!;
       return '$_baseStr/Items/${item.parentId}/Images/Primary'
@@ -486,17 +563,17 @@ class EmbyClient {
   /// Builds a backdrop image URL for [item], or null if it has none.
   String? backdropImageUrl(EmbyItem item, {int maxWidth = 1920}) {
     final String key = _token == null ? '' : '&api_key=$_token';
-    
+
     String targetId = item.id;
     String tagParam = '';
-    
+
     if (item.imageTags.containsKey('Backdrop')) {
       tagParam = '&tag=${item.imageTags['Backdrop']}';
     } else if (item.seriesId != null) {
       // Fallback to series backdrop for episodes
       targetId = item.seriesId!;
     }
-    
+
     return '$_baseStr/Items/$targetId/Images/Backdrop/0?quality=100$tagParam$key';
   }
 
