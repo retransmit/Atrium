@@ -10,6 +10,7 @@ import 'emby_item_detail.dart';
 import 'emby_music_screens.dart';
 import 'emby_providers.dart';
 import 'emby_season_screen.dart';
+import 'emby_session_detail_screen.dart';
 import 'models/emby_item.dart';
 import 'models/emby_session.dart';
 import 'models/emby_view.dart';
@@ -68,9 +69,21 @@ class _EmbyHomeState extends ConsumerState<EmbyHome> {
                     child: TabBar(
                       isScrollable: true,
                       tabAlignment: TabAlignment.start,
+                      dividerColor: Colors.transparent,
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      indicator: BoxDecoration(
+                        color: Theme.of(context).colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                      labelColor:
+                          Theme.of(context).colorScheme.onSecondaryContainer,
+                      unselectedLabelColor:
+                          Theme.of(context).colorScheme.onSurfaceVariant,
+                      splashBorderRadius: BorderRadius.circular(50),
                       tabs: <Widget>[
                         const Tab(text: 'Home'),
-                        for (final EmbyView lib in libraries) Tab(text: lib.name),
+                        for (final EmbyView lib in libraries)
+                          Tab(text: lib.name),
                         const Tab(text: 'Watched'),
                         const Tab(text: 'Unwatched'),
                       ],
@@ -78,37 +91,33 @@ class _EmbyHomeState extends ConsumerState<EmbyHome> {
                   ),
                   Builder(
                     builder: (BuildContext context) {
-                      final TabController controller = DefaultTabController.of(context);
+                      final TabController controller =
+                          DefaultTabController.of(context);
                       return AnimatedBuilder(
                         animation: controller,
                         builder: (BuildContext context, Widget? child) {
                           if (controller.index == 0) {
                             return const SizedBox.shrink();
                           }
+                          final EmbyViewMode viewMode =
+                              ref.watch(embyViewModeProvider(widget.instance));
                           return Padding(
                             padding: const EdgeInsets.only(right: Insets.sm),
-                            child: PopupMenuButton<double>(
-                              icon: const Icon(Icons.grid_view),
-                              tooltip: 'Grid Size',
-                              onSelected: (double value) {
-                                ref.read(embyGridScaleProvider.notifier).state = value;
-                              },
-                              itemBuilder: (BuildContext context) {
-                                final double current = ref.read(embyGridScaleProvider);
-                                return <PopupMenuEntry<double>>[
-                                  PopupMenuItem<double>(
-                                    value: 80.0,
-                                    child: Text('Small ${current == 80.0 ? '(Active)' : ''}'),
-                                  ),
-                                  PopupMenuItem<double>(
-                                    value: 140.0,
-                                    child: Text('Medium ${current == 140.0 ? '(Active)' : ''}'),
-                                  ),
-                                  PopupMenuItem<double>(
-                                    value: 200.0,
-                                    child: Text('Large ${current == 200.0 ? '(Active)' : ''}'),
-                                  ),
-                                ];
+                            child: IconButton(
+                              icon: Icon(viewMode == EmbyViewMode.grid
+                                  ? Icons.view_headline
+                                  : Icons.grid_view),
+                              tooltip: viewMode == EmbyViewMode.grid
+                                  ? 'Switch to List View'
+                                  : 'Switch to Grid View',
+                              onPressed: () {
+                                ref
+                                    .read(embyViewModeProvider(widget.instance)
+                                        .notifier)
+                                    .state = viewMode ==
+                                        EmbyViewMode.grid
+                                    ? EmbyViewMode.list
+                                    : EmbyViewMode.grid;
                               },
                             ),
                           );
@@ -147,7 +156,8 @@ class _EmbyHomeState extends ConsumerState<EmbyHome> {
 }
 
 class EmbyLibraryGrid extends ConsumerWidget {
-  const EmbyLibraryGrid({required this.instance, required this.view, super.key});
+  const EmbyLibraryGrid(
+      {required this.instance, required this.view, super.key});
 
   final Instance instance;
   final EmbyView view;
@@ -156,15 +166,15 @@ class EmbyLibraryGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<EmbyItem>> items =
         ref.watch(embyLibraryItemsProvider((instance, view)));
-    final EmbyClient? client =
-        ref.watch(embyClientProvider(instance)).value;
+    final EmbyClient? client = ref.watch(embyClientProvider(instance)).value;
 
     return RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(embyLibraryItemsProvider((instance, view))),
       child: AsyncValueView<List<EmbyItem>>(
         value: items,
-        onRetry: () => ref.invalidate(embyLibraryItemsProvider((instance, view))),
+        onRetry: () =>
+            ref.invalidate(embyLibraryItemsProvider((instance, view))),
         data: (List<EmbyItem> list) {
           if (list.isEmpty) {
             return const EmptyView(
@@ -173,61 +183,135 @@ class EmbyLibraryGrid extends ConsumerWidget {
               message: 'Nothing in this library yet.',
             );
           }
-          final double scale = ref.watch(embyGridScaleProvider);
+          final EmbyViewMode viewMode =
+              ref.watch(embyViewModeProvider(instance));
+
+          if (viewMode == EmbyViewMode.list) {
+            return ListView.builder(
+              padding: Insets.page,
+              itemCount: list.length,
+              itemBuilder: (BuildContext context, int index) {
+                final EmbyItem item = list[index];
+                return PerformanceLoggerWidget(
+                  name: 'EmbyLibraryListItem',
+                  child: EmbyBannerCard(
+                    instance: instance,
+                    item: item,
+                    imageUrl: client?.imageUrl(item),
+                    onTap: client == null
+                        ? null
+                        : () {
+                            if (item.type == 'MusicAlbum') {
+                              pushScreen<void>(
+                                context,
+                                EmbyAlbumScreen(
+                                  instance: instance,
+                                  albumId: item.id,
+                                  albumName: item.name,
+                                  albumArtist: item.artists.isNotEmpty
+                                      ? item.artists.first
+                                      : 'Unknown Artist',
+                                  albumOverview: item.overview,
+                                  albumImageUrl: client.imageUrl(item),
+                                ),
+                              );
+                            } else if (item.type == 'Series') {
+                              pushScreen<void>(
+                                context,
+                                EmbyItemDetailScreen(
+                                    instance: instance, itemId: item.id),
+                              );
+                            } else if (item.type == 'Season') {
+                              pushScreen<void>(
+                                context,
+                                EmbySeasonScreen(
+                                  instance: instance,
+                                  seasonId: item.id,
+                                  seasonName: item.name,
+                                  seasonImageUrl: client.imageUrl(item),
+                                ),
+                              );
+                            } else if (embyContainerTypes.contains(item.type)) {
+                              pushScreen<void>(
+                                context,
+                                EmbyFolderScreen(
+                                    instance: instance, item: item),
+                              );
+                            } else {
+                              pushScreen<void>(
+                                context,
+                                EmbyItemDetailScreen(
+                                    instance: instance, itemId: item.id),
+                              );
+                            }
+                          },
+                  ),
+                );
+              },
+            );
+          }
+
           return MasonryGridView.extent(
             padding: Insets.page,
-            maxCrossAxisExtent: scale,
+            maxCrossAxisExtent: 140.0,
             crossAxisSpacing: Insets.md,
             mainAxisSpacing: Insets.md,
             itemCount: list.length,
             itemBuilder: (BuildContext context, int index) {
               final EmbyItem item = list[index];
-              return EmbyPosterCard(
-                instance: instance,
-                item: item,
-                imageUrl: client?.imageUrl(item),
-                onTap: client == null
-                    ? null
-                    : () {
-                        if (item.type == 'MusicAlbum') {
-                          pushScreen<void>(
-                            context,
-                            EmbyAlbumScreen(
-                              instance: instance,
-                              albumId: item.id,
-                              albumName: item.name,
-                              albumArtist: item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
-                              albumOverview: item.overview,
-                              albumImageUrl: client.imageUrl(item),
-                            ),
-                          );
-                        } else if (item.type == 'Series') {
-                          pushScreen<void>(
-                            context,
-                            EmbyItemDetailScreen(instance: instance, itemId: item.id),
-                          );
-                        } else if (item.type == 'Season') {
-                          pushScreen<void>(
-                            context,
-                            EmbySeasonScreen(
-                              instance: instance,
-                              seasonId: item.id,
-                              seasonName: item.name,
-                              seasonImageUrl: client.imageUrl(item),
-                            ),
-                          );
-                        } else if (embyContainerTypes.contains(item.type)) {
-                          pushScreen<void>(
-                            context,
-                            EmbyFolderScreen(instance: instance, item: item),
-                          );
-                        } else {
-                          pushScreen<void>(
-                            context,
-                            EmbyItemDetailScreen(instance: instance, itemId: item.id),
-                          );
-                        }
-                      },
+              return PerformanceLoggerWidget(
+                name: 'EmbyLibraryGridItem',
+                child: EmbyPosterCard(
+                  instance: instance,
+                  item: item,
+                  imageUrl: client?.imageUrl(item),
+                  onTap: client == null
+                      ? null
+                      : () {
+                          if (item.type == 'MusicAlbum') {
+                            pushScreen<void>(
+                              context,
+                              EmbyAlbumScreen(
+                                instance: instance,
+                                albumId: item.id,
+                                albumName: item.name,
+                                albumArtist: item.artists.isNotEmpty
+                                    ? item.artists.first
+                                    : 'Unknown Artist',
+                                albumOverview: item.overview,
+                                albumImageUrl: client.imageUrl(item),
+                              ),
+                            );
+                          } else if (item.type == 'Series') {
+                            pushScreen<void>(
+                              context,
+                              EmbyItemDetailScreen(
+                                  instance: instance, itemId: item.id),
+                            );
+                          } else if (item.type == 'Season') {
+                            pushScreen<void>(
+                              context,
+                              EmbySeasonScreen(
+                                instance: instance,
+                                seasonId: item.id,
+                                seasonName: item.name,
+                                seasonImageUrl: client.imageUrl(item),
+                              ),
+                            );
+                          } else if (embyContainerTypes.contains(item.type)) {
+                            pushScreen<void>(
+                              context,
+                              EmbyFolderScreen(instance: instance, item: item),
+                            );
+                          } else {
+                            pushScreen<void>(
+                              context,
+                              EmbyItemDetailScreen(
+                                  instance: instance, itemId: item.id),
+                            );
+                          }
+                        },
+                ),
               );
             },
           );
@@ -238,7 +322,8 @@ class EmbyLibraryGrid extends ConsumerWidget {
 }
 
 class EmbyItemsGrid extends ConsumerWidget {
-  const EmbyItemsGrid({required this.instance, required this.libraryId, super.key});
+  const EmbyItemsGrid(
+      {required this.instance, required this.libraryId, super.key});
 
   final Instance instance;
   final String libraryId;
@@ -247,8 +332,7 @@ class EmbyItemsGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<EmbyItem>> items =
         ref.watch(embyItemsProvider((instance, libraryId)));
-    final EmbyClient? client =
-        ref.watch(embyClientProvider(instance)).value;
+    final EmbyClient? client = ref.watch(embyClientProvider(instance)).value;
 
     return RefreshIndicator(
       onRefresh: () async =>
@@ -264,22 +348,48 @@ class EmbyItemsGrid extends ConsumerWidget {
               message: 'Nothing in this library yet.',
             );
           }
-          final double scale = ref.watch(embyGridScaleProvider);
+          final EmbyViewMode viewMode =
+              ref.watch(embyViewModeProvider(instance));
+
+          if (viewMode == EmbyViewMode.list) {
+            return ListView.builder(
+              padding: Insets.page,
+              itemCount: list.length,
+              itemBuilder: (BuildContext context, int index) {
+                final EmbyItem item = list[index];
+                return PerformanceLoggerWidget(
+                  name: 'EmbyItemsListItem',
+                  child: EmbyBannerCard(
+                    instance: instance,
+                    item: item,
+                    imageUrl: client?.imageUrl(item),
+                    onTap: client == null
+                        ? null
+                        : () => _openItem(context, client, item),
+                  ),
+                );
+              },
+            );
+          }
+
           return MasonryGridView.extent(
             padding: Insets.page,
-            maxCrossAxisExtent: scale,
+            maxCrossAxisExtent: 140.0,
             crossAxisSpacing: Insets.md,
             mainAxisSpacing: Insets.md,
             itemCount: list.length,
             itemBuilder: (BuildContext context, int index) {
               final EmbyItem item = list[index];
-              return EmbyPosterCard(
-                instance: instance,
-                item: item,
-                imageUrl: client?.imageUrl(item),
-                onTap: client == null
-                    ? null
-                    : () => _openItem(context, client, item),
+              return PerformanceLoggerWidget(
+                name: 'EmbyItemsGridItem',
+                child: EmbyPosterCard(
+                  instance: instance,
+                  item: item,
+                  imageUrl: client?.imageUrl(item),
+                  onTap: client == null
+                      ? null
+                      : () => _openItem(context, client, item),
+                ),
               );
             },
           );
@@ -296,7 +406,8 @@ class EmbyItemsGrid extends ConsumerWidget {
           instance: instance,
           albumId: item.id,
           albumName: item.name,
-          albumArtist: item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
+          albumArtist:
+              item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
           albumOverview: item.overview,
           albumImageUrl: client.imageUrl(item),
         ),
@@ -339,18 +450,18 @@ class EmbyItemsGrid extends ConsumerWidget {
 }
 
 class EmbyFolderScreen extends ConsumerWidget {
-  const EmbyFolderScreen({required this.instance, required this.item, super.key});
+  const EmbyFolderScreen(
+      {required this.instance, required this.item, super.key});
 
   final Instance instance;
   final EmbyItem item;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final EmbyClient? client =
-        ref.watch(embyClientProvider(instance)).value;
+    final EmbyClient? client = ref.watch(embyClientProvider(instance)).value;
     final AsyncValue<EmbyItem> itemAsync =
         ref.watch(embyItemDetailsProvider((instance, item.id)));
-        
+
     final EmbyItem currentItem = itemAsync.value ?? item;
 
     return Scaffold(
@@ -370,7 +481,8 @@ class EmbyFolderScreen extends ConsumerWidget {
               onPressed: () async {
                 final bool isFav = currentItem.userData?.isFavorite == true;
                 await client.markFavorite(currentItem.id, !isFav);
-                ref.invalidate(embyItemDetailsProvider((instance, currentItem.id)));
+                ref.invalidate(
+                    embyItemDetailsProvider((instance, currentItem.id)));
                 ref.invalidate(embyFavoritesProvider(instance));
               },
             ),
@@ -418,12 +530,15 @@ class EmbyPosterCard extends ConsumerWidget {
                           ? Icons.check_circle
                           : Icons.check_circle_outline,
                     ),
-                    title: Text(item.userData?.played == true
-                        ? 'Mark as Unwatched'
-                        : 'Mark as Watched',),
+                    title: Text(
+                      item.userData?.played == true
+                          ? 'Mark as Unwatched'
+                          : 'Mark as Watched',
+                    ),
                     onTap: () async {
                       Navigator.of(context).pop();
-                      final toggle = ref.read(embyToggleWatchedProvider(instance));
+                      final toggle =
+                          ref.read(embyToggleWatchedProvider(instance));
                       await toggle(item.id, !(item.userData?.played == true));
                     },
                   ),
@@ -432,24 +547,25 @@ class EmbyPosterCard extends ConsumerWidget {
                       item.userData?.isFavorite == true
                           ? Icons.favorite
                           : Icons.favorite_border,
-                      color: item.userData?.isFavorite == true
-                          ? Colors.red
-                          : null,
+                      color:
+                          item.userData?.isFavorite == true ? Colors.red : null,
                     ),
-                    title: Text(item.userData?.isFavorite == true
-                        ? 'Remove from Favorites'
-                        : 'Add to Favorites',),
+                    title: Text(
+                      item.userData?.isFavorite == true
+                          ? 'Remove from Favorites'
+                          : 'Add to Favorites',
+                    ),
                     onTap: () async {
                       Navigator.of(context).pop();
                       final EmbyClient? client =
                           ref.read(embyClientProvider(instance)).value;
                       if (client != null) {
-                        final bool isFav =
-                            item.userData?.isFavorite == true;
+                        final bool isFav = item.userData?.isFavorite == true;
                         await client.markFavorite(item.id, !isFav);
                         // Invalidate to refresh UI
                         ref.invalidate(
-                            embyItemDetailsProvider((instance, item.id)),);
+                          embyItemDetailsProvider((instance, item.id)),
+                        );
                         ref.invalidate(embyFavoritesProvider(instance));
                         ref.invalidate(embyItemsProvider);
                         ref.invalidate(embyNextUpProvider(instance));
@@ -463,7 +579,7 @@ class EmbyPosterCard extends ConsumerWidget {
           },
         );
       },
-      borderRadius: Radii.card,
+      borderRadius: BorderRadius.circular(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -471,39 +587,64 @@ class EmbyPosterCard extends ConsumerWidget {
           AspectRatio(
             aspectRatio: item.type == 'Episode'
                 ? (2 / 3)
-                : ((item.primaryImageAspectRatio != null && item.primaryImageAspectRatio! > 0.0)
+                : ((item.primaryImageAspectRatio != null &&
+                        item.primaryImageAspectRatio! > 0.0)
                     ? item.primaryImageAspectRatio!
-                    : (item.type == 'MusicAlbum' || item.type == 'Audio' || item.type == 'MusicArtist'
+                    : (item.type == 'MusicAlbum' ||
+                            item.type == 'Audio' ||
+                            item.type == 'MusicArtist'
                         ? 1.0
                         : (2 / 3))),
-            child: ClipRRect(
-              borderRadius: Radii.card,
-              child: Stack(
-                fit: StackFit.expand,
-                children: <Widget>[
-                  _poster(theme),
-                  if (played)
-                    Positioned(
-                      top: 4,
-                      right: 4,
-                      child: _Badge(
-                        color: theme.colorScheme.primary,
-                        child: Icon(
-                          Icons.check,
-                          size: 14,
-                          color: theme.colorScheme.onPrimary,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    _poster(theme),
+                    if (played)
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: _Badge(
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 0.85),
+                          child: Icon(
+                            Icons.check,
+                            size: 16,
+                            color: theme.colorScheme.onPrimary,
+                          ),
                         ),
                       ),
-                    ),
-                  if (!played && progress > 0.02)
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: LinearProgressIndicator(
-                        value: progress.clamp(0, 1),
-                        minHeight: 3,
+                    if (!played && progress > 0.02)
+                      Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 8),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: LinearProgressIndicator(
+                              value: progress.clamp(0, 1),
+                              minHeight: 6,
+                              backgroundColor:
+                                  Colors.black.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -536,7 +677,9 @@ class EmbyPosterCard extends ConsumerWidget {
   }
 
   Widget _poster(ThemeData theme) {
-    final bool isMusic = item.type == 'MusicAlbum' || item.type == 'MusicArtist' || item.type == 'Audio';
+    final bool isMusic = item.type == 'MusicAlbum' ||
+        item.type == 'MusicArtist' ||
+        item.type == 'Audio';
     final Widget fallback = Container(
       color: theme.colorScheme.surfaceContainerHighest,
       child: Icon(
@@ -550,6 +693,7 @@ class EmbyPosterCard extends ConsumerWidget {
     return CachedNetworkImage(
       imageUrl: imageUrl!,
       fit: BoxFit.cover,
+      memCacheWidth: 300,
       placeholder: (BuildContext context, String url) => Container(
         color: theme.colorScheme.surfaceContainerHighest,
       ),
@@ -567,9 +711,276 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context)
+              .colorScheme
+              .outlineVariant
+              .withValues(alpha: 0.3),
+        ),
+      ),
       child: child,
+    );
+  }
+}
+
+class EmbyBannerCard extends ConsumerWidget {
+  const EmbyBannerCard({
+    required this.instance,
+    required this.item,
+    required this.imageUrl,
+    required this.onTap,
+    super.key,
+  });
+
+  final Instance instance;
+  final EmbyItem item;
+  final String? imageUrl;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
+    final double progress = (item.userData?.playedPercentage ?? 0) / 100.0;
+    final bool played = item.userData?.played ?? false;
+
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: Insets.sm),
+      clipBehavior: Clip.hardEdge,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+      ),
+      color: theme.colorScheme.surfaceContainerLow,
+      child: InkWell(
+        onTap: onTap,
+        onLongPress: () {
+          // Same long press menu as PosterCard
+          showModalBottomSheet<void>(
+            context: context,
+            useRootNavigator: true,
+            builder: (BuildContext context) {
+              return SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    ListTile(
+                      leading: Icon(
+                        item.userData?.played == true
+                            ? Icons.check_circle
+                            : Icons.check_circle_outline,
+                      ),
+                      title: Text(
+                        item.userData?.played == true
+                            ? 'Mark as Unwatched'
+                            : 'Mark as Watched',
+                      ),
+                      onTap: () async {
+                        Navigator.of(context).pop();
+                        final toggle =
+                            ref.read(embyToggleWatchedProvider(instance));
+                        await toggle(item.id, !(item.userData?.played == true));
+                      },
+                    ),
+                    ListTile(
+                      leading: Icon(
+                        item.userData?.isFavorite == true
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        color: item.userData?.isFavorite == true
+                            ? Colors.red
+                            : null,
+                      ),
+                      title: Text(
+                        item.userData?.isFavorite == true
+                            ? 'Remove from Favorites'
+                            : 'Add to Favorites',
+                      ),
+                      onTap: () async {
+                        Navigator.of(context).pop();
+                        final EmbyClient? client =
+                            ref.read(embyClientProvider(instance)).value;
+                        if (client != null) {
+                          final bool isFav = item.userData?.isFavorite == true;
+                          await client.markFavorite(item.id, !isFav);
+                          ref.invalidate(
+                            embyItemDetailsProvider((instance, item.id)),
+                          );
+                          ref.invalidate(embyFavoritesProvider(instance));
+                          ref.invalidate(embyItemsProvider);
+                          ref.invalidate(embyNextUpProvider(instance));
+                          ref.invalidate(embyResumeItemsProvider(instance));
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+        child: SizedBox(
+          height: 142,
+          child: Stack(
+            fit: StackFit.expand,
+            children: <Widget>[
+              // Background banner image
+              if (imageUrl != null)
+                Positioned.fill(
+                  child: CachedNetworkImage(
+                    imageUrl: imageUrl!,
+                    fit: BoxFit.cover,
+                    alignment: Alignment.topCenter,
+                    errorWidget: (_, __, ___) => Container(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                    ),
+                  ),
+                )
+              else
+                Positioned.fill(
+                  child: Container(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                  ),
+                ),
+              // Dark gradient overlay
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: <Color>[
+                        theme.colorScheme.surfaceContainerLow,
+                        theme.colorScheme.surfaceContainerLow
+                            .withValues(alpha: 0.65),
+                        theme.colorScheme.surfaceContainerLow
+                            .withValues(alpha: 0.3),
+                      ],
+                      stops: const <double>[0.4, 0.75, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+              // Content overlay
+              Padding(
+                padding: const EdgeInsets.all(Insets.md),
+                child: Row(
+                  children: <Widget>[
+                    AspectRatio(
+                      aspectRatio: item.type == 'Episode'
+                          ? (2 / 3)
+                          : ((item.primaryImageAspectRatio != null &&
+                                  item.primaryImageAspectRatio! > 0.0)
+                              ? item.primaryImageAspectRatio!
+                              : (item.type == 'MusicAlbum' ||
+                                      item.type == 'Audio' ||
+                                      item.type == 'MusicArtist'
+                                  ? 1.0
+                                  : (2 / 3))),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: <Widget>[
+                            _poster(theme),
+                            if (played)
+                              Positioned(
+                                top: 6,
+                                right: 6,
+                                child: _Badge(
+                                  color: theme.colorScheme.primary
+                                      .withValues(alpha: 0.85),
+                                  child: Icon(
+                                    Icons.check,
+                                    size: 16,
+                                    color: theme.colorScheme.onPrimary,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: Insets.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          Text(
+                            item.seriesName ?? item.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          if (item.seriesName != null)
+                            Text(
+                              (item.parentIndexNumber != null &&
+                                      item.indexNumber != null)
+                                  ? 'S${item.parentIndexNumber}:E${item.indexNumber} — ${item.name}'
+                                  : item.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant),
+                            )
+                          else if (item.productionYear != null)
+                            Text(
+                              '${item.productionYear}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant),
+                            ),
+                          if (!played && progress > 0.02) ...<Widget>[
+                            const SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: LinearProgressIndicator(
+                                value: progress.clamp(0, 1),
+                                minHeight: 6,
+                                backgroundColor:
+                                    Colors.black.withValues(alpha: 0.1),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _poster(ThemeData theme) {
+    final bool isMusic = item.type == 'MusicAlbum' ||
+        item.type == 'MusicArtist' ||
+        item.type == 'Audio';
+    final Widget fallback = Container(
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Icon(
+        isMusic ? Icons.album_outlined : Icons.movie_outlined,
+        color: theme.colorScheme.outline,
+      ),
+    );
+    if (imageUrl == null) {
+      return fallback;
+    }
+    return CachedNetworkImage(
+      imageUrl: imageUrl!,
+      fit: BoxFit.cover,
+      placeholder: (BuildContext context, String url) => Container(
+        color: theme.colorScheme.surfaceContainerHighest,
+      ),
+      errorWidget: (BuildContext context, String url, Object error) => fallback,
     );
   }
 }
@@ -628,8 +1039,7 @@ class _HorizontalSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<EmbyItem>> items = ref.watch(provider);
-    final EmbyClient? client =
-        ref.watch(embyClientProvider(instance)).value;
+    final EmbyClient? client = ref.watch(embyClientProvider(instance)).value;
 
     return AsyncValueView<List<EmbyItem>>(
       value: items,
@@ -663,70 +1073,81 @@ class _HorizontalSection extends ConsumerWidget {
                 itemBuilder: (BuildContext context, int index) {
                   final EmbyItem item = list[index];
                   final String type = item.type;
-                  final double rawRatio = item.type == 'Episode' 
-                      ? (2 / 3) 
+                  final double rawRatio = item.type == 'Episode'
+                      ? (2 / 3)
                       : (item.primaryImageAspectRatio ?? 0.0);
-                  final double ratio = rawRatio > 0.0 
-                      ? rawRatio 
-                      : (type == 'MusicAlbum' || type == 'Audio' || type == 'MusicArtist' ? 1.0 : (2 / 3));
-                  
+                  final double ratio = rawRatio > 0.0
+                      ? rawRatio
+                      : (type == 'MusicAlbum' ||
+                              type == 'Audio' ||
+                              type == 'MusicArtist'
+                          ? 1.0
+                          : (2 / 3));
+
                   final double exactWidth = 190.0 * ratio;
                   final double cardWidth = exactWidth.clamp(80.0, 400.0);
-                  
+
                   return SizedBox(
                     width: cardWidth,
-                    child: EmbyPosterCard(
-                      instance: instance,
-                      item: item,
-                      imageUrl: client?.imageUrl(item),
-                      onTap: client == null
-                          ? null
-                          : () {
-                              if (item.type == 'MusicAlbum') {
-                                pushScreen<void>(
-                                  context,
-                                  EmbyAlbumScreen(
-                                    instance: instance,
-                                    albumId: item.id,
-                                    albumName: item.name,
-                                    albumArtist: item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
-                                    albumOverview: item.overview,
-                                    albumImageUrl: client.imageUrl(item),
-                                  ),
-                                );
-                              } else if (item.type == 'Series') {
-                                pushScreen<void>(
-                                  context,
-                                  EmbyItemDetailScreen(instance: instance, itemId: item.id),
-                                );
-                              } else if (item.type == 'Season') {
-                                pushScreen<void>(
-                                  context,
-                                  EmbySeasonScreen(
-                                    instance: instance,
-                                    seasonId: item.id,
-                                    seasonName: item.name,
-                                    seasonImageUrl: client.imageUrl(item),
-                                  ),
-                                );
-                              } else if (embyContainerTypes.contains(item.type)) {
-                                pushScreen<void>(
-                                  context,
-                                  EmbyFolderScreen(
-                                    instance: instance,
-                                    item: item,
-                                  ),
-                                );
-                              } else {
-                                pushScreen<void>(
-                                  context,
-                                  EmbyItemDetailScreen(
-                                    instance: instance,
-                                    itemId: item.id,
-                                  ),
-                                );
-                              }
-                            },
+                    child: PerformanceLoggerWidget(
+                      name: 'EmbyHorizontalGridItem',
+                      child: EmbyPosterCard(
+                        instance: instance,
+                        item: item,
+                        imageUrl: client?.imageUrl(item),
+                        onTap: client == null
+                            ? null
+                            : () {
+                                if (item.type == 'MusicAlbum') {
+                                  pushScreen<void>(
+                                    context,
+                                    EmbyAlbumScreen(
+                                      instance: instance,
+                                      albumId: item.id,
+                                      albumName: item.name,
+                                      albumArtist: item.artists.isNotEmpty
+                                          ? item.artists.first
+                                          : 'Unknown Artist',
+                                      albumOverview: item.overview,
+                                      albumImageUrl: client.imageUrl(item),
+                                    ),
+                                  );
+                                } else if (item.type == 'Series') {
+                                  pushScreen<void>(
+                                    context,
+                                    EmbyItemDetailScreen(
+                                        instance: instance, itemId: item.id),
+                                  );
+                                } else if (item.type == 'Season') {
+                                  pushScreen<void>(
+                                    context,
+                                    EmbySeasonScreen(
+                                      instance: instance,
+                                      seasonId: item.id,
+                                      seasonName: item.name,
+                                      seasonImageUrl: client.imageUrl(item),
+                                    ),
+                                  );
+                                } else if (embyContainerTypes
+                                    .contains(item.type)) {
+                                  pushScreen<void>(
+                                    context,
+                                    EmbyFolderScreen(
+                                      instance: instance,
+                                      item: item,
+                                    ),
+                                  );
+                                } else {
+                                  pushScreen<void>(
+                                    context,
+                                    EmbyItemDetailScreen(
+                                      instance: instance,
+                                      itemId: item.id,
+                                    ),
+                                  );
+                                }
+                              },
+                      ),
                     ),
                   );
                 },
@@ -775,7 +1196,8 @@ class _ActiveSessionsSection extends ConsumerWidget {
                 ),
               ),
               SizedBox(
-                height: 168, // Fixed height for horizontal scroll, leaves room for elevation shadow
+                height:
+                    168, // Fixed height for horizontal scroll, leaves room for elevation shadow
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
@@ -783,8 +1205,12 @@ class _ActiveSessionsSection extends ConsumerWidget {
                   separatorBuilder: (_, __) => const SizedBox(width: Insets.md),
                   itemBuilder: (BuildContext context, int index) {
                     return SizedBox(
-                      width: 330, // Limit width of the card so it fits nicely in the horizontal list
-                      child: _SessionCard(session: list[index]),
+                      width:
+                          330, // Limit width of the card so it fits nicely in the horizontal list
+                      child: _SessionCard(
+                        session: list[index],
+                        instance: instance,
+                      ),
                     );
                   },
                 ),
@@ -798,9 +1224,13 @@ class _ActiveSessionsSection extends ConsumerWidget {
 }
 
 class _SessionCard extends StatelessWidget {
-  const _SessionCard({required this.session});
+  const _SessionCard({
+    required this.session,
+    required this.instance,
+  });
 
   final ActiveSession session;
+  final Instance instance;
 
   @override
   Widget build(BuildContext context) {
@@ -811,34 +1241,195 @@ class _SessionCard extends StatelessWidget {
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
-      elevation: 2,
+      elevation: 0,
+      color: theme.colorScheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(
-        borderRadius: Radii.card,
-        side: BorderSide(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
+        borderRadius: BorderRadius.circular(24),
       ),
-      child: Stack(
-        children: <Widget>[
-          // Backdrop
-          if (session.posterUrl != null)
-            Positioned.fill(
-              child: Stack(
-                fit: StackFit.expand,
+      child: InkWell(
+        onTap: () => pushScreen<void>(
+          context,
+          EmbySessionDetailScreen(
+            initialSession: session,
+            instance: instance,
+          ),
+        ),
+        child: Stack(
+          children: <Widget>[
+            // Backdrop
+            if (session.posterUrl != null)
+              Positioned.fill(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    Image.network(
+                      session.posterUrl!,
+                      fit: BoxFit.cover,
+                      alignment: Alignment.topCenter,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: <Color>[
+                            theme.colorScheme.surfaceContainerLow,
+                            theme.colorScheme.surfaceContainerLow
+                                .withValues(alpha: 0.65),
+                            theme.colorScheme.surfaceContainerLow
+                                .withValues(alpha: 0.5),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(Insets.md),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Image.network(
-                    session.posterUrl!,
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
-                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  // Poster
+                  ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(maxWidth: 120, maxHeight: 126),
+                    child: AspectRatio(
+                      aspectRatio: session.aspectRatio != null &&
+                              session.aspectRatio! > 0.0
+                          ? session.aspectRatio!
+                          : (2 / 3),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.25),
+                              blurRadius: 12,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                          image: session.posterUrl != null
+                              ? DecorationImage(
+                                  image: NetworkImage(session.posterUrl!),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                        ),
+                        child: session.posterUrl == null
+                            ? Icon(Icons.movie_outlined,
+                                color: theme.colorScheme.outline, size: 32)
+                            : null,
+                      ),
+                    ),
                   ),
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: <Color>[
-                          theme.colorScheme.surface,
-                          theme.colorScheme.surface.withValues(alpha: 0.85),
-                          theme.colorScheme.surface.withValues(alpha: 0.6),
+                  const SizedBox(width: Insets.lg),
+
+                  // Details
+                  Expanded(
+                    child: SizedBox(
+                      height: 126,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          // Title
+                          Text(
+                            session.showTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+
+                          if (session.episodeName != null)
+                            Text(
+                              session.episodeName!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: theme.colorScheme.outlineVariant
+                                    .withValues(alpha: 0.5),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                Icon(
+                                  Icons.person,
+                                  size: 14,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    '${session.user}: ${session.device}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const Spacer(),
+
+                          // Progress Header
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: <Widget>[
+                              Text(
+                                session.timePosition,
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                session.timeDuration,
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color: theme.colorScheme.outline,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+
+                          // Progress Bar
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: LinearProgressIndicator(
+                              value: pct.clamp(0.0, 1.0),
+                              minHeight: 8,
+                              backgroundColor:
+                                  theme.colorScheme.surfaceContainerHighest,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                playing
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.outline,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -846,127 +1437,9 @@ class _SessionCard extends StatelessWidget {
                 ],
               ),
             ),
-            
-          // Content
-          Padding(
-            padding: const EdgeInsets.all(Insets.md),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            // Poster
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 120, maxHeight: 126),
-              child: AspectRatio(
-                aspectRatio: session.aspectRatio != null && session.aspectRatio! > 0.0 ? session.aspectRatio! : (2 / 3),
-                child: Container(
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: <BoxShadow>[
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.3),
-                    blurRadius: 6,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-                image: session.posterUrl != null
-                    ? DecorationImage(
-                        image: NetworkImage(session.posterUrl!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-              ),
-              child: session.posterUrl == null
-                  ? Icon(Icons.movie_outlined, color: theme.colorScheme.outline, size: 32)
-                  : null,
-                ),
-              ),
-            ),
-            const SizedBox(width: Insets.lg),
-            
-            // Details
-            Expanded(
-              child: SizedBox(
-                height: 126,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    // Title
-                    Text(
-                      session.showTitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    
-                    if (session.episodeName != null)
-                      Text(
-                        session.episodeName!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    
-                    const SizedBox(height: 4),
-                    Text(
-                      '${session.user}: ${session.device}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    
-                    const Spacer(),
-                    
-                    // Progress Header
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: <Widget>[
-                        Text(
-                          session.timePosition,
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          session.timeDuration,
-                          style: theme.textTheme.labelMedium?.copyWith(
-                            color: theme.colorScheme.outline,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    
-                    // Progress Bar
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: pct.clamp(0.0, 1.0),
-                        minHeight: 6,
-                        backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          playing ? theme.colorScheme.primary : theme.colorScheme.outline,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
           ],
         ),
       ),
-    ],
-  ),
-);
+    );
   }
 }
-

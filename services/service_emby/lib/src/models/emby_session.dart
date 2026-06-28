@@ -6,6 +6,7 @@
 /// directly into these fields.
 class ActiveSession {
   const ActiveSession({
+    required this.id,
     required this.user,
     required this.device,
     required this.status,
@@ -17,6 +18,9 @@ class ActiveSession {
     this.posterUrl,
     this.aspectRatio,
   });
+
+  /// The unique session ID.
+  final String id;
 
   /// The user streaming this session.
   final String user;

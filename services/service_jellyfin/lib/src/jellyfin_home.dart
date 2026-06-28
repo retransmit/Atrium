@@ -184,53 +184,56 @@ class JellyfinLibraryGrid extends ConsumerWidget {
             itemCount: list.length,
             itemBuilder: (BuildContext context, int index) {
               final JellyfinItem item = list[index];
-              return JellyfinPosterCard(
-                instance: instance,
-                item: item,
-                imageUrl: client?.imageUrl(item),
-                onTap: client == null
-                    ? null
-                    : () {
-                        if (item.type == 'MusicAlbum') {
-                          pushScreen<void>(
-                            context,
-                            JellyfinAlbumScreen(
-                              instance: instance,
-                              albumId: item.id,
-                              albumName: item.name,
-                              albumArtist: item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
-                              albumOverview: item.overview,
-                              albumImageUrl: client.imageUrl(item),
-                            ),
-                          );
-                        } else if (item.type == 'Series') {
-                          pushScreen<void>(
-                            context,
-                            JellyfinItemDetailScreen(instance: instance, itemId: item.id),
-                          );
-                        } else if (item.type == 'Season') {
-                          pushScreen<void>(
-                            context,
-                            JellyfinSeasonScreen(
-                              instance: instance,
-                              seriesId: item.seriesId ?? item.parentId ?? '',
-                              seasonId: item.id,
-                              seasonName: item.name,
-                              seasonImageUrl: client.imageUrl(item),
-                            ),
-                          );
-                        } else if (jellyfinContainerTypes.contains(item.type)) {
-                          pushScreen<void>(
-                            context,
-                            JellyfinFolderScreen(instance: instance, item: item),
-                          );
-                        } else {
-                          pushScreen<void>(
-                            context,
-                            JellyfinItemDetailScreen(instance: instance, itemId: item.id),
-                          );
-                        }
-                      },
+              return PerformanceLoggerWidget(
+                name: 'JellyfinLibraryGridItem',
+                child: JellyfinPosterCard(
+                  instance: instance,
+                  item: item,
+                  imageUrl: client?.imageUrl(item),
+                  onTap: client == null
+                      ? null
+                      : () {
+                          if (item.type == 'MusicAlbum') {
+                            pushScreen<void>(
+                              context,
+                              JellyfinAlbumScreen(
+                                instance: instance,
+                                albumId: item.id,
+                                albumName: item.name,
+                                albumArtist: item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
+                                albumOverview: item.overview,
+                                albumImageUrl: client.imageUrl(item),
+                              ),
+                            );
+                          } else if (item.type == 'Series') {
+                            pushScreen<void>(
+                              context,
+                              JellyfinItemDetailScreen(instance: instance, itemId: item.id),
+                            );
+                          } else if (item.type == 'Season') {
+                            pushScreen<void>(
+                              context,
+                              JellyfinSeasonScreen(
+                                instance: instance,
+                                seriesId: item.seriesId ?? item.parentId ?? '',
+                                seasonId: item.id,
+                                seasonName: item.name,
+                                seasonImageUrl: client.imageUrl(item),
+                              ),
+                            );
+                          } else if (jellyfinContainerTypes.contains(item.type)) {
+                            pushScreen<void>(
+                              context,
+                              JellyfinFolderScreen(instance: instance, item: item),
+                            );
+                          } else {
+                            pushScreen<void>(
+                              context,
+                              JellyfinItemDetailScreen(instance: instance, itemId: item.id),
+                            );
+                          }
+                        },
+                ),
               );
             },
           );
@@ -276,13 +279,16 @@ class JellyfinItemsGrid extends ConsumerWidget {
             itemCount: list.length,
             itemBuilder: (BuildContext context, int index) {
               final JellyfinItem item = list[index];
-              return JellyfinPosterCard(
-                instance: instance,
-                item: item,
-                imageUrl: client?.imageUrl(item),
-                onTap: client == null
-                    ? null
-                    : () => _openItem(context, client, item),
+              return PerformanceLoggerWidget(
+                name: 'JellyfinItemsGridItem',
+                child: JellyfinPosterCard(
+                  instance: instance,
+                  item: item,
+                  imageUrl: client?.imageUrl(item),
+                  onTap: client == null
+                      ? null
+                      : () => _openItem(context, client, item),
+                ),
               );
             },
           );
@@ -664,53 +670,56 @@ class _HorizontalSection extends ConsumerWidget {
 
                   return SizedBox(
                     width: width,
-                    child: JellyfinPosterCard(
-                      instance: instance,
-                      item: item,
-                      imageUrl: client?.imageUrl(item),
-                      onTap: client == null
-                          ? null
-                          : () {
-                              if (item.type == 'MusicAlbum') {
-                                pushScreen<void>(
-                                  context,
-                                  JellyfinAlbumScreen(
-                                    instance: instance,
-                                    albumId: item.id,
-                                    albumName: item.name,
-                                    albumArtist: item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
-                                    albumOverview: item.overview,
-                                    albumImageUrl: client.imageUrl(item),
-                                  ),
-                                );
-                              } else if (item.type == 'Series') {
-                                pushScreen<void>(
-                                  context,
-                                  JellyfinItemDetailScreen(instance: instance, itemId: item.id),
-                                );
-                              } else if (item.type == 'Season') {
-                                pushScreen<void>(
-                                  context,
-                                  JellyfinSeasonScreen(
-                                    instance: instance,
-                                    seriesId: item.seriesId ?? item.parentId ?? '',
-                                    seasonId: item.id,
-                                    seasonName: item.name,
-                                    seasonImageUrl: client.imageUrl(item),
-                                  ),
-                                );
-                              } else if (jellyfinContainerTypes.contains(item.type)) {
-                                pushScreen<void>(
-                                  context,
-                                  JellyfinFolderScreen(instance: instance, item: item),
-                                );
-                              } else {
-                                pushScreen<void>(
-                                  context,
-                                  JellyfinItemDetailScreen(instance: instance, itemId: item.id),
-                                );
-                              }
-                            },
+                    child: PerformanceLoggerWidget(
+                      name: 'JellyfinHorizontalGridItem',
+                      child: JellyfinPosterCard(
+                        instance: instance,
+                        item: item,
+                        imageUrl: client?.imageUrl(item),
+                        onTap: client == null
+                            ? null
+                            : () {
+                                if (item.type == 'MusicAlbum') {
+                                  pushScreen<void>(
+                                    context,
+                                    JellyfinAlbumScreen(
+                                      instance: instance,
+                                      albumId: item.id,
+                                      albumName: item.name,
+                                      albumArtist: item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
+                                      albumOverview: item.overview,
+                                      albumImageUrl: client.imageUrl(item),
+                                    ),
+                                  );
+                                } else if (item.type == 'Series') {
+                                  pushScreen<void>(
+                                    context,
+                                    JellyfinItemDetailScreen(instance: instance, itemId: item.id),
+                                  );
+                                } else if (item.type == 'Season') {
+                                  pushScreen<void>(
+                                    context,
+                                    JellyfinSeasonScreen(
+                                      instance: instance,
+                                      seriesId: item.seriesId ?? item.parentId ?? '',
+                                      seasonId: item.id,
+                                      seasonName: item.name,
+                                      seasonImageUrl: client.imageUrl(item),
+                                    ),
+                                  );
+                                } else if (jellyfinContainerTypes.contains(item.type)) {
+                                  pushScreen<void>(
+                                    context,
+                                    JellyfinFolderScreen(instance: instance, item: item),
+                                  );
+                                } else {
+                                  pushScreen<void>(
+                                    context,
+                                    JellyfinItemDetailScreen(instance: instance, itemId: item.id),
+                                  );
+                                }
+                              },
+                      ),
                     ),
                   );
                 },

@@ -29,7 +29,8 @@ abstract class EmbyItem with _$EmbyItem {
     @JsonKey(name: 'UserData') EmbyUserData? userData,
     @JsonKey(name: 'Overview') String? overview,
     @JsonKey(name: 'RunTimeTicks') int? runTimeTicks,
-    @JsonKey(name: 'CommunityRating', fromJson: _parseDouble) double? communityRating,
+    @JsonKey(name: 'CommunityRating', fromJson: _parseDouble)
+    double? communityRating,
     @JsonKey(name: 'OfficialRating') String? officialRating,
     @JsonKey(name: 'IndexNumber') int? indexNumber,
     @JsonKey(name: 'ParentIndexNumber') int? parentIndexNumber,
@@ -42,7 +43,8 @@ abstract class EmbyItem with _$EmbyItem {
     @JsonKey(name: 'AlbumPrimaryImageTag') String? albumPrimaryImageTag,
     @JsonKey(name: 'PrimaryImageItemId') String? primaryImageItemId,
     @JsonKey(name: 'PrimaryImageTag') String? primaryImageTag,
-    @JsonKey(name: 'PrimaryImageAspectRatio', fromJson: _parseDouble) double? primaryImageAspectRatio,
+    @JsonKey(name: 'PrimaryImageAspectRatio', fromJson: _parseDouble)
+    double? primaryImageAspectRatio,
     @JsonKey(name: 'Album') String? album,
     @JsonKey(name: 'AlbumArtist') String? albumArtist,
     @JsonKey(name: 'People') @Default(<EmbyPerson>[]) List<EmbyPerson> people,
@@ -57,9 +59,12 @@ abstract class EmbyItem with _$EmbyItem {
 @freezed
 abstract class EmbyUserData with _$EmbyUserData {
   const factory EmbyUserData({
-    @JsonKey(name: 'PlayedPercentage', fromJson: _parseDoubleDefaultZero) @Default(0.0) double playedPercentage,
+    @JsonKey(name: 'PlayedPercentage', fromJson: _parseDoubleDefaultZero)
+    @Default(0.0)
+    double playedPercentage,
     @JsonKey(name: 'Played') @Default(false) bool played,
     @JsonKey(name: 'IsFavorite') @Default(false) bool isFavorite,
+
     /// Resume point in Emby ticks (100ns units). 0 = start from the top.
     @JsonKey(name: 'PlaybackPositionTicks') @Default(0) int positionTicks,
   }) = _EmbyUserData;
@@ -84,4 +89,5 @@ abstract class EmbyPerson with _$EmbyPerson {
 }
 
 double? _parseDouble(dynamic value) => (value as num?)?.toDouble();
-double _parseDoubleDefaultZero(dynamic value) => (value as num?)?.toDouble() ?? 0.0;
+double _parseDoubleDefaultZero(dynamic value) =>
+    (value as num?)?.toDouble() ?? 0.0;

@@ -36,7 +36,8 @@ class EmbySeasonScreen extends ConsumerWidget {
       ),
       body: AsyncValueView<List<EmbyItem>>(
         value: episodesAsync,
-        onRetry: () => ref.invalidate(embyEpisodesProvider((instance, seasonId))),
+        onRetry: () =>
+            ref.invalidate(embyEpisodesProvider((instance, seasonId))),
         data: (List<EmbyItem> episodes) {
           if (episodes.isEmpty) {
             return const EmptyView(
@@ -51,7 +52,7 @@ class EmbySeasonScreen extends ConsumerWidget {
             separatorBuilder: (_, __) => const Divider(),
             itemBuilder: (BuildContext context, int index) {
               final EmbyItem episode = episodes[index];
-              
+
               final int sIndex = episode.parentIndexNumber ?? 1;
               final int eIndex = episode.indexNumber ?? (index + 1);
 
@@ -91,17 +92,25 @@ class EmbySeasonScreen extends ConsumerWidget {
                           children: <Widget>[
                             Text(
                               episode.name,
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               'S$sIndex:E$eIndex',
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color:
+                                        Theme.of(context).colorScheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                             ),
-                            if (episode.overview != null && episode.overview!.isNotEmpty) ...<Widget>[
+                            if (episode.overview != null &&
+                                episode.overview!.isNotEmpty) ...<Widget>[
                               const SizedBox(height: Insets.sm),
                               Text(
                                 episode.overview!,
