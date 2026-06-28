@@ -3,6 +3,7 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'emby_client.dart';
 import 'emby_deep_link.dart';
@@ -24,8 +25,7 @@ class EmbyItemDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<EmbyItem> itemAsync =
         ref.watch(embyItemDetailsProvider((instance, itemId)));
-    final EmbyClient? client =
-        ref.watch(embyClientProvider(instance)).value;
+    final EmbyClient? client = ref.watch(embyClientProvider(instance)).value;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -42,7 +42,8 @@ class EmbyItemDetailScreen extends ConsumerWidget {
               ),
               onPressed: () async {
                 final toggle = ref.read(embyToggleWatchedProvider(instance));
-                await toggle(itemId, !(itemAsync.value!.userData?.played == true));
+                await toggle(
+                    itemId, !(itemAsync.value!.userData?.played == true));
               },
             ),
             IconButton(
@@ -76,16 +77,18 @@ class EmbyItemDetailScreen extends ConsumerWidget {
               SliverToBoxAdapter(
                 child: backdropUrl != null
                     ? SizedBox(
-                        height: 320,
+                        height: MediaQuery.of(context).size.height * 0.5,
                         child: Stack(
                           children: <Widget>[
                             Positioned.fill(
-                              child: Opacity(
-                                opacity: 0.45,
-                                child: CachedNetworkImage(
-                                  imageUrl: backdropUrl,
-                                  fit: BoxFit.cover,
-                                ),
+                              child: CachedNetworkImage(
+                                imageUrl: backdropUrl,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            Positioned.fill(
+                              child: ColoredBox(
+                                color: Colors.black.withValues(alpha: 0.4),
                               ),
                             ),
                             Positioned.fill(
@@ -95,11 +98,17 @@ class EmbyItemDetailScreen extends ConsumerWidget {
                                     begin: Alignment.topCenter,
                                     end: Alignment.bottomCenter,
                                     colors: <Color>[
-                                      Colors.black54,
-                                      Colors.transparent,
-                                      Theme.of(context).scaffoldBackgroundColor,
+                                      Theme.of(context)
+                                          .colorScheme
+                                          .surface
+                                          .withValues(alpha: 0.0),
+                                      Theme.of(context)
+                                          .colorScheme
+                                          .surface
+                                          .withValues(alpha: 0.55),
+                                      Theme.of(context).colorScheme.surface,
                                     ],
-                                    stops: const <double>[0.0, 0.4, 1.0],
+                                    stops: const <double>[0.35, 0.75, 1.0],
                                   ),
                                 ),
                               ),
@@ -164,9 +173,8 @@ class _Header extends StatelessWidget {
     final String? posterUrl = client?.imageUrl(item, maxHeight: 600);
 
     // Runtime is in ticks (1 tick = 100ns = 0.0001 ms = 0.0000001 s).
-    final int minutes = item.runTimeTicks != null
-        ? (item.runTimeTicks! ~/ 10000000) ~/ 60
-        : 0;
+    final int minutes =
+        item.runTimeTicks != null ? (item.runTimeTicks! ~/ 10000000) ~/ 60 : 0;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
@@ -201,11 +209,11 @@ class _Header extends StatelessWidget {
                 if (item.seriesName != null)
                   Text(
                     item.seriesName!,
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold),
                   ),
-                if (item.seriesName != null)
-                  const SizedBox(height: 4),
+                if (item.seriesName != null) const SizedBox(height: 4),
                 Text(
                   (item.seriesName != null && item.indexNumber != null)
                       ? 'Episode ${item.indexNumber} - ${item.name}'
@@ -218,14 +226,18 @@ class _Header extends StatelessWidget {
                   spacing: Insets.sm,
                   children: <Widget>[
                     if (item.productionYear != null)
-                      Text('${item.productionYear}',
-                          style: theme.textTheme.bodyMedium,),
+                      Text(
+                        '${item.productionYear}',
+                        style: theme.textTheme.bodyMedium,
+                      ),
                     if (minutes > 0)
                       Text('$minutes min', style: theme.textTheme.bodyMedium),
                     if (item.officialRating != null)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2,),
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           border: Border.all(color: theme.colorScheme.outline),
                           borderRadius: BorderRadius.circular(4),
@@ -252,19 +264,24 @@ class _Header extends StatelessWidget {
                 const SizedBox(height: Insets.md),
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton.icon(
+                  child: FilledButton.icon(
                     onPressed: () {
                       if (client != null) {
                         launchEmbyDeepLink(context, client!, item.id);
                       }
                     },
-                    icon: Icon(item.type == 'Series' || item.type == 'Movie' ? Icons.play_arrow : Icons.play_circle_fill),
-                    label: Text(item.type == 'Series' || item.type == 'Movie' ? 'Watch' : 'Play'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: theme.colorScheme.primary,
-                      foregroundColor: theme.colorScheme.onPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    icon: SvgPicture.asset(
+                      'assets/glyphs/emby-vector.svg',
+                      width: 24,
+                      height: 24,
+                      colorFilter: ColorFilter.mode(
+                        theme.colorScheme.onPrimary,
+                        BlendMode.srcIn,
+                      ),
                     ),
+                    label: Text(item.type == 'Series' || item.type == 'Movie'
+                        ? 'Watch on Emby'
+                        : 'Play on Emby'),
                   ),
                 ),
               ],
@@ -306,7 +323,9 @@ class _PeopleRow extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(width: Insets.md),
             itemBuilder: (BuildContext context, int index) {
               final EmbyPerson person = item.people[index];
-              final String b = client?.baseUrl.toString().replaceAll(RegExp(r'/+$'), '') ?? '';
+              final String b =
+                  client?.baseUrl.toString().replaceAll(RegExp(r'/+$'), '') ??
+                      '';
               final String? personImageUrl = person.primaryImageTag != null
                   ? '$b/Items/${person.id}/Images/Primary?tag=${person.primaryImageTag}&quality=90&maxWidth=200'
                   : null;
@@ -368,12 +387,14 @@ class _SeasonsGrid extends ConsumerWidget {
     return SliverToBoxAdapter(
       child: AsyncValueView<List<EmbyItem>>(
         value: seasonsAsync,
-        onRetry: () => ref.invalidate(embySeasonsProvider((instance, seriesId))),
+        onRetry: () =>
+            ref.invalidate(embySeasonsProvider((instance, seriesId))),
         data: (List<EmbyItem> seasons) {
           if (seasons.isEmpty) return const SizedBox.shrink();
 
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Insets.lg, vertical: Insets.lg),
+            padding: const EdgeInsets.symmetric(
+                horizontal: Insets.lg, vertical: Insets.lg),
             child: GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -387,7 +408,8 @@ class _SeasonsGrid extends ConsumerWidget {
               itemCount: seasons.length,
               itemBuilder: (BuildContext context, int index) {
                 final EmbyItem season = seasons[index];
-                final String? posterUrl = client?.imageUrl(season, maxHeight: 300);
+                final String? posterUrl =
+                    client?.imageUrl(season, maxHeight: 300);
 
                 return InkWell(
                   borderRadius: Radii.card,
@@ -414,7 +436,8 @@ class _SeasonsGrid extends ConsumerWidget {
                                   fit: BoxFit.cover,
                                 )
                               : Container(
-                                  color: theme.colorScheme.surfaceContainerHighest,
+                                  color:
+                                      theme.colorScheme.surfaceContainerHighest,
                                   child: const Icon(Icons.tv),
                                 ),
                         ),
@@ -463,18 +486,15 @@ class _ExpandableOverviewState extends State<_ExpandableOverview> {
           overflow: _expanded ? null : TextOverflow.ellipsis,
         ),
         const SizedBox(height: Insets.sm),
-        InkWell(
-          onTap: () => setState(() => _expanded = !_expanded),
-          borderRadius: BorderRadius.circular(4),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-            child: Text(
-              _expanded ? 'Read Less' : 'Read More',
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+        FilledButton.tonalIcon(
+          onPressed: () => setState(() => _expanded = !_expanded),
+          icon: Icon(
+            _expanded ? Icons.expand_less : Icons.expand_more,
+            size: 18,
+          ),
+          label: Text(
+            _expanded ? 'Read Less' : 'Read More',
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
       ],

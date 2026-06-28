@@ -3,6 +3,7 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'emby_client.dart';
 import 'emby_deep_link.dart';
@@ -29,10 +30,10 @@ class EmbyAlbumScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<AlbumScreenData> dataAsync =
-        ref.watch(embyAlbumDataFutureProvider((instance, albumId, albumArtist)));
+    final AsyncValue<AlbumScreenData> dataAsync = ref
+        .watch(embyAlbumDataFutureProvider((instance, albumId, albumArtist)));
     final EmbyClient? client = ref.watch(embyClientProvider(instance)).value;
-    
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -45,16 +46,18 @@ class EmbyAlbumScreen extends ConsumerWidget {
           SliverToBoxAdapter(
             child: albumImageUrl != null
                 ? SizedBox(
-                    height: 240,
+                    height: MediaQuery.of(context).size.height * 0.5,
                     child: Stack(
                       children: <Widget>[
                         Positioned.fill(
-                          child: Opacity(
-                            opacity: 0.45,
-                            child: CachedNetworkImage(
-                              imageUrl: albumImageUrl!,
-                              fit: BoxFit.cover,
-                            ),
+                          child: CachedNetworkImage(
+                            imageUrl: albumImageUrl!,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        Positioned.fill(
+                          child: ColoredBox(
+                            color: Colors.black.withValues(alpha: 0.4),
                           ),
                         ),
                         Positioned.fill(
@@ -64,11 +67,17 @@ class EmbyAlbumScreen extends ConsumerWidget {
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
                                 colors: <Color>[
-                                  Colors.black54,
-                                  Colors.transparent,
-                                  Theme.of(context).scaffoldBackgroundColor,
+                                  Theme.of(context)
+                                      .colorScheme
+                                      .surface
+                                      .withValues(alpha: 0.0),
+                                  Theme.of(context)
+                                      .colorScheme
+                                      .surface
+                                      .withValues(alpha: 0.55),
+                                  Theme.of(context).colorScheme.surface,
                                 ],
-                                stops: const <double>[0.0, 0.4, 1.0],
+                                stops: const <double>[0.35, 0.75, 1.0],
                               ),
                             ),
                           ),
@@ -90,7 +99,7 @@ class EmbyAlbumScreen extends ConsumerWidget {
                     ),
                   ),
           ),
-          
+
           if (albumOverview != null && albumOverview!.isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
@@ -101,22 +110,27 @@ class EmbyAlbumScreen extends ConsumerWidget {
                 ),
               ),
             ),
-          
+
           // Data Section: Bio and Tracks
           SliverToBoxAdapter(
             child: AsyncValueView<AlbumScreenData>(
               value: dataAsync,
-              onRetry: () => ref.invalidate(embyAlbumDataFutureProvider((instance, albumId, albumArtist))),
+              onRetry: () => ref.invalidate(embyAlbumDataFutureProvider(
+                  (instance, albumId, albumArtist))),
               data: (AlbumScreenData data) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     // Bottom Section: Tracklist
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: Insets.lg, vertical: Insets.sm),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: Insets.lg, vertical: Insets.sm),
                       child: Text(
                         'Tracks - ${data.tracks.length}',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                     ),
                     ListView.builder(
@@ -126,29 +140,38 @@ class EmbyAlbumScreen extends ConsumerWidget {
                       itemCount: data.tracks.length,
                       itemBuilder: (BuildContext context, int index) {
                         final EmbyItem song = data.tracks[index];
-                        
+
                         String duration = '';
                         if (song.runTimeTicks != null) {
-                          final int totalSeconds = (song.runTimeTicks! / 10000000).round();
+                          final int totalSeconds =
+                              (song.runTimeTicks! / 10000000).round();
                           final int minutes = totalSeconds ~/ 60;
                           final int seconds = totalSeconds % 60;
-                          duration = '$minutes:${seconds.toString().padLeft(2, '0')}';
+                          duration =
+                              '$minutes:${seconds.toString().padLeft(2, '0')}';
                         }
-                        
+
                         final String? imageUrl = albumImageUrl;
 
                         return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: Insets.lg, vertical: Insets.xs),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: Insets.lg, vertical: Insets.xs),
                           leading: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
                               SizedBox(
                                 width: 24,
                                 child: Text(
-                                  song.indexNumber?.toString() ?? '${index + 1}',
-                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    color: Theme.of(context).colorScheme.outline,
-                                  ),
+                                  song.indexNumber?.toString() ??
+                                      '${index + 1}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .outline,
+                                      ),
                                   textAlign: TextAlign.center,
                                 ),
                               ),
@@ -161,11 +184,14 @@ class EmbyAlbumScreen extends ConsumerWidget {
                                     width: 48,
                                     height: 48,
                                     fit: BoxFit.cover,
-                                    errorWidget: (context, url, error) => Container(
+                                    errorWidget: (context, url, error) =>
+                                        Container(
                                       width: 48,
                                       height: 48,
                                       decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .surfaceContainerHighest,
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: const Icon(Icons.music_note),
@@ -177,14 +203,17 @@ class EmbyAlbumScreen extends ConsumerWidget {
                                   width: 48,
                                   height: 48,
                                   decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .surfaceContainerHighest,
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: const Icon(Icons.music_note),
                                 ),
                             ],
                           ),
-                          title: Text(song.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          title: Text(song.name,
+                              maxLines: 1, overflow: TextOverflow.ellipsis),
                           subtitle: Text(
                             song.artists.isNotEmpty
                                 ? '${song.artists.join(', ')} • $duration'
@@ -240,34 +269,40 @@ class EmbyAlbumScreen extends ConsumerWidget {
               children: <Widget>[
                 Text(
                   albumName,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: Insets.xs),
                 Text(
                   albumArtist,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                 ),
                 const SizedBox(height: Insets.md),
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton.icon(
+                  child: FilledButton.icon(
                     onPressed: () {
                       if (client != null) {
                         launchEmbyDeepLink(context, client, albumId);
                       }
                     },
-                    icon: const Icon(Icons.play_circle_fill),
-                    label: const Text('Play'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    icon: SvgPicture.asset(
+                      'assets/glyphs/emby-vector.svg',
+                      width: 24,
+                      height: 24,
+                      colorFilter: ColorFilter.mode(
+                        Theme.of(context).colorScheme.onPrimary,
+                        BlendMode.srcIn,
+                      ),
                     ),
+                    label: const Text('Play on Emby'),
                   ),
                 ),
-                const SizedBox(height: Insets.xs), // Add a small padding at the bottom so it aligns perfectly with the poster's bottom edge
+                const SizedBox(height: Insets.xs),
               ],
             ),
           ),
@@ -305,14 +340,15 @@ class _ExpandableTextState extends State<_ExpandableText> {
           overflow: _expanded ? null : TextOverflow.fade,
         ),
         const SizedBox(height: Insets.sm),
-        InkWell(
-          onTap: () => setState(() => _expanded = !_expanded),
-          child: Text(
+        FilledButton.tonalIcon(
+          onPressed: () => setState(() => _expanded = !_expanded),
+          icon: Icon(
+            _expanded ? Icons.expand_less : Icons.expand_more,
+            size: 18,
+          ),
+          label: Text(
             _expanded ? 'Collapse' : 'Read more',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
         ),
       ],

@@ -4,7 +4,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'emby_client.dart';
 
 /// Launches the Emby app for a given item.
-Future<void> launchEmbyDeepLink(BuildContext context, EmbyClient client, String itemId) async {
+Future<void> launchEmbyDeepLink(
+    BuildContext context, EmbyClient client, String itemId) async {
   final String serverId = client.serverId ?? '';
   final String urlStr = 'emby://items/$serverId/$itemId';
   final Uri uri = Uri.parse(urlStr);
