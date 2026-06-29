@@ -7,12 +7,12 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'emby_client.dart';
-import 'emby_providers.dart';
-import 'models/emby_session.dart';
+import 'jellyfin_client.dart';
+import 'jellyfin_providers.dart';
+import 'models/jellyfin_session.dart';
 
-class EmbySessionDetailScreen extends ConsumerStatefulWidget {
-  const EmbySessionDetailScreen({
+class JellyfinSessionDetailScreen extends ConsumerStatefulWidget {
+  const JellyfinSessionDetailScreen({
     required this.instance,
     required this.initialSession,
     super.key,
@@ -22,19 +22,19 @@ class EmbySessionDetailScreen extends ConsumerStatefulWidget {
   final ActiveSession initialSession;
 
   @override
-  ConsumerState<EmbySessionDetailScreen> createState() =>
-      _EmbySessionDetailScreenState();
+  ConsumerState<JellyfinSessionDetailScreen> createState() =>
+      _JellyfinSessionDetailScreenState();
 }
 
-class _EmbySessionDetailScreenState
-    extends ConsumerState<EmbySessionDetailScreen> {
+class _JellyfinSessionDetailScreenState
+    extends ConsumerState<JellyfinSessionDetailScreen> {
   bool _isDragging = false;
   double _dragPct = 0.0;
 
   @override
   Widget build(BuildContext context) {
     final AsyncValue<List<ActiveSession>> sessionsAsync =
-        ref.watch(embyFastSessionsProvider(widget.instance));
+        ref.watch(jellyfinFastSessionsProvider(widget.instance));
     final ActiveSession session = sessionsAsync.value?.firstWhereOrNull(
             (ActiveSession s) => s.id == widget.initialSession.id) ??
         widget.initialSession;
@@ -212,11 +212,11 @@ class _EmbySessionDetailScreenState
                             if (session.durationTicks > 0) {
                               final int targetTicks =
                                   (session.durationTicks * newValue).round();
-                              final EmbyClient client = await ref.read(
-                                  embyClientProvider(widget.instance).future);
+                              final JellyfinClient client = await ref.read(
+                                  jellyfinClientProvider(widget.instance).future);
                               await client.seekSession(session.id, targetTicks);
                               ref.invalidate(
-                                  embyFastSessionsProvider(widget.instance));
+                                  jellyfinFastSessionsProvider(widget.instance));
                             }
                           },
                         ),
@@ -263,8 +263,8 @@ class _EmbySessionDetailScreenState
                             padding: EdgeInsets.zero,
                           ),
                           onPressed: () async {
-                            final EmbyClient client = await ref.read(
-                                embyClientProvider(widget.instance).future);
+                            final JellyfinClient client = await ref.read(
+                                jellyfinClientProvider(widget.instance).future);
                             // If more than 5 seconds have elapsed (50 million ticks),
                             // restart the track instead of skipping to previous.
                             if (session.positionTicks > 50000000) {
@@ -273,7 +273,7 @@ class _EmbySessionDetailScreenState
                               await client.previousTrack(session.id);
                             }
                             ref.invalidate(
-                                embyFastSessionsProvider(widget.instance));
+                                jellyfinFastSessionsProvider(widget.instance));
                           },
                           child: const Icon(Icons.skip_previous, size: 32),
                         ),
@@ -289,11 +289,11 @@ class _EmbySessionDetailScreenState
                             padding: EdgeInsets.zero,
                           ),
                           onPressed: () async {
-                            final EmbyClient client = await ref.read(
-                                embyClientProvider(widget.instance).future);
+                            final JellyfinClient client = await ref.read(
+                                jellyfinClientProvider(widget.instance).future);
                             await client.playPauseSession(session.id);
                             ref.invalidate(
-                                embyFastSessionsProvider(widget.instance));
+                                jellyfinFastSessionsProvider(widget.instance));
                           },
                           child: Icon(playing ? Icons.pause : Icons.play_arrow,
                               size: 40),
@@ -310,11 +310,11 @@ class _EmbySessionDetailScreenState
                             padding: EdgeInsets.zero,
                           ),
                           onPressed: () async {
-                            final EmbyClient client = await ref.read(
-                                embyClientProvider(widget.instance).future);
+                            final JellyfinClient client = await ref.read(
+                                jellyfinClientProvider(widget.instance).future);
                             await client.nextTrack(session.id);
                             ref.invalidate(
-                                embyFastSessionsProvider(widget.instance));
+                                jellyfinFastSessionsProvider(widget.instance));
                           },
                           child: const Icon(Icons.skip_next, size: 32),
                         ),
@@ -337,11 +337,11 @@ class _EmbySessionDetailScreenState
                             backgroundColor: theme.colorScheme.errorContainer,
                           ),
                           onPressed: () async {
-                            final EmbyClient client = await ref.read(
-                                embyClientProvider(widget.instance).future);
+                            final JellyfinClient client = await ref.read(
+                                jellyfinClientProvider(widget.instance).future);
                             await client.stopSession(session.id);
                             ref.invalidate(
-                                embyFastSessionsProvider(widget.instance));
+                                jellyfinFastSessionsProvider(widget.instance));
                             if (context.mounted) {
                               Navigator.of(context).pop();
                             }

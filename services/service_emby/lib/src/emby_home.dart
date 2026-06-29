@@ -81,8 +81,7 @@ class _EmbyHomeState extends ConsumerState<EmbyHome> {
                   splashBorderRadius: BorderRadius.circular(50),
                   tabs: <Widget>[
                     const Tab(text: 'Home'),
-                    for (final EmbyView lib in libraries)
-                      Tab(text: lib.name),
+                    for (final EmbyView lib in libraries) Tab(text: lib.name),
                     const Tab(text: 'Watched'),
                     const Tab(text: 'Unwatched'),
                   ],
@@ -137,7 +136,9 @@ class _TabObserverState extends ConsumerState<_TabObserver> {
       _controller?.addListener(_onTabChanged);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && _controller != null) {
-          ref.read(embyActiveTabBarIndexProvider(widget.instance).notifier).state = _controller!.index;
+          ref
+              .read(embyActiveTabBarIndexProvider(widget.instance).notifier)
+              .state = _controller!.index;
         }
       });
     }
@@ -151,7 +152,8 @@ class _TabObserverState extends ConsumerState<_TabObserver> {
 
   void _onTabChanged() {
     if (_controller != null && !_controller!.indexIsChanging) {
-      ref.read(embyActiveTabBarIndexProvider(widget.instance).notifier).state = _controller!.index;
+      ref.read(embyActiveTabBarIndexProvider(widget.instance).notifier).state =
+          _controller!.index;
     }
   }
 
@@ -190,133 +192,123 @@ class EmbyLibraryGrid extends ConsumerWidget {
           final EmbyViewMode viewMode =
               ref.watch(embyViewModeProvider(instance));
 
-          if (viewMode == EmbyViewMode.list) {
-            return ListView.builder(
-              padding: Insets.page,
-              itemCount: list.length,
-              itemBuilder: (BuildContext context, int index) {
-                final EmbyItem item = list[index];
-                return PerformanceLoggerWidget(
-                  name: 'EmbyLibraryListItem',
-                  child: EmbyBannerCard(
-                    instance: instance,
-                    item: item,
-                    imageUrl: client?.imageUrl(item),
-                    backdropUrl: client?.bannerOrPosterUrl(item),
-                    onTap: client == null
-                        ? null
-                        : () {
-                            if (item.type == 'MusicAlbum') {
-                              pushScreen<void>(
-                                context,
-                                EmbyAlbumScreen(
-                                  instance: instance,
-                                  albumId: item.id,
-                                  albumName: item.name,
-                                  albumArtist: item.artists.isNotEmpty
-                                      ? item.artists.first
-                                      : 'Unknown Artist',
-                                  albumOverview: item.overview,
-                                  albumImageUrl: client.imageUrl(item),
-                                ),
-                              );
-                            } else if (item.type == 'Series') {
-                              pushScreen<void>(
-                                context,
-                                EmbyItemDetailScreen(
-                                    instance: instance, itemId: item.id),
-                              );
-                            } else if (item.type == 'Season') {
-                              pushScreen<void>(
-                                context,
-                                EmbySeasonScreen(
-                                  instance: instance,
-                                  seasonId: item.id,
-                                  seasonName: item.name,
-                                  seasonImageUrl: client.imageUrl(item),
-                                ),
-                              );
-                            } else if (embyContainerTypes.contains(item.type)) {
-                              pushScreen<void>(
-                                context,
-                                EmbyFolderScreen(
-                                    instance: instance, item: item),
-                              );
-                            } else {
-                              pushScreen<void>(
-                                context,
-                                EmbyItemDetailScreen(
-                                    instance: instance, itemId: item.id),
-                              );
-                            }
-                          },
-                  ),
-                );
-              },
-            );
-          }
+          // (Replaced with _buildEmbyGridOrList)
 
-          return MasonryGridView.extent(
-            padding: Insets.page,
-            maxCrossAxisExtent: 140.0,
-            crossAxisSpacing: Insets.md,
-            mainAxisSpacing: Insets.md,
-            itemCount: list.length,
-            itemBuilder: (BuildContext context, int index) {
-              final EmbyItem item = list[index];
+          return _buildEmbyGridOrList(
+            context,
+            list,
+            viewMode,
+            (BuildContext context, int index, EmbyItem item) {
               return PerformanceLoggerWidget(
-                name: 'EmbyLibraryGridItem',
-                child: EmbyPosterCard(
-                  instance: instance,
-                  item: item,
-                  imageUrl: client?.imageUrl(item),
-                  onTap: client == null
-                      ? null
-                      : () {
-                          if (item.type == 'MusicAlbum') {
-                            pushScreen<void>(
-                              context,
-                              EmbyAlbumScreen(
-                                instance: instance,
-                                albumId: item.id,
-                                albumName: item.name,
-                                albumArtist: item.artists.isNotEmpty
-                                    ? item.artists.first
-                                    : 'Unknown Artist',
-                                albumOverview: item.overview,
-                                albumImageUrl: client.imageUrl(item),
-                              ),
-                            );
-                          } else if (item.type == 'Series') {
-                            pushScreen<void>(
-                              context,
-                              EmbyItemDetailScreen(
-                                  instance: instance, itemId: item.id),
-                            );
-                          } else if (item.type == 'Season') {
-                            pushScreen<void>(
-                              context,
-                              EmbySeasonScreen(
-                                instance: instance,
-                                seasonId: item.id,
-                                seasonName: item.name,
-                                seasonImageUrl: client.imageUrl(item),
-                              ),
-                            );
-                          } else if (embyContainerTypes.contains(item.type)) {
-                            pushScreen<void>(
-                              context,
-                              EmbyFolderScreen(instance: instance, item: item),
-                            );
-                          } else {
-                            pushScreen<void>(
-                              context,
-                              EmbyItemDetailScreen(
-                                  instance: instance, itemId: item.id),
-                            );
-                          }
-                        },
-                ),
+                name: 'EmbyLibraryItem',
+                child: viewMode == EmbyViewMode.list
+                    ? EmbyBannerCard(
+                        instance: instance,
+                        item: item,
+                        imageUrl: client?.imageUrl(item),
+                        backdropUrl: client?.bannerOrPosterUrl(item),
+                        onTap: client == null
+                            ? null
+                            : () {
+                                if (item.type == 'MusicAlbum') {
+                                  pushScreen<void>(
+                                    context,
+                                    EmbyAlbumScreen(
+                                      instance: instance,
+                                      albumId: item.id,
+                                      albumName: item.name,
+                                      albumArtist: item.artists.isNotEmpty
+                                          ? item.artists.first
+                                          : 'Unknown Artist',
+                                      albumOverview: item.overview,
+                                      albumImageUrl: client.imageUrl(item),
+                                    ),
+                                  );
+                                } else if (item.type == 'Series') {
+                                  pushScreen<void>(
+                                    context,
+                                    EmbyItemDetailScreen(
+                                        instance: instance, itemId: item.id),
+                                  );
+                                } else if (item.type == 'Season') {
+                                  pushScreen<void>(
+                                    context,
+                                    EmbySeasonScreen(
+                                      instance: instance,
+                                      seasonId: item.id,
+                                      seasonName: item.name,
+                                      seasonImageUrl: client.imageUrl(item),
+                                    ),
+                                  );
+                                } else if (embyContainerTypes
+                                    .contains(item.type)) {
+                                  pushScreen<void>(
+                                    context,
+                                    EmbyFolderScreen(
+                                        instance: instance, item: item),
+                                  );
+                                } else {
+                                  pushScreen<void>(
+                                    context,
+                                    EmbyItemDetailScreen(
+                                        instance: instance, itemId: item.id),
+                                  );
+                                }
+                              },
+                      )
+                    : EmbyPosterCard(
+                        instance: instance,
+                        item: item,
+                        imageUrl: client?.imageUrl(item),
+                        onTap: client == null
+                            ? null
+                            : () {
+                                if (item.type == 'MusicAlbum') {
+                                  pushScreen<void>(
+                                    context,
+                                    EmbyAlbumScreen(
+                                      instance: instance,
+                                      albumId: item.id,
+                                      albumName: item.name,
+                                      albumArtist: item.artists.isNotEmpty
+                                          ? item.artists.first
+                                          : 'Unknown Artist',
+                                      albumOverview: item.overview,
+                                      albumImageUrl: client.imageUrl(item),
+                                    ),
+                                  );
+                                } else if (item.type == 'Series') {
+                                  pushScreen<void>(
+                                    context,
+                                    EmbyItemDetailScreen(
+                                        instance: instance, itemId: item.id),
+                                  );
+                                } else if (item.type == 'Season') {
+                                  pushScreen<void>(
+                                    context,
+                                    EmbySeasonScreen(
+                                      instance: instance,
+                                      seasonId: item.id,
+                                      seasonName: item.name,
+                                      seasonImageUrl: client.imageUrl(item),
+                                    ),
+                                  );
+                                } else if (embyContainerTypes
+                                    .contains(item.type)) {
+                                  pushScreen<void>(
+                                    context,
+                                    EmbyFolderScreen(
+                                        instance: instance, item: item),
+                                  );
+                                } else {
+                                  pushScreen<void>(
+                                    context,
+                                    EmbyItemDetailScreen(
+                                        instance: instance, itemId: item.id),
+                                  );
+                                }
+                              },
+                      ),
               );
             },
           );
@@ -356,46 +348,33 @@ class EmbyItemsGrid extends ConsumerWidget {
           final EmbyViewMode viewMode =
               ref.watch(embyViewModeProvider(instance));
 
-          if (viewMode == EmbyViewMode.list) {
-            return ListView.builder(
-              padding: Insets.page,
-              itemCount: list.length,
-              itemBuilder: (BuildContext context, int index) {
-                final EmbyItem item = list[index];
-                return PerformanceLoggerWidget(
-                  name: 'EmbyItemsListItem',
-                  child: EmbyBannerCard(
-                    instance: instance,
-                    item: item,
-                    imageUrl: client?.imageUrl(item),
-                    backdropUrl: client?.bannerOrPosterUrl(item),
-                    onTap: client == null
-                        ? null
-                        : () => _openItem(context, client, item),
-                  ),
-                );
-              },
-            );
-          }
+          // (Replaced with _buildEmbyGridOrList)
 
-          return MasonryGridView.extent(
-            padding: Insets.page,
-            maxCrossAxisExtent: 140.0,
-            crossAxisSpacing: Insets.md,
-            mainAxisSpacing: Insets.md,
-            itemCount: list.length,
-            itemBuilder: (BuildContext context, int index) {
-              final EmbyItem item = list[index];
+          return _buildEmbyGridOrList(
+            context,
+            list,
+            viewMode,
+            (BuildContext context, int index, EmbyItem item) {
               return PerformanceLoggerWidget(
-                name: 'EmbyItemsGridItem',
-                child: EmbyPosterCard(
-                  instance: instance,
-                  item: item,
-                  imageUrl: client?.imageUrl(item),
-                  onTap: client == null
-                      ? null
-                      : () => _openItem(context, client, item),
-                ),
+                name: 'EmbyItemsItem',
+                child: viewMode == EmbyViewMode.list
+                    ? EmbyBannerCard(
+                        instance: instance,
+                        item: item,
+                        imageUrl: client?.imageUrl(item),
+                        backdropUrl: client?.bannerOrPosterUrl(item),
+                        onTap: client == null
+                            ? null
+                            : () => _openItem(context, client, item),
+                      )
+                    : EmbyPosterCard(
+                        instance: instance,
+                        item: item,
+                        imageUrl: client?.imageUrl(item),
+                        onTap: client == null
+                            ? null
+                            : () => _openItem(context, client, item),
+                      ),
               );
             },
           );
@@ -405,7 +384,7 @@ class EmbyItemsGrid extends ConsumerWidget {
   }
 
   void _openItem(BuildContext context, EmbyClient client, EmbyItem item) {
-    if (item.type == 'MusicAlbum') {
+    if (item.type == 'MusicAlbum' || item.type == 'Playlist') {
       pushScreen<void>(
         context,
         EmbyAlbumScreen(
@@ -413,7 +392,7 @@ class EmbyItemsGrid extends ConsumerWidget {
           albumId: item.id,
           albumName: item.name,
           albumArtist:
-              item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
+              item.artists.isNotEmpty ? item.artists.first : 'Playlist',
           albumOverview: item.overview,
           albumImageUrl: client.imageUrl(item),
         ),
@@ -832,159 +811,160 @@ class EmbyBannerCard extends ConsumerWidget {
         },
         child: SizedBox(
           height: 142,
-        child: SizedBox(
-          height: 142,
-          child: Stack(
-            children: <Widget>[
-              // Backdrop
-              if ((backdropUrl ?? imageUrl) != null)
-                Positioned.fill(
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: <Widget>[
-                      CachedNetworkImage(
-                        imageUrl: (backdropUrl ?? imageUrl)!,
-                        fit: BoxFit.cover,
-                        alignment: Alignment.topCenter,
-                        errorWidget: (_, __, ___) => const SizedBox.shrink(),
-                      ),
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: <Color>[
-                              theme.colorScheme.surfaceContainerLow,
-                              theme.colorScheme.surfaceContainerLow
-                                  .withValues(alpha: 0.65),
-                              theme.colorScheme.surfaceContainerLow
-                                  .withValues(alpha: 0.5),
-                            ],
-                          ),
+          child: SizedBox(
+            height: 142,
+            child: Stack(
+              children: <Widget>[
+                // Backdrop
+                if ((backdropUrl ?? imageUrl) != null)
+                  Positioned.fill(
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: <Widget>[
+                        CachedNetworkImage(
+                          imageUrl: (backdropUrl ?? imageUrl)!,
+                          fit: BoxFit.cover,
+                          alignment: Alignment.topCenter,
+                          errorWidget: (_, __, ___) => const SizedBox.shrink(),
                         ),
-                      ),
-                    ],
-                  ),
-                )
-              else
-                Positioned.fill(
-                  child: Container(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                  ),
-                ),
-
-              // Content
-              Padding(
-                padding: const EdgeInsets.all(Insets.md),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    // Poster
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 120, maxHeight: 126),
-                      child: AspectRatio(
-                        aspectRatio: item.type == 'Episode'
-                            ? (2 / 3)
-                            : ((item.primaryImageAspectRatio != null &&
-                                    item.primaryImageAspectRatio! > 0.0)
-                                ? item.primaryImageAspectRatio!
-                                : (item.type == 'MusicAlbum' ||
-                                        item.type == 'Audio' ||
-                                        item.type == 'MusicArtist'
-                                    ? 1.0
-                                    : (2 / 3))),
-                        child: Container(
+                        Container(
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: <BoxShadow>[
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.25),
-                                blurRadius: 12,
-                                offset: const Offset(0, 6),
-                              ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: <Widget>[
-                                _poster(theme),
-                                if (played)
-                                  Positioned(
-                                    top: 6,
-                                    right: 6,
-                                    child: _Badge(
-                                      color: theme.colorScheme.primary
-                                          .withValues(alpha: 0.85),
-                                      child: Icon(
-                                        Icons.check,
-                                        size: 16,
-                                        color: theme.colorScheme.onPrimary,
-                                      ),
-                                    ),
-                                  ),
+                            gradient: LinearGradient(
+                              colors: <Color>[
+                                theme.colorScheme.surfaceContainerLow,
+                                theme.colorScheme.surfaceContainerLow
+                                    .withValues(alpha: 0.65),
+                                theme.colorScheme.surfaceContainerLow
+                                    .withValues(alpha: 0.5),
                               ],
                             ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
-                    const SizedBox(width: Insets.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          Text(
-                            item.seriesName ?? item.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onSurface,
+                  )
+                else
+                  Positioned.fill(
+                    child: Container(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                    ),
+                  ),
+
+                // Content
+                Padding(
+                  padding: const EdgeInsets.all(Insets.md),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      // Poster
+                      ConstrainedBox(
+                        constraints:
+                            const BoxConstraints(maxWidth: 120, maxHeight: 126),
+                        child: AspectRatio(
+                          aspectRatio: item.type == 'Episode'
+                              ? (2 / 3)
+                              : ((item.primaryImageAspectRatio != null &&
+                                      item.primaryImageAspectRatio! > 0.0)
+                                  ? item.primaryImageAspectRatio!
+                                  : (item.type == 'MusicAlbum' ||
+                                          item.type == 'Audio' ||
+                                          item.type == 'MusicArtist'
+                                      ? 1.0
+                                      : (2 / 3))),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: <BoxShadow>[
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.25),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: <Widget>[
+                                  _poster(theme),
+                                  if (played)
+                                    Positioned(
+                                      top: 6,
+                                      right: 6,
+                                      child: _Badge(
+                                        color: theme.colorScheme.primary
+                                            .withValues(alpha: 0.85),
+                                        child: Icon(
+                                          Icons.check,
+                                          size: 16,
+                                          color: theme.colorScheme.onPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 4),
-                          if (item.seriesName != null)
+                        ),
+                      ),
+                      const SizedBox(width: Insets.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: <Widget>[
                             Text(
-                              (item.parentIndexNumber != null &&
-                                      item.indexNumber != null)
-                                  ? 'S${item.parentIndexNumber}:E${item.indexNumber} — ${item.name}'
-                                  : item.name,
+                              item.seriesName ?? item.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            )
-                          else if (item.productionYear != null)
-                            Text(
-                              '${item.productionYear}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.onSurface,
                               ),
                             ),
-                          if (!played && progress > 0.02) ...<Widget>[
-                            const SizedBox(height: 8),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(6),
-                              child: LinearProgressIndicator(
-                                value: progress.clamp(0, 1),
-                                minHeight: 6,
-                                backgroundColor:
-                                    Colors.black.withValues(alpha: 0.1),
+                            const SizedBox(height: 4),
+                            if (item.seriesName != null)
+                              Text(
+                                (item.parentIndexNumber != null &&
+                                        item.indexNumber != null)
+                                    ? 'S${item.parentIndexNumber}:E${item.indexNumber} — ${item.name}'
+                                    : item.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              )
+                            else if (item.productionYear != null)
+                              Text(
+                                '${item.productionYear}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
                               ),
-                            ),
+                            if (!played && progress > 0.02) ...<Widget>[
+                              const SizedBox(height: 8),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(6),
+                                child: LinearProgressIndicator(
+                                  value: progress.clamp(0, 1),
+                                  minHeight: 6,
+                                  backgroundColor:
+                                      Colors.black.withValues(alpha: 0.1),
+                                ),
+                              ),
+                            ],
                           ],
-                        ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
         ),
       ),
     );
@@ -1472,4 +1452,104 @@ class _SessionCard extends StatelessWidget {
       ),
     );
   }
+}
+Widget _buildEmbyGridOrList(
+  BuildContext context,
+  List<EmbyItem> list,
+  EmbyViewMode viewMode,
+  Widget Function(BuildContext, int, EmbyItem) itemBuilder,
+) {
+  final List<EmbyItem> albums =
+      list.where((e) => e.type == 'MusicAlbum').toList();
+  final List<EmbyItem> playlists =
+      list.where((e) => e.type == 'Playlist').toList();
+  final List<EmbyItem> others =
+      list.where((e) => e.type != 'MusicAlbum' && e.type != 'Playlist').toList();
+
+  final bool showSections =
+      albums.isNotEmpty && playlists.isNotEmpty && others.isEmpty;
+  final ThemeData theme = Theme.of(context);
+
+  if (showSections) {
+    return CustomScrollView(
+      slivers: <Widget>[
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+              Insets.lg, Insets.lg, Insets.lg, Insets.sm),
+          sliver: SliverToBoxAdapter(
+            child: Text('Albums',
+                style: theme.textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.bold)),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
+          sliver: viewMode == EmbyViewMode.list
+              ? SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (BuildContext context, int index) =>
+                        itemBuilder(context, index, albums[index]),
+                    childCount: albums.length,
+                  ),
+                )
+              : SliverMasonryGrid.extent(
+                  maxCrossAxisExtent: 140.0,
+                  crossAxisSpacing: Insets.md,
+                  mainAxisSpacing: Insets.md,
+                  childCount: albums.length,
+                  itemBuilder: (BuildContext context, int index) =>
+                      itemBuilder(context, index, albums[index]),
+                ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+              Insets.lg, Insets.xl, Insets.lg, Insets.sm),
+          sliver: SliverToBoxAdapter(
+            child: Text('Playlists',
+                style: theme.textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.bold)),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: Insets.lg)
+              .copyWith(bottom: Insets.lg),
+          sliver: viewMode == EmbyViewMode.list
+              ? SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (BuildContext context, int index) =>
+                        itemBuilder(context, index, playlists[index]),
+                    childCount: playlists.length,
+                  ),
+                )
+              : SliverMasonryGrid.extent(
+                  maxCrossAxisExtent: 140.0,
+                  crossAxisSpacing: Insets.md,
+                  mainAxisSpacing: Insets.md,
+                  childCount: playlists.length,
+                  itemBuilder: (BuildContext context, int index) =>
+                      itemBuilder(context, index, playlists[index]),
+                ),
+        ),
+      ],
+    );
+  }
+
+  if (viewMode == EmbyViewMode.list) {
+    return ListView.builder(
+      padding: Insets.page,
+      itemCount: list.length,
+      itemBuilder: (BuildContext context, int index) =>
+          itemBuilder(context, index, list[index]),
+    );
+  }
+
+  return MasonryGridView.extent(
+    padding: Insets.page,
+    maxCrossAxisExtent: 140.0,
+    crossAxisSpacing: Insets.md,
+    mainAxisSpacing: Insets.md,
+    itemCount: list.length,
+    itemBuilder: (BuildContext context, int index) =>
+        itemBuilder(context, index, list[index]),
+  );
 }
