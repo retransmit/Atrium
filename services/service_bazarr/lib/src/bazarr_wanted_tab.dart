@@ -38,9 +38,16 @@ class BazarrWantedTab extends ConsumerWidget {
                     message: 'Nothing is waiting on subtitles.',
                   );
                 }
-                return ListView.builder(
-                  padding: Insets.pageH,
+                return ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(
+                    Insets.lg,
+                    0,
+                    Insets.lg,
+                    Insets.lg,
+                  ),
                   itemCount: rows.length,
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(height: Insets.sm),
                   itemBuilder: (BuildContext context, int index) =>
                       _WantedTile(row: rows[index]),
                 );
@@ -64,39 +71,82 @@ class _BadgesHeader extends ConsumerWidget {
     if (b == null) {
       return const SizedBox(height: Insets.sm);
     }
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: Insets.lg,
         vertical: Insets.sm,
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: <Widget>[
-          _Badge(label: 'Episodes', value: b.episodes),
-          _Badge(label: 'Movies', value: b.movies),
-          _Badge(label: 'Providers', value: b.providers),
-        ],
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(Insets.lg),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: _StatTile(
+                icon: Icons.live_tv_outlined,
+                value: b.episodes,
+                label: 'Episodes',
+                color: cs.secondary,
+              ),
+            ),
+            Expanded(
+              child: _StatTile(
+                icon: Icons.movie_outlined,
+                value: b.movies,
+                label: 'Movies',
+                color: cs.secondary,
+              ),
+            ),
+            Expanded(
+              child: _StatTile(
+                icon: Icons.cloud_outlined,
+                value: b.providers,
+                label: 'Providers',
+                color: cs.primary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _Badge extends StatelessWidget {
-  const _Badge({required this.label, required this.value});
+class _StatTile extends StatelessWidget {
+  const _StatTile({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+  });
 
-  final String label;
+  final IconData icon;
   final int value;
+  final String label;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     return Column(
       children: <Widget>[
-        Text('$value', style: theme.textTheme.titleMedium),
+        Icon(icon, size: 20, color: color),
+        const SizedBox(height: Insets.xs),
+        Text(
+          '$value',
+          style: theme.textTheme.titleMedium
+              ?.copyWith(fontWeight: FontWeight.w700),
+        ),
         Text(
           label,
           style: theme.textTheme.labelSmall
-              ?.copyWith(color: theme.colorScheme.outline),
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
         ),
       ],
     );
@@ -110,28 +160,94 @@ class _WantedTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: Insets.sm),
-      child: ListTile(
-        leading: Icon(
-          row.isMovie ? Icons.movie_outlined : Icons.live_tv_outlined,
-        ),
-        title: Text(row.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text(row.subtitle),
-        trailing: Wrap(
-          spacing: Insets.xs,
-          children: <Widget>[
-            for (final BazarrSubtitle s in row.missing.take(3))
-              Chip(
-                label: Text(
-                  s.code2.isNotEmpty ? s.code2.toUpperCase() : s.name,
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      padding: const EdgeInsets.all(Insets.md),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: cs.secondary.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              row.isMovie ? Icons.movie_outlined : Icons.live_tv_outlined,
+              color: cs.secondary,
+            ),
+          ),
+          const SizedBox(width: Insets.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  row.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
                 ),
-                labelStyle: Theme.of(context).textTheme.labelSmall,
-                visualDensity: VisualDensity.compact,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-          ],
-        ),
+                const SizedBox(height: 2),
+                Text(
+                  row.subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: cs.onSurfaceVariant),
+                ),
+                if (row.missing.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: Insets.sm),
+                  Wrap(
+                    spacing: Insets.xs,
+                    runSpacing: Insets.xs,
+                    children: <Widget>[
+                      for (final BazarrSubtitle s in row.missing.take(3))
+                        _LangPill(
+                          label: s.code2.isNotEmpty
+                              ? s.code2.toUpperCase()
+                              : s.name,
+                        ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A compact tonal pill for a missing subtitle language code.
+class _LangPill extends StatelessWidget {
+  const _LangPill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final Color color = theme.colorScheme.secondary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.labelSmall
+            ?.copyWith(color: color, fontWeight: FontWeight.w600),
       ),
     );
   }

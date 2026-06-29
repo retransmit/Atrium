@@ -39,32 +39,111 @@ class ProwlarrAppsTab extends ConsumerWidget {
             );
           }
           return ListView.builder(
-            padding: Insets.pageH,
+            padding: const EdgeInsets.fromLTRB(
+              Insets.lg,
+              Insets.sm,
+              Insets.lg,
+              Insets.sm,
+            ),
             itemCount: list.length,
             itemBuilder: (BuildContext context, int index) {
+              final ThemeData theme = Theme.of(context);
+              final ColorScheme cs = theme.colorScheme;
               final ProwlarrApplication app = list[index];
               final bool synced =
                   app.syncLevel.isNotEmpty && app.syncLevel != 'disabled';
-              return ListTile(
-                leading: Icon(
-                  synced ? Icons.sync : Icons.sync_disabled,
-                  color: synced
-                      ? Colors.green
-                      : Theme.of(context).colorScheme.outline,
+              final Color accent = synced ? cs.tertiary : cs.outline;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: Insets.sm),
+                child: Material(
+                  color: cs.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(18),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () => onEdit(app.id),
+                    child: Padding(
+                      padding: const EdgeInsets.all(Insets.md),
+                      child: Row(
+                        children: <Widget>[
+                          Container(
+                            width: 40,
+                            height: 40,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: accent.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              synced ? Icons.sync : Icons.sync_disabled,
+                              color: accent,
+                            ),
+                          ),
+                          const SizedBox(width: Insets.md),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  app.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodyLarge
+                                      ?.copyWith(fontWeight: FontWeight.w600),
+                                ),
+                                if (app.implementation.isNotEmpty) ...<Widget>[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    app.implementation,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.bodySmall
+                                        ?.copyWith(color: cs.onSurfaceVariant),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: Insets.sm),
+                          _SyncPill(
+                            label: _syncLabel(app.syncLevel),
+                            color: accent,
+                          ),
+                          const SizedBox(width: Insets.sm),
+                          Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-                title: Text(app.name),
-                subtitle: Text(
-                  <String>[
-                    if (app.implementation.isNotEmpty) app.implementation,
-                    _syncLabel(app.syncLevel),
-                  ].join(' • '),
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => onEdit(app.id),
               );
             },
           );
         },
+      ),
+    );
+  }
+}
+
+class _SyncPill extends StatelessWidget {
+  const _SyncPill({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
       ),
     );
   }
