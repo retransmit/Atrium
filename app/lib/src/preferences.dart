@@ -8,15 +8,22 @@ class Preferences {
   const Preferences({
     this.themeMode = ThemeMode.system,
     this.biometricEnabled = false,
+    this.fontFamily,
   });
 
   final ThemeMode themeMode;
   final bool biometricEnabled;
+  final String? fontFamily;
 
-  Preferences copyWith({ThemeMode? themeMode, bool? biometricEnabled}) =>
+  Preferences copyWith({
+    ThemeMode? themeMode,
+    bool? biometricEnabled,
+    String? fontFamily,
+  }) =>
       Preferences(
         themeMode: themeMode ?? this.themeMode,
         biometricEnabled: biometricEnabled ?? this.biometricEnabled,
+        fontFamily: fontFamily ?? this.fontFamily,
       );
 }
 
@@ -35,6 +42,7 @@ final NotifierProvider<PreferencesController, Preferences> preferencesProvider =
 class PreferencesController extends Notifier<Preferences> {
   static const String _themeKey = 'pref.themeMode';
   static const String _biometricKey = 'pref.biometricEnabled';
+  static const String _fontFamilyKey = 'pref.fontFamily';
 
   Box<String> get _box => ref.read(settingsBoxProvider);
 
@@ -47,6 +55,7 @@ class PreferencesController extends Notifier<Preferences> {
         _ => ThemeMode.system,
       },
       biometricEnabled: _box.get(_biometricKey) == 'true',
+      fontFamily: _box.get(_fontFamilyKey),
     );
   }
 
@@ -58,5 +67,21 @@ class PreferencesController extends Notifier<Preferences> {
   Future<void> setBiometricEnabled(bool enabled) async {
     await _box.put(_biometricKey, '$enabled');
     state = state.copyWith(biometricEnabled: enabled);
+  }
+
+  Future<void> setFontFamily(String? fontFamily) async {
+    if (fontFamily == null) {
+      await _box.delete(_fontFamilyKey);
+    } else {
+      await _box.put(_fontFamilyKey, fontFamily);
+    }
+    // We explicitly allow passing null to copyWith to clear the font, but our
+    // copyWith above doesn't support clearing if it falls back to this.fontFamily.
+    // Let's replace the whole state directly.
+    state = Preferences(
+      themeMode: state.themeMode,
+      biometricEnabled: state.biometricEnabled,
+      fontFamily: fontFamily,
+    );
   }
 }

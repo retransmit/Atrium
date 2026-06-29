@@ -124,6 +124,7 @@ class _SearchResults extends ConsumerWidget {
                 instance: instance,
                 item: item,
                 imageUrl: client.imageUrl(item),
+                backdropUrl: client.bannerOrPosterUrl(item),
                 onTap: () => _openItem(context, client, item),
               );
             },
