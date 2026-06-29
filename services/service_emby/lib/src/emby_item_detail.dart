@@ -179,7 +179,7 @@ class _Header extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: <Widget>[
           if (posterUrl != null)
             ClipRRect(
@@ -207,19 +207,33 @@ class _Header extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 if (item.seriesName != null)
-                  Text(
-                    item.seriesName!,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.bold),
+                  Tooltip(
+                    message: item.seriesName!,
+                    triggerMode: TooltipTriggerMode.tap,
+                    child: Text(
+                      item.seriesName!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold),
+                    ),
                   ),
                 if (item.seriesName != null) const SizedBox(height: 4),
-                Text(
-                  (item.seriesName != null && item.indexNumber != null)
+                Tooltip(
+                  message: (item.seriesName != null && item.indexNumber != null)
                       ? 'Episode ${item.indexNumber} - ${item.name}'
                       : item.name,
-                  style: theme.textTheme.headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                  triggerMode: TooltipTriggerMode.tap,
+                  child: Text(
+                    (item.seriesName != null && item.indexNumber != null)
+                        ? 'Episode ${item.indexNumber} - ${item.name}'
+                        : item.name,
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
                 ),
                 const SizedBox(height: Insets.xs),
                 Wrap(

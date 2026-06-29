@@ -37,10 +37,49 @@ class ServiceDetailScreen extends ConsumerWidget {
     }
     return Scaffold(
       appBar: AppBar(
-        title: Text(instance.name),
+        title: instance.kind == ServiceKind.emby
+            ? TextField(
+                readOnly: true,
+                onTap: () {
+                  showSearch<void>(
+                    context: context,
+                    useRootNavigator: true,
+                    delegate: EmbySearchDelegate(instance: instance),
+                  );
+                },
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      fontSize: 16,
+                      color: Theme.of(context).colorScheme.onSecondaryContainer,
+                    ),
+                decoration: InputDecoration(
+                  hintText: 'Search Emby...',
+                  hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontSize: 16,
+                        color: Theme.of(context).colorScheme.onSecondaryContainer.withValues(alpha: 0.7),
+                      ),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    color: Theme.of(context).colorScheme.onSecondaryContainer,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 10.0,
+                    horizontal: 20.0,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(32),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(32),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.secondaryContainer,
+                ),
+              )
+            : Text(instance.name),
         actions: <Widget>[
-          if (instance.kind == ServiceKind.emby ||
-              instance.kind == ServiceKind.jellyfin ||
+          if (instance.kind == ServiceKind.jellyfin ||
               instance.kind == ServiceKind.plex ||
               instance.kind == ServiceKind.seerr)
             IconButton(
@@ -58,6 +97,30 @@ class ServiceDetailScreen extends ConsumerWidget {
                     ServiceKind.plex => PlexSearchDelegate(instance: instance),
                     ServiceKind.seerr => SeerrSearchDelegate(instance: instance),
                     _ => JellyfinSearchDelegate(instance: instance),
+                  },
+                );
+              },
+            ),
+          if (instance.kind == ServiceKind.emby)
+            Consumer(
+              builder: (BuildContext context, WidgetRef ref, Widget? child) {
+                final int activeTab = ref.watch(embyActiveTabBarIndexProvider(instance));
+                if (activeTab == 0) {
+                  return const SizedBox.shrink();
+                }
+                final EmbyViewMode viewMode = ref.watch(embyViewModeProvider(instance));
+                return IconButton(
+                  tooltip: viewMode == EmbyViewMode.grid
+                      ? 'Switch to List View'
+                      : 'Switch to Grid View',
+                  icon: Icon(viewMode == EmbyViewMode.grid
+                      ? Icons.view_headline
+                      : Icons.grid_view),
+                  onPressed: () {
+                    ref.read(embyViewModeProvider(instance).notifier).state =
+                        viewMode == EmbyViewMode.grid
+                            ? EmbyViewMode.list
+                            : EmbyViewMode.grid;
                   },
                 );
               },

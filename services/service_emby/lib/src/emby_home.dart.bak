@@ -61,102 +61,98 @@ class _EmbyHomeState extends ConsumerState<EmbyHome> {
         return DefaultTabController(
           key: ValueKey<int>(libraries.length),
           length: libraries.length + 3,
-          child: _TabObserver(
-            instance: widget.instance,
-            child: Column(
-              children: <Widget>[
-                TabBar(
-                  isScrollable: true,
-                  tabAlignment: TabAlignment.start,
-                  dividerColor: Colors.transparent,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  indicator: BoxDecoration(
-                    color: Theme.of(context).colorScheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(50),
+          child: Column(
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: TabBar(
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
+                      dividerColor: Colors.transparent,
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      indicator: BoxDecoration(
+                        color: Theme.of(context).colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(50),
+                      ),
+                      labelColor:
+                          Theme.of(context).colorScheme.onSecondaryContainer,
+                      unselectedLabelColor:
+                          Theme.of(context).colorScheme.onSurfaceVariant,
+                      splashBorderRadius: BorderRadius.circular(50),
+                      tabs: <Widget>[
+                        const Tab(text: 'Home'),
+                        for (final EmbyView lib in libraries)
+                          Tab(text: lib.name),
+                        const Tab(text: 'Watched'),
+                        const Tab(text: 'Unwatched'),
+                      ],
+                    ),
                   ),
-                  labelColor:
-                      Theme.of(context).colorScheme.onSecondaryContainer,
-                  unselectedLabelColor:
-                      Theme.of(context).colorScheme.onSurfaceVariant,
-                  splashBorderRadius: BorderRadius.circular(50),
-                  tabs: <Widget>[
-                    const Tab(text: 'Home'),
+                  Builder(
+                    builder: (BuildContext context) {
+                      final TabController controller =
+                          DefaultTabController.of(context);
+                      return AnimatedBuilder(
+                        animation: controller,
+                        builder: (BuildContext context, Widget? child) {
+                          if (controller.index == 0) {
+                            return const SizedBox.shrink();
+                          }
+                          final EmbyViewMode viewMode =
+                              ref.watch(embyViewModeProvider(widget.instance));
+                          return Padding(
+                            padding: const EdgeInsets.only(right: Insets.sm),
+                            child: IconButton(
+                              icon: Icon(viewMode == EmbyViewMode.grid
+                                  ? Icons.view_headline
+                                  : Icons.grid_view),
+                              tooltip: viewMode == EmbyViewMode.grid
+                                  ? 'Switch to List View'
+                                  : 'Switch to Grid View',
+                              onPressed: () {
+                                ref
+                                    .read(embyViewModeProvider(widget.instance)
+                                        .notifier)
+                                    .state = viewMode ==
+                                        EmbyViewMode.grid
+                                    ? EmbyViewMode.list
+                                    : EmbyViewMode.grid;
+                              },
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+              Expanded(
+                child: TabBarView(
+                  children: <Widget>[
+                    _HomeSections(instance: widget.instance),
                     for (final EmbyView lib in libraries)
-                      Tab(text: lib.name),
-                    const Tab(text: 'Watched'),
-                    const Tab(text: 'Unwatched'),
+                      EmbyLibraryGrid(
+                        instance: widget.instance,
+                        view: lib,
+                      ),
+                    EmbyItemsGrid(
+                      instance: widget.instance,
+                      libraryId: 'watched',
+                    ),
+                    EmbyItemsGrid(
+                      instance: widget.instance,
+                      libraryId: 'unwatched',
+                    ),
                   ],
                 ),
-                Expanded(
-                  child: TabBarView(
-                    children: <Widget>[
-                      _HomeSections(instance: widget.instance),
-                      for (final EmbyView lib in libraries)
-                        EmbyLibraryGrid(
-                          instance: widget.instance,
-                          view: lib,
-                        ),
-                      EmbyItemsGrid(
-                        instance: widget.instance,
-                        libraryId: 'watched',
-                      ),
-                      EmbyItemsGrid(
-                        instance: widget.instance,
-                        libraryId: 'unwatched',
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
     );
   }
-}
-
-class _TabObserver extends ConsumerStatefulWidget {
-  const _TabObserver({required this.instance, required this.child});
-  final Instance instance;
-  final Widget child;
-  @override
-  ConsumerState<_TabObserver> createState() => _TabObserverState();
-}
-
-class _TabObserverState extends ConsumerState<_TabObserver> {
-  TabController? _controller;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final TabController? controller = DefaultTabController.maybeOf(context);
-    if (_controller != controller) {
-      _controller?.removeListener(_onTabChanged);
-      _controller = controller;
-      _controller?.addListener(_onTabChanged);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _controller != null) {
-          ref.read(embyActiveTabBarIndexProvider(widget.instance).notifier).state = _controller!.index;
-        }
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller?.removeListener(_onTabChanged);
-    super.dispose();
-  }
-
-  void _onTabChanged() {
-    if (_controller != null && !_controller!.indexIsChanging) {
-      ref.read(embyActiveTabBarIndexProvider(widget.instance).notifier).state = _controller!.index;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
 }
 
 class EmbyLibraryGrid extends ConsumerWidget {
@@ -202,7 +198,6 @@ class EmbyLibraryGrid extends ConsumerWidget {
                     instance: instance,
                     item: item,
                     imageUrl: client?.imageUrl(item),
-                    backdropUrl: client?.bannerOrPosterUrl(item),
                     onTap: client == null
                         ? null
                         : () {
@@ -368,7 +363,6 @@ class EmbyItemsGrid extends ConsumerWidget {
                     instance: instance,
                     item: item,
                     imageUrl: client?.imageUrl(item),
-                    backdropUrl: client?.bannerOrPosterUrl(item),
                     onTap: client == null
                         ? null
                         : () => _openItem(context, client, item),
@@ -738,7 +732,6 @@ class EmbyBannerCard extends ConsumerWidget {
     required this.instance,
     required this.item,
     required this.imageUrl,
-    this.backdropUrl,
     required this.onTap,
     super.key,
   });
@@ -746,7 +739,6 @@ class EmbyBannerCard extends ConsumerWidget {
   final Instance instance;
   final EmbyItem item;
   final String? imageUrl;
-  final String? backdropUrl;
   final VoidCallback? onTap;
 
   @override
@@ -832,36 +824,19 @@ class EmbyBannerCard extends ConsumerWidget {
         },
         child: SizedBox(
           height: 142,
-        child: SizedBox(
-          height: 142,
           child: Stack(
+            fit: StackFit.expand,
             children: <Widget>[
-              // Backdrop
-              if ((backdropUrl ?? imageUrl) != null)
+              // Background banner image
+              if (imageUrl != null)
                 Positioned.fill(
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: <Widget>[
-                      CachedNetworkImage(
-                        imageUrl: (backdropUrl ?? imageUrl)!,
-                        fit: BoxFit.cover,
-                        alignment: Alignment.topCenter,
-                        errorWidget: (_, __, ___) => const SizedBox.shrink(),
-                      ),
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: <Color>[
-                              theme.colorScheme.surfaceContainerLow,
-                              theme.colorScheme.surfaceContainerLow
-                                  .withValues(alpha: 0.65),
-                              theme.colorScheme.surfaceContainerLow
-                                  .withValues(alpha: 0.5),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: CachedNetworkImage(
+                    imageUrl: imageUrl!,
+                    fit: BoxFit.cover,
+                    alignment: Alignment.topCenter,
+                    errorWidget: (_, __, ___) => Container(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                    ),
                   ),
                 )
               else
@@ -870,62 +845,60 @@ class EmbyBannerCard extends ConsumerWidget {
                     color: theme.colorScheme.surfaceContainerHighest,
                   ),
                 ),
-
-              // Content
+              // Dark gradient overlay
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: <Color>[
+                        theme.colorScheme.surfaceContainerLow,
+                        theme.colorScheme.surfaceContainerLow
+                            .withValues(alpha: 0.85),
+                        theme.colorScheme.surfaceContainerLow
+                            .withValues(alpha: 0.2),
+                      ],
+                      stops: const <double>[0.4, 0.75, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+              // Content overlay
               Padding(
                 padding: const EdgeInsets.all(Insets.md),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    // Poster
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 120, maxHeight: 126),
-                      child: AspectRatio(
-                        aspectRatio: item.type == 'Episode'
-                            ? (2 / 3)
-                            : ((item.primaryImageAspectRatio != null &&
-                                    item.primaryImageAspectRatio! > 0.0)
-                                ? item.primaryImageAspectRatio!
-                                : (item.type == 'MusicAlbum' ||
-                                        item.type == 'Audio' ||
-                                        item.type == 'MusicArtist'
-                                    ? 1.0
-                                    : (2 / 3))),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: <BoxShadow>[
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.25),
-                                blurRadius: 12,
-                                offset: const Offset(0, 6),
-                              ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: <Widget>[
-                                _poster(theme),
-                                if (played)
-                                  Positioned(
-                                    top: 6,
-                                    right: 6,
-                                    child: _Badge(
-                                      color: theme.colorScheme.primary
-                                          .withValues(alpha: 0.85),
-                                      child: Icon(
-                                        Icons.check,
-                                        size: 16,
-                                        color: theme.colorScheme.onPrimary,
-                                      ),
-                                    ),
+                    AspectRatio(
+                      aspectRatio: item.type == 'Episode'
+                          ? (2 / 3)
+                          : ((item.primaryImageAspectRatio != null &&
+                                  item.primaryImageAspectRatio! > 0.0)
+                              ? item.primaryImageAspectRatio!
+                              : (item.type == 'MusicAlbum' ||
+                                      item.type == 'Audio' ||
+                                      item.type == 'MusicArtist'
+                                  ? 1.0
+                                  : (2 / 3))),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: <Widget>[
+                            _poster(theme),
+                            if (played)
+                              Positioned(
+                                top: 6,
+                                right: 6,
+                                child: _Badge(
+                                  color: theme.colorScheme.primary
+                                      .withValues(alpha: 0.85),
+                                  child: Icon(
+                                    Icons.check,
+                                    size: 16,
+                                    color: theme.colorScheme.onPrimary,
                                   ),
-                              ],
-                            ),
-                          ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ),
@@ -954,15 +927,13 @@ class EmbyBannerCard extends ConsumerWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
+                                  color: theme.colorScheme.onSurfaceVariant),
                             )
                           else if (item.productionYear != null)
                             Text(
                               '${item.productionYear}',
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
+                                  color: theme.colorScheme.onSurfaceVariant),
                             ),
                           if (!played && progress > 0.02) ...<Widget>[
                             const SizedBox(height: 8),
@@ -984,7 +955,6 @@ class EmbyBannerCard extends ConsumerWidget {
               ),
             ],
           ),
-        ),
         ),
       ),
     );
@@ -1304,9 +1274,9 @@ class _SessionCard extends StatelessWidget {
                           colors: <Color>[
                             theme.colorScheme.surfaceContainerLow,
                             theme.colorScheme.surfaceContainerLow
-                                .withValues(alpha: 0.65),
+                                .withValues(alpha: 0.4),
                             theme.colorScheme.surfaceContainerLow
-                                .withValues(alpha: 0.5),
+                                .withValues(alpha: 0.2),
                           ],
                         ),
                       ),

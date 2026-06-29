@@ -13,7 +13,7 @@ Future<void> launchEmbyDeepLink(
   try {
     final bool launched = await launchUrl(
       uri,
-      mode: LaunchMode.externalApplication,
+      mode: LaunchMode.externalNonBrowserApplication,
     );
     if (!launched && context.mounted) {
       _showNotInstalled(context);

@@ -272,12 +272,26 @@ class EmbyClient {
         await _dio.post<dynamic>('Sessions/$sessionId/Playing/Unpause');
       });
 
+  Future<void> stopSession(String sessionId) => _guarded(() async {
+        await _dio.post<dynamic>('Sessions/$sessionId/Playing/Stop');
+      });
+
   Future<void> nextTrack(String sessionId) => _guarded(() async {
         await _dio.post<dynamic>('Sessions/$sessionId/Playing/NextTrack');
       });
 
   Future<void> previousTrack(String sessionId) => _guarded(() async {
         await _dio.post<dynamic>('Sessions/$sessionId/Playing/PreviousTrack');
+      });
+
+  Future<void> seekSession(String sessionId, int positionTicks) =>
+      _guarded(() async {
+        await _dio.post<dynamic>(
+          'Sessions/$sessionId/Playing/Seek',
+          queryParameters: <String, dynamic>{
+            'SeekPositionTicks': positionTicks,
+          },
+        );
       });
 
   Future<List<ActiveSession>> getSessions() => _guarded(() async {
@@ -340,6 +354,8 @@ class EmbyClient {
                   durTicks > 0 ? ((posTicks / durTicks) * 100).toInt() : 0,
               timePosition: formatTime(posSec),
               timeDuration: formatTime(durSec),
+              positionTicks: posTicks,
+              durationTicks: durTicks,
               posterUrl:
                   '$_baseStr/Items/${nowPlaying['SeriesId'] ?? nowPlaying['Id']}/Images/Primary?quality=100${_token == null ? '' : '&api_key=$_token'}',
               aspectRatio: computedAspectRatio,
@@ -558,6 +574,31 @@ class EmbyClient {
     // Fallback: If no tags were provided in the payload, try fetching the primary image directly.
     return '$_baseStr/Items/${item.id}/Images/Primary'
         '?quality=100$key';
+  }
+
+  /// Builds a banner image URL for [item], or null if it has none.
+  String? bannerImageUrl(EmbyItem item, {int maxWidth = 1920}) {
+    final String key = _token == null ? '' : '&api_key=$_token';
+
+    if (item.imageTags.containsKey('Banner')) {
+      return '$_baseStr/Items/${item.id}/Images/Banner/0?quality=100&tag=${item.imageTags['Banner']}$key';
+    } else if (item.seriesId != null && item.seriesPrimaryImageTag != null) {
+      // Sometimes series have banners under their own ID
+      return '$_baseStr/Items/${item.seriesId}/Images/Banner/0?quality=100$key';
+    }
+
+    return null;
+  }
+
+  /// Builds an optimal wide image URL (banner or backdrop) for [item].
+  /// Falls back to poster. For music items, exclusively returns the poster.
+  String? bannerOrPosterUrl(EmbyItem item, {int maxWidth = 1920}) {
+    if (item.type == 'MusicAlbum' || item.type == 'MusicArtist' || item.type == 'Audio') {
+      return imageUrl(item);
+    }
+    return bannerImageUrl(item, maxWidth: maxWidth) ??
+        backdropImageUrl(item, maxWidth: maxWidth) ??
+        imageUrl(item);
   }
 
   /// Builds a backdrop image URL for [item], or null if it has none.
