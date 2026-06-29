@@ -82,9 +82,9 @@ class _ProwlarrHistoryTabState extends ConsumerState<ProwlarrHistoryTab> {
                   );
                 }
                 return ListView.separated(
-                  padding: Insets.pageH,
+                  padding: Insets.page,
                   itemCount: page.records.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  separatorBuilder: (_, __) => const SizedBox(height: Insets.sm),
                   itemBuilder: (BuildContext context, int index) {
                     final ProwlarrHistoryRecord r = page.records[index];
                     return _HistoryTile(
@@ -111,8 +111,10 @@ class _HistoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
     final (IconData icon, String label) = _event(record.eventType);
     final bool failed = record.successful == false;
+    final Color accent = failed ? cs.error : _eventColor(record.eventType, cs);
 
     final String detail = _detail(record);
     final String meta = <String>[
@@ -120,26 +122,69 @@ class _HistoryTile extends StatelessWidget {
       _relative(record.date),
     ].where((String s) => s.isNotEmpty).join(' • ');
 
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(
-        icon,
-        color: failed ? theme.colorScheme.error : theme.colorScheme.primary,
+    return Material(
+      color: cs.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(18),
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(Insets.md),
+        child: Row(
+          children: <Widget>[
+            Container(
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, size: 20, color: accent),
+            ),
+            const SizedBox(width: Insets.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    detail.isEmpty ? label : detail,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    detail.isEmpty ? meta : '$label • $meta',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-      title: Text(
-        detail.isEmpty ? label : detail,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Text(
-        detail.isEmpty ? meta : '$label • $meta',
-        style: theme.textTheme.labelSmall
-            ?.copyWith(color: theme.colorScheme.outline),
-      ),
-      trailing: failed
-          ? Icon(Icons.error_outline, size: 18, color: theme.colorScheme.error)
-          : null,
     );
+  }
+
+  /// Accent for the leading badge by event type (failed grabs override to error
+  /// in [build]).
+  Color _eventColor(String type, ColorScheme cs) {
+    switch (type) {
+      case 'releaseGrabbed':
+        return cs.tertiary;
+      case 'indexerQuery':
+        return cs.primary;
+      case 'indexerRss':
+        return cs.secondary;
+      case 'indexerAuth':
+      case 'indexerStatusChanged':
+        return cs.secondary;
+      default:
+        return cs.primary;
+    }
   }
 
   (IconData, String) _event(String type) {
