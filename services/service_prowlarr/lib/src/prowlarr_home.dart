@@ -154,33 +154,158 @@ class _IndexersTab extends ConsumerWidget {
               message: 'Tap "Add indexer" to configure one.',
             );
           }
-          return ListView.builder(
-            padding: Insets.pageH,
+          return ListView.separated(
+            padding: const EdgeInsets.symmetric(
+              horizontal: Insets.lg,
+              vertical: Insets.sm,
+            ),
             itemCount: list.length,
+            separatorBuilder: (_, __) => const SizedBox(height: Insets.sm),
             itemBuilder: (BuildContext context, int index) {
               final ProwlarrIndexer ix = list[index];
-              final ProwlarrIndexerStat? stat = stats[ix.id];
-              return ListTile(
-                leading: Icon(
-                  ix.enable ? Icons.check_circle : Icons.cancel_outlined,
-                  color: ix.enable
-                      ? Colors.green
-                      : Theme.of(context).colorScheme.outline,
-                ),
-                title: Text(ix.name),
-                subtitle: Text(
-                  <String>[
-                    if (ix.protocol != null) ix.protocol!,
-                    if (stat != null) '${stat.numberOfGrabs} grabs',
-                    if (stat != null) '${stat.numberOfQueries} queries',
-                  ].join(' • '),
-                ),
-                trailing: const Icon(Icons.chevron_right),
+              return _IndexerCard(
+                indexer: ix,
+                stat: stats[ix.id],
                 onTap: () => onEdit(ix.id),
               );
             },
           );
         },
+      ),
+    );
+  }
+}
+
+/// A single indexer row: enable badge, name, and grab / query stat pills.
+class _IndexerCard extends StatelessWidget {
+  const _IndexerCard({
+    required this.indexer,
+    required this.stat,
+    required this.onTap,
+  });
+
+  final ProwlarrIndexer indexer;
+  final ProwlarrIndexerStat? stat;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final Color accent = indexer.enable ? cs.tertiary : cs.outline;
+    final String? protocol = indexer.protocol;
+    final bool isTorrent = protocol?.toLowerCase() == 'torrent';
+
+    return Material(
+      color: cs.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(18),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(Insets.md),
+          child: Row(
+            children: <Widget>[
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  indexer.enable ? Icons.check_rounded : Icons.cancel_outlined,
+                  color: accent,
+                ),
+              ),
+              const SizedBox(width: Insets.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      indexer.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    if (protocol != null || stat != null) ...<Widget>[
+                      const SizedBox(height: Insets.xs),
+                      Wrap(
+                        spacing: Insets.xs,
+                        runSpacing: Insets.xs,
+                        children: <Widget>[
+                          if (protocol != null)
+                            _MetaPill(
+                              icon: isTorrent
+                                  ? Icons.swap_vert
+                                  : Icons.newspaper_outlined,
+                              label: protocol,
+                              color: isTorrent ? cs.primary : cs.tertiary,
+                            ),
+                          if (stat != null)
+                            _MetaPill(
+                              icon: Icons.download_done_outlined,
+                              label: '${stat!.numberOfGrabs} grabs',
+                              color: cs.tertiary,
+                            ),
+                          if (stat != null)
+                            _MetaPill(
+                              icon: Icons.search,
+                              label: '${stat!.numberOfQueries} queries',
+                              color: cs.primary,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: Insets.sm),
+              Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A compact tonal metadata pill: icon + short label in a single accent color.
+class _MetaPill extends StatelessWidget {
+  const _MetaPill({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
       ),
     );
   }
