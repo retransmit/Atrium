@@ -31,40 +31,132 @@ class BazarrSeriesTab extends ConsumerWidget {
               message: 'Bazarr has no series from Sonarr yet.',
             );
           }
-          return ListView.builder(
-            padding: Insets.pageH,
+          return ListView.separated(
+            padding: Insets.page,
             itemCount: list.length,
-            itemBuilder: (BuildContext context, int index) {
-              final BazarrSeries s = list[index];
-              final bool allDone = s.episodeMissingCount == 0;
-              return ListTile(
-                leading: const Icon(Icons.live_tv_outlined),
-                title: Text(
-                  s.year != null ? '${s.title} (${s.year})' : s.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Text(
-                  allDone
-                      ? '${s.episodeFileCount} episodes · all subtitled'
-                      : '${s.episodeMissingCount} missing subtitles',
-                  style: allDone
-                      ? TextStyle(color: Colors.green.shade700)
-                      : null,
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context, rootNavigator: true).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => BazarrSeriesDetailScreen(
-                      instance: instance,
-                      series: s,
-                    ),
-                  ),
-                ),
-              );
-            },
+            separatorBuilder: (_, __) => const SizedBox(height: Insets.sm),
+            itemBuilder: (BuildContext context, int index) =>
+                _SeriesCard(instance: instance, series: list[index]),
           );
         },
+      ),
+    );
+  }
+}
+
+class _SeriesCard extends StatelessWidget {
+  const _SeriesCard({required this.instance, required this.series});
+
+  final Instance instance;
+  final BazarrSeries series;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final bool allDone = series.episodeMissingCount == 0;
+
+    return Material(
+      color: cs.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(18),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.of(context, rootNavigator: true).push(
+          MaterialPageRoute<void>(
+            builder: (_) => BazarrSeriesDetailScreen(
+              instance: instance,
+              series: series,
+            ),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(Insets.md),
+          child: Row(
+            children: <Widget>[
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: cs.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.live_tv_outlined, color: cs.primary),
+              ),
+              const SizedBox(width: Insets.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      series.year != null
+                          ? '${series.title} (${series.year})'
+                          : series.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: Insets.xs),
+                    allDone
+                        ? _Pill(
+                            icon: Icons.check_circle_outline,
+                            label:
+                                '${series.episodeFileCount} episodes, all subtitled',
+                            color: cs.tertiary,
+                          )
+                        : _Pill(
+                            icon: Icons.subtitles_off_outlined,
+                            label:
+                                '${series.episodeMissingCount} missing subtitles',
+                            color: cs.secondary,
+                          ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: Insets.sm),
+              Icon(Icons.chevron_right, color: cs.onSurfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A small tonal metadata pill: a colored icon and label on a faint tint.
+class _Pill extends StatelessWidget {
+  const _Pill({required this.icon, required this.label, required this.color});
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+        ],
       ),
     );
   }

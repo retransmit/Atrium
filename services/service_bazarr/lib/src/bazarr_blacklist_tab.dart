@@ -32,9 +32,10 @@ class BazarrBlacklistTab extends ConsumerWidget {
               message: 'Blacklisted subtitles will appear here.',
             );
           }
-          return ListView.builder(
+          return ListView.separated(
             padding: Insets.pageH,
             itemCount: items.length,
+            separatorBuilder: (_, __) => const SizedBox(height: Insets.sm),
             itemBuilder: (BuildContext context, int i) => _BlacklistTile(
               instance: instance,
               item: items[i],
@@ -55,6 +56,7 @@ class _BlacklistTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
     final String title = item.isMovie
         ? item.title
         : <String>[
@@ -67,18 +69,56 @@ class _BlacklistTile extends ConsumerWidget {
       if (item.provider.isNotEmpty) item.provider,
       if (item.timestamp.isNotEmpty) item.timestamp,
     ].join(' · ');
-    return ListTile(
-      leading: const Icon(Icons.block),
-      title: Text(
-        title.isEmpty ? 'Unknown' : title,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(18),
       ),
-      subtitle: Text(detail, style: theme.textTheme.bodySmall),
-      trailing: IconButton(
-        tooltip: 'Remove from blacklist',
-        icon: const Icon(Icons.delete_outline),
-        onPressed: () => _confirmRemove(context, ref),
+      child: Padding(
+        padding: const EdgeInsets.all(Insets.md),
+        child: Row(
+          children: <Widget>[
+            Container(
+              width: 32,
+              height: 32,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: cs.error.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.block, size: 17, color: cs.error),
+            ),
+            const SizedBox(width: Insets.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    title.isEmpty ? 'Unknown' : title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  if (detail.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: 2),
+                    Text(
+                      detail,
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: 'Remove from blacklist',
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () => _confirmRemove(context, ref),
+            ),
+          ],
+        ),
       ),
     );
   }
