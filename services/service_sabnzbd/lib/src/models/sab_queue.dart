@@ -25,6 +25,11 @@ abstract class SabQueue with _$SabQueue {
     @Default('') String timeleft,
     @Default('') String mbleft,
     @Default('') String mb,
+    /// Active global speed limit as a percentage string, e.g. "100".
+    @Default('') String speedlimit,
+    /// Free / total disk space at the download location, in GB strings.
+    @Default('') String diskspace1,
+    @Default('') String diskspacetotal1,
     @Default(<SabSlot>[]) List<SabSlot> slots,
   }) = _SabQueue;
 
