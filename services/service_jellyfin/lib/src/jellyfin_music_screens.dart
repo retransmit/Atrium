@@ -29,10 +29,11 @@ class JellyfinAlbumScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<AlbumScreenData> dataAsync =
-        ref.watch(jellyfinAlbumDataFutureProvider((instance, albumId, albumArtist)));
-    final JellyfinClient? client = ref.watch(jellyfinClientProvider(instance)).value;
-    
+    final AsyncValue<AlbumScreenData> dataAsync = ref.watch(
+        jellyfinAlbumDataFutureProvider((instance, albumId, albumArtist)));
+    final JellyfinClient? client =
+        ref.watch(jellyfinClientProvider(instance)).value;
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -90,7 +91,7 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                     ),
                   ),
           ),
-          
+
           if (albumOverview != null && albumOverview!.isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
@@ -101,22 +102,27 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                 ),
               ),
             ),
-          
+
           // Data Section: Bio and Tracks
           SliverToBoxAdapter(
             child: AsyncValueView<AlbumScreenData>(
               value: dataAsync,
-              onRetry: () => ref.invalidate(jellyfinAlbumDataFutureProvider((instance, albumId, albumArtist))),
+              onRetry: () => ref.invalidate(jellyfinAlbumDataFutureProvider(
+                  (instance, albumId, albumArtist))),
               data: (AlbumScreenData data) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     // Bottom Section: Tracklist
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: Insets.lg, vertical: Insets.sm),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: Insets.lg, vertical: Insets.sm),
                       child: Text(
                         'Tracks - ${data.tracks.length}',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                     ),
                     ListView.builder(
@@ -126,29 +132,43 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                       itemCount: data.tracks.length,
                       itemBuilder: (BuildContext context, int index) {
                         final JellyfinItem song = data.tracks[index];
-                        
+
                         String duration = '';
                         if (song.runTimeTicks != null) {
-                          final int totalSeconds = (song.runTimeTicks! / 10000000).round();
+                          final int totalSeconds =
+                              (song.runTimeTicks! / 10000000).round();
                           final int minutes = totalSeconds ~/ 60;
                           final int seconds = totalSeconds % 60;
-                          duration = '$minutes:${seconds.toString().padLeft(2, '0')}';
+                          duration =
+                              '$minutes:${seconds.toString().padLeft(2, '0')}';
                         }
-                        
-                        final String? imageUrl = albumImageUrl;
+
+                        final String? imageUrl = client?.imageUrl(song) ?? albumImageUrl;
 
                         return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: Insets.lg, vertical: Insets.xs),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: Insets.lg, vertical: Insets.xs),
+                          onTap: () {
+                            if (client != null) {
+                              launchJellyfinDeepLink(context, client, song.id);
+                            }
+                          },
                           leading: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[
                               SizedBox(
                                 width: 24,
                                 child: Text(
-                                  song.indexNumber?.toString() ?? '${index + 1}',
-                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    color: Theme.of(context).colorScheme.outline,
-                                  ),
+                                  song.indexNumber?.toString() ??
+                                      '${index + 1}',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium
+                                      ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .outline,
+                                      ),
                                   textAlign: TextAlign.center,
                                 ),
                               ),
@@ -161,11 +181,14 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                                     width: 48,
                                     height: 48,
                                     fit: BoxFit.cover,
-                                    errorWidget: (context, url, error) => Container(
+                                    errorWidget: (context, url, error) =>
+                                        Container(
                                       width: 48,
                                       height: 48,
                                       decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .surfaceContainerHighest,
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: const Icon(Icons.music_note),
@@ -177,14 +200,17 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                                   width: 48,
                                   height: 48,
                                   decoration: BoxDecoration(
-                                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .surfaceContainerHighest,
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: const Icon(Icons.music_note),
                                 ),
                             ],
                           ),
-                          title: Text(song.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                          title: Text(song.name,
+                              maxLines: 1, overflow: TextOverflow.ellipsis),
                           subtitle: Text(
                             song.artists.isNotEmpty
                                 ? '${song.artists.join(', ')} • $duration'
@@ -240,14 +266,17 @@ class JellyfinAlbumScreen extends ConsumerWidget {
               children: <Widget>[
                 Text(
                   albumName,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: Insets.xs),
                 Text(
                   albumArtist,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                 ),
                 const SizedBox(height: Insets.md),
                 SizedBox(
@@ -267,7 +296,9 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: Insets.xs), // Add a small padding at the bottom so it aligns perfectly with the poster's bottom edge
+                const SizedBox(
+                    height: Insets
+                        .xs), // Add a small padding at the bottom so it aligns perfectly with the poster's bottom edge
               ],
             ),
           ),
@@ -319,4 +350,3 @@ class _ExpandableTextState extends State<_ExpandableText> {
     );
   }
 }
-

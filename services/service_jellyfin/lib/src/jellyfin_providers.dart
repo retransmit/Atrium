@@ -12,8 +12,7 @@ import 'models/jellyfin_view.dart';
 /// Like qBittorrent, Jellyfin can't reuse `instanceDioProvider` - it needs a
 /// token acquired at runtime rather than a static key - so it resolves the
 /// base URL via the shared [ConnectionResolver] and builds its own Dio.
-final jellyfinClientProvider =
-    FutureProvider.family<JellyfinClient, Instance>((
+final jellyfinClientProvider = FutureProvider.family<JellyfinClient, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -51,15 +50,15 @@ final jellyfinViewsProvider =
 /// Flattened items within a root library, using recursive fetch based on CollectionType.
 final jellyfinLibraryItemsProvider =
     FutureProvider.family<List<JellyfinItem>, (Instance, JellyfinView)>((
-      Ref ref,
-      (Instance, JellyfinView) key,
-    ) async {
-      final (Instance instance, JellyfinView view) = key;
-      final JellyfinClient client =
-          await ref.watch(jellyfinClientProvider(instance).future);
-          
-      return client.getLibraryItems(view.id, view.collectionType);
-    });
+  Ref ref,
+  (Instance, JellyfinView) key,
+) async {
+  final (Instance instance, JellyfinView view) = key;
+  final JellyfinClient client =
+      await ref.watch(jellyfinClientProvider(instance).future);
+
+  return client.getLibraryItems(view.id, view.collectionType);
+});
 
 /// Items within a library. Keyed by (instance, libraryId) - Dart 3 records
 /// give the family a structural-equality cache key for free.
@@ -71,14 +70,14 @@ final jellyfinItemsProvider =
   final (Instance instance, String libraryId) = key;
   final JellyfinClient client =
       await ref.watch(jellyfinClientProvider(instance).future);
-      
+
   if (libraryId == 'watched') {
     return client.getWatchedItems();
   }
   if (libraryId == 'unwatched') {
     return client.getUnwatchedItems();
   }
-  
+
   return client.getItems(libraryId);
 });
 
@@ -122,7 +121,6 @@ final jellyfinFavoritesProvider =
   return client.getFavorites();
 });
 
-
 final jellyfinItemDetailsProvider =
     FutureProvider.family<JellyfinItem, (Instance, String)>((
   Ref ref,
@@ -156,8 +154,6 @@ final jellyfinEpisodesProvider =
   return client.getEpisodes(seriesId, seasonId);
 });
 
-
-
 final jellyfinSessionsProvider =
     StreamProvider.family<List<ActiveSession>, Instance>((
   Ref ref,
@@ -165,7 +161,7 @@ final jellyfinSessionsProvider =
 ) async* {
   final JellyfinClient client =
       await ref.watch(jellyfinClientProvider(instance).future);
-      
+
   while (true) {
     yield await client.getSessions();
     await Future<void>.delayed(const Duration(seconds: 10));
@@ -199,48 +195,83 @@ final jellyfinToggleWatchedProvider =
   };
 });
 
-typedef AlbumScreenData = ({List<JellyfinItem> tracks, JellyfinItem? artistBio});
+typedef AlbumScreenData = ({
+  List<JellyfinItem> tracks,
+  JellyfinItem? artistBio
+});
 
 final jellyfinAlbumDataFutureProvider =
     FutureProvider.family<AlbumScreenData, (Instance, String, String)>((
-      Ref ref,
-      (Instance, String, String) key,
-    ) async {
-      final (Instance instance, String albumId, String artistName) = key;
-      final JellyfinClient client =
-          await ref.watch(jellyfinClientProvider(instance).future);
+  Ref ref,
+  (Instance, String, String) key,
+) async {
+  final (Instance instance, String albumId, String artistName) = key;
+  final JellyfinClient client =
+      await ref.watch(jellyfinClientProvider(instance).future);
 
-      final Future<List<JellyfinItem>> tracksFuture = client.getAlbumSongs(albumId);
-      final Future<JellyfinItem?> bioFuture = client.getArtistBio(artistName);
+  final Future<List<JellyfinItem>> tracksFuture = client.getAlbumSongs(albumId);
+  final Future<JellyfinItem?> bioFuture = client.getArtistBio(artistName);
 
-      final List<Object?> results = await Future.wait<Object?>(<Future<Object?>>[tracksFuture, bioFuture]);
+  final List<Object?> results =
+      await Future.wait<Object?>(<Future<Object?>>[tracksFuture, bioFuture]);
 
-      return (
-        tracks: results[0] as List<JellyfinItem>,
-        artistBio: results[1] as JellyfinItem?,
-      );
-    });
+  return (
+    tracks: results[0] as List<JellyfinItem>,
+    artistBio: results[1] as JellyfinItem?,
+  );
+});
 
 final jellyfinAlbumSongsProvider =
     FutureProvider.family<List<JellyfinItem>, (Instance, String)>((
-      Ref ref,
-      (Instance, String) key,
-    ) async {
-      final (Instance instance, String albumId) = key;
-      final JellyfinClient client =
-          await ref.watch(jellyfinClientProvider(instance).future);
-      return client.getAlbumSongs(albumId);
-    });
+  Ref ref,
+  (Instance, String) key,
+) async {
+  final (Instance instance, String albumId) = key;
+  final JellyfinClient client =
+      await ref.watch(jellyfinClientProvider(instance).future);
+  return client.getAlbumSongs(albumId);
+});
 
 final jellyfinArtistBioProvider =
     FutureProvider.family<JellyfinItem?, (Instance, String)>((
-      Ref ref,
-      (Instance, String) key,
-    ) async {
-      final (Instance instance, String artistName) = key;
-      final JellyfinClient client =
-          await ref.watch(jellyfinClientProvider(instance).future);
-      return client.getArtistBio(artistName);
-    });
+  Ref ref,
+  (Instance, String) key,
+) async {
+  final (Instance instance, String artistName) = key;
+  final JellyfinClient client =
+      await ref.watch(jellyfinClientProvider(instance).future);
+  return client.getArtistBio(artistName);
+});
 
 final jellyfinGridScaleProvider = StateProvider<double>((ref) => 140.0);
+
+enum JellyfinViewMode { grid, list }
+
+final jellyfinViewModeProvider =
+    StateProvider.family<JellyfinViewMode, Instance>(
+        (Ref ref, Instance instance) => JellyfinViewMode.grid);
+
+final jellyfinActiveTabBarIndexProvider =
+    StateProvider.family<int, Instance>((Ref ref, Instance instance) => 0);
+
+final jellyfinFastSessionsProvider =
+    StreamProvider.family<List<ActiveSession>, Instance>((
+  Ref ref,
+  Instance instance,
+) async* {
+  bool disposed = false;
+  ref.onDispose(() => disposed = true);
+
+  final JellyfinClient client =
+      await ref.watch(jellyfinClientProvider(instance).future);
+
+  // Initial fetch
+  yield await client.getSessions();
+
+  // Poll every 1 second
+  while (!disposed) {
+    await Future<void>.delayed(const Duration(seconds: 1));
+    if (disposed) break;
+    yield await client.getSessions();
+  }
+});

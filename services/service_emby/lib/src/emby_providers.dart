@@ -281,4 +281,5 @@ final embyArtistBioProvider =
       await ref.watch(embyClientProvider(instance).future);
   return client.getArtistBio(artistName);
 });
-final embyActiveTabBarIndexProvider = StateProvider.family<int, Instance>((Ref ref, Instance instance) => 0);
+final embyActiveTabBarIndexProvider =
+    StateProvider.family<int, Instance>((Ref ref, Instance instance) => 0);

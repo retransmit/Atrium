@@ -10,6 +10,7 @@ import 'jellyfin_item_detail.dart';
 import 'jellyfin_music_screens.dart';
 import 'jellyfin_providers.dart';
 import 'jellyfin_season_screen.dart';
+import 'jellyfin_session_detail_screen.dart';
 import 'models/jellyfin_item.dart';
 import 'models/jellyfin_session.dart';
 import 'models/jellyfin_view.dart';
@@ -60,85 +61,53 @@ class _JellyfinHomeState extends ConsumerState<JellyfinHome> {
         return DefaultTabController(
           key: ValueKey<int>(libraries.length),
           length: libraries.length + 3,
-          child: Column(
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: TabBar(
-                      isScrollable: true,
-                      tabAlignment: TabAlignment.start,
-                      tabs: <Widget>[
-                        const Tab(text: 'Home'),
-                        for (final JellyfinView lib in libraries) Tab(text: lib.name),
-                        const Tab(text: 'Watched'),
-                        const Tab(text: 'Unwatched'),
-                      ],
-                    ),
+          child: _TabObserver(
+            instance: widget.instance,
+            child: Column(
+              children: <Widget>[
+                TabBar(
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  dividerColor: Colors.transparent,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  indicator: BoxDecoration(
+                    color: Theme.of(context).colorScheme.secondaryContainer,
+                    borderRadius: BorderRadius.circular(50),
                   ),
-                  Builder(
-                    builder: (BuildContext context) {
-                      final TabController controller = DefaultTabController.of(context);
-                      return AnimatedBuilder(
-                        animation: controller,
-                        builder: (BuildContext context, Widget? child) {
-                          if (controller.index == 0) {
-                            return const SizedBox.shrink();
-                          }
-                          return Padding(
-                            padding: const EdgeInsets.only(right: Insets.sm),
-                            child: PopupMenuButton<double>(
-                              icon: const Icon(Icons.grid_view),
-                              tooltip: 'Grid Size',
-                              onSelected: (double value) {
-                                ref.read(jellyfinGridScaleProvider.notifier).state = value;
-                              },
-                              itemBuilder: (BuildContext context) {
-                                final double current = ref.read(jellyfinGridScaleProvider);
-                                return <PopupMenuEntry<double>>[
-                                  PopupMenuItem<double>(
-                                    value: 80.0,
-                                    child: Text('Small ${current == 80.0 ? '(Active)' : ''}'),
-                                  ),
-                                  PopupMenuItem<double>(
-                                    value: 140.0,
-                                    child: Text('Medium ${current == 140.0 ? '(Active)' : ''}'),
-                                  ),
-                                  PopupMenuItem<double>(
-                                    value: 200.0,
-                                    child: Text('Large ${current == 200.0 ? '(Active)' : ''}'),
-                                  ),
-                                ];
-                              },
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ],
-              ),
-              Expanded(
-                child: TabBarView(
-                  children: <Widget>[
-                    _HomeSections(instance: widget.instance),
-                    for (final JellyfinView lib in libraries)
-                      JellyfinLibraryGrid(
-                        instance: widget.instance,
-                        view: lib,
-                      ),
-                    JellyfinItemsGrid(
-                      instance: widget.instance,
-                      libraryId: 'watched',
-                    ),
-                    JellyfinItemsGrid(
-                      instance: widget.instance,
-                      libraryId: 'unwatched',
-                    ),
+                  labelColor:
+                      Theme.of(context).colorScheme.onSecondaryContainer,
+                  unselectedLabelColor:
+                      Theme.of(context).colorScheme.onSurfaceVariant,
+                  splashBorderRadius: BorderRadius.circular(50),
+                  tabs: <Widget>[
+                    const Tab(text: 'Home'),
+                    for (final JellyfinView lib in libraries) Tab(text: lib.name),
+                    const Tab(text: 'Watched'),
+                    const Tab(text: 'Unwatched'),
                   ],
                 ),
-              ),
-            ],
+                Expanded(
+                  child: TabBarView(
+                    children: <Widget>[
+                      _HomeSections(instance: widget.instance),
+                      for (final JellyfinView lib in libraries)
+                        JellyfinLibraryGrid(
+                          instance: widget.instance,
+                          view: lib,
+                        ),
+                      JellyfinItemsGrid(
+                        instance: widget.instance,
+                        libraryId: 'watched',
+                      ),
+                      JellyfinItemsGrid(
+                        instance: widget.instance,
+                        libraryId: 'unwatched',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -146,10 +115,55 @@ class _JellyfinHomeState extends ConsumerState<JellyfinHome> {
   }
 }
 
+class _TabObserver extends ConsumerStatefulWidget {
+  const _TabObserver({required this.instance, required this.child});
+  final Instance instance;
+  final Widget child;
+  @override
+  ConsumerState<_TabObserver> createState() => _TabObserverState();
+}
 
+class _TabObserverState extends ConsumerState<_TabObserver> {
+  TabController? _controller;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final TabController? controller = DefaultTabController.maybeOf(context);
+    if (_controller != controller) {
+      _controller?.removeListener(_onTabChanged);
+      _controller = controller;
+      _controller?.addListener(_onTabChanged);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _controller != null) {
+          ref
+              .read(jellyfinActiveTabBarIndexProvider(widget.instance).notifier)
+              .state = _controller!.index;
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.removeListener(_onTabChanged);
+    super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (_controller != null && !_controller!.indexIsChanging) {
+      ref.read(jellyfinActiveTabBarIndexProvider(widget.instance).notifier).state =
+          _controller!.index;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
 
 class JellyfinLibraryGrid extends ConsumerWidget {
-  const JellyfinLibraryGrid({required this.instance, required this.view, super.key});
+  const JellyfinLibraryGrid(
+      {required this.instance, required this.view, super.key});
 
   final Instance instance;
   final JellyfinView view;
@@ -158,15 +172,15 @@ class JellyfinLibraryGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<JellyfinItem>> items =
         ref.watch(jellyfinLibraryItemsProvider((instance, view)));
-    final JellyfinClient? client =
-        ref.watch(jellyfinClientProvider(instance)).value;
+    final JellyfinClient? client = ref.watch(jellyfinClientProvider(instance)).value;
 
     return RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(jellyfinLibraryItemsProvider((instance, view))),
       child: AsyncValueView<List<JellyfinItem>>(
         value: items,
-        onRetry: () => ref.invalidate(jellyfinLibraryItemsProvider((instance, view))),
+        onRetry: () =>
+            ref.invalidate(jellyfinLibraryItemsProvider((instance, view))),
         data: (List<JellyfinItem> list) {
           if (list.isEmpty) {
             return const EmptyView(
@@ -175,65 +189,130 @@ class JellyfinLibraryGrid extends ConsumerWidget {
               message: 'Nothing in this library yet.',
             );
           }
-          final double scale = ref.watch(jellyfinGridScaleProvider);
-          return MasonryGridView.extent(
-            padding: Insets.page,
-            maxCrossAxisExtent: scale,
-            crossAxisSpacing: Insets.md,
-            mainAxisSpacing: Insets.md,
-            itemCount: list.length,
-            itemBuilder: (BuildContext context, int index) {
-              final JellyfinItem item = list[index];
+          final JellyfinViewMode viewMode =
+              ref.watch(jellyfinViewModeProvider(instance));
+
+          return _buildJellyfinGridOrList(
+            context,
+            list,
+            viewMode,
+            (BuildContext context, int index, JellyfinItem item) {
               return PerformanceLoggerWidget(
-                name: 'JellyfinLibraryGridItem',
-                child: JellyfinPosterCard(
-                  instance: instance,
-                  item: item,
-                  imageUrl: client?.imageUrl(item),
-                  onTap: client == null
-                      ? null
-                      : () {
-                          if (item.type == 'MusicAlbum') {
-                            pushScreen<void>(
-                              context,
-                              JellyfinAlbumScreen(
-                                instance: instance,
-                                albumId: item.id,
-                                albumName: item.name,
-                                albumArtist: item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
-                                albumOverview: item.overview,
-                                albumImageUrl: client.imageUrl(item),
-                              ),
-                            );
-                          } else if (item.type == 'Series') {
-                            pushScreen<void>(
-                              context,
-                              JellyfinItemDetailScreen(instance: instance, itemId: item.id),
-                            );
-                          } else if (item.type == 'Season') {
-                            pushScreen<void>(
-                              context,
-                              JellyfinSeasonScreen(
-                                instance: instance,
-                                seriesId: item.seriesId ?? item.parentId ?? '',
-                                seasonId: item.id,
-                                seasonName: item.name,
-                                seasonImageUrl: client.imageUrl(item),
-                              ),
-                            );
-                          } else if (jellyfinContainerTypes.contains(item.type)) {
-                            pushScreen<void>(
-                              context,
-                              JellyfinFolderScreen(instance: instance, item: item),
-                            );
-                          } else {
-                            pushScreen<void>(
-                              context,
-                              JellyfinItemDetailScreen(instance: instance, itemId: item.id),
-                            );
-                          }
-                        },
-                ),
+                name: 'JellyfinLibraryItem',
+                child: viewMode == JellyfinViewMode.list
+                    ? JellyfinBannerCard(
+                        instance: instance,
+                        item: item,
+                        imageUrl: client?.imageUrl(item),
+                        backdropUrl: client?.bannerOrPosterUrl(item),
+                        onTap: client == null
+                            ? null
+                            : () {
+                                if (item.type == 'MusicAlbum') {
+                                  pushScreen<void>(
+                                    context,
+                                    JellyfinAlbumScreen(
+                                      instance: instance,
+                                      albumId: item.id,
+                                      albumName: item.name,
+                                      albumArtist: item.artists.isNotEmpty
+                                          ? item.artists.first
+                                          : 'Unknown Artist',
+                                      albumOverview: item.overview,
+                                      albumImageUrl: client.imageUrl(item),
+                                    ),
+                                  );
+                                } else if (item.type == 'Series') {
+                                  pushScreen<void>(
+                                    context,
+                                    JellyfinItemDetailScreen(
+                                        instance: instance, itemId: item.id),
+                                  );
+                                } else if (item.type == 'Season') {
+                                  pushScreen<void>(
+                                    context,
+                                    JellyfinSeasonScreen(
+                                      instance: instance,
+                                      seriesId: item.seriesId ??
+                                          item.parentId ??
+                                          '',
+                                      seasonId: item.id,
+                                      seasonName: item.name,
+                                      seasonImageUrl: client.imageUrl(item),
+                                    ),
+                                  );
+                                } else if (jellyfinContainerTypes
+                                    .contains(item.type)) {
+                                  pushScreen<void>(
+                                    context,
+                                    JellyfinFolderScreen(
+                                        instance: instance, item: item),
+                                  );
+                                } else {
+                                  pushScreen<void>(
+                                    context,
+                                    JellyfinItemDetailScreen(
+                                        instance: instance, itemId: item.id),
+                                  );
+                                }
+                              },
+                      )
+                    : JellyfinPosterCard(
+                        instance: instance,
+                        item: item,
+                        imageUrl: client?.imageUrl(item),
+                        onTap: client == null
+                            ? null
+                            : () {
+                                if (item.type == 'MusicAlbum') {
+                                  pushScreen<void>(
+                                    context,
+                                    JellyfinAlbumScreen(
+                                      instance: instance,
+                                      albumId: item.id,
+                                      albumName: item.name,
+                                      albumArtist: item.artists.isNotEmpty
+                                          ? item.artists.first
+                                          : 'Unknown Artist',
+                                      albumOverview: item.overview,
+                                      albumImageUrl: client.imageUrl(item),
+                                    ),
+                                  );
+                                } else if (item.type == 'Series') {
+                                  pushScreen<void>(
+                                    context,
+                                    JellyfinItemDetailScreen(
+                                        instance: instance, itemId: item.id),
+                                  );
+                                } else if (item.type == 'Season') {
+                                  pushScreen<void>(
+                                    context,
+                                    JellyfinSeasonScreen(
+                                      instance: instance,
+                                      seriesId: item.seriesId ??
+                                          item.parentId ??
+                                          '',
+                                      seasonId: item.id,
+                                      seasonName: item.name,
+                                      seasonImageUrl: client.imageUrl(item),
+                                    ),
+                                  );
+                                } else if (jellyfinContainerTypes
+                                    .contains(item.type)) {
+                                  pushScreen<void>(
+                                    context,
+                                    JellyfinFolderScreen(
+                                        instance: instance, item: item),
+                                  );
+                                } else {
+                                  pushScreen<void>(
+                                    context,
+                                    JellyfinItemDetailScreen(
+                                        instance: instance, itemId: item.id),
+                                  );
+                                }
+                              },
+                      ),
               );
             },
           );
@@ -244,7 +323,8 @@ class JellyfinLibraryGrid extends ConsumerWidget {
 }
 
 class JellyfinItemsGrid extends ConsumerWidget {
-  const JellyfinItemsGrid({required this.instance, required this.libraryId, super.key});
+  const JellyfinItemsGrid(
+      {required this.instance, required this.libraryId, super.key});
 
   final Instance instance;
   final String libraryId;
@@ -253,8 +333,7 @@ class JellyfinItemsGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<JellyfinItem>> items =
         ref.watch(jellyfinItemsProvider((instance, libraryId)));
-    final JellyfinClient? client =
-        ref.watch(jellyfinClientProvider(instance)).value;
+    final JellyfinClient? client = ref.watch(jellyfinClientProvider(instance)).value;
 
     return RefreshIndicator(
       onRefresh: () async =>
@@ -270,25 +349,36 @@ class JellyfinItemsGrid extends ConsumerWidget {
               message: 'Nothing in this library yet.',
             );
           }
-          final double scale = ref.watch(jellyfinGridScaleProvider);
-          return MasonryGridView.extent(
-            padding: Insets.page,
-            maxCrossAxisExtent: scale,
-            crossAxisSpacing: Insets.md,
-            mainAxisSpacing: Insets.md,
-            itemCount: list.length,
-            itemBuilder: (BuildContext context, int index) {
-              final JellyfinItem item = list[index];
+          final JellyfinViewMode viewMode =
+              ref.watch(jellyfinViewModeProvider(instance));
+
+          // (Replaced with _buildJellyfinGridOrList)
+
+          return _buildJellyfinGridOrList(
+            context,
+            list,
+            viewMode,
+            (BuildContext context, int index, JellyfinItem item) {
               return PerformanceLoggerWidget(
-                name: 'JellyfinItemsGridItem',
-                child: JellyfinPosterCard(
-                  instance: instance,
-                  item: item,
-                  imageUrl: client?.imageUrl(item),
-                  onTap: client == null
-                      ? null
-                      : () => _openItem(context, client, item),
-                ),
+                name: 'JellyfinItemsItem',
+                child: viewMode == JellyfinViewMode.list
+                    ? JellyfinBannerCard(
+                        instance: instance,
+                        item: item,
+                        imageUrl: client?.imageUrl(item),
+                        backdropUrl: client?.bannerOrPosterUrl(item),
+                        onTap: client == null
+                            ? null
+                            : () => _openItem(context, client, item),
+                      )
+                    : JellyfinPosterCard(
+                        instance: instance,
+                        item: item,
+                        imageUrl: client?.imageUrl(item),
+                        onTap: client == null
+                            ? null
+                            : () => _openItem(context, client, item),
+                      ),
               );
             },
           );
@@ -297,25 +387,31 @@ class JellyfinItemsGrid extends ConsumerWidget {
     );
   }
 
-  void _openItem(BuildContext context, JellyfinClient client, JellyfinItem item) {
-    if (item.type == 'MusicAlbum') {
+  void _openItem(
+      BuildContext context, JellyfinClient client, JellyfinItem item) {
+    if (item.type == 'MusicAlbum' || item.type == 'Playlist') {
       pushScreen<void>(
         context,
         JellyfinAlbumScreen(
           instance: instance,
           albumId: item.id,
           albumName: item.name,
-          albumArtist: item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
+          albumArtist:
+              item.artists.isNotEmpty ? item.artists.first : 'Playlist',
           albumOverview: item.overview,
           albumImageUrl: client.imageUrl(item),
         ),
       );
-    } else if (item.type == 'Series') {
+      return;
+    }
+    if (item.type == 'Series') {
       pushScreen<void>(
         context,
         JellyfinItemDetailScreen(instance: instance, itemId: item.id),
       );
-    } else if (item.type == 'Season') {
+      return;
+    }
+    if (item.type == 'Season') {
       pushScreen<void>(
         context,
         JellyfinSeasonScreen(
@@ -326,35 +422,37 @@ class JellyfinItemsGrid extends ConsumerWidget {
           seasonImageUrl: client.imageUrl(item),
         ),
       );
-    } else if (jellyfinContainerTypes.contains(item.type)) {
+      return;
+    }
+    if (jellyfinContainerTypes.contains(item.type)) {
       // pushScreen = root navigator; branch-navigator pushes get swept by
       // GoRouter shell rebuilds.
       pushScreen<void>(
         context,
         JellyfinFolderScreen(instance: instance, item: item),
       );
-    } else {
-      pushScreen<void>(
-        context,
-        JellyfinItemDetailScreen(instance: instance, itemId: item.id),
-      );
+      return;
     }
+    pushScreen<void>(
+      context,
+      JellyfinItemDetailScreen(instance: instance, itemId: item.id),
+    );
   }
 }
 
 class JellyfinFolderScreen extends ConsumerWidget {
-  const JellyfinFolderScreen({required this.instance, required this.item, super.key});
+  const JellyfinFolderScreen(
+      {required this.instance, required this.item, super.key});
 
   final Instance instance;
   final JellyfinItem item;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final JellyfinClient? client =
-        ref.watch(jellyfinClientProvider(instance)).value;
+    final JellyfinClient? client = ref.watch(jellyfinClientProvider(instance)).value;
     final AsyncValue<JellyfinItem> itemAsync =
         ref.watch(jellyfinItemDetailsProvider((instance, item.id)));
-        
+
     final JellyfinItem currentItem = itemAsync.value ?? item;
 
     return Scaffold(
@@ -374,7 +472,8 @@ class JellyfinFolderScreen extends ConsumerWidget {
               onPressed: () async {
                 final bool isFav = currentItem.userData?.isFavorite == true;
                 await client.markFavorite(currentItem.id, !isFav);
-                ref.invalidate(jellyfinItemDetailsProvider((instance, currentItem.id)));
+                ref.invalidate(
+                    jellyfinItemDetailsProvider((instance, currentItem.id)));
                 ref.invalidate(jellyfinFavoritesProvider(instance));
               },
             ),
@@ -422,12 +521,15 @@ class JellyfinPosterCard extends ConsumerWidget {
                           ? Icons.check_circle
                           : Icons.check_circle_outline,
                     ),
-                    title: Text(item.userData?.played == true
-                        ? 'Mark as Unwatched'
-                        : 'Mark as Watched',),
+                    title: Text(
+                      item.userData?.played == true
+                          ? 'Mark as Unwatched'
+                          : 'Mark as Watched',
+                    ),
                     onTap: () async {
                       Navigator.of(context).pop();
-                      final toggle = ref.read(jellyfinToggleWatchedProvider(instance));
+                      final toggle =
+                          ref.read(jellyfinToggleWatchedProvider(instance));
                       await toggle(item.id, !(item.userData?.played == true));
                     },
                   ),
@@ -436,24 +538,25 @@ class JellyfinPosterCard extends ConsumerWidget {
                       item.userData?.isFavorite == true
                           ? Icons.favorite
                           : Icons.favorite_border,
-                      color: item.userData?.isFavorite == true
-                          ? Colors.red
-                          : null,
+                      color:
+                          item.userData?.isFavorite == true ? Colors.red : null,
                     ),
-                    title: Text(item.userData?.isFavorite == true
-                        ? 'Remove from Favorites'
-                        : 'Add to Favorites',),
+                    title: Text(
+                      item.userData?.isFavorite == true
+                          ? 'Remove from Favorites'
+                          : 'Add to Favorites',
+                    ),
                     onTap: () async {
                       Navigator.of(context).pop();
                       final JellyfinClient? client =
                           ref.read(jellyfinClientProvider(instance)).value;
                       if (client != null) {
-                        final bool isFav =
-                            item.userData?.isFavorite == true;
+                        final bool isFav = item.userData?.isFavorite == true;
                         await client.markFavorite(item.id, !isFav);
                         // Invalidate to refresh UI
                         ref.invalidate(
-                            jellyfinItemDetailsProvider((instance, item.id)),);
+                          jellyfinItemDetailsProvider((instance, item.id)),
+                        );
                         ref.invalidate(jellyfinFavoritesProvider(instance));
                         ref.invalidate(jellyfinItemsProvider);
                         ref.invalidate(jellyfinNextUpProvider(instance));
@@ -467,46 +570,75 @@ class JellyfinPosterCard extends ConsumerWidget {
           },
         );
       },
-      borderRadius: Radii.card,
+      borderRadius: BorderRadius.circular(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           AspectRatio(
-            aspectRatio: item.type == 'Episode' 
-                ? (2 / 3) 
-                : (item.primaryImageAspectRatio ?? (item.type == 'Audio' || item.type == 'MusicAlbum' || item.type == 'MusicArtist' ? 1.0 : (2 / 3))),
-            child: ClipRRect(
-              borderRadius: Radii.card,
-              child: Stack(
-                fit: StackFit.expand,
-                children: <Widget>[
-                  _poster(theme),
-                  if (played)
-                    Positioned(
-                      top: 4,
-                      right: 4,
-                      child: _Badge(
-                        color: theme.colorScheme.primary,
-                        child: Icon(
-                          Icons.check,
-                          size: 14,
-                          color: theme.colorScheme.onPrimary,
+            aspectRatio: item.type == 'Episode'
+                ? (2 / 3)
+                : ((item.primaryImageAspectRatio != null &&
+                        item.primaryImageAspectRatio! > 0.0)
+                    ? item.primaryImageAspectRatio!
+                    : (item.type == 'MusicAlbum' ||
+                            item.type == 'Audio' ||
+                            item.type == 'MusicArtist'
+                        ? 1.0
+                        : (2 / 3))),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    _poster(theme),
+                    if (played)
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: _Badge(
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 0.85),
+                          child: Icon(
+                            Icons.check,
+                            size: 16,
+                            color: theme.colorScheme.onPrimary,
+                          ),
                         ),
                       ),
-                    ),
-                  if (!played && progress > 0.02)
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: LinearProgressIndicator(
-                        value: progress.clamp(0, 1),
-                        minHeight: 3,
+                    if (!played && progress > 0.02)
+                      Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 8),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: LinearProgressIndicator(
+                              value: progress.clamp(0, 1),
+                              minHeight: 6,
+                              backgroundColor:
+                                  Colors.black.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
             ),
+          ),
           const SizedBox(height: Insets.xs),
           Text(
             item.seriesName ?? item.name,
@@ -536,10 +668,13 @@ class JellyfinPosterCard extends ConsumerWidget {
   }
 
   Widget _poster(ThemeData theme) {
+    final bool isMusic = item.type == 'MusicAlbum' ||
+        item.type == 'MusicArtist' ||
+        item.type == 'Audio';
     final Widget fallback = Container(
       color: theme.colorScheme.surfaceContainerHighest,
       child: Icon(
-        Icons.movie_outlined,
+        isMusic ? Icons.album_outlined : Icons.movie_outlined,
         color: theme.colorScheme.outline,
       ),
     );
@@ -549,7 +684,7 @@ class JellyfinPosterCard extends ConsumerWidget {
     return CachedNetworkImage(
       imageUrl: imageUrl!,
       fit: BoxFit.cover,
-      memCacheWidth: 200,
+      memCacheWidth: 300,
       placeholder: (BuildContext context, String url) => Container(
         color: theme.colorScheme.surfaceContainerHighest,
       ),
@@ -567,9 +702,301 @@ class _Badge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context)
+              .colorScheme
+              .outlineVariant
+              .withValues(alpha: 0.3),
+        ),
+      ),
       child: child,
+    );
+  }
+}
+
+class JellyfinBannerCard extends ConsumerWidget {
+  const JellyfinBannerCard({
+    required this.instance,
+    required this.item,
+    required this.imageUrl,
+    this.backdropUrl,
+    required this.onTap,
+    super.key,
+  });
+
+  final Instance instance;
+  final JellyfinItem item;
+  final String? imageUrl;
+  final String? backdropUrl;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
+    final double progress = (item.userData?.playedPercentage ?? 0) / 100.0;
+    final bool played = item.userData?.played ?? false;
+
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: Insets.sm),
+      clipBehavior: Clip.hardEdge,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+      ),
+      color: theme.colorScheme.surfaceContainerLow,
+      child: InkWell(
+        onTap: onTap,
+        onLongPress: () {
+          // Same long press menu as PosterCard
+          showModalBottomSheet<void>(
+            context: context,
+            useRootNavigator: true,
+            builder: (BuildContext context) {
+              return SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    ListTile(
+                      leading: Icon(
+                        item.userData?.played == true
+                            ? Icons.check_circle
+                            : Icons.check_circle_outline,
+                      ),
+                      title: Text(
+                        item.userData?.played == true
+                            ? 'Mark as Unwatched'
+                            : 'Mark as Watched',
+                      ),
+                      onTap: () async {
+                        Navigator.of(context).pop();
+                        final toggle =
+                            ref.read(jellyfinToggleWatchedProvider(instance));
+                        await toggle(item.id, !(item.userData?.played == true));
+                      },
+                    ),
+                    ListTile(
+                      leading: Icon(
+                        item.userData?.isFavorite == true
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        color: item.userData?.isFavorite == true
+                            ? Colors.red
+                            : null,
+                      ),
+                      title: Text(
+                        item.userData?.isFavorite == true
+                            ? 'Remove from Favorites'
+                            : 'Add to Favorites',
+                      ),
+                      onTap: () async {
+                        Navigator.of(context).pop();
+                        final JellyfinClient? client =
+                            ref.read(jellyfinClientProvider(instance)).value;
+                        if (client != null) {
+                          final bool isFav = item.userData?.isFavorite == true;
+                          await client.markFavorite(item.id, !isFav);
+                          ref.invalidate(
+                            jellyfinItemDetailsProvider((instance, item.id)),
+                          );
+                          ref.invalidate(jellyfinFavoritesProvider(instance));
+                          ref.invalidate(jellyfinItemsProvider);
+                          ref.invalidate(jellyfinNextUpProvider(instance));
+                          ref.invalidate(jellyfinResumeItemsProvider(instance));
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+        child: SizedBox(
+          height: 142,
+          child: SizedBox(
+            height: 142,
+            child: Stack(
+              children: <Widget>[
+                // Backdrop
+                if ((backdropUrl ?? imageUrl) != null)
+                  Positioned.fill(
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: <Widget>[
+                        CachedNetworkImage(
+                          imageUrl: (backdropUrl ?? imageUrl)!,
+                          fit: BoxFit.cover,
+                          alignment: Alignment.topCenter,
+                          errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                        ),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: <Color>[
+                                theme.colorScheme.surfaceContainerLow,
+                                theme.colorScheme.surfaceContainerLow
+                                    .withValues(alpha: 0.65),
+                                theme.colorScheme.surfaceContainerLow
+                                    .withValues(alpha: 0.5),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Positioned.fill(
+                    child: Container(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                    ),
+                  ),
+
+                // Content
+                Padding(
+                  padding: const EdgeInsets.all(Insets.md),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      // Poster
+                      ConstrainedBox(
+                        constraints:
+                            const BoxConstraints(maxWidth: 120, maxHeight: 126),
+                        child: AspectRatio(
+                          aspectRatio: item.type == 'Episode'
+                              ? (2 / 3)
+                              : ((item.primaryImageAspectRatio != null &&
+                                      item.primaryImageAspectRatio! > 0.0)
+                                  ? item.primaryImageAspectRatio!
+                                  : (item.type == 'MusicAlbum' ||
+                                          item.type == 'Audio' ||
+                                          item.type == 'MusicArtist'
+                                      ? 1.0
+                                      : (2 / 3))),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: <BoxShadow>[
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.25),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: <Widget>[
+                                  _poster(theme),
+                                  if (played)
+                                    Positioned(
+                                      top: 6,
+                                      right: 6,
+                                      child: _Badge(
+                                        color: theme.colorScheme.primary
+                                            .withValues(alpha: 0.85),
+                                        child: Icon(
+                                          Icons.check,
+                                          size: 16,
+                                          color: theme.colorScheme.onPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: Insets.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: <Widget>[
+                            Text(
+                              item.seriesName ?? item.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            if (item.seriesName != null)
+                              Text(
+                                (item.parentIndexNumber != null &&
+                                        item.indexNumber != null)
+                                    ? 'S${item.parentIndexNumber}:E${item.indexNumber} — ${item.name}'
+                                    : item.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              )
+                            else if (item.productionYear != null)
+                              Text(
+                                '${item.productionYear}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            if (!played && progress > 0.02) ...<Widget>[
+                              const SizedBox(height: 8),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(6),
+                                child: LinearProgressIndicator(
+                                  value: progress.clamp(0, 1),
+                                  minHeight: 6,
+                                  backgroundColor:
+                                      Colors.black.withValues(alpha: 0.1),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _poster(ThemeData theme) {
+    final bool isMusic = item.type == 'MusicAlbum' ||
+        item.type == 'MusicArtist' ||
+        item.type == 'Audio';
+    final Widget fallback = Container(
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Icon(
+        isMusic ? Icons.album_outlined : Icons.movie_outlined,
+        color: theme.colorScheme.outline,
+      ),
+    );
+    if (imageUrl == null) {
+      return fallback;
+    }
+    return CachedNetworkImage(
+      imageUrl: imageUrl!,
+      fit: BoxFit.cover,
+      placeholder: (BuildContext context, String url) => Container(
+        color: theme.colorScheme.surfaceContainerHighest,
+      ),
+      errorWidget: (BuildContext context, String url, Object error) => fallback,
     );
   }
 }
@@ -628,8 +1055,7 @@ class _HorizontalSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<JellyfinItem>> items = ref.watch(provider);
-    final JellyfinClient? client =
-        ref.watch(jellyfinClientProvider(instance)).value;
+    final JellyfinClient? client = ref.watch(jellyfinClientProvider(instance)).value;
 
     return AsyncValueView<List<JellyfinItem>>(
       value: items,
@@ -662,14 +1088,23 @@ class _HorizontalSection extends ConsumerWidget {
                 separatorBuilder: (_, __) => const SizedBox(width: Insets.md),
                 itemBuilder: (BuildContext context, int index) {
                   final JellyfinItem item = list[index];
-                  final double ratio = item.type == 'Episode' 
-                      ? (2 / 3) 
-                      : (item.primaryImageAspectRatio ?? (item.type == 'Audio' || item.type == 'MusicAlbum' || item.type == 'MusicArtist' ? 1.0 : (2 / 3)));
+                  final String type = item.type;
+                  final double rawRatio = item.type == 'Episode'
+                      ? (2 / 3)
+                      : (item.primaryImageAspectRatio ?? 0.0);
+                  final double ratio = rawRatio > 0.0
+                      ? rawRatio
+                      : (type == 'MusicAlbum' ||
+                              type == 'Audio' ||
+                              type == 'MusicArtist'
+                          ? 1.0
+                          : (2 / 3));
+
                   final double exactWidth = 190.0 * ratio;
-                  final double width = exactWidth.clamp(80.0, 400.0);
+                  final double cardWidth = exactWidth.clamp(80.0, 400.0);
 
                   return SizedBox(
-                    width: width,
+                    width: cardWidth,
                     child: PerformanceLoggerWidget(
                       name: 'JellyfinHorizontalGridItem',
                       child: JellyfinPosterCard(
@@ -686,7 +1121,9 @@ class _HorizontalSection extends ConsumerWidget {
                                       instance: instance,
                                       albumId: item.id,
                                       albumName: item.name,
-                                      albumArtist: item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
+                                      albumArtist: item.artists.isNotEmpty
+                                          ? item.artists.first
+                                          : 'Unknown Artist',
                                       albumOverview: item.overview,
                                       albumImageUrl: client.imageUrl(item),
                                     ),
@@ -694,7 +1131,8 @@ class _HorizontalSection extends ConsumerWidget {
                                 } else if (item.type == 'Series') {
                                   pushScreen<void>(
                                     context,
-                                    JellyfinItemDetailScreen(instance: instance, itemId: item.id),
+                                    JellyfinItemDetailScreen(
+                                        instance: instance, itemId: item.id),
                                   );
                                 } else if (item.type == 'Season') {
                                   pushScreen<void>(
@@ -707,15 +1145,22 @@ class _HorizontalSection extends ConsumerWidget {
                                       seasonImageUrl: client.imageUrl(item),
                                     ),
                                   );
-                                } else if (jellyfinContainerTypes.contains(item.type)) {
+                                } else if (jellyfinContainerTypes
+                                    .contains(item.type)) {
                                   pushScreen<void>(
                                     context,
-                                    JellyfinFolderScreen(instance: instance, item: item),
+                                    JellyfinFolderScreen(
+                                      instance: instance,
+                                      item: item,
+                                    ),
                                   );
                                 } else {
                                   pushScreen<void>(
                                     context,
-                                    JellyfinItemDetailScreen(instance: instance, itemId: item.id),
+                                    JellyfinItemDetailScreen(
+                                      instance: instance,
+                                      itemId: item.id,
+                                    ),
                                   );
                                 }
                               },
@@ -768,7 +1213,8 @@ class _ActiveSessionsSection extends ConsumerWidget {
                 ),
               ),
               SizedBox(
-                height: 168,
+                height:
+                    168, // Fixed height for horizontal scroll, leaves room for elevation shadow
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
@@ -776,8 +1222,12 @@ class _ActiveSessionsSection extends ConsumerWidget {
                   separatorBuilder: (_, __) => const SizedBox(width: Insets.md),
                   itemBuilder: (BuildContext context, int index) {
                     return SizedBox(
-                      width: 330,
-                      child: _SessionCard(session: list[index]),
+                      width:
+                          330, // Limit width of the card so it fits nicely in the horizontal list
+                      child: _SessionCard(
+                        session: list[index],
+                        instance: instance,
+                      ),
                     );
                   },
                 ),
@@ -791,9 +1241,13 @@ class _ActiveSessionsSection extends ConsumerWidget {
 }
 
 class _SessionCard extends StatelessWidget {
-  const _SessionCard({required this.session});
+  const _SessionCard({
+    required this.session,
+    required this.instance,
+  });
 
   final ActiveSession session;
+  final Instance instance;
 
   @override
   Widget build(BuildContext context) {
@@ -804,33 +1258,195 @@ class _SessionCard extends StatelessWidget {
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
-      elevation: 2,
+      elevation: 0,
+      color: theme.colorScheme.surfaceContainerLow,
       shape: RoundedRectangleBorder(
-        borderRadius: Radii.card,
-        side: BorderSide(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
+        borderRadius: BorderRadius.circular(24),
       ),
-      child: Stack(
-        children: <Widget>[
-          if (session.posterUrl != null)
-            Positioned.fill(
-              child: Stack(
-                fit: StackFit.expand,
+      child: InkWell(
+        onTap: () => pushScreen<void>(
+          context,
+          JellyfinSessionDetailScreen(
+            initialSession: session,
+            instance: instance,
+          ),
+        ),
+        child: Stack(
+          children: <Widget>[
+            // Backdrop
+            if (session.posterUrl != null)
+              Positioned.fill(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    Image.network(
+                      session.posterUrl!,
+                      fit: BoxFit.cover,
+                      alignment: Alignment.topCenter,
+                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: <Color>[
+                            theme.colorScheme.surfaceContainerLow,
+                            theme.colorScheme.surfaceContainerLow
+                                .withValues(alpha: 0.65),
+                            theme.colorScheme.surfaceContainerLow
+                                .withValues(alpha: 0.5),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Content
+            Padding(
+              padding: const EdgeInsets.all(Insets.md),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Image.network(
-                    session.posterUrl!,
-                    fit: BoxFit.cover,
-                    alignment: Alignment.topCenter,
-                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  // Poster
+                  ConstrainedBox(
+                    constraints:
+                        const BoxConstraints(maxWidth: 120, maxHeight: 126),
+                    child: AspectRatio(
+                      aspectRatio: session.aspectRatio != null &&
+                              session.aspectRatio! > 0.0
+                          ? session.aspectRatio!
+                          : (2 / 3),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.25),
+                              blurRadius: 12,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                          image: session.posterUrl != null
+                              ? DecorationImage(
+                                  image: NetworkImage(session.posterUrl!),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                        ),
+                        child: session.posterUrl == null
+                            ? Icon(Icons.movie_outlined,
+                                color: theme.colorScheme.outline, size: 32)
+                            : null,
+                      ),
+                    ),
                   ),
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: <Color>[
-                          theme.colorScheme.surface,
-                          theme.colorScheme.surface.withValues(alpha: 0.85),
-                          theme.colorScheme.surface.withValues(alpha: 0.6),
+                  const SizedBox(width: Insets.lg),
+
+                  // Details
+                  Expanded(
+                    child: SizedBox(
+                      height: 126,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          // Title
+                          Text(
+                            session.showTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+
+                          if (session.episodeName != null)
+                            Text(
+                              session.episodeName!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: theme.colorScheme.outlineVariant
+                                    .withValues(alpha: 0.5),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                Icon(
+                                  Icons.person,
+                                  size: 14,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    '${session.user}: ${session.device}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          const Spacer(),
+
+                          // Progress Header
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: <Widget>[
+                              Text(
+                                session.timePosition,
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                session.timeDuration,
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color: theme.colorScheme.outline,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+
+                          // Progress Bar
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: LinearProgressIndicator(
+                              value: pct.clamp(0.0, 1.0),
+                              minHeight: 8,
+                              backgroundColor:
+                                  theme.colorScheme.surfaceContainerHighest,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                playing
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.outline,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -838,115 +1454,109 @@ class _SessionCard extends StatelessWidget {
                 ],
               ),
             ),
-            
-          Padding(
-            padding: const EdgeInsets.all(Insets.md),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Container(
-                  width: 84,
-                  height: 126,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: <BoxShadow>[
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        blurRadius: 6,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                    image: session.posterUrl != null
-                        ? DecorationImage(
-                            image: NetworkImage(session.posterUrl!),
-                            fit: BoxFit.cover,
-                          )
-                        : null,
-                  ),
-                  child: session.posterUrl == null
-                      ? Icon(Icons.movie_outlined, color: theme.colorScheme.outline, size: 32)
-                      : null,
-                ),
-                const SizedBox(width: Insets.lg),
-                Expanded(
-                  child: SizedBox(
-                    height: 126,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Text(
-                          session.showTitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        
-                        if (session.episodeName != null)
-                          Text(
-                            session.episodeName!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        
-                        const SizedBox(height: 4),
-                        Text(
-                          '${session.user}: ${session.device}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        
-                        const Spacer(),
-                        
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: <Widget>[
-                            Text(
-                              session.timePosition,
-                              style: theme.textTheme.labelMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            Text(
-                              session.timeDuration,
-                              style: theme.textTheme.labelMedium?.copyWith(
-                                color: theme.colorScheme.outline,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: pct.clamp(0.0, 1.0),
-                            minHeight: 6,
-                            backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              playing ? theme.colorScheme.primary : theme.colorScheme.outline,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+}
+Widget _buildJellyfinGridOrList(
+  BuildContext context,
+  List<JellyfinItem> list,
+  JellyfinViewMode viewMode,
+  Widget Function(BuildContext, int, JellyfinItem) itemBuilder,
+) {
+  final List<JellyfinItem> albums =
+      list.where((e) => e.type == 'MusicAlbum').toList();
+  final List<JellyfinItem> playlists =
+      list.where((e) => e.type == 'Playlist').toList();
+  final List<JellyfinItem> others =
+      list.where((e) => e.type != 'MusicAlbum' && e.type != 'Playlist').toList();
+
+  final bool showSections =
+      albums.isNotEmpty && playlists.isNotEmpty && others.isEmpty;
+  final ThemeData theme = Theme.of(context);
+
+  if (showSections) {
+    return CustomScrollView(
+      slivers: <Widget>[
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+              Insets.lg, Insets.lg, Insets.lg, Insets.sm),
+          sliver: SliverToBoxAdapter(
+            child: Text('Albums',
+                style: theme.textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.bold)),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
+          sliver: viewMode == JellyfinViewMode.list
+              ? SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (BuildContext context, int index) =>
+                        itemBuilder(context, index, albums[index]),
+                    childCount: albums.length,
+                  ),
+                )
+              : SliverMasonryGrid.extent(
+                  maxCrossAxisExtent: 140.0,
+                  crossAxisSpacing: Insets.md,
+                  mainAxisSpacing: Insets.md,
+                  childCount: albums.length,
+                  itemBuilder: (BuildContext context, int index) =>
+                      itemBuilder(context, index, albums[index]),
+                ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(
+              Insets.lg, Insets.xl, Insets.lg, Insets.sm),
+          sliver: SliverToBoxAdapter(
+            child: Text('Playlists',
+                style: theme.textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.bold)),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: Insets.lg)
+              .copyWith(bottom: Insets.lg),
+          sliver: viewMode == JellyfinViewMode.list
+              ? SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (BuildContext context, int index) =>
+                        itemBuilder(context, index, playlists[index]),
+                    childCount: playlists.length,
+                  ),
+                )
+              : SliverMasonryGrid.extent(
+                  maxCrossAxisExtent: 140.0,
+                  crossAxisSpacing: Insets.md,
+                  mainAxisSpacing: Insets.md,
+                  childCount: playlists.length,
+                  itemBuilder: (BuildContext context, int index) =>
+                      itemBuilder(context, index, playlists[index]),
+                ),
+        ),
+      ],
+    );
+  }
+
+  if (viewMode == JellyfinViewMode.list) {
+    return ListView.builder(
+      padding: Insets.page,
+      itemCount: list.length,
+      itemBuilder: (BuildContext context, int index) =>
+          itemBuilder(context, index, list[index]),
+    );
+  }
+
+  return MasonryGridView.extent(
+    padding: Insets.page,
+    maxCrossAxisExtent: 140.0,
+    crossAxisSpacing: Insets.md,
+    mainAxisSpacing: Insets.md,
+    itemCount: list.length,
+    itemBuilder: (BuildContext context, int index) =>
+        itemBuilder(context, index, list[index]),
+  );
 }
