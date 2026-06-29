@@ -114,6 +114,33 @@ final embySessionsProvider =
   }
 });
 
+final embyFastSessionsProvider =
+    StreamProvider.family<List<ActiveSession>, Instance>((
+  Ref ref,
+  Instance instance,
+) async* {
+  bool disposed = false;
+  ref.onDispose(() => disposed = true);
+
+  final EmbyClient client =
+      await ref.watch(embyClientProvider(instance).future);
+
+  // Initial fetch
+  yield await client.getSessions();
+
+  // Poll every 1 second
+  while (!disposed) {
+    await Future<void>.delayed(const Duration(seconds: 1));
+    if (disposed) break;
+
+    try {
+      yield await client.getSessions();
+    } catch (_) {
+      // Ignore polling errors, let the UI keep the last known good state
+    }
+  }
+});
+
 final embyNextUpProvider = FutureProvider.family<List<EmbyItem>, Instance>((
   Ref ref,
   Instance instance,
@@ -254,3 +281,4 @@ final embyArtistBioProvider =
       await ref.watch(embyClientProvider(instance).future);
   return client.getArtistBio(artistName);
 });
+final embyActiveTabBarIndexProvider = StateProvider.family<int, Instance>((Ref ref, Instance instance) => 0);
