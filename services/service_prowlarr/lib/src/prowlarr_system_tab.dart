@@ -29,36 +29,53 @@ class ProwlarrSystemTab extends ConsumerWidget {
         padding: Insets.page,
         children: <Widget>[
           _HealthSection(instance: instance),
+          const SizedBox(height: Insets.md),
           _TasksSection(instance: instance),
+          const SizedBox(height: Insets.md),
           _BackupsSection(instance: instance),
+          const SizedBox(height: Insets.md),
           _StatusSection(instance: instance),
+          const SizedBox(height: Insets.xl),
         ],
       ),
     );
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader(this.title, {this.action});
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.title, required this.child, this.action});
 
   final String title;
+  final Widget child;
   final Widget? action;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(top: Insets.lg, bottom: Insets.sm),
-      child: Row(
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(Insets.lg),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Expanded(
-            child: Text(
-              title,
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold),
-            ),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  title,
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              if (action != null) action!,
+            ],
           ),
-          if (action != null) action!,
+          const SizedBox(height: Insets.sm),
+          child,
         ],
       ),
     );
@@ -72,45 +89,46 @@ class _HealthSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = Theme.of(context).colorScheme;
     final AsyncValue<List<ProwlarrHealth>> health =
         ref.watch(prowlarrHealthProvider(instance));
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        const _SectionHeader('Health'),
-        health.when(
-          loading: () => const Padding(
-            padding: EdgeInsets.all(Insets.md),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-          error: (Object e, _) => _MessageCard(
-            icon: Icons.error_outline,
-            color: theme.colorScheme.error,
-            text: _msg(e),
-          ),
-          data: (List<ProwlarrHealth> list) {
-            if (list.isEmpty) {
-              return const _MessageCard(
-                icon: Icons.check_circle,
-                color: Color(0xFF22C55E),
-                text: 'All healthy',
-              );
-            }
-            return Column(
-              children: <Widget>[
-                for (final ProwlarrHealth h in list)
-                  _MessageCard(
-                    icon: _healthIcon(h.type),
-                    color: _healthColor(theme, h.type),
-                    text: h.message,
-                    subtext: h.source,
-                  ),
-              ],
-            );
-          },
+    return _SectionCard(
+      title: 'Health',
+      child: health.when(
+        loading: () => const Padding(
+          padding: EdgeInsets.symmetric(vertical: Insets.md),
+          child: Center(child: CircularProgressIndicator()),
         ),
-      ],
+        error: (Object e, _) => _StatusRow(
+          icon: Icons.error_outline,
+          color: cs.error,
+          text: _msg(e),
+        ),
+        data: (List<ProwlarrHealth> list) {
+          if (list.isEmpty) {
+            return _StatusRow(
+              icon: Icons.check_circle,
+              color: cs.tertiary,
+              text: 'All healthy',
+              pill: 'OK',
+            );
+          }
+          return Column(
+            children: <Widget>[
+              for (int i = 0; i < list.length; i++) ...<Widget>[
+                if (i > 0) const SizedBox(height: Insets.sm),
+                _StatusRow(
+                  icon: _healthIcon(list[i].type),
+                  color: _healthColor(cs, list[i].type),
+                  text: list[i].message,
+                  subtext: list[i].source,
+                  pill: _healthPill(list[i].type),
+                ),
+              ],
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -120,11 +138,18 @@ class _HealthSection extends ConsumerWidget {
         _ => Icons.info_outline,
       };
 
-  Color _healthColor(ThemeData theme, String type) =>
+  Color _healthColor(ColorScheme cs, String type) =>
       switch (type.toLowerCase()) {
-        'error' => theme.colorScheme.error,
-        'warning' => const Color(0xFFF59E0B),
-        _ => theme.colorScheme.primary,
+        'error' => cs.error,
+        'warning' => cs.error,
+        _ => cs.primary,
+      };
+
+  String? _healthPill(String type) => switch (type.toLowerCase()) {
+        'error' => 'Error',
+        'warning' => 'Warning',
+        'notice' => 'Notice',
+        _ => null,
       };
 }
 
@@ -137,25 +162,24 @@ class _TasksSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<ProwlarrSystemTask>> tasks =
         ref.watch(prowlarrTasksProvider(instance));
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        const _SectionHeader('Tasks'),
-        tasks.when(
-          loading: () => const SizedBox.shrink(),
-          error: (Object e, _) => _MessageCard(
-            icon: Icons.error_outline,
-            color: Theme.of(context).colorScheme.error,
-            text: _msg(e),
-          ),
-          data: (List<ProwlarrSystemTask> list) => Column(
-            children: <Widget>[
-              for (final ProwlarrSystemTask t in list)
-                _TaskTile(instance: instance, task: t),
-            ],
-          ),
+    return _SectionCard(
+      title: 'Tasks',
+      child: tasks.when(
+        loading: () => const SizedBox.shrink(),
+        error: (Object e, _) => _StatusRow(
+          icon: Icons.error_outline,
+          color: Theme.of(context).colorScheme.error,
+          text: _msg(e),
         ),
-      ],
+        data: (List<ProwlarrSystemTask> list) => Column(
+          children: <Widget>[
+            for (int i = 0; i < list.length; i++) ...<Widget>[
+              if (i > 0) const SizedBox(height: Insets.sm),
+              _TaskTile(instance: instance, task: list[i]),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -195,27 +219,56 @@ class _TaskTileState extends ConsumerState<_TaskTile> {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
     final ProwlarrSystemTask t = widget.task;
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(t.name),
-      subtitle: Text(
-        <String>[
-          'every ${_interval(t.interval)}',
-          if (t.lastExecution != null) 'last ${_relativeTime(t.lastExecution)}',
-        ].join(' • '),
-      ),
-      trailing: _running
-          ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : IconButton(
-              tooltip: 'Run now',
-              icon: const Icon(Icons.play_arrow),
-              onPressed: _run,
-            ),
+    return Row(
+      children: <Widget>[
+        Container(
+          width: 40,
+          height: 40,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: cs.primary.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(Icons.schedule, size: 20, color: cs.primary),
+        ),
+        const SizedBox(width: Insets.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                t.name,
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                <String>[
+                  'every ${_interval(t.interval)}',
+                  if (t.lastExecution != null)
+                    'last ${_relativeTime(t.lastExecution)}',
+                ].join(' • '),
+                style: theme.textTheme.labelSmall
+                    ?.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+        _running
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : IconButton(
+                tooltip: 'Run now',
+                icon: const Icon(Icons.play_arrow),
+                onPressed: _run,
+              ),
+      ],
     );
   }
 
@@ -295,58 +348,100 @@ class _BackupsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
     final AsyncValue<List<ProwlarrBackup>> backups =
         ref.watch(prowlarrBackupsProvider(instance));
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return _SectionCard(
+      title: 'Backups',
+      action: TextButton.icon(
+        onPressed: () => _create(context, ref),
+        icon: const Icon(Icons.add, size: 18),
+        label: const Text('Create'),
+      ),
+      child: backups.when(
+        loading: () => const SizedBox.shrink(),
+        error: (Object e, _) => _StatusRow(
+          icon: Icons.error_outline,
+          color: cs.error,
+          text: _msg(e),
+        ),
+        data: (List<ProwlarrBackup> list) {
+          if (list.isEmpty) {
+            return Text(
+              'No backups yet.',
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: cs.onSurfaceVariant),
+            );
+          }
+          return Column(
+            children: <Widget>[
+              for (int i = 0; i < list.length; i++) ...<Widget>[
+                if (i > 0) const SizedBox(height: Insets.sm),
+                _BackupRow(
+                  backup: list[i],
+                  onDelete: () => _delete(context, ref, list[i]),
+                ),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _BackupRow extends StatelessWidget {
+  const _BackupRow({required this.backup, required this.onDelete});
+
+  final ProwlarrBackup backup;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    return Row(
       children: <Widget>[
-        _SectionHeader(
-          'Backups',
-          action: TextButton.icon(
-            onPressed: () => _create(context, ref),
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Create'),
+        Container(
+          width: 40,
+          height: 40,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: cs.secondary.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(Icons.archive_outlined, size: 20, color: cs.secondary),
+        ),
+        const SizedBox(width: Insets.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                backup.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                <String>[
+                  if (backup.type != null && backup.type!.isNotEmpty)
+                    backup.type!,
+                  if (backup.time != null) _relativeTime(backup.time),
+                ].join(' • '),
+                style: theme.textTheme.labelSmall
+                    ?.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ],
           ),
         ),
-        backups.when(
-          loading: () => const SizedBox.shrink(),
-          error: (Object e, _) => _MessageCard(
-            icon: Icons.error_outline,
-            color: Theme.of(context).colorScheme.error,
-            text: _msg(e),
-          ),
-          data: (List<ProwlarrBackup> list) {
-            if (list.isEmpty) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: Insets.sm),
-                child: Text('No backups yet.'),
-              );
-            }
-            return Column(
-              children: <Widget>[
-                for (final ProwlarrBackup b in list)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.archive_outlined),
-                    title: Text(b.name),
-                    subtitle: Text(
-                      <String>[
-                        if (b.type != null && b.type!.isNotEmpty) b.type!,
-                        if (b.time != null) _relativeTime(b.time),
-                      ].join(' • '),
-                    ),
-                    trailing: IconButton(
-                      tooltip: 'Delete',
-                      icon: Icon(
-                        Icons.delete_outline,
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                      onPressed: () => _delete(context, ref, b),
-                    ),
-                  ),
-              ],
-            );
-          },
+        IconButton(
+          tooltip: 'Delete',
+          icon: Icon(Icons.delete_outline, color: cs.error),
+          onPressed: onDelete,
         ),
       ],
     );
@@ -360,92 +455,141 @@ class _StatusSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
     final AsyncValue<ProwlarrSystemStatus> status =
         ref.watch(prowlarrSystemStatusProvider(instance));
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        const _SectionHeader('Status'),
-        status.when(
-          loading: () => const SizedBox.shrink(),
-          error: (Object e, _) => _MessageCard(
-            icon: Icons.error_outline,
-            color: Theme.of(context).colorScheme.error,
-            text: _msg(e),
-          ),
-          data: (ProwlarrSystemStatus s) {
-            final String author = _authorText(s.packageAuthor);
-            final String pkg = <String>[
-              if (s.packageVersion != null && s.packageVersion!.isNotEmpty)
-                s.packageVersion!,
-              if (author.isNotEmpty) 'by $author',
-            ].join(' ');
-            final List<(String, String?)> rows = <(String, String?)>[
-              ('Version', s.version),
-              ('Package', pkg),
-              ('.NET', s.runtimeVersion),
-              ('Docker', s.isDocker ? 'Yes' : 'No'),
-              (
-                'Database',
-                <String?>[s.databaseType, s.databaseVersion]
-                    .where((String? v) => v != null && v.isNotEmpty)
-                    .join(' '),
-              ),
-              ('DB migration', s.migrationVersion?.toString()),
-              (
-                'OS',
-                <String?>[s.osName, s.osVersion]
-                    .where((String? v) => v != null && v.isNotEmpty)
-                    .join(' '),
-              ),
-              ('AppData', s.appData),
-              ('Startup', s.startupPath),
-              ('Mode', s.mode),
-              ('Uptime', _uptime(s.startTime)),
-            ];
-            return Column(
-              children: <Widget>[
-                for (final (String label, String? value) in rows)
-                  if (value != null && value.isNotEmpty)
-                    _KeyValueRow(label: label, value: value),
-              ],
-            );
-          },
+    return _SectionCard(
+      title: 'Status',
+      child: status.when(
+        loading: () => const SizedBox.shrink(),
+        error: (Object e, _) => _StatusRow(
+          icon: Icons.error_outline,
+          color: cs.error,
+          text: _msg(e),
         ),
-        const SizedBox(height: Insets.lg),
-      ],
+        data: (ProwlarrSystemStatus s) {
+          final String author = _authorText(s.packageAuthor);
+          final String pkg = <String>[
+            if (s.packageVersion != null && s.packageVersion!.isNotEmpty)
+              s.packageVersion!,
+            if (author.isNotEmpty) 'by $author',
+          ].join(' ');
+          final List<(String, String?)> rows = <(String, String?)>[
+            ('Version', s.version),
+            ('Package', pkg),
+            ('.NET', s.runtimeVersion),
+            ('Docker', s.isDocker ? 'Yes' : 'No'),
+            (
+              'Database',
+              <String?>[s.databaseType, s.databaseVersion]
+                  .where((String? v) => v != null && v.isNotEmpty)
+                  .join(' '),
+            ),
+            ('DB migration', s.migrationVersion?.toString()),
+            (
+              'OS',
+              <String?>[s.osName, s.osVersion]
+                  .where((String? v) => v != null && v.isNotEmpty)
+                  .join(' '),
+            ),
+            ('AppData', s.appData),
+            ('Startup', s.startupPath),
+            ('Mode', s.mode),
+            ('Uptime', _uptime(s.startTime)),
+          ];
+          return Column(
+            children: <Widget>[
+              for (final (String label, String? value) in rows)
+                if (value != null && value.isNotEmpty)
+                  _KeyValueRow(label: label, value: value),
+            ],
+          );
+        },
+      ),
     );
   }
 }
 
-class _MessageCard extends StatelessWidget {
-  const _MessageCard({
+/// A tonal row used across the system sections: a color-coded leading badge,
+/// a primary line, an optional sub line and an optional status pill.
+class _StatusRow extends StatelessWidget {
+  const _StatusRow({
     required this.icon,
     required this.color,
     required this.text,
     this.subtext,
+    this.pill,
   });
 
   final IconData icon;
   final Color color;
   final String text;
   final String? subtext;
+  final String? pill;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    return Card(
-      margin: const EdgeInsets.only(bottom: Insets.sm),
-      child: ListTile(
-        leading: Icon(icon, color: color),
-        title: Text(text),
-        subtitle: (subtext != null && subtext!.isNotEmpty)
-            ? Text(
-                subtext!,
-                style: theme.textTheme.labelSmall
-                    ?.copyWith(color: theme.colorScheme.outline),
-              )
-            : null,
+    final ColorScheme cs = theme.colorScheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Container(
+          width: 40,
+          height: 40,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, size: 20, color: color),
+        ),
+        const SizedBox(width: Insets.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(text, style: theme.textTheme.bodyMedium),
+              if (subtext != null && subtext!.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 2),
+                Text(
+                  subtext!,
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (pill != null) ...<Widget>[
+          const SizedBox(width: Insets.sm),
+          _StatPill(label: pill!, color: color),
+        ],
+      ],
+    );
+  }
+}
+
+class _StatPill extends StatelessWidget {
+  const _StatPill({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
       ),
     );
   }
@@ -470,7 +614,7 @@ class _KeyValueRow extends StatelessWidget {
             child: Text(
               label,
               style: theme.textTheme.labelMedium
-                  ?.copyWith(color: theme.colorScheme.outline),
+                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
           ),
           Expanded(

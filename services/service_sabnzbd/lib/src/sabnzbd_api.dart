@@ -1,7 +1,9 @@
 import 'package:core_networking/core_networking.dart';
 import 'package:dio/dio.dart';
 
+import 'models/sab_history.dart';
 import 'models/sab_queue.dart';
+import 'models/sab_stats.dart';
 
 /// Thin client over the SABnzbd API.
 ///
@@ -48,6 +50,68 @@ class SabnzbdApi {
   Future<void> deleteItem(String nzoId) => _simple(<String, dynamic>{
         'mode': 'queue',
         'name': 'delete',
+        'value': nzoId,
+      });
+
+  /// Completed / failed download history, newest first.
+  Future<SabHistory> getHistory({int limit = 50}) async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>(
+        'api',
+        queryParameters: <String, dynamic>{'mode': 'history', 'limit': limit},
+      );
+      return SabHistoryResponse.fromJson(resp.data as Map<String, dynamic>)
+              .history ??
+          const SabHistory();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Bytes downloaded over day / week / month / total.
+  Future<SabServerStats> getServerStats() async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>(
+        'api',
+        queryParameters: <String, dynamic>{'mode': 'server_stats'},
+      );
+      return SabServerStats.fromJson(resp.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// SABnzbd version string.
+  Future<String> getVersion() async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>(
+        'api',
+        queryParameters: <String, dynamic>{'mode': 'version'},
+      );
+      return (resp.data as Map<String, dynamic>)['version']?.toString() ?? '';
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Sets the global download speed limit as a percentage (0 = unlimited).
+  Future<void> setSpeedLimit(int percent) => _simple(<String, dynamic>{
+        'mode': 'config',
+        'name': 'speedlimit',
+        'value': percent,
+      });
+
+  /// Removes one history entry (and its downloaded files).
+  Future<void> deleteHistoryItem(String nzoId) => _simple(<String, dynamic>{
+        'mode': 'history',
+        'name': 'delete',
+        'value': nzoId,
+        'del_files': 1,
+      });
+
+  /// Retries a failed history entry.
+  Future<void> retryHistoryItem(String nzoId) => _simple(<String, dynamic>{
+        'mode': 'retry',
         'value': nzoId,
       });
 
