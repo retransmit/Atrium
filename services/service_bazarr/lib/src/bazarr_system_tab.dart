@@ -42,8 +42,10 @@ class BazarrSystemTab extends ConsumerWidget {
   }
 }
 
-class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.child, this.action});
+/// A tonal, rounded section card. Sections supply their own bottom gap so an
+/// absent (shrunk) section leaves no double space.
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.title, required this.child, this.action});
 
   final String title;
   final Widget child;
@@ -53,22 +55,94 @@ class _Section extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: Insets.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.only(bottom: Insets.md),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(Insets.lg),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    title,
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                if (action != null) action!,
+              ],
+            ),
+            const SizedBox(height: Insets.sm),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Small tonal status pill: tinted background, leading icon, label.
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(title, style: theme.textTheme.titleMedium),
-              ),
-              if (action != null) action!,
-            ],
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
           ),
-          const SizedBox(height: Insets.sm),
-          child,
         ],
       ),
+    );
+  }
+}
+
+/// Small color-coded leading badge (denser 32x32 square).
+class _LeadingBadge extends StatelessWidget {
+  const _LeadingBadge({required this.icon, required this.color});
+
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 32,
+      height: 32,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Icon(icon, size: 17, color: color),
     );
   }
 }
@@ -85,7 +159,7 @@ Widget _kv(BuildContext context, String k, String v) {
           child: Text(
             k,
             style: theme.textTheme.labelMedium
-                ?.copyWith(color: theme.colorScheme.outline),
+                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),
         ),
         Expanded(child: Text(v, style: theme.textTheme.bodyMedium)),
@@ -106,7 +180,7 @@ class _StatusSection extends ConsumerWidget {
     if (s == null) {
       return const SizedBox.shrink();
     }
-    return _Section(
+    return _SectionCard(
       title: 'Status',
       child: Column(
         children: <Widget>[
@@ -141,33 +215,55 @@ class _HealthSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
     final List<BazarrHealthItem> issues =
         ref.watch(bazarrSystemHealthProvider(instance)).valueOrNull ??
             const <BazarrHealthItem>[];
-    return _Section(
+    return _SectionCard(
       title: 'Health',
       child: issues.isEmpty
-          ? Row(
-              children: <Widget>[
-                Icon(Icons.check_circle, color: Colors.green.shade600, size: 18),
-                const SizedBox(width: Insets.sm),
-                Text('All healthy', style: theme.textTheme.bodyMedium),
-              ],
+          ? Align(
+              alignment: Alignment.centerLeft,
+              child: _StatusPill(
+                icon: Icons.check_circle,
+                label: 'All healthy',
+                color: cs.tertiary,
+              ),
             )
           : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                for (final BazarrHealthItem h in issues)
-                  Card(
-                    margin: const EdgeInsets.only(bottom: Insets.sm),
-                    child: ListTile(
-                      leading: Icon(
-                        Icons.warning_amber,
-                        color: theme.colorScheme.error,
+                for (int i = 0; i < issues.length; i++) ...<Widget>[
+                  if (i > 0) const SizedBox(height: Insets.sm),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      _LeadingBadge(
+                        icon: Icons.warning_amber,
+                        color: cs.error,
                       ),
-                      title: Text(h.issue),
-                      subtitle: h.object.isNotEmpty ? Text(h.object) : null,
-                    ),
+                      const SizedBox(width: Insets.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              issues[i].issue,
+                              style: theme.textTheme.bodyMedium
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            if (issues[i].object.isNotEmpty)
+                              Text(
+                                issues[i].object,
+                                style: theme.textTheme.bodySmall
+                                    ?.copyWith(color: cs.onSurfaceVariant),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
+                ],
               ],
             ),
     );
@@ -182,10 +278,11 @@ class _ProvidersSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
     final List<BazarrProviderStatus> providers =
         ref.watch(bazarrProviderStatusesProvider(instance)).valueOrNull ??
             const <BazarrProviderStatus>[];
-    return _Section(
+    return _SectionCard(
       title: 'Providers',
       action: TextButton.icon(
         onPressed: () => _reset(context, ref),
@@ -196,29 +293,14 @@ class _ProvidersSection extends ConsumerWidget {
           ? Text(
               'No providers enabled',
               style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.outline),
+                  ?.copyWith(color: cs.onSurfaceVariant),
             )
           : Column(
               children: <Widget>[
-                for (final BazarrProviderStatus p in providers)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                    leading: Icon(
-                      p.status.toLowerCase() == 'good'
-                          ? Icons.check_circle
-                          : Icons.error_outline,
-                      color: p.status.toLowerCase() == 'good'
-                          ? Colors.green.shade600
-                          : theme.colorScheme.error,
-                    ),
-                    title: Text(p.name),
-                    subtitle: Text(
-                      p.retry != '-' && p.retry.isNotEmpty
-                          ? '${p.status} · retry ${p.retry}'
-                          : p.status,
-                    ),
-                  ),
+                for (int i = 0; i < providers.length; i++) ...<Widget>[
+                  if (i > 0) const SizedBox(height: Insets.sm),
+                  _ProviderRow(provider: providers[i]),
+                ],
               ],
             ),
     );
@@ -241,6 +323,54 @@ class _ProvidersSection extends ConsumerWidget {
   }
 }
 
+class _ProviderRow extends StatelessWidget {
+  const _ProviderRow({required this.provider});
+
+  final BazarrProviderStatus provider;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final bool good = provider.status.toLowerCase() == 'good';
+    final Color accent = good ? cs.tertiary : cs.error;
+    final bool hasRetry = provider.retry != '-' && provider.retry.isNotEmpty;
+    return Row(
+      children: <Widget>[
+        _LeadingBadge(
+          icon: good ? Icons.check_circle : Icons.error_outline,
+          color: accent,
+        ),
+        const SizedBox(width: Insets.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                provider.name,
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              if (hasRetry)
+                Text(
+                  'retry ${provider.retry}',
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: cs.onSurfaceVariant),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(width: Insets.sm),
+        _StatusPill(
+          icon: good ? Icons.check : Icons.warning_amber,
+          label: provider.status,
+          color: accent,
+        ),
+      ],
+    );
+  }
+}
+
 class _TasksSection extends ConsumerWidget {
   const _TasksSection({required this.instance});
 
@@ -248,33 +378,65 @@ class _TasksSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
     final List<BazarrSystemTask> tasks =
         ref.watch(bazarrSystemTasksProvider(instance)).valueOrNull ??
             const <BazarrSystemTask>[];
     if (tasks.isEmpty) {
       return const SizedBox.shrink();
     }
-    return _Section(
+    return _SectionCard(
       title: 'Tasks',
       child: Column(
         children: <Widget>[
-          for (final BazarrSystemTask t in tasks)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              dense: true,
-              title: Text(t.name),
-              subtitle: Text(
-                <String>[
-                  if (t.interval.isNotEmpty) t.interval,
-                  if (t.nextRunIn.isNotEmpty) 'next ${t.nextRunIn}',
-                ].join(' · '),
-              ),
-              trailing: IconButton(
-                tooltip: 'Run now',
-                icon: const Icon(Icons.play_arrow),
-                onPressed: () => _run(context, ref, t),
-              ),
+          for (int i = 0; i < tasks.length; i++) ...<Widget>[
+            if (i > 0) const SizedBox(height: Insets.sm),
+            Row(
+              children: <Widget>[
+                _LeadingBadge(
+                  icon: Icons.schedule,
+                  color: cs.secondary,
+                ),
+                const SizedBox(width: Insets.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        tasks[i].name,
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                      Builder(
+                        builder: (BuildContext context) {
+                          final String detail = <String>[
+                            if (tasks[i].interval.isNotEmpty) tasks[i].interval,
+                            if (tasks[i].nextRunIn.isNotEmpty)
+                              'next ${tasks[i].nextRunIn}',
+                          ].join(' · ');
+                          if (detail.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
+                          return Text(
+                            detail,
+                            style: theme.textTheme.labelSmall
+                                ?.copyWith(color: cs.onSurfaceVariant),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Run now',
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.play_arrow),
+                  onPressed: () => _run(context, ref, tasks[i]),
+                ),
+              ],
             ),
+          ],
         ],
       ),
     );
@@ -307,10 +469,11 @@ class _BackupsSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
     final List<BazarrBackup> backups =
         ref.watch(bazarrBackupsProvider(instance)).valueOrNull ??
             const <BazarrBackup>[];
-    return _Section(
+    return _SectionCard(
       title: 'Backups',
       action: TextButton.icon(
         onPressed: () => _create(context, ref),
@@ -321,28 +484,58 @@ class _BackupsSection extends ConsumerWidget {
           ? Text(
               'No backups',
               style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.outline),
+                  ?.copyWith(color: cs.onSurfaceVariant),
             )
           : Column(
               children: <Widget>[
-                for (final BazarrBackup b in backups)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                    leading: const Icon(Icons.archive_outlined),
-                    title: Text(b.filename),
-                    subtitle: Text(
-                      <String>[
-                        if (b.type.isNotEmpty) b.type,
-                        if (b.date.isNotEmpty) b.date,
-                      ].join(' · '),
-                    ),
-                    trailing: IconButton(
-                      tooltip: 'Delete',
-                      icon: const Icon(Icons.delete_outline),
-                      onPressed: () => _delete(context, ref, b),
-                    ),
+                for (int i = 0; i < backups.length; i++) ...<Widget>[
+                  if (i > 0) const SizedBox(height: Insets.sm),
+                  Row(
+                    children: <Widget>[
+                      _LeadingBadge(
+                        icon: Icons.archive_outlined,
+                        color: cs.secondary,
+                      ),
+                      const SizedBox(width: Insets.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              backups[i].filename,
+                              style: theme.textTheme.bodyMedium
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            Builder(
+                              builder: (BuildContext context) {
+                                final String detail = <String>[
+                                  if (backups[i].type.isNotEmpty)
+                                    backups[i].type,
+                                  if (backups[i].date.isNotEmpty)
+                                    backups[i].date,
+                                ].join(' · ');
+                                if (detail.isEmpty) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Text(
+                                  detail,
+                                  style: theme.textTheme.labelSmall
+                                      ?.copyWith(color: cs.onSurfaceVariant),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Delete',
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: () => _delete(context, ref, backups[i]),
+                      ),
+                    ],
                   ),
+                ],
               ],
             ),
     );
@@ -417,12 +610,13 @@ class _LogsSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
     final List<BazarrLogEntry> logs =
         ref.watch(bazarrLogsProvider(instance)).valueOrNull ??
             const <BazarrLogEntry>[];
     final List<BazarrLogEntry> shown =
         logs.length > _max ? logs.sublist(0, _max) : logs;
-    return _Section(
+    return _SectionCard(
       title: 'Logs',
       action: logs.isEmpty
           ? null
@@ -435,57 +629,50 @@ class _LogsSection extends ConsumerWidget {
           ? Text(
               'No logs',
               style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.outline),
+                  ?.copyWith(color: cs.onSurfaceVariant),
             )
           : Column(
               children: <Widget>[
-                for (final BazarrLogEntry l in shown)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(
-                            l.type,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: _logColor(theme, l.type),
-                              fontWeight: FontWeight.bold,
+                for (int i = 0; i < shown.length; i++) ...<Widget>[
+                  if (i > 0) const SizedBox(height: Insets.sm),
+                  Builder(
+                    builder: (BuildContext context) {
+                      final (Color color, IconData icon) =
+                          _logLook(cs, shown[i].type);
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          _StatusPill(
+                            icon: icon,
+                            label: shown[i].type,
+                            color: color,
+                          ),
+                          const SizedBox(width: Insets.sm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  shown[i].message,
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                                Text(
+                                  shown[i].timestamp,
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                        const SizedBox(width: Insets.sm),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(l.message, style: theme.textTheme.bodySmall),
-                              Text(
-                                l.timestamp,
-                                style: theme.textTheme.labelSmall
-                                    ?.copyWith(color: theme.colorScheme.outline),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      );
+                    },
                   ),
+                ],
               ],
             ),
     );
-  }
-
-  Color _logColor(ThemeData theme, String type) {
-    switch (type.toUpperCase()) {
-      case 'ERROR':
-        return theme.colorScheme.error;
-      case 'WARNING':
-        return Colors.orange.shade700;
-      default:
-        return theme.colorScheme.outline;
-    }
   }
 
   Future<void> _clear(BuildContext context, WidgetRef ref) async {
@@ -520,6 +707,18 @@ class _LogsSection extends ConsumerWidget {
         SnackBar(content: Text('Clear failed: ${_err(e)}')),
       );
     }
+  }
+}
+
+/// Log-level look: error red, warning amber, everything else muted.
+(Color, IconData) _logLook(ColorScheme cs, String type) {
+  switch (type.toUpperCase()) {
+    case 'ERROR':
+      return (cs.error, Icons.error_outline);
+    case 'WARNING':
+      return (Colors.orange.shade700, Icons.warning_amber);
+    default:
+      return (cs.onSurfaceVariant, Icons.info_outline);
   }
 }
 
