@@ -151,11 +151,16 @@ class EmbyAlbumScreen extends ConsumerWidget {
                               '$minutes:${seconds.toString().padLeft(2, '0')}';
                         }
 
-                        final String? imageUrl = albumImageUrl;
+                        final String? imageUrl = client?.imageUrl(song) ?? albumImageUrl;
 
                         return ListTile(
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: Insets.lg, vertical: Insets.xs),
+                          onTap: () {
+                            if (client != null) {
+                              launchEmbyDeepLink(context, client, song.id);
+                            }
+                          },
                           leading: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: <Widget>[

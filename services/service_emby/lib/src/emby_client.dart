@@ -169,7 +169,7 @@ class EmbyClient {
             'SortBy': 'SortName',
             'SortOrder': 'Ascending',
             'Fields':
-                'PrimaryImageAspectRatio,ImageTags,Overview,CommunityRating,ParentId',
+                'PrimaryImageAspectRatio,ImageTags,Overview,CommunityRating,ParentId,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
             'Limit': 200,
@@ -186,7 +186,7 @@ class EmbyClient {
             'ParentId': parentId,
             'SortBy': 'SortName',
             'SortOrder': 'Ascending',
-            'Fields': 'PrimaryImageAspectRatio,ImageTags,ParentId',
+            'Fields': 'PrimaryImageAspectRatio,ImageTags,ParentId,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
             'Limit': 200,
@@ -207,7 +207,7 @@ class EmbyClient {
             'IncludeItemTypes': 'Series,Movie',
             'SortBy': 'SortName',
             'SortOrder': 'Ascending',
-            'Fields': 'PrimaryImageAspectRatio,ImageTags,ParentId',
+            'Fields': 'PrimaryImageAspectRatio,ImageTags,ParentId,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
             'StartIndex': startIndex,
@@ -229,7 +229,7 @@ class EmbyClient {
             'IncludeItemTypes': 'Series,Movie',
             'SortBy': 'SortName',
             'SortOrder': 'Ascending',
-            'Fields': 'PrimaryImageAspectRatio,ImageTags,ParentId',
+            'Fields': 'PrimaryImageAspectRatio,ImageTags,ParentId,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
             'StartIndex': startIndex,
@@ -254,7 +254,7 @@ class EmbyClient {
           queryParameters: <String, dynamic>{
             'Limit': 24,
             'MediaTypes': 'Video',
-            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ParentId',
+            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ParentId,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -270,6 +270,10 @@ class EmbyClient {
 
   Future<void> unpauseSession(String sessionId) => _guarded(() async {
         await _dio.post<dynamic>('Sessions/$sessionId/Playing/Unpause');
+      });
+
+  Future<void> playPauseSession(String sessionId) => _guarded(() async {
+        await _dio.post<dynamic>('Sessions/$sessionId/Playing/PlayPause');
       });
 
   Future<void> stopSession(String sessionId) => _guarded(() async {
@@ -371,7 +375,7 @@ class EmbyClient {
           queryParameters: <String, dynamic>{
             'UserId': _userId,
             'Limit': 24,
-            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ParentId',
+            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ParentId,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -389,7 +393,7 @@ class EmbyClient {
             'Limit': 50,
             'Recursive': true,
             'IncludeItemTypes': 'Series,Movie,Episode',
-            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ParentId',
+            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ParentId,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -406,7 +410,7 @@ class EmbyClient {
             'Filters': 'IsFavorite',
             'Recursive': true,
             'Limit': 24,
-            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ParentId',
+            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ParentId,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -433,7 +437,7 @@ class EmbyClient {
           'Users/$_userId/Items/Latest',
           queryParameters: <String, dynamic>{
             'Limit': 20,
-            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ParentId',
+            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ParentId,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -449,7 +453,7 @@ class EmbyClient {
           'Users/$_userId/Items/$itemId',
           queryParameters: <String, dynamic>{
             'Fields':
-                'Overview,People,CommunityRating,OfficialRating,RunTimeTicks',
+                'Overview,People,CommunityRating,OfficialRating,RunTimeTicks,ProductionYear',
           },
         );
         return EmbyItem.fromJson(resp.data as Map<String, dynamic>);
@@ -461,7 +465,7 @@ class EmbyClient {
           queryParameters: <String, dynamic>{
             'ParentId': seriesId,
             'IncludeItemTypes': 'Season',
-            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags',
+            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -478,7 +482,7 @@ class EmbyClient {
             'ParentId': seasonId,
             'IncludeItemTypes': 'Episode',
             'Fields':
-                'PrimaryImageAspectRatio,Overview,RunTimeTicks,CommunityRating,ImageTags',
+                'PrimaryImageAspectRatio,Overview,RunTimeTicks,CommunityRating,ImageTags,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -493,8 +497,7 @@ class EmbyClient {
           'Users/$_userId/Items',
           queryParameters: <String, dynamic>{
             'ParentId': albumId,
-            'IncludeItemTypes': 'Audio',
-            'Fields': 'PrimaryImageAspectRatio,ImageTags,Overview,ParentId',
+            'Fields': 'PrimaryImageAspectRatio,ImageTags,Overview,ParentId,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -541,7 +544,9 @@ class EmbyClient {
           ? '&tag=${item.albumPrimaryImageTag}'
           : (item.parentPrimaryImageTag != null
               ? '&tag=${item.parentPrimaryImageTag}'
-              : '');
+              : (item.imageTags.containsKey('Primary')
+                  ? '&tag=${item.imageTags['Primary']}'
+                  : ''));
       return '$_baseStr/Items/$targetId/Images/Primary'
           '?quality=100$tagParam$key';
     }
@@ -593,7 +598,9 @@ class EmbyClient {
   /// Builds an optimal wide image URL (banner or backdrop) for [item].
   /// Falls back to poster. For music items, exclusively returns the poster.
   String? bannerOrPosterUrl(EmbyItem item, {int maxWidth = 1920}) {
-    if (item.type == 'MusicAlbum' || item.type == 'MusicArtist' || item.type == 'Audio') {
+    if (item.type == 'MusicAlbum' ||
+        item.type == 'MusicArtist' ||
+        item.type == 'Audio') {
       return imageUrl(item);
     }
     return bannerImageUrl(item, maxWidth: maxWidth) ??
