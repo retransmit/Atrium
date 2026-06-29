@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 
 import 'models/bazarr_models.dart';
 
-/// Renders subtitle language chips: present subtitles as filled green chips,
-/// missing ones as outlined chips. When [onDeletePresent] is given, each present
-/// chip shows a tappable delete (x) affordance. Shared by the episode/movie
-/// detail views.
+/// Renders subtitle language chips: present subtitles as filled tertiary-tinted
+/// chips, missing ones as outlined chips. When [onDeletePresent] is given, each
+/// present chip shows a tappable delete (x) affordance. Shared by the
+/// episode/movie detail views.
 class BazarrSubtitleChips extends StatelessWidget {
   const BazarrSubtitleChips({
     this.present = const <BazarrSubtitle>[],
@@ -53,8 +53,10 @@ class BazarrSubtitleChips extends StatelessWidget {
 
   Widget _chip(BuildContext context, BazarrSubtitle s, {required bool present}) {
     final ThemeData theme = Theme.of(context);
-    final Color fg =
-        present ? Colors.green.shade700 : theme.colorScheme.onSurfaceVariant;
+    final ColorScheme cs = theme.colorScheme;
+    // Present subtitles read as a soft tertiary "have it" tone; missing ones as
+    // a neutral outlined tone.
+    final Color fg = present ? cs.onTertiaryContainer : cs.onSurfaceVariant;
     // External (downloaded) subtitles carry a path and can be deleted; embedded
     // subtitles (path null) cannot.
     final bool deletable = present && (s.path?.isNotEmpty ?? false);
@@ -62,10 +64,10 @@ class BazarrSubtitleChips extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: Insets.sm, vertical: 4),
       decoration: BoxDecoration(
         color: present
-            ? Colors.green.withValues(alpha: 0.16)
-            : theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(6),
-        border: present ? null : Border.all(color: theme.dividerColor),
+            ? cs.tertiary.withValues(alpha: 0.16)
+            : cs.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+        border: present ? null : Border.all(color: cs.outlineVariant),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -73,12 +75,13 @@ class BazarrSubtitleChips extends StatelessWidget {
           Icon(
             present ? Icons.check : Icons.remove,
             size: 12,
-            color: fg,
+            color: present ? cs.tertiary : fg,
           ),
           const SizedBox(width: 4),
           Text(
             _label(s),
-            style: theme.textTheme.labelSmall?.copyWith(color: fg),
+            style: theme.textTheme.labelSmall
+                ?.copyWith(color: fg, fontWeight: FontWeight.w600),
           ),
           if (deletable) ...<Widget>[
             const SizedBox(width: 4),
@@ -89,7 +92,7 @@ class BazarrSubtitleChips extends StatelessWidget {
     );
     if (present && onDeletePresent != null) {
       return InkWell(
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
         onTap: () => onDeletePresent!(s),
         child: chip,
       );
