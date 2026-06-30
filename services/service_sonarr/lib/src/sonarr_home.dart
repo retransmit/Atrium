@@ -78,6 +78,15 @@ class _SonarrHomeState extends ConsumerState<SonarrHome> with SingleTickerProvid
             controller: _tabController,
             isScrollable: true,
             tabAlignment: TabAlignment.start,
+            dividerColor: Colors.transparent,
+            indicatorSize: TabBarIndicatorSize.tab,
+            indicator: BoxDecoration(
+              color: Theme.of(context).colorScheme.secondaryContainer,
+              borderRadius: BorderRadius.circular(50),
+            ),
+            labelColor: Theme.of(context).colorScheme.onSecondaryContainer,
+            unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
+            splashBorderRadius: BorderRadius.circular(50),
             tabs: const <Widget>[
               Tab(text: 'Series'),
               Tab(text: 'Queue'),
@@ -163,18 +172,21 @@ class _SeriesTab extends ConsumerWidget {
                           final SonarrSeries s = list[index];
                           final SonarrImage? poster = s.images
                               .firstWhereOrNull((SonarrImage i) => i.coverType == 'poster');
-                          return _SeriesCard(
-                            series: s,
-                            imageUrl: poster == null ? null : api?.posterUrl(poster),
-                            onTap: () => Navigator.of(context, rootNavigator: true).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => SeriesDetailScreen(
-                                  instance: instance,
-                                  seriesId: s.id,
+                          return PerformanceLoggerWidget(
+                            name: 'SonarrSeriesGridItem',
+                            child: _SeriesCard(
+                              series: s,
+                              imageUrl: poster == null ? null : api?.posterUrl(poster),
+                              onTap: () => Navigator.of(context, rootNavigator: true).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => SeriesDetailScreen(
+                                    instance: instance,
+                                    seriesId: s.id,
+                                  ),
                                 ),
                               ),
+                              onLongPress: () => _showQuickActions(context, ref, s),
                             ),
-                            onLongPress: () => _showQuickActions(context, ref, s),
                           );
                         },
                       );
@@ -184,18 +196,21 @@ class _SeriesTab extends ConsumerWidget {
                         itemCount: list.length,
                         itemBuilder: (BuildContext context, int index) {
                           final SonarrSeries s = list[index];
-                          return _SeriesBannerCard(
-                            instance: instance,
-                            series: s,
-                            onTap: () => Navigator.of(context, rootNavigator: true).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => SeriesDetailScreen(
-                                  instance: instance,
-                                  seriesId: s.id,
+                          return PerformanceLoggerWidget(
+                            name: 'SonarrSeriesListItem',
+                            child: _SeriesBannerCard(
+                              instance: instance,
+                              series: s,
+                              onTap: () => Navigator.of(context, rootNavigator: true).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => SeriesDetailScreen(
+                                    instance: instance,
+                                    seriesId: s.id,
+                                  ),
                                 ),
                               ),
+                              onLongPress: () => _showQuickActions(context, ref, s),
                             ),
-                            onLongPress: () => _showQuickActions(context, ref, s),
                           );
                         },
                       );
@@ -329,13 +344,11 @@ class _SeriesCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final List<SonarrSeasonStats> monitoredSeasons = series.seasons
-        .where((SonarrSeasonStats s) => s.monitored)
-        .sorted((SonarrSeasonStats a, SonarrSeasonStats b) => b.seasonNumber.compareTo(a.seasonNumber));
 
     return Card(
+      elevation: 0,
       margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
+      clipBehavior: Clip.hardEdge,
       color: theme.colorScheme.surfaceContainerHigh,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       child: InkWell(
@@ -359,36 +372,6 @@ class _SeriesCard extends StatelessWidget {
                           Icons.bookmark,
                           size: 12,
                           color: theme.colorScheme.onPrimary,
-                        ),
-                      ),
-                    ),
-                  if (monitoredSeasons.isNotEmpty)
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Padding(
-                        padding: const EdgeInsets.all(3),
-                        child: Row(
-                          children: monitoredSeasons.map((SonarrSeasonStats s) {
-                            final double seasonProgress = (s.statistics == null || s.statistics!.totalEpisodeCount == 0)
-                                ? 0
-                                : (s.statistics!.episodeFileCount / s.statistics!.totalEpisodeCount).clamp(0, 1);
-                            return Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 1),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(2),
-                                  child: LinearProgressIndicator(
-                                    value: seasonProgress.toDouble(),
-                                    minHeight: 4,
-                                    backgroundColor: Colors.black.withValues(alpha: 0.35),
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      theme.colorScheme.primary,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
                         ),
                       ),
                     ),
@@ -428,17 +411,10 @@ class _SeriesCard extends StatelessWidget {
     final List<String> parts = <String>[
       if (series.year != null) '${series.year}',
     ];
-    final List<SonarrSeasonStats> monitoredSeasons = series.seasons
-        .where((SonarrSeasonStats s) => s.monitored)
-        .sorted((SonarrSeasonStats a, SonarrSeasonStats b) => b.seasonNumber.compareTo(a.seasonNumber));
-    if (monitoredSeasons.isNotEmpty) {
-      final String seasonStatsList = monitoredSeasons.map((SonarrSeasonStats s) {
-        final String label = s.seasonNumber == 0 ? 'Specials' : 'S${s.seasonNumber}';
-        final int fileCount = s.statistics?.episodeFileCount ?? 0;
-        final int totalCount = s.statistics?.totalEpisodeCount ?? 0;
-        return '$label: $fileCount/$totalCount';
-      }).join(', ');
-      parts.add(seasonStatsList);
+    final int fileCount = series.statistics?.episodeFileCount ?? 0;
+    final int totalCount = series.statistics?.totalEpisodeCount ?? 0;
+    if (totalCount > 0) {
+      parts.add('$fileCount/$totalCount eps');
     }
     return parts.join(' • ');
   }
@@ -472,10 +448,6 @@ class _SeriesBannerCard extends ConsumerWidget {
 
     final SonarrSeriesStatistics? stats = series.statistics;
 
-    final List<SonarrSeasonStats> monitoredSeasons = series.seasons
-        .where((SonarrSeasonStats s) => s.monitored)
-        .sorted((SonarrSeasonStats a, SonarrSeasonStats b) => b.seasonNumber.compareTo(a.seasonNumber));
-
     Widget buildMetaChip(String label, {bool isPrimary = false}) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -503,7 +475,7 @@ class _SeriesBannerCard extends ConsumerWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: Insets.md),
-      clipBehavior: Clip.antiAlias,
+      clipBehavior: Clip.hardEdge,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
@@ -560,13 +532,6 @@ class _SeriesBannerCard extends ConsumerWidget {
                       height: 112,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
-                        boxShadow: <BoxShadow>[
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.4),
-                            blurRadius: 6,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
@@ -603,12 +568,6 @@ class _SeriesBannerCard extends ConsumerWidget {
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
-                              shadows: const <Shadow>[
-                                Shadow(
-                                  blurRadius: 4,
-                                  offset: Offset(0, 1),
-                                ),
-                              ],
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -650,57 +609,6 @@ class _SeriesBannerCard extends ConsumerWidget {
                               ),
                             ],
                           ),
-                          if (monitoredSeasons.isNotEmpty) ...<Widget>[
-                            const SizedBox(height: 6),
-                            SizedBox(
-                              height: 32,
-                              child: ListView.builder(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: monitoredSeasons.length,
-                                itemBuilder: (BuildContext context, int idx) {
-                                  final SonarrSeasonStats s = monitoredSeasons[idx];
-                                  final double seasonProgress = (s.statistics == null || s.statistics!.totalEpisodeCount == 0)
-                                      ? 0
-                                      : (s.statistics!.episodeFileCount / s.statistics!.totalEpisodeCount).clamp(0, 1);
-                                  final String label = s.seasonNumber == 0 ? 'Specials' : 'S${s.seasonNumber}';
-                                  final int fileCount = s.statistics?.episodeFileCount ?? 0;
-                                  final int totalCount = s.statistics?.totalEpisodeCount ?? 0;
-                                  return Container(
-                                    width: 80,
-                                    margin: const EdgeInsets.only(right: 8),
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: <Widget>[
-                                        Text(
-                                          '$label: $fileCount/$totalCount',
-                                          style: theme.textTheme.bodySmall?.copyWith(
-                                            color: Colors.white.withValues(alpha: 0.8),
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 2),
-                                        ClipRRect(
-                                          borderRadius: BorderRadius.circular(2),
-                                          child: LinearProgressIndicator(
-                                            value: seasonProgress.toDouble(),
-                                            minHeight: 3,
-                                            backgroundColor: Colors.white.withValues(alpha: 0.15),
-                                            valueColor: AlwaysStoppedAnimation<Color>(
-                                              theme.colorScheme.primary,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                     ),
@@ -1038,7 +946,6 @@ class _Poster extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: imageUrl!,
       fit: BoxFit.cover,
-      memCacheWidth: 500,
       placeholder: (BuildContext context, String url) =>
           Container(color: theme.colorScheme.surfaceContainerHighest),
       errorWidget: (BuildContext context, String url, Object error) =>
@@ -1180,7 +1087,7 @@ class _QueueTab extends ConsumerWidget {
               return Card(
                 margin: const EdgeInsets.only(bottom: Insets.md),
                 elevation: 0,
-                clipBehavior: Clip.antiAlias,
+                clipBehavior: Clip.hardEdge,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                   side: BorderSide(
@@ -1482,9 +1389,17 @@ class _WantedTabState extends State<_WantedTab> {
       length: 2,
       child: Column(
         children: <Widget>[
-          const TabBar(
+          TabBar(
+            dividerColor: Colors.transparent,
             indicatorSize: TabBarIndicatorSize.tab,
-            tabs: <Widget>[
+            indicator: BoxDecoration(
+              color: Theme.of(context).colorScheme.secondaryContainer,
+              borderRadius: BorderRadius.circular(50),
+            ),
+            labelColor: Theme.of(context).colorScheme.onSecondaryContainer,
+            unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
+            splashBorderRadius: BorderRadius.circular(50),
+            tabs: const <Widget>[
               Tab(text: 'Missing'),
               Tab(text: 'Cutoff Unmet'),
             ],
@@ -1557,7 +1472,7 @@ class _WantedEpisodeCardState extends State<_WantedEpisodeCard> {
           color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
         ),
       ),
-      clipBehavior: Clip.antiAlias,
+      clipBehavior: Clip.hardEdge,
       child: InkWell(
         onTap: widget.onTap,
         child: Padding(
