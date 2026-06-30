@@ -37,6 +37,7 @@ class EmbyClient {
   String? _userId;
   String? _serverId;
   bool _loggedIn = false;
+  Future<void>? _loginFuture;
 
   String? get serverId => _serverId;
 
@@ -111,7 +112,12 @@ class EmbyClient {
         'DeviceId="$deviceId", Version="$version"';
   }
 
-  Future<void> login() async {
+  /// Dedupes concurrent login attempts: all callers await the same in-flight
+  /// future, which is cleared once it completes (success or failure).
+  Future<void> login() =>
+      _loginFuture ??= _performLogin().whenComplete(() => _loginFuture = null);
+
+  Future<void> _performLogin() async {
     try {
       _dio.options.headers['X-Emby-Authorization'] = _identityHeader();
       final Response<dynamic> resp = await _dio.post<dynamic>(
@@ -142,7 +148,7 @@ class EmbyClient {
       });
 
   Future<List<EmbyItem>> getLibraryItems(
-          String parentId, String? collectionType) =>
+          String parentId, String? collectionType,) =>
       _guarded(() async {
         String? includeItemTypes;
         switch (collectionType) {
@@ -197,7 +203,7 @@ class EmbyClient {
       });
 
   Future<List<EmbyItem>> getWatchedItems(
-          {int startIndex = 0, int limit = 200}) =>
+          {int startIndex = 0, int limit = 200,}) =>
       _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
           'Users/$_userId/Items',
@@ -219,7 +225,7 @@ class EmbyClient {
       });
 
   Future<List<EmbyItem>> getUnwatchedItems(
-          {int startIndex = 0, int limit = 200}) =>
+          {int startIndex = 0, int limit = 200,}) =>
       _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
           'Users/$_userId/Items',
@@ -442,8 +448,9 @@ class EmbyClient {
             'EnableImageTypes': 'Primary',
           },
         );
-        final List<dynamic> list = resp.data as List<dynamic>;
-        return list
+        final dynamic data = resp.data;
+        if (data is! List) return <EmbyItem>[];
+        return data
             .map((dynamic e) => EmbyItem.fromJson(e as Map<String, dynamic>))
             .toList();
       });

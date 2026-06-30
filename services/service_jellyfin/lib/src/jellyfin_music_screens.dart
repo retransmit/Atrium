@@ -30,7 +30,7 @@ class JellyfinAlbumScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<AlbumScreenData> dataAsync = ref.watch(
-        jellyfinAlbumDataFutureProvider((instance, albumId, albumArtist)));
+        jellyfinAlbumDataFutureProvider((instance, albumId, albumArtist)),);
     final JellyfinClient? client =
         ref.watch(jellyfinClientProvider(instance)).value;
 
@@ -108,7 +108,7 @@ class JellyfinAlbumScreen extends ConsumerWidget {
             child: AsyncValueView<AlbumScreenData>(
               value: dataAsync,
               onRetry: () => ref.invalidate(jellyfinAlbumDataFutureProvider(
-                  (instance, albumId, albumArtist))),
+                  (instance, albumId, albumArtist),),),
               data: (AlbumScreenData data) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,7 +116,7 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                     // Bottom Section: Tracklist
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: Insets.lg, vertical: Insets.sm),
+                          horizontal: Insets.lg, vertical: Insets.sm,),
                       child: Text(
                         'Tracks - ${data.tracks.length}',
                         style: Theme.of(context)
@@ -147,7 +147,7 @@ class JellyfinAlbumScreen extends ConsumerWidget {
 
                         return ListTile(
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: Insets.lg, vertical: Insets.xs),
+                              horizontal: Insets.lg, vertical: Insets.xs,),
                           onTap: () {
                             if (client != null) {
                               launchJellyfinDeepLink(context, client, song.id);
@@ -210,7 +210,7 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                             ],
                           ),
                           title: Text(song.name,
-                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                              maxLines: 1, overflow: TextOverflow.ellipsis,),
                           subtitle: Text(
                             song.artists.isNotEmpty
                                 ? '${song.artists.join(', ')} • $duration'
@@ -298,7 +298,7 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                 ),
                 const SizedBox(
                     height: Insets
-                        .xs), // Add a small padding at the bottom so it aligns perfectly with the poster's bottom edge
+                        .xs,), // Add a small padding at the bottom so it aligns perfectly with the poster's bottom edge
               ],
             ),
           ),

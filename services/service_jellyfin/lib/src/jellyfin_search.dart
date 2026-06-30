@@ -32,7 +32,7 @@ class JellyfinSearchDelegate extends SearchDelegate<void> {
           return IconButton(
             icon: Icon(viewMode == JellyfinViewMode.grid
                 ? Icons.view_headline
-                : Icons.grid_view),
+                : Icons.grid_view,),
             tooltip: viewMode == JellyfinViewMode.grid
                 ? 'Switch to List View'
                 : 'Switch to Grid View',

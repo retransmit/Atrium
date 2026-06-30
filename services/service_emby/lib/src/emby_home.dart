@@ -163,7 +163,7 @@ class _TabObserverState extends ConsumerState<_TabObserver> {
 
 class EmbyLibraryGrid extends ConsumerWidget {
   const EmbyLibraryGrid(
-      {required this.instance, required this.view, super.key});
+      {required this.instance, required this.view, super.key,});
 
   final Instance instance;
   final EmbyView view;
@@ -228,7 +228,7 @@ class EmbyLibraryGrid extends ConsumerWidget {
                                   pushScreen<void>(
                                     context,
                                     EmbyItemDetailScreen(
-                                        instance: instance, itemId: item.id),
+                                        instance: instance, itemId: item.id,),
                                   );
                                 } else if (item.type == 'Season') {
                                   pushScreen<void>(
@@ -245,13 +245,13 @@ class EmbyLibraryGrid extends ConsumerWidget {
                                   pushScreen<void>(
                                     context,
                                     EmbyFolderScreen(
-                                        instance: instance, item: item),
+                                        instance: instance, item: item,),
                                   );
                                 } else {
                                   pushScreen<void>(
                                     context,
                                     EmbyItemDetailScreen(
-                                        instance: instance, itemId: item.id),
+                                        instance: instance, itemId: item.id,),
                                   );
                                 }
                               },
@@ -281,7 +281,7 @@ class EmbyLibraryGrid extends ConsumerWidget {
                                   pushScreen<void>(
                                     context,
                                     EmbyItemDetailScreen(
-                                        instance: instance, itemId: item.id),
+                                        instance: instance, itemId: item.id,),
                                   );
                                 } else if (item.type == 'Season') {
                                   pushScreen<void>(
@@ -298,13 +298,13 @@ class EmbyLibraryGrid extends ConsumerWidget {
                                   pushScreen<void>(
                                     context,
                                     EmbyFolderScreen(
-                                        instance: instance, item: item),
+                                        instance: instance, item: item,),
                                   );
                                 } else {
                                   pushScreen<void>(
                                     context,
                                     EmbyItemDetailScreen(
-                                        instance: instance, itemId: item.id),
+                                        instance: instance, itemId: item.id,),
                                   );
                                 }
                               },
@@ -320,7 +320,7 @@ class EmbyLibraryGrid extends ConsumerWidget {
 
 class EmbyItemsGrid extends ConsumerWidget {
   const EmbyItemsGrid(
-      {required this.instance, required this.libraryId, super.key});
+      {required this.instance, required this.libraryId, super.key,});
 
   final Instance instance;
   final String libraryId;
@@ -436,7 +436,7 @@ class EmbyItemsGrid extends ConsumerWidget {
 
 class EmbyFolderScreen extends ConsumerWidget {
   const EmbyFolderScreen(
-      {required this.instance, required this.item, super.key});
+      {required this.instance, required this.item, super.key,});
 
   final Instance instance;
   final EmbyItem item;
@@ -464,11 +464,16 @@ class EmbyFolderScreen extends ConsumerWidget {
                     : null,
               ),
               onPressed: () async {
-                final bool isFav = currentItem.userData?.isFavorite == true;
-                await client.markFavorite(currentItem.id, !isFav);
-                ref.invalidate(
-                    embyItemDetailsProvider((instance, currentItem.id)));
-                ref.invalidate(embyFavoritesProvider(instance));
+                try {
+                  final bool isFav = currentItem.userData?.isFavorite == true;
+                  await client.markFavorite(currentItem.id, !isFav);
+                  if (!context.mounted) return;
+                  ref.invalidate(
+                      embyItemDetailsProvider((instance, currentItem.id)),);
+                  ref.invalidate(embyFavoritesProvider(instance));
+                } catch (_) {
+                  // Action failed; leave UI as-is (no revert needed).
+                }
               },
             ),
         ],
@@ -522,9 +527,14 @@ class EmbyPosterCard extends ConsumerWidget {
                     ),
                     onTap: () async {
                       Navigator.of(context).pop();
-                      final toggle =
-                          ref.read(embyToggleWatchedProvider(instance));
-                      await toggle(item.id, !(item.userData?.played == true));
+                      try {
+                        final toggle =
+                            ref.read(embyToggleWatchedProvider(instance));
+                        await toggle(
+                            item.id, !(item.userData?.played == true),);
+                      } catch (_) {
+                        // Action failed; no revert needed.
+                      }
                     },
                   ),
                   ListTile(
@@ -545,16 +555,22 @@ class EmbyPosterCard extends ConsumerWidget {
                       final EmbyClient? client =
                           ref.read(embyClientProvider(instance)).value;
                       if (client != null) {
-                        final bool isFav = item.userData?.isFavorite == true;
-                        await client.markFavorite(item.id, !isFav);
-                        // Invalidate to refresh UI
-                        ref.invalidate(
-                          embyItemDetailsProvider((instance, item.id)),
-                        );
-                        ref.invalidate(embyFavoritesProvider(instance));
-                        ref.invalidate(embyItemsProvider);
-                        ref.invalidate(embyNextUpProvider(instance));
-                        ref.invalidate(embyResumeItemsProvider(instance));
+                        try {
+                          final bool isFav =
+                              item.userData?.isFavorite == true;
+                          await client.markFavorite(item.id, !isFav);
+                          if (!context.mounted) return;
+                          // Invalidate to refresh UI
+                          ref.invalidate(
+                            embyItemDetailsProvider((instance, item.id)),
+                          );
+                          ref.invalidate(embyFavoritesProvider(instance));
+                          ref.invalidate(embyItemsProvider);
+                          ref.invalidate(embyNextUpProvider(instance));
+                          ref.invalidate(embyResumeItemsProvider(instance));
+                        } catch (_) {
+                          // Action failed; no revert needed.
+                        }
                       }
                     },
                   ),
@@ -616,7 +632,7 @@ class EmbyPosterCard extends ConsumerWidget {
                         alignment: Alignment.bottomCenter,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 8),
+                              horizontal: 8, vertical: 8,),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(6),
                             child: LinearProgressIndicator(
@@ -767,9 +783,14 @@ class EmbyBannerCard extends ConsumerWidget {
                       ),
                       onTap: () async {
                         Navigator.of(context).pop();
-                        final toggle =
-                            ref.read(embyToggleWatchedProvider(instance));
-                        await toggle(item.id, !(item.userData?.played == true));
+                        try {
+                          final toggle =
+                              ref.read(embyToggleWatchedProvider(instance));
+                          await toggle(
+                              item.id, !(item.userData?.played == true),);
+                        } catch (_) {
+                          // Action failed; no revert needed.
+                        }
                       },
                     ),
                     ListTile(
@@ -791,15 +812,21 @@ class EmbyBannerCard extends ConsumerWidget {
                         final EmbyClient? client =
                             ref.read(embyClientProvider(instance)).value;
                         if (client != null) {
-                          final bool isFav = item.userData?.isFavorite == true;
-                          await client.markFavorite(item.id, !isFav);
-                          ref.invalidate(
-                            embyItemDetailsProvider((instance, item.id)),
-                          );
-                          ref.invalidate(embyFavoritesProvider(instance));
-                          ref.invalidate(embyItemsProvider);
-                          ref.invalidate(embyNextUpProvider(instance));
-                          ref.invalidate(embyResumeItemsProvider(instance));
+                          try {
+                            final bool isFav =
+                                item.userData?.isFavorite == true;
+                            await client.markFavorite(item.id, !isFav);
+                            if (!context.mounted) return;
+                            ref.invalidate(
+                              embyItemDetailsProvider((instance, item.id)),
+                            );
+                            ref.invalidate(embyFavoritesProvider(instance));
+                            ref.invalidate(embyItemsProvider);
+                            ref.invalidate(embyNextUpProvider(instance));
+                            ref.invalidate(embyResumeItemsProvider(instance));
+                          } catch (_) {
+                            // Action failed; no revert needed.
+                          }
                         }
                       },
                     ),
@@ -1126,7 +1153,7 @@ class _HorizontalSection extends ConsumerWidget {
                                   pushScreen<void>(
                                     context,
                                     EmbyItemDetailScreen(
-                                        instance: instance, itemId: item.id),
+                                        instance: instance, itemId: item.id,),
                                   );
                                 } else if (item.type == 'Season') {
                                   pushScreen<void>(
@@ -1323,14 +1350,16 @@ class _SessionCard extends StatelessWidget {
                           ],
                           image: session.posterUrl != null
                               ? DecorationImage(
-                                  image: NetworkImage(session.posterUrl!),
+                                  image: CachedNetworkImageProvider(
+                                      session.posterUrl!,),
                                   fit: BoxFit.cover,
+                                  onError: (Object _, StackTrace? __) {},
                                 )
                               : null,
                         ),
                         child: session.posterUrl == null
                             ? Icon(Icons.movie_outlined,
-                                color: theme.colorScheme.outline, size: 32)
+                                color: theme.colorScheme.outline, size: 32,)
                             : null,
                       ),
                     ),
@@ -1369,7 +1398,7 @@ class _SessionCard extends StatelessWidget {
                           const SizedBox(height: 4),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
+                                horizontal: 8, vertical: 4,),
                             decoration: BoxDecoration(
                               color: theme.colorScheme.surfaceContainerHighest
                                   .withValues(alpha: 0.5),
@@ -1475,11 +1504,11 @@ Widget _buildEmbyGridOrList(
       slivers: <Widget>[
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
-              Insets.lg, Insets.lg, Insets.lg, Insets.sm),
+              Insets.lg, Insets.lg, Insets.lg, Insets.sm,),
           sliver: SliverToBoxAdapter(
             child: Text('Albums',
                 style: theme.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+                    ?.copyWith(fontWeight: FontWeight.bold),),
           ),
         ),
         SliverPadding(
@@ -1503,11 +1532,11 @@ Widget _buildEmbyGridOrList(
         ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
-              Insets.lg, Insets.xl, Insets.lg, Insets.sm),
+              Insets.lg, Insets.xl, Insets.lg, Insets.sm,),
           sliver: SliverToBoxAdapter(
             child: Text('Playlists',
                 style: theme.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+                    ?.copyWith(fontWeight: FontWeight.bold),),
           ),
         ),
         SliverPadding(

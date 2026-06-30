@@ -155,14 +155,17 @@ final jellyfinEpisodesProvider =
 });
 
 final jellyfinSessionsProvider =
-    StreamProvider.family<List<ActiveSession>, Instance>((
+    StreamProvider.autoDispose.family<List<ActiveSession>, Instance>((
   Ref ref,
   Instance instance,
 ) async* {
+  bool disposed = false;
+  ref.onDispose(() => disposed = true);
+
   final JellyfinClient client =
       await ref.watch(jellyfinClientProvider(instance).future);
 
-  while (true) {
+  while (!disposed) {
     yield await client.getSessions();
     await Future<void>.delayed(const Duration(seconds: 10));
   }
@@ -249,13 +252,13 @@ enum JellyfinViewMode { grid, list }
 
 final jellyfinViewModeProvider =
     StateProvider.family<JellyfinViewMode, Instance>(
-        (Ref ref, Instance instance) => JellyfinViewMode.grid);
+        (Ref ref, Instance instance) => JellyfinViewMode.grid,);
 
 final jellyfinActiveTabBarIndexProvider =
     StateProvider.family<int, Instance>((Ref ref, Instance instance) => 0);
 
 final jellyfinFastSessionsProvider =
-    StreamProvider.family<List<ActiveSession>, Instance>((
+    StreamProvider.autoDispose.family<List<ActiveSession>, Instance>((
   Ref ref,
   Instance instance,
 ) async* {

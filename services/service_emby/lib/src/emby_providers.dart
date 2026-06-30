@@ -88,7 +88,7 @@ final embyResumeItemsProvider =
 });
 
 final embySessionsProvider =
-    StreamProvider.family<List<ActiveSession>, Instance>((
+    StreamProvider.autoDispose.family<List<ActiveSession>, Instance>((
   Ref ref,
   Instance instance,
 ) async* {
@@ -115,7 +115,7 @@ final embySessionsProvider =
 });
 
 final embyFastSessionsProvider =
-    StreamProvider.family<List<ActiveSession>, Instance>((
+    StreamProvider.autoDispose.family<List<ActiveSession>, Instance>((
   Ref ref,
   Instance instance,
 ) async* {

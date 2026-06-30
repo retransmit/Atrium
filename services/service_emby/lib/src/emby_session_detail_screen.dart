@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:collection/collection.dart';
@@ -36,7 +35,7 @@ class _EmbySessionDetailScreenState
     final AsyncValue<List<ActiveSession>> sessionsAsync =
         ref.watch(embyFastSessionsProvider(widget.instance));
     final ActiveSession session = sessionsAsync.value?.firstWhereOrNull(
-            (ActiveSession s) => s.id == widget.initialSession.id) ??
+            (ActiveSession s) => s.id == widget.initialSession.id,) ??
         widget.initialSession;
 
     final ThemeData theme = Theme.of(context);
@@ -133,14 +132,14 @@ class _EmbySessionDetailScreenState
                           image: session.posterUrl != null
                               ? DecorationImage(
                                   image: CachedNetworkImageProvider(
-                                      session.posterUrl!),
+                                      session.posterUrl!,),
                                   fit: BoxFit.cover,
                                 )
                               : null,
                         ),
                         child: session.posterUrl == null
                             ? Icon(Icons.movie_outlined,
-                                color: theme.colorScheme.outline, size: 80)
+                                color: theme.colorScheme.outline, size: 80,)
                             : null,
                       ),
                     ),
@@ -209,21 +208,30 @@ class _EmbySessionDetailScreenState
                           },
                           onChangeEnd: (double newValue) async {
                             setState(() => _isDragging = false);
-                            if (session.durationTicks > 0) {
+                            if (session.durationTicks <= 0) return;
+                            try {
                               final int targetTicks =
                                   (session.durationTicks * newValue).round();
                               final EmbyClient client = await ref.read(
-                                  embyClientProvider(widget.instance).future);
+                                  embyClientProvider(widget.instance).future,);
                               await client.seekSession(session.id, targetTicks);
+                              if (!context.mounted) return;
                               ref.invalidate(
-                                  embyFastSessionsProvider(widget.instance));
+                                  embyFastSessionsProvider(widget.instance),);
+                            } catch (_) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text('Action failed'),),
+                                );
+                              }
                             }
                           },
                         ),
                       ),
                       Padding(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 24), // Align with slider track
+                            horizontal: 24,), // Align with slider track
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: <Widget>[
@@ -259,21 +267,31 @@ class _EmbySessionDetailScreenState
                         child: FilledButton.tonal(
                           style: FilledButton.styleFrom(
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24)),
+                                borderRadius: BorderRadius.circular(24),),
                             padding: EdgeInsets.zero,
                           ),
                           onPressed: () async {
-                            final EmbyClient client = await ref.read(
-                                embyClientProvider(widget.instance).future);
-                            // If more than 5 seconds have elapsed (50 million ticks),
-                            // restart the track instead of skipping to previous.
-                            if (session.positionTicks > 50000000) {
-                              await client.seekSession(session.id, 0);
-                            } else {
-                              await client.previousTrack(session.id);
+                            try {
+                              final EmbyClient client = await ref.read(
+                                  embyClientProvider(widget.instance).future,);
+                              // If more than 5 seconds have elapsed (50 million ticks),
+                              // restart the track instead of skipping to previous.
+                              if (session.positionTicks > 50000000) {
+                                await client.seekSession(session.id, 0);
+                              } else {
+                                await client.previousTrack(session.id);
+                              }
+                              if (!context.mounted) return;
+                              ref.invalidate(
+                                  embyFastSessionsProvider(widget.instance),);
+                            } catch (_) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text('Action failed'),),
+                                );
+                              }
                             }
-                            ref.invalidate(
-                                embyFastSessionsProvider(widget.instance));
                           },
                           child: const Icon(Icons.skip_previous, size: 32),
                         ),
@@ -285,18 +303,28 @@ class _EmbySessionDetailScreenState
                         child: FilledButton(
                           style: FilledButton.styleFrom(
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(32)),
+                                borderRadius: BorderRadius.circular(32),),
                             padding: EdgeInsets.zero,
                           ),
                           onPressed: () async {
-                            final EmbyClient client = await ref.read(
-                                embyClientProvider(widget.instance).future);
-                            await client.playPauseSession(session.id);
-                            ref.invalidate(
-                                embyFastSessionsProvider(widget.instance));
+                            try {
+                              final EmbyClient client = await ref.read(
+                                  embyClientProvider(widget.instance).future,);
+                              await client.playPauseSession(session.id);
+                              if (!context.mounted) return;
+                              ref.invalidate(
+                                  embyFastSessionsProvider(widget.instance),);
+                            } catch (_) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text('Action failed'),),
+                                );
+                              }
+                            }
                           },
                           child: Icon(playing ? Icons.pause : Icons.play_arrow,
-                              size: 40),
+                              size: 40,),
                         ),
                       ),
                       const SizedBox(width: Insets.lg),
@@ -306,15 +334,25 @@ class _EmbySessionDetailScreenState
                         child: FilledButton.tonal(
                           style: FilledButton.styleFrom(
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24)),
+                                borderRadius: BorderRadius.circular(24),),
                             padding: EdgeInsets.zero,
                           ),
                           onPressed: () async {
-                            final EmbyClient client = await ref.read(
-                                embyClientProvider(widget.instance).future);
-                            await client.nextTrack(session.id);
-                            ref.invalidate(
-                                embyFastSessionsProvider(widget.instance));
+                            try {
+                              final EmbyClient client = await ref.read(
+                                  embyClientProvider(widget.instance).future,);
+                              await client.nextTrack(session.id);
+                              if (!context.mounted) return;
+                              ref.invalidate(
+                                  embyFastSessionsProvider(widget.instance),);
+                            } catch (_) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text('Action failed'),),
+                                );
+                              }
+                            }
                           },
                           child: const Icon(Icons.skip_next, size: 32),
                         ),
@@ -337,13 +375,21 @@ class _EmbySessionDetailScreenState
                             backgroundColor: theme.colorScheme.errorContainer,
                           ),
                           onPressed: () async {
-                            final EmbyClient client = await ref.read(
-                                embyClientProvider(widget.instance).future);
-                            await client.stopSession(session.id);
-                            ref.invalidate(
-                                embyFastSessionsProvider(widget.instance));
-                            if (context.mounted) {
+                            try {
+                              final EmbyClient client = await ref.read(
+                                  embyClientProvider(widget.instance).future,);
+                              await client.stopSession(session.id);
+                              if (!context.mounted) return;
+                              ref.invalidate(
+                                  embyFastSessionsProvider(widget.instance),);
                               Navigator.of(context).pop();
+                            } catch (_) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text('Action failed'),),
+                                );
+                              }
                             }
                           },
                           child: const Icon(Icons.stop, size: 28),
@@ -361,7 +407,7 @@ class _EmbySessionDetailScreenState
                       // Device Chip
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
+                            horizontal: 16, vertical: 8,),
                         decoration: BoxDecoration(
                           color: theme.colorScheme.surfaceContainerHighest
                               .withValues(alpha: 0.5),
@@ -389,7 +435,7 @@ class _EmbySessionDetailScreenState
                       // User Chip
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
+                            horizontal: 16, vertical: 8,),
                         decoration: BoxDecoration(
                           color: theme.colorScheme.surfaceContainerHighest
                               .withValues(alpha: 0.5),

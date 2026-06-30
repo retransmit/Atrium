@@ -41,9 +41,13 @@ class EmbyItemDetailScreen extends ConsumerWidget {
                     : Icons.check_circle_outline,
               ),
               onPressed: () async {
-                final toggle = ref.read(embyToggleWatchedProvider(instance));
-                await toggle(
-                    itemId, !(itemAsync.value!.userData?.played == true));
+                try {
+                  final toggle = ref.read(embyToggleWatchedProvider(instance));
+                  await toggle(
+                      itemId, !(itemAsync.value!.userData?.played == true),);
+                } catch (_) {
+                  // Action failed; no revert needed.
+                }
               },
             ),
             IconButton(
@@ -56,11 +60,16 @@ class EmbyItemDetailScreen extends ConsumerWidget {
                     : null,
               ),
               onPressed: () async {
-                final bool isFav =
-                    itemAsync.value!.userData?.isFavorite == true;
-                await client.markFavorite(itemId, !isFav);
-                ref.invalidate(embyItemDetailsProvider((instance, itemId)));
-                ref.invalidate(embyFavoritesProvider(instance));
+                try {
+                  final bool isFav =
+                      itemAsync.value!.userData?.isFavorite == true;
+                  await client.markFavorite(itemId, !isFav);
+                  if (!context.mounted) return;
+                  ref.invalidate(embyItemDetailsProvider((instance, itemId)));
+                  ref.invalidate(embyFavoritesProvider(instance));
+                } catch (_) {
+                  // Action failed; no revert needed.
+                }
               },
             ),
           ],
@@ -216,7 +225,7 @@ class _Header extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleMedium?.copyWith(
                           color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold),
+                          fontWeight: FontWeight.bold,),
                     ),
                   ),
                 if (item.seriesName != null) const SizedBox(height: 4),
@@ -295,7 +304,7 @@ class _Header extends StatelessWidget {
                     ),
                     label: Text(item.type == 'Series' || item.type == 'Movie'
                         ? 'Watch on Emby'
-                        : 'Play on Emby'),
+                        : 'Play on Emby',),
                   ),
                 ),
               ],
@@ -408,7 +417,7 @@ class _SeasonsGrid extends ConsumerWidget {
 
           return Padding(
             padding: const EdgeInsets.symmetric(
-                horizontal: Insets.lg, vertical: Insets.lg),
+                horizontal: Insets.lg, vertical: Insets.lg,),
             child: GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
