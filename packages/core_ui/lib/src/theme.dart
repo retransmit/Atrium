@@ -13,20 +13,22 @@ abstract final class AtriumTheme {
   /// Fallback seed when dynamic color is unavailable.
   static const Color seed = Color(0xFF6750A4);
 
-  static ThemeData light(ColorScheme? dynamicScheme) =>
-      _build(dynamicScheme ?? ColorScheme.fromSeed(seedColor: seed));
+  static ThemeData light(ColorScheme? dynamicScheme, {String? fontFamily}) =>
+      _build(dynamicScheme ?? ColorScheme.fromSeed(seedColor: seed), fontFamily);
 
-  static ThemeData dark(ColorScheme? dynamicScheme) => _build(
+  static ThemeData dark(ColorScheme? dynamicScheme, {String? fontFamily}) => _build(
         dynamicScheme ??
             ColorScheme.fromSeed(
               seedColor: seed,
               brightness: Brightness.dark,
             ),
+        fontFamily,
       );
 
-  static ThemeData _build(ColorScheme scheme) {
+  static ThemeData _build(ColorScheme scheme, String? fontFamily) {
     return ThemeData(
       useMaterial3: true,
+      fontFamily: fontFamily,
       colorScheme: scheme,
       scaffoldBackgroundColor: scheme.surface,
       cardTheme: CardThemeData(

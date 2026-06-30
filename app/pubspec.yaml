@@ -40,6 +40,7 @@ dependencies:
   service_glances:
   service_tautulli:
   url_launcher: ^6.3.2
+  google_fonts: ^8.1.0
 dev_dependencies:
   flutter_launcher_icons: ^0.14.3
   flutter_lints: ^6.0.0
@@ -50,6 +51,11 @@ flutter:
   uses-material-design: true
   assets:
     - assets/service_icons/
+    - assets/glyphs/
+  fonts:
+    - family: JetBrainsMono Nerd Font
+      fonts:
+        - asset: assets/fonts/JetBrainsMonoNerdFont-Regular.ttf
 
 flutter_launcher_icons:
   android: true

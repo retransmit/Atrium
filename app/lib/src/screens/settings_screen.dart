@@ -47,6 +47,45 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const Divider(),
+          const _SectionHeader('Font'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Insets.lg, vertical: Insets.xs),
+            child: DropdownMenu<String?>(
+              initialSelection: prefs.fontFamily,
+              expandedInsets: EdgeInsets.zero,
+              inputDecorationTheme: InputDecorationTheme(
+                filled: true,
+                fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                ),
+              ),
+              dropdownMenuEntries: const <DropdownMenuEntry<String?>>[
+                DropdownMenuEntry<String?>(
+                  value: null,
+                  label: 'System default',
+                ),
+                DropdownMenuEntry<String?>(
+                  value: 'JetBrainsMono Nerd Font',
+                  label: 'JetBrains Mono',
+                ),
+              ],
+              onSelected: (String? f) {
+                controller.setFontFamily(f);
+              },
+            ),
+          ),
+          const SizedBox(height: Insets.sm),
+          const Divider(),
           const _SectionHeader('Security'),
           _BiometricTile(
             enabled: prefs.biometricEnabled,

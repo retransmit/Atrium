@@ -153,19 +153,22 @@ class _MoviesTab extends ConsumerWidget {
                         final RadarrImage? poster = m.images.firstWhereOrNull(
                           (RadarrImage i) => i.coverType == 'poster',
                         );
-                        return _MovieCard(
-                          movie: m,
-                          imageUrl: poster == null ? null : api?.posterUrl(poster),
-                          onTap: () =>
-                              Navigator.of(context, rootNavigator: true).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => MovieDetailScreen(
-                                instance: instance,
-                                movieId: m.id,
+                        return PerformanceLoggerWidget(
+                          name: 'RadarrMovieGridItem',
+                          child: _MovieCard(
+                            movie: m,
+                            imageUrl: poster == null ? null : api?.posterUrl(poster),
+                            onTap: () =>
+                                Navigator.of(context, rootNavigator: true).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => MovieDetailScreen(
+                                  instance: instance,
+                                  movieId: m.id,
+                                ),
                               ),
                             ),
+                            onLongPress: () => _showQuickActions(context, ref, m),
                           ),
-                          onLongPress: () => _showQuickActions(context, ref, m),
                         );
                       },
                     );
@@ -628,7 +631,7 @@ class _Poster extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: imageUrl!,
       fit: BoxFit.cover,
-      memCacheWidth: 500,
+      memCacheWidth: 300,
       placeholder: (BuildContext context, String url) =>
           Container(color: theme.colorScheme.surfaceContainerHighest),
       errorWidget: (BuildContext context, String url, Object error) => fallback,

@@ -27,5 +27,3 @@ abstract class JellyfinUser with _$JellyfinUser {
   factory JellyfinUser.fromJson(Map<String, dynamic> json) =>
       _$JellyfinUserFromJson(json);
 }
-
-

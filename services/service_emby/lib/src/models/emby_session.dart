@@ -6,6 +6,7 @@
 /// directly into these fields.
 class ActiveSession {
   const ActiveSession({
+    required this.id,
     required this.user,
     required this.device,
     required this.status,
@@ -13,10 +14,15 @@ class ActiveSession {
     required this.progressPercent,
     required this.timePosition,
     required this.timeDuration,
+    required this.positionTicks,
+    required this.durationTicks,
     this.episodeName,
     this.posterUrl,
     this.aspectRatio,
   });
+
+  /// The unique session ID.
+  final String id;
 
   /// The user streaming this session.
   final String user;
@@ -41,6 +47,12 @@ class ActiveSession {
 
   /// Total runtime, formatted as `h:mm:ss` / `mm:ss`.
   final String timeDuration;
+
+  /// Current position in ticks (1 tick = 100ns).
+  final int positionTicks;
+
+  /// Total duration in ticks (1 tick = 100ns).
+  final int durationTicks;
 
   /// Backdrop/poster image URL for the now-playing item, if available.
   final String? posterUrl;
