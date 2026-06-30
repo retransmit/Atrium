@@ -84,7 +84,12 @@ class JellyfinClient {
     return _token == null ? base : '$base, Token="$_token"';
   }
 
-  Future<void> login() async {
+  Future<void>? _loginFuture;
+
+  Future<void> login() =>
+      _loginFuture ??= _performLogin().whenComplete(() => _loginFuture = null);
+
+  Future<void> _performLogin() async {
     try {
       _dio.options.headers['Authorization'] = _authHeader();
       final Response<dynamic> resp = await _dio.post<dynamic>(
@@ -117,7 +122,7 @@ class JellyfinClient {
       });
 
   Future<List<JellyfinItem>> getLibraryItems(
-          String parentId, String? collectionType) =>
+          String parentId, String? collectionType,) =>
       _guarded(() async {
         String? includeItemTypes;
         switch (collectionType) {
@@ -173,7 +178,7 @@ class JellyfinClient {
       });
 
   Future<List<JellyfinItem>> getWatchedItems(
-          {int startIndex = 0, int limit = 200}) =>
+          {int startIndex = 0, int limit = 200,}) =>
       _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
           'Users/$_userId/Items',
@@ -200,7 +205,7 @@ class JellyfinClient {
       });
 
   Future<List<JellyfinItem>> getUnwatchedItems(
-          {int startIndex = 0, int limit = 200}) =>
+          {int startIndex = 0, int limit = 200,}) =>
       _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
           'Users/$_userId/Items',
@@ -278,8 +283,8 @@ class JellyfinClient {
           if (element['NowPlayingItem'] == null) continue;
           final Map<String, dynamic> nowPlaying =
               element['NowPlayingItem'] as Map<String, dynamic>;
-          final Map<String, dynamic> playState =
-              element['PlayState'] as Map<String, dynamic>;
+          final playState = element['PlayState'] as Map<String, dynamic>?;
+          if (playState == null) continue;
 
           final int posTicks = playState['PositionTicks'] as int? ?? 0;
           final int durTicks = nowPlaying['RunTimeTicks'] as int? ?? 0;
@@ -458,7 +463,7 @@ class JellyfinClient {
         final List<dynamic> list = resp.data as List<dynamic>;
         return list
             .map(
-                (dynamic e) => JellyfinItem.fromJson(e as Map<String, dynamic>))
+                (dynamic e) => JellyfinItem.fromJson(e as Map<String, dynamic>),)
             .toList();
       });
 

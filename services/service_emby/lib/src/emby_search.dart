@@ -32,7 +32,7 @@ class EmbySearchDelegate extends SearchDelegate<void> {
           return IconButton(
             icon: Icon(viewMode == EmbyViewMode.grid
                 ? Icons.view_headline
-                : Icons.grid_view),
+                : Icons.grid_view,),
             tooltip: viewMode == EmbyViewMode.grid
                 ? 'Switch to List View'
                 : 'Switch to Grid View',

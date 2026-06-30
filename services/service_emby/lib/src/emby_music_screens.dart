@@ -116,7 +116,7 @@ class EmbyAlbumScreen extends ConsumerWidget {
             child: AsyncValueView<AlbumScreenData>(
               value: dataAsync,
               onRetry: () => ref.invalidate(embyAlbumDataFutureProvider(
-                  (instance, albumId, albumArtist))),
+                  (instance, albumId, albumArtist),),),
               data: (AlbumScreenData data) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,7 +124,7 @@ class EmbyAlbumScreen extends ConsumerWidget {
                     // Bottom Section: Tracklist
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: Insets.lg, vertical: Insets.sm),
+                          horizontal: Insets.lg, vertical: Insets.sm,),
                       child: Text(
                         'Tracks - ${data.tracks.length}',
                         style: Theme.of(context)
@@ -155,7 +155,7 @@ class EmbyAlbumScreen extends ConsumerWidget {
 
                         return ListTile(
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: Insets.lg, vertical: Insets.xs),
+                              horizontal: Insets.lg, vertical: Insets.xs,),
                           onTap: () {
                             if (client != null) {
                               launchEmbyDeepLink(context, client, song.id);
@@ -218,7 +218,7 @@ class EmbyAlbumScreen extends ConsumerWidget {
                             ],
                           ),
                           title: Text(song.name,
-                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                              maxLines: 1, overflow: TextOverflow.ellipsis,),
                           subtitle: Text(
                             song.artists.isNotEmpty
                                 ? '${song.artists.join(', ')} • $duration'

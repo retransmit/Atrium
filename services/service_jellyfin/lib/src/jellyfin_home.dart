@@ -163,7 +163,7 @@ class _TabObserverState extends ConsumerState<_TabObserver> {
 
 class JellyfinLibraryGrid extends ConsumerWidget {
   const JellyfinLibraryGrid(
-      {required this.instance, required this.view, super.key});
+      {required this.instance, required this.view, super.key,});
 
   final Instance instance;
   final JellyfinView view;
@@ -226,7 +226,7 @@ class JellyfinLibraryGrid extends ConsumerWidget {
                                   pushScreen<void>(
                                     context,
                                     JellyfinItemDetailScreen(
-                                        instance: instance, itemId: item.id),
+                                        instance: instance, itemId: item.id,),
                                   );
                                 } else if (item.type == 'Season') {
                                   pushScreen<void>(
@@ -246,13 +246,13 @@ class JellyfinLibraryGrid extends ConsumerWidget {
                                   pushScreen<void>(
                                     context,
                                     JellyfinFolderScreen(
-                                        instance: instance, item: item),
+                                        instance: instance, item: item,),
                                   );
                                 } else {
                                   pushScreen<void>(
                                     context,
                                     JellyfinItemDetailScreen(
-                                        instance: instance, itemId: item.id),
+                                        instance: instance, itemId: item.id,),
                                   );
                                 }
                               },
@@ -282,7 +282,7 @@ class JellyfinLibraryGrid extends ConsumerWidget {
                                   pushScreen<void>(
                                     context,
                                     JellyfinItemDetailScreen(
-                                        instance: instance, itemId: item.id),
+                                        instance: instance, itemId: item.id,),
                                   );
                                 } else if (item.type == 'Season') {
                                   pushScreen<void>(
@@ -302,13 +302,13 @@ class JellyfinLibraryGrid extends ConsumerWidget {
                                   pushScreen<void>(
                                     context,
                                     JellyfinFolderScreen(
-                                        instance: instance, item: item),
+                                        instance: instance, item: item,),
                                   );
                                 } else {
                                   pushScreen<void>(
                                     context,
                                     JellyfinItemDetailScreen(
-                                        instance: instance, itemId: item.id),
+                                        instance: instance, itemId: item.id,),
                                   );
                                 }
                               },
@@ -324,7 +324,7 @@ class JellyfinLibraryGrid extends ConsumerWidget {
 
 class JellyfinItemsGrid extends ConsumerWidget {
   const JellyfinItemsGrid(
-      {required this.instance, required this.libraryId, super.key});
+      {required this.instance, required this.libraryId, super.key,});
 
   final Instance instance;
   final String libraryId;
@@ -388,7 +388,7 @@ class JellyfinItemsGrid extends ConsumerWidget {
   }
 
   void _openItem(
-      BuildContext context, JellyfinClient client, JellyfinItem item) {
+      BuildContext context, JellyfinClient client, JellyfinItem item,) {
     if (item.type == 'MusicAlbum' || item.type == 'Playlist') {
       pushScreen<void>(
         context,
@@ -442,7 +442,7 @@ class JellyfinItemsGrid extends ConsumerWidget {
 
 class JellyfinFolderScreen extends ConsumerWidget {
   const JellyfinFolderScreen(
-      {required this.instance, required this.item, super.key});
+      {required this.instance, required this.item, super.key,});
 
   final Instance instance;
   final JellyfinItem item;
@@ -473,7 +473,7 @@ class JellyfinFolderScreen extends ConsumerWidget {
                 final bool isFav = currentItem.userData?.isFavorite == true;
                 await client.markFavorite(currentItem.id, !isFav);
                 ref.invalidate(
-                    jellyfinItemDetailsProvider((instance, currentItem.id)));
+                    jellyfinItemDetailsProvider((instance, currentItem.id)),);
                 ref.invalidate(jellyfinFavoritesProvider(instance));
               },
             ),
@@ -622,7 +622,7 @@ class JellyfinPosterCard extends ConsumerWidget {
                         alignment: Alignment.bottomCenter,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 8),
+                              horizontal: 8, vertical: 8,),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(6),
                             child: LinearProgressIndicator(
@@ -1050,7 +1050,7 @@ class _HorizontalSection extends ConsumerWidget {
 
   final Instance instance;
   final String title;
-  final ProviderListenable<AsyncValue<List<JellyfinItem>>> provider;
+  final FutureProvider<List<JellyfinItem>> provider;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1059,7 +1059,7 @@ class _HorizontalSection extends ConsumerWidget {
 
     return AsyncValueView<List<JellyfinItem>>(
       value: items,
-      onRetry: () {},
+      onRetry: () => ref.invalidate(provider),
       data: (List<JellyfinItem> list) {
         if (list.isEmpty) {
           return const SizedBox.shrink();
@@ -1132,7 +1132,7 @@ class _HorizontalSection extends ConsumerWidget {
                                   pushScreen<void>(
                                     context,
                                     JellyfinItemDetailScreen(
-                                        instance: instance, itemId: item.id),
+                                        instance: instance, itemId: item.id,),
                                   );
                                 } else if (item.type == 'Season') {
                                   pushScreen<void>(
@@ -1190,7 +1190,7 @@ class _ActiveSessionsSection extends ConsumerWidget {
 
     return AsyncValueView<List<ActiveSession>>(
       value: sessions,
-      onRetry: () {},
+      onRetry: () => ref.invalidate(jellyfinSessionsProvider(instance)),
       data: (List<ActiveSession> list) {
         if (list.isEmpty) {
           return const SizedBox.shrink();
@@ -1337,7 +1337,7 @@ class _SessionCard extends StatelessWidget {
                         ),
                         child: session.posterUrl == null
                             ? Icon(Icons.movie_outlined,
-                                color: theme.colorScheme.outline, size: 32)
+                                color: theme.colorScheme.outline, size: 32,)
                             : null,
                       ),
                     ),
@@ -1376,7 +1376,7 @@ class _SessionCard extends StatelessWidget {
                           const SizedBox(height: 4),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
+                                horizontal: 8, vertical: 4,),
                             decoration: BoxDecoration(
                               color: theme.colorScheme.surfaceContainerHighest
                                   .withValues(alpha: 0.5),
@@ -1482,11 +1482,11 @@ Widget _buildJellyfinGridOrList(
       slivers: <Widget>[
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
-              Insets.lg, Insets.lg, Insets.lg, Insets.sm),
+              Insets.lg, Insets.lg, Insets.lg, Insets.sm,),
           sliver: SliverToBoxAdapter(
             child: Text('Albums',
                 style: theme.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+                    ?.copyWith(fontWeight: FontWeight.bold),),
           ),
         ),
         SliverPadding(
@@ -1510,11 +1510,11 @@ Widget _buildJellyfinGridOrList(
         ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
-              Insets.lg, Insets.xl, Insets.lg, Insets.sm),
+              Insets.lg, Insets.xl, Insets.lg, Insets.sm,),
           sliver: SliverToBoxAdapter(
             child: Text('Playlists',
                 style: theme.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+                    ?.copyWith(fontWeight: FontWeight.bold),),
           ),
         ),
         SliverPadding(

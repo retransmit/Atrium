@@ -78,26 +78,6 @@ class SettingsScreen extends ConsumerWidget {
                   value: 'JetBrainsMono Nerd Font',
                   label: 'JetBrains Mono',
                 ),
-                DropdownMenuEntry<String?>(
-                  value: 'Inter',
-                  label: 'Inter',
-                ),
-                DropdownMenuEntry<String?>(
-                  value: 'Outfit',
-                  label: 'Outfit',
-                ),
-                DropdownMenuEntry<String?>(
-                  value: 'Fira Code',
-                  label: 'Fira Code',
-                ),
-                DropdownMenuEntry<String?>(
-                  value: 'Roboto',
-                  label: 'Roboto',
-                ),
-                DropdownMenuEntry<String?>(
-                  value: 'Comic Neue',
-                  label: 'Comic Neue',
-                ),
               ],
               onSelected: (String? f) {
                 controller.setFontFamily(f);

@@ -43,7 +43,7 @@ class JellyfinItemDetailScreen extends ConsumerWidget {
               onPressed: () async {
                 final toggle = ref.read(jellyfinToggleWatchedProvider(instance));
                 await toggle(
-                    itemId, !(itemAsync.value!.userData?.played == true));
+                    itemId, !(itemAsync.value!.userData?.played == true),);
               },
             ),
             IconButton(
@@ -216,7 +216,7 @@ class _Header extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleMedium?.copyWith(
                           color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold),
+                          fontWeight: FontWeight.bold,),
                     ),
                   ),
                 if (item.seriesName != null) const SizedBox(height: 4),
@@ -406,7 +406,7 @@ class _SeasonsGrid extends ConsumerWidget {
 
           return Padding(
             padding: const EdgeInsets.symmetric(
-                horizontal: Insets.lg, vertical: Insets.lg),
+                horizontal: Insets.lg, vertical: Insets.lg,),
             child: GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
