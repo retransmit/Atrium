@@ -68,17 +68,6 @@ class _EmbyHomeState extends ConsumerState<EmbyHome> {
                 TabBar(
                   isScrollable: true,
                   tabAlignment: TabAlignment.start,
-                  dividerColor: Colors.transparent,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  indicator: BoxDecoration(
-                    color: Theme.of(context).colorScheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(50),
-                  ),
-                  labelColor:
-                      Theme.of(context).colorScheme.onSecondaryContainer,
-                  unselectedLabelColor:
-                      Theme.of(context).colorScheme.onSurfaceVariant,
-                  splashBorderRadius: BorderRadius.circular(50),
                   tabs: <Widget>[
                     const Tab(text: 'Home'),
                     for (final EmbyView lib in libraries) Tab(text: lib.name),
