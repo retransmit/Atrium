@@ -81,10 +81,9 @@ class _AddTorrentSheetState extends ConsumerState<AddTorrentSheet> {
   }
 
   Future<void> _pickFile() async {
-    final FilePickerResult? res = await FilePicker.platform.pickFiles(
+    final FilePickerResult? res = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: <String>['torrent'],
-      withData: true,
     );
     if (res != null && res.files.isNotEmpty) {
       setState(() => _file = res.files.single);
@@ -117,12 +116,9 @@ class _AddTorrentSheetState extends ConsumerState<AddTorrentSheet> {
         );
       } else {
         final PlatformFile f = _file!;
-        final List<int>? bytes = f.bytes;
-        if (bytes == null) {
-          throw StateError('Could not read the selected file.');
-        }
+        final Uint8List bytes = await f.readAsBytes();
         await client.addTorrentFile(
-          Uint8List.fromList(bytes),
+          bytes,
           filename: f.name,
           category: _category,
           savePath: savePath,

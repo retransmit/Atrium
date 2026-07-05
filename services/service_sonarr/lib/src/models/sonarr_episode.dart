@@ -3,7 +3,6 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'sonarr_episode.freezed.dart';
 part 'sonarr_episode.g.dart';
 
-/// An episode object from `GET /api/v3/episode`.
 @freezed
 abstract class SonarrEpisode with _$SonarrEpisode {
   const factory SonarrEpisode({
@@ -11,13 +10,14 @@ abstract class SonarrEpisode with _$SonarrEpisode {
     required int seriesId,
     required int seasonNumber,
     required int episodeNumber,
-    String? title,
+    required String title,
     String? overview,
-    String? airDate,
-    DateTime? airDateUtc,
     @Default(false) bool hasFile,
     @Default(false) bool monitored,
-    @Default(0) int episodeFileId,
+    String? airDate,
+    String? airDateUtc,
+    int? runtime,
+    int? absoluteEpisodeNumber,
   }) = _SonarrEpisode;
 
   factory SonarrEpisode.fromJson(Map<String, dynamic> json) =>
