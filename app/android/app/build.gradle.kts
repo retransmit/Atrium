@@ -29,6 +29,14 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Dynamic app label based on project property appName (defaults to "Atrium")
+        val appNameProp = if (project.hasProperty("appName")) {
+            project.property("appName") as String
+        } else {
+            "Atrium"
+        }
+        manifestPlaceholders["appName"] = appNameProp
     }
 
     buildTypes {

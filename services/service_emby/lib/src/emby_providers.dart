@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import 'emby_client.dart';
 import 'models/emby_item.dart';

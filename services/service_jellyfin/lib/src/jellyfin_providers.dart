@@ -1,6 +1,7 @@
 import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import 'jellyfin_client.dart';
 import 'models/jellyfin_item.dart';

@@ -6,7 +6,6 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:service_sonarr/service_sonarr.dart';
 import 'package:service_radarr/service_radarr.dart';
 
 /// Aggregated calendar event representation.
@@ -18,27 +17,6 @@ sealed class CalendarEvent {
   DateTime get date;
   bool get hasFile;
   bool get monitored;
-}
-
-class SonarrCalendarEvent extends CalendarEvent {
-  const SonarrCalendarEvent(this.entry, super.instance);
-  final SonarrCalendarEntry entry;
-
-  @override
-  String get title {
-    final String s = (entry.seasonNumber ?? 0).toString().padLeft(2, '0');
-    final String e = (entry.episodeNumber ?? 0).toString().padLeft(2, '0');
-    return '${entry.series?.title ?? "Unknown Series"} - S${s}E$e';
-  }
-
-  @override
-  DateTime get date => entry.airDateUtc ?? DateTime.now();
-
-  @override
-  bool get hasFile => entry.hasFile;
-
-  @override
-  bool get monitored => entry.monitored;
 }
 
 class RadarrCalendarEvent extends CalendarEvent {
@@ -85,7 +63,7 @@ class RadarrCalendarEvent extends CalendarEvent {
   }
 }
 
-/// Aggregated calendar provider for all active Sonarr and Radarr instances.
+/// Aggregated calendar provider for all active Radarr instances.
 final globalCalendarProvider =
     FutureProvider.autoDispose.family<List<CalendarEvent>, DateTime>((
   Ref ref,
@@ -95,15 +73,7 @@ final globalCalendarProvider =
   final List<Future<List<CalendarEvent>>> futures = [];
 
   for (final Instance instance in instances) {
-    if (instance.kind == ServiceKind.sonarr) {
-      futures.add(
-        ref.watch(sonarrCalendarProvider((instance, month)).future).then(
-              (List<SonarrCalendarEntry> entries) => entries
-                  .map((SonarrCalendarEntry e) => SonarrCalendarEvent(e, instance))
-                  .toList(),
-            ),
-      );
-    } else if (instance.kind == ServiceKind.radarr) {
+    if (instance.kind == ServiceKind.radarr) {
       futures.add(
         ref.watch(radarrCalendarProvider((instance, month)).future).then(
               (List<RadarrMovie> movies) => movies
@@ -296,9 +266,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     ref.watch(globalCalendarProvider(nextMonth));
     ref.watch(globalCalendarProvider(prevMonth));
 
-    final List<Instance> activeServices = ref.watch(activeInstancesProvider);
-    final bool hasCalendarServices = activeServices.any(
-      (Instance i) => i.kind == ServiceKind.sonarr || i.kind == ServiceKind.radarr,
+    final bool hasCalendarServices = ref.watch(activeInstancesProvider).any(
+      (Instance i) => i.kind == ServiceKind.radarr,
     );
 
     if (!hasCalendarServices) {
@@ -307,7 +276,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         body: const EmptyView(
           icon: Icons.calendar_today_outlined,
           title: 'No calendar services',
-          message: 'Add a Sonarr or Radarr service to see your release schedule here.',
+          message: 'Add a Radarr service to see your release schedule here.',
         ),
       );
     }
@@ -648,25 +617,7 @@ class _EventTile extends ConsumerWidget {
     String releaseType = '';
     VoidCallback? onTap;
 
-    if (event is SonarrCalendarEvent) {
-      final SonarrCalendarEntry entry = (event as SonarrCalendarEvent).entry;
-      final SonarrApi? api = ref.watch(sonarrApiProvider(instance)).value;
-      final SonarrImage? poster =
-          entry.series?.images.firstWhereOrNull((SonarrImage i) => i.coverType == 'poster');
-      final String? imageUrl = poster == null ? null : api?.posterUrl(poster);
-
-      releaseType = 'TV Episode';
-      onTap = () => Navigator.of(context, rootNavigator: true).push(
-            MaterialPageRoute<void>(
-              builder: (_) => SeriesDetailScreen(
-                instance: instance,
-                seriesId: entry.seriesId,
-              ),
-            ),
-          );
-
-      posterWidget = _Poster(imageUrl: imageUrl, icon: Icons.live_tv_outlined);
-    } else if (event is RadarrCalendarEvent) {
+    if (event is RadarrCalendarEvent) {
       final RadarrMovie movie = (event as RadarrCalendarEvent).movie;
       final RadarrApi? api = ref.watch(radarrApiProvider(instance)).value;
       final RadarrImage? poster =

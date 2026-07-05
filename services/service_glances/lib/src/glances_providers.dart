@@ -9,15 +9,14 @@ import 'package:hive_ce/hive.dart';
 import 'glances_api.dart';
 import 'models/glances_stats.dart';
 
-final ProviderFamily<Future<GlancesApi>, Instance> glancesApiProvider =
+final glancesApiProvider =
     Provider.family<Future<GlancesApi>, Instance>(
         (Ref ref, Instance instance) async {
   final DioFactory factory = ref.watch(dioFactoryProvider);
   return GlancesApi(await factory.create(instance));
 });
 
-final AutoDisposeFutureProviderFamily<GlancesStats, Instance>
-    glancesStatsProvider =
+final glancesStatsProvider =
     FutureProvider.autoDispose.family<GlancesStats, Instance>(
         (Ref ref, Instance instance) async {
   ref.pollEvery(Duration(seconds: instance.pollingIntervalSeconds));
@@ -35,7 +34,11 @@ final glancesPinnedNetworkProvider =
   GlancesPinnedNetworks.new,
 );
 
-class GlancesPinnedNetworks extends FamilyNotifier<Set<String>, Instance> {
+class GlancesPinnedNetworks extends Notifier<Set<String>> {
+  GlancesPinnedNetworks(this.instance);
+
+  final Instance instance;
+
   static String _keyFor(String instanceId) => 'glances.pinnedNets.$instanceId';
 
   /// The settings box, when open. Null in contexts where Hive wasn't booted
@@ -45,7 +48,7 @@ class GlancesPinnedNetworks extends FamilyNotifier<Set<String>, Instance> {
       : null;
 
   @override
-  Set<String> build(Instance instance) {
+  Set<String> build() {
     final String? raw = _box?.get(_keyFor(instance.id));
     if (raw == null || raw.isEmpty) {
       return <String>{};
@@ -66,9 +69,9 @@ class GlancesPinnedNetworks extends FamilyNotifier<Set<String>, Instance> {
       return;
     }
     if (interfaces.isEmpty) {
-      await box.delete(_keyFor(arg.id));
+      await box.delete(_keyFor(instance.id));
     } else {
-      await box.put(_keyFor(arg.id), jsonEncode(interfaces.toList()));
+      await box.put(_keyFor(instance.id), jsonEncode(interfaces.toList()));
     }
   }
 }
