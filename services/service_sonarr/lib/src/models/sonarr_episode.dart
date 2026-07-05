@@ -18,6 +18,7 @@ abstract class SonarrEpisode with _$SonarrEpisode {
     String? airDateUtc,
     int? runtime,
     int? absoluteEpisodeNumber,
+    int? episodeFileId,
   }) = _SonarrEpisode;
 
   factory SonarrEpisode.fromJson(Map<String, dynamic> json) =>

@@ -25,7 +25,8 @@ class _SeriesTabState extends ConsumerState<SeriesTab> {
   @override
   void initState() {
     super.initState();
-    final String initialQuery = ref.read(sonarrSearchQueryProvider(widget.instance));
+    final String initialQuery =
+        ref.read(sonarrSearchQueryProvider(widget.instance));
     _searchController = TextEditingController(text: initialQuery);
     _scrollController = ScrollController();
     _searchFocusNode = FocusNode();
@@ -45,9 +46,11 @@ class _SeriesTabState extends ConsumerState<SeriesTab> {
     final AsyncValue<List<SonarrSeries>> filtered =
         ref.watch(sonarrFilteredSeriesProvider(widget.instance));
     final SonarrApi? api = ref.watch(sonarrApiProvider(widget.instance)).value;
-    final SonarrViewMode viewMode = ref.watch(sonarrViewModeProvider(widget.instance));
+    final SonarrViewMode viewMode =
+        ref.watch(sonarrViewModeProvider(widget.instance));
 
-    ref.listen<int>(sonarrSeriesScrollToTopProvider(widget.instance), (previous, next) {
+    ref.listen<int>(sonarrSeriesScrollToTopProvider(widget.instance),
+        (previous, next) {
       if (next > 0 && _scrollController.hasClients) {
         _scrollController.animateTo(
           0.0,
@@ -74,7 +77,8 @@ class _SeriesTabState extends ConsumerState<SeriesTab> {
         setState(() {
           _searchController.clear();
         });
-        ref.read(sonarrSearchQueryProvider(widget.instance).notifier).state = '';
+        ref.read(sonarrSearchQueryProvider(widget.instance).notifier).state =
+            '';
       },
       child: Scaffold(
         body: GestureDetector(
@@ -82,7 +86,8 @@ class _SeriesTabState extends ConsumerState<SeriesTab> {
           behavior: HitTestBehavior.translucent,
           child: AsyncValueView<List<SonarrSeries>>(
             value: filtered,
-            onRetry: () => ref.invalidate(sonarrSeriesProvider(widget.instance)),
+            onRetry: () =>
+                ref.invalidate(sonarrSeriesProvider(widget.instance)),
             data: (List<SonarrSeries> list) {
               return RefreshIndicator(
                 onRefresh: () async {
@@ -106,7 +111,8 @@ class _SeriesTabState extends ConsumerState<SeriesTab> {
                         icon: const Icon(Icons.menu),
                         onPressed: () {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Menu button pressed')),
+                            const SnackBar(
+                                content: Text('Menu button pressed')),
                           );
                         },
                       ),
@@ -126,110 +132,135 @@ class _SeriesTabState extends ConsumerState<SeriesTab> {
                                 setState(() {
                                   _searchController.clear();
                                 });
-                                ref.read(sonarrSearchQueryProvider(widget.instance).notifier).state = '';
+                                ref
+                                    .read(sonarrSearchQueryProvider(
+                                            widget.instance)
+                                        .notifier)
+                                    .state = '';
                               },
                             ),
                         ],
                         onChanged: (String value) {
                           setState(() {});
-                          ref.read(sonarrSearchQueryProvider(widget.instance).notifier).state = value;
+                          ref
+                              .read(sonarrSearchQueryProvider(widget.instance)
+                                  .notifier)
+                              .state = value;
                         },
                       ),
-                    actions: <Widget>[
-                      IconButton(
-                        icon: Icon(viewMode == SonarrViewMode.grid ? Icons.view_list : Icons.grid_view),
-                        tooltip: viewMode == SonarrViewMode.grid ? 'Switch to list view' : 'Switch to grid view',
-                        onPressed: () {
-                          ref.read(sonarrViewModeProvider(widget.instance).notifier).state =
-                              viewMode == SonarrViewMode.grid ? SonarrViewMode.list : SonarrViewMode.grid;
-                        },
-                      ),
-                      const SizedBox(width: Insets.sm),
-                    ],
-                  ),
-                  if (list.isEmpty)
-                    const SliverFillRemaining(
-                      hasScrollBody: false,
-                      child: EmptyView(
-                        icon: Icons.live_tv_outlined,
-                        title: 'No series found',
-                        message: 'Try adjusting your search query or active filters.',
-                      ),
-                    )
-                  else if (viewMode == SonarrViewMode.grid)
-                    SliverPadding(
-                      padding: const EdgeInsets.all(Insets.md),
-                      sliver: SliverGrid(
-                        gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                          maxCrossAxisExtent: 140,
-                          childAspectRatio: 0.5,
-                          crossAxisSpacing: Insets.md,
-                          mainAxisSpacing: Insets.md,
-                        ),
-                        delegate: SliverChildBuilderDelegate(
-                          (BuildContext context, int index) {
-                            final SonarrSeries s = list[index];
-                            final SonarrImage? poster = s.images
-                                .firstWhereOrNull((SonarrImage i) => i.coverType == 'poster');
-                            return _SeriesCard(
-                              series: s,
-                              imageUrl: poster == null ? null : api?.posterUrl(poster, width: 500),
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  FadePageRoute<void>(
-                                    builder: (BuildContext context) => SeriesDetailScreen(
-                                      instance: widget.instance,
-                                      seriesId: s.id,
-                                    ),
-                                  ),
-                                );
-                              },
-                            );
+                      actions: <Widget>[
+                        IconButton(
+                          icon: Icon(viewMode == SonarrViewMode.grid
+                              ? Icons.view_list
+                              : Icons.grid_view),
+                          tooltip: viewMode == SonarrViewMode.grid
+                              ? 'Switch to list view'
+                              : 'Switch to grid view',
+                          onPressed: () {
+                            ref
+                                .read(sonarrViewModeProvider(widget.instance)
+                                    .notifier)
+                                .state = viewMode ==
+                                    SonarrViewMode.grid
+                                ? SonarrViewMode.list
+                                : SonarrViewMode.grid;
                           },
-                          childCount: list.length,
                         ),
-                      ),
-                    )
-                  else
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: Insets.md),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (BuildContext context, int index) {
-                            final SonarrSeries s = list[index];
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: Insets.md),
-                              child: _SeriesBannerCard(
-                                instance: widget.instance,
+                        const SizedBox(width: Insets.sm),
+                      ],
+                    ),
+                    if (list.isEmpty)
+                      const SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: EmptyView(
+                          icon: Icons.live_tv_outlined,
+                          title: 'No series found',
+                          message:
+                              'Try adjusting your search query or active filters.',
+                        ),
+                      )
+                    else if (viewMode == SonarrViewMode.grid)
+                      SliverPadding(
+                        padding: const EdgeInsets.all(Insets.md),
+                        sliver: SliverGrid(
+                          gridDelegate:
+                              const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 140,
+                            childAspectRatio: 0.5,
+                            crossAxisSpacing: Insets.md,
+                            mainAxisSpacing: Insets.md,
+                          ),
+                          delegate: SliverChildBuilderDelegate(
+                            (BuildContext context, int index) {
+                              final SonarrSeries s = list[index];
+                              final SonarrImage? poster = s.images
+                                  .firstWhereOrNull((SonarrImage i) =>
+                                      i.coverType == 'poster');
+                              return _SeriesCard(
                                 series: s,
+                                imageUrl: poster == null
+                                    ? null
+                                    : api?.posterUrl(poster, width: 500),
                                 onTap: () {
                                   Navigator.push(
                                     context,
                                     FadePageRoute<void>(
-                                      builder: (BuildContext context) => SeriesDetailScreen(
+                                      builder: (BuildContext context) =>
+                                          SeriesDetailScreen(
                                         instance: widget.instance,
-                                        seriesId: s.id,
+                                        series: s,
                                       ),
                                     ),
                                   );
                                 },
-                              ),
-                            );
-                          },
-                          childCount: list.length,
+                              );
+                            },
+                            childCount: list.length,
+                          ),
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: Insets.md),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (BuildContext context, int index) {
+                              final SonarrSeries s = list[index];
+                              return Padding(
+                                padding:
+                                    const EdgeInsets.only(bottom: Insets.md),
+                                child: _SeriesBannerCard(
+                                  instance: widget.instance,
+                                  series: s,
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      FadePageRoute<void>(
+                                        builder: (BuildContext context) =>
+                                            SeriesDetailScreen(
+                                          instance: widget.instance,
+                                          series: s,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              );
+                            },
+                            childCount: list.length,
+                          ),
                         ),
                       ),
-                    ),
-                ],
-              ),
-            );
-          },
+                  ],
+                ),
+              );
+            },
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
 
 class _SeriesCard extends StatelessWidget {
@@ -342,11 +373,12 @@ class _SeriesBannerCard extends ConsumerWidget {
 
     final SonarrImage? banner = series.images
         .firstWhereOrNull((SonarrImage i) => i.coverType == 'banner');
-    final String? bannerUrl = banner == null ? null : api?.posterUrl(banner, width: 70);
+    final String? bannerUrl = banner == null ? null : api?.posterUrl(banner);
 
     final SonarrImage? poster = series.images
         .firstWhereOrNull((SonarrImage i) => i.coverType == 'poster');
-    final String? posterUrl = poster == null ? null : api?.posterUrl(poster, width: 500);
+    final String? posterUrl =
+        poster == null ? null : api?.posterUrl(poster, width: 500);
 
     final Color surfaceColor = theme.colorScheme.surface;
 
@@ -366,15 +398,12 @@ class _SeriesBannerCard extends ConsumerWidget {
             children: <Widget>[
               if (bannerUrl != null)
                 Positioned.fill(
-                  child: Hero(
-                    tag: 'series-banner-${series.id}',
-                    child: CachedNetworkImage(
-                      imageUrl: bannerUrl,
-                      fit: BoxFit.cover,
-                      alignment: Alignment.centerRight,
-                      errorWidget: (_, __, ___) => Container(
-                        color: theme.colorScheme.surfaceContainerHighest,
-                      ),
+                  child: CachedNetworkImage(
+                    imageUrl: bannerUrl,
+                    fit: BoxFit.cover,
+                    alignment: Alignment.centerRight,
+                    errorWidget: (_, __, ___) => Container(
+                      color: theme.colorScheme.surfaceContainerHighest,
                     ),
                   ),
                 )
@@ -415,10 +444,12 @@ class _SeriesBannerCard extends ConsumerWidget {
                                 imageUrl: posterUrl,
                                 fit: BoxFit.cover,
                                 placeholder: (_, __) => Container(
-                                  color: theme.colorScheme.surfaceContainerHighest,
+                                  color:
+                                      theme.colorScheme.surfaceContainerHighest,
                                 ),
                                 errorWidget: (_, __, ___) => Container(
-                                  color: theme.colorScheme.surfaceContainerHighest,
+                                  color:
+                                      theme.colorScheme.surfaceContainerHighest,
                                   child: const Icon(Icons.live_tv, size: 20),
                                 ),
                               ),
@@ -468,7 +499,8 @@ class _SeriesBannerCard extends ConsumerWidget {
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -541,9 +573,13 @@ class _Badge extends StatelessWidget {
 class FadePageRoute<T> extends PageRouteBuilder<T> {
   FadePageRoute({required WidgetBuilder builder, super.settings})
       : super(
-          pageBuilder: (BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) =>
+          pageBuilder: (BuildContext context, Animation<double> animation,
+                  Animation<double> secondaryAnimation) =>
               builder(context),
-          transitionsBuilder: (BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation, Widget child) {
+          transitionsBuilder: (BuildContext context,
+              Animation<double> animation,
+              Animation<double> secondaryAnimation,
+              Widget child) {
             return FadeTransition(
               opacity: animation,
               child: child,

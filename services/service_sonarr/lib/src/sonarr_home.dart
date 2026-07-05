@@ -11,7 +11,7 @@ import 'home/wanted_tab.dart';
 
 class SonarrHome extends ConsumerWidget {
   const SonarrHome({required this.instance, this.onEdit, super.key});
-  
+
   final Instance instance;
   final VoidCallback? onEdit;
 
@@ -32,9 +32,11 @@ class SonarrHome extends ConsumerWidget {
       onNotification: (UserScrollNotification notification) {
         final ScrollDirection direction = notification.direction;
         if (direction == ScrollDirection.reverse) {
-          ref.read(sonarrBottomNavVisibleProvider(instance).notifier).state = false;
+          ref.read(sonarrBottomNavVisibleProvider(instance).notifier).state =
+              false;
         } else if (direction == ScrollDirection.forward) {
-          ref.read(sonarrBottomNavVisibleProvider(instance).notifier).state = true;
+          ref.read(sonarrBottomNavVisibleProvider(instance).notifier).state =
+              true;
         }
         return false;
       },
@@ -54,9 +56,15 @@ class SonarrHome extends ConsumerWidget {
                 selectedIndex: currentIndex,
                 onDestinationSelected: (index) {
                   if (index == 0 && currentIndex == 0) {
-                    ref.read(sonarrSeriesScrollToTopProvider(instance).notifier).update((state) => state + 1);
+                    ref
+                        .read(
+                            sonarrSeriesScrollToTopProvider(instance).notifier)
+                        .update((state) => state + 1);
                   } else {
-                    ref.read(sonarrActiveTabBarIndexProvider(instance).notifier).state = index;
+                    ref
+                        .read(
+                            sonarrActiveTabBarIndexProvider(instance).notifier)
+                        .state = index;
                   }
                 },
                 destinations: const [

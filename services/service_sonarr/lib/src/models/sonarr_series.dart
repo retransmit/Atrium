@@ -17,6 +17,13 @@ abstract class SonarrSeries with _$SonarrSeries {
     @Default(<SonarrImage>[]) List<SonarrImage> images,
     @Default(<SonarrSeason>[]) List<SonarrSeason> seasons,
     SonarrSeriesStatistics? statistics,
+    String? seriesType,
+    int? runtime,
+    String? certification,
+    @Default(<String>[]) List<String> genres,
+    String? path,
+    String? nextAiring,
+    String? previousAiring,
   }) = _SonarrSeries;
 
   factory SonarrSeries.fromJson(Map<String, dynamic> json) =>

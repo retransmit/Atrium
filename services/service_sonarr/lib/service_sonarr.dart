@@ -11,4 +11,5 @@ export 'src/sonarr_api.dart';
 export 'src/sonarr_home.dart';
 export 'src/sonarr_providers.dart';
 
-final sonarrActiveTabBarIndexProvider = StateProvider.family<int, Instance>((ref, instance) => 0);
+final sonarrActiveTabBarIndexProvider =
+    StateProvider.family<int, Instance>((ref, instance) => 0);
