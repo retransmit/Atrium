@@ -102,7 +102,7 @@ class _StatusSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final BazarrSystemStatus? s =
-        ref.watch(bazarrSystemStatusProvider(instance)).valueOrNull;
+        ref.watch(bazarrSystemStatusProvider(instance)).value;
     if (s == null) {
       return const SizedBox.shrink();
     }
@@ -142,7 +142,7 @@ class _HealthSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
     final List<BazarrHealthItem> issues =
-        ref.watch(bazarrSystemHealthProvider(instance)).valueOrNull ??
+        ref.watch(bazarrSystemHealthProvider(instance)).value ??
             const <BazarrHealthItem>[];
     return _Section(
       title: 'Health',
@@ -183,7 +183,7 @@ class _ProvidersSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
     final List<BazarrProviderStatus> providers =
-        ref.watch(bazarrProviderStatusesProvider(instance)).valueOrNull ??
+        ref.watch(bazarrProviderStatusesProvider(instance)).value ??
             const <BazarrProviderStatus>[];
     return _Section(
       title: 'Providers',
@@ -249,7 +249,7 @@ class _TasksSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final List<BazarrSystemTask> tasks =
-        ref.watch(bazarrSystemTasksProvider(instance)).valueOrNull ??
+        ref.watch(bazarrSystemTasksProvider(instance)).value ??
             const <BazarrSystemTask>[];
     if (tasks.isEmpty) {
       return const SizedBox.shrink();
@@ -308,7 +308,7 @@ class _BackupsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
     final List<BazarrBackup> backups =
-        ref.watch(bazarrBackupsProvider(instance)).valueOrNull ??
+        ref.watch(bazarrBackupsProvider(instance)).value ??
             const <BazarrBackup>[];
     return _Section(
       title: 'Backups',
@@ -418,7 +418,7 @@ class _LogsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
     final List<BazarrLogEntry> logs =
-        ref.watch(bazarrLogsProvider(instance)).valueOrNull ??
+        ref.watch(bazarrLogsProvider(instance)).value ??
             const <BazarrLogEntry>[];
     final List<BazarrLogEntry> shown =
         logs.length > _max ? logs.sublist(0, _max) : logs;

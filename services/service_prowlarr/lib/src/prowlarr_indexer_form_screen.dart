@@ -553,7 +553,7 @@ class _IndexerStatsSection extends ConsumerWidget {
     final ThemeData theme = Theme.of(context);
     final ProwlarrIndexerStat? stat = ref
         .watch(prowlarrStatsByIdProvider(instance))
-        .valueOrNull?[indexerId];
+        .value?[indexerId];
     if (stat == null) {
       return const SizedBox.shrink();
     }

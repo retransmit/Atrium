@@ -1,4 +1,4 @@
-import 'package:dynamic_color/dynamic_color.dart';
+import 'package:dynamic_system_colors/dynamic_system_colors.dart';
 import 'package:flutter/material.dart';
 
 import 'design_tokens.dart';
@@ -6,7 +6,7 @@ import 'design_tokens.dart';
 /// Atrium's Material 3 theme.
 ///
 /// On Android 12+ the user's wallpaper-derived palette is used when
-/// available (via `dynamic_color`); otherwise we fall back to a violet seed
+/// available (via `dynamic_system_colors`); otherwise we fall back to a violet seed
 /// that nods to the "atrium" calm-architectural feel. Both light and dark
 /// are derived from the same seed so they stay in sync.
 abstract final class AtriumTheme {
@@ -65,7 +65,7 @@ abstract final class AtriumTheme {
   }) {
     return DynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) =>
-          builder(lightDynamic?.harmonized(), darkDynamic?.harmonized()),
+          builder(lightDynamic, darkDynamic),
     );
   }
 }

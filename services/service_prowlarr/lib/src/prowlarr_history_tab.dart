@@ -38,7 +38,7 @@ class _ProwlarrHistoryTabState extends ConsumerState<ProwlarrHistoryTab> {
     final AsyncValue<ProwlarrHistoryPage> history =
         ref.watch(prowlarrHistoryProvider(args));
     final List<ProwlarrIndexer> indexers =
-        ref.watch(prowlarrIndexersProvider(instance)).valueOrNull ??
+        ref.watch(prowlarrIndexersProvider(instance)).value ??
             const <ProwlarrIndexer>[];
     final Map<int, String> names = <int, String>{
       for (final ProwlarrIndexer ix in indexers) ix.id: ix.name,

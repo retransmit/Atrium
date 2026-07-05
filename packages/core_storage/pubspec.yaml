@@ -12,10 +12,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_secure_storage: ^9.2.2
+  flutter_secure_storage: ^10.3.1
   hive_ce: ^2.10.1
   hive_ce_flutter: ^2.0.0
-  local_auth: ^2.3.0
+  local_auth: ^3.0.1
   meta: ^1.16.0
   path_provider: ^2.1.5
 
