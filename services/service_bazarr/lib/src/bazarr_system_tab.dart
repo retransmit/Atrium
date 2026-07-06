@@ -176,7 +176,7 @@ class _StatusSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final BazarrSystemStatus? s =
-        ref.watch(bazarrSystemStatusProvider(instance)).valueOrNull;
+        ref.watch(bazarrSystemStatusProvider(instance)).value;
     if (s == null) {
       return const SizedBox.shrink();
     }
@@ -217,7 +217,7 @@ class _HealthSection extends ConsumerWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final List<BazarrHealthItem> issues =
-        ref.watch(bazarrSystemHealthProvider(instance)).valueOrNull ??
+        ref.watch(bazarrSystemHealthProvider(instance)).value ??
             const <BazarrHealthItem>[];
     return _SectionCard(
       title: 'Health',
@@ -280,7 +280,7 @@ class _ProvidersSection extends ConsumerWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final List<BazarrProviderStatus> providers =
-        ref.watch(bazarrProviderStatusesProvider(instance)).valueOrNull ??
+        ref.watch(bazarrProviderStatusesProvider(instance)).value ??
             const <BazarrProviderStatus>[];
     return _SectionCard(
       title: 'Providers',
@@ -381,7 +381,7 @@ class _TasksSection extends ConsumerWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final List<BazarrSystemTask> tasks =
-        ref.watch(bazarrSystemTasksProvider(instance)).valueOrNull ??
+        ref.watch(bazarrSystemTasksProvider(instance)).value ??
             const <BazarrSystemTask>[];
     if (tasks.isEmpty) {
       return const SizedBox.shrink();
@@ -471,7 +471,7 @@ class _BackupsSection extends ConsumerWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final List<BazarrBackup> backups =
-        ref.watch(bazarrBackupsProvider(instance)).valueOrNull ??
+        ref.watch(bazarrBackupsProvider(instance)).value ??
             const <BazarrBackup>[];
     return _SectionCard(
       title: 'Backups',
@@ -612,7 +612,7 @@ class _LogsSection extends ConsumerWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final List<BazarrLogEntry> logs =
-        ref.watch(bazarrLogsProvider(instance)).valueOrNull ??
+        ref.watch(bazarrLogsProvider(instance)).value ??
             const <BazarrLogEntry>[];
     final List<BazarrLogEntry> shown =
         logs.length > _max ? logs.sublist(0, _max) : logs;
