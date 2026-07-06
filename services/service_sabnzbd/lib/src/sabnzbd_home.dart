@@ -462,9 +462,9 @@ class _ServerTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<SabServerStats> stats =
         ref.watch(sabServerStatsProvider(instance));
-    final SabQueue? queue = ref.watch(sabQueueProvider(instance)).valueOrNull;
+    final SabQueue? queue = ref.watch(sabQueueProvider(instance)).value;
     final String version =
-        ref.watch(sabVersionProvider(instance)).valueOrNull ?? '';
+        ref.watch(sabVersionProvider(instance)).value ?? '';
     final int currentLimit = int.tryParse(queue?.speedlimit ?? '') ?? 100;
 
     return RefreshIndicator(
