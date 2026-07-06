@@ -9,9 +9,9 @@ import 'package:go_router/go_router.dart';
 
 import '../health_providers.dart';
 
-/// Home screen. Services now live in the navigation drawer (the sidebar); the
-/// dashboard body is reserved for at-a-glance widgets (added later). Until a
-/// service exists, the body onboards the user to add their first one.
+/// Home screen. Services live in the navigation drawer (the sidebar); the
+/// dashboard body is reserved for at-a-glance widgets (in progress on a
+/// feature branch). Until a service exists, the body onboards the user.
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
@@ -47,8 +47,7 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-/// Placeholder for the future widget grid. Kept deliberately simple until real
-/// widgets land; points the user at the sidebar for services in the meantime.
+/// Placeholder for the widget board (being built on a feature branch).
 class _DashboardWidgets extends StatelessWidget {
   const _DashboardWidgets();
 
@@ -65,7 +64,8 @@ class _DashboardWidgets extends StatelessWidget {
 }
 
 /// The sidebar: configured services grouped by role (each with a live health
-/// dot), plus add-service and profile management in the footer.
+/// dot), with settings, add-service and the active-profile pill along the
+/// bottom.
 class _ServicesDrawer extends StatelessWidget {
   const _ServicesDrawer({required this.instances, required this.profile});
 
@@ -75,9 +75,11 @@ class _ServicesDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
     return Drawer(
       child: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Padding(
               padding: const EdgeInsets.fromLTRB(
@@ -88,12 +90,11 @@ class _ServicesDrawer extends StatelessWidget {
               ),
               child: Row(
                 children: <Widget>[
-                  Icon(Icons.dns_rounded,
-                      color: theme.colorScheme.primary, size: 28),
+                  Icon(Icons.dns_rounded, color: cs.primary, size: 28),
                   const SizedBox(width: Insets.sm),
                   Expanded(
                     child: Text(
-                      profile == null ? 'Atrium' : profile!.name,
+                      'Atrium',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleLarge
@@ -110,28 +111,42 @@ class _ServicesDrawer extends StatelessWidget {
                       child: Padding(
                         padding: const EdgeInsets.all(Insets.lg),
                         child: Text(
-                          'No services yet.\nAdd one below.',
+                          'No services yet.\nAdd one with the + below.',
                           textAlign: TextAlign.center,
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                            color: cs.onSurfaceVariant,
                           ),
                         ),
                       ),
                     )
                   : _ServicesList(instances: instances),
             ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.add),
-              title: const Text('Add service'),
-              onTap: () => _navTo(context, AtriumRoutes.addInstanceName),
+            Padding(
+              padding: const EdgeInsets.all(Insets.md),
+              child: Row(
+                children: <Widget>[
+                  IconButton(
+                    tooltip: 'Settings',
+                    icon: Icon(Icons.settings, color: cs.onSurfaceVariant),
+                    onPressed: () =>
+                        _navTo(context, AtriumRoutes.settingsName),
+                  ),
+                  IconButton(
+                    tooltip: 'Add service',
+                    icon: Icon(Icons.add, color: cs.onSurfaceVariant),
+                    onPressed: () =>
+                        _navTo(context, AtriumRoutes.addInstanceName),
+                  ),
+                  const SizedBox(width: Insets.xs),
+                  Expanded(
+                    child: _ProfilePill(
+                      label: profile?.name ?? 'Default',
+                      onTap: () => _navTo(context, AtriumRoutes.profilesName),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            ListTile(
-              leading: const Icon(Icons.switch_account_outlined),
-              title: const Text('Profiles'),
-              onTap: () => _navTo(context, AtriumRoutes.profilesName),
-            ),
-            const SizedBox(height: Insets.sm),
           ],
         ),
       ),
@@ -140,7 +155,7 @@ class _ServicesDrawer extends StatelessWidget {
 
   /// Capture the router before closing the drawer (popping invalidates the
   /// drawer's own context for navigation).
-  void _navTo(BuildContext context, String routeName) {
+  static void _navTo(BuildContext context, String routeName) {
     final GoRouter router = GoRouter.of(context);
     Navigator.of(context).pop();
     router.goNamed(routeName);
@@ -165,7 +180,12 @@ class _ServicesList extends StatelessWidget {
         .toList();
 
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(Insets.sm, Insets.sm, Insets.sm, Insets.sm),
+      padding: const EdgeInsets.fromLTRB(
+        Insets.sm,
+        Insets.sm,
+        Insets.sm,
+        Insets.sm,
+      ),
       itemCount: roles.length,
       itemBuilder: (BuildContext context, int index) {
         final ServiceRole role = roles[index];
@@ -219,6 +239,63 @@ class _HealthAwareTile extends ConsumerWidget {
         Navigator.of(context).pop();
         router.go(AtriumRoutes.servicePath(instance.kind.name, instance.id));
       },
+    );
+  }
+}
+
+/// Bottom pill showing the active profile; opens profile management.
+class _ProfilePill extends StatelessWidget {
+  const _ProfilePill({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    return Material(
+      color: cs.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(28),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Insets.md,
+            vertical: 8,
+          ),
+          child: Row(
+            children: <Widget>[
+              Icon(Icons.smartphone, size: 18, color: cs.onSurfaceVariant),
+              const SizedBox(width: Insets.sm),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              Container(
+                width: 28,
+                height: 28,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHigh,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.keyboard_arrow_up,
+                  size: 18,
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
