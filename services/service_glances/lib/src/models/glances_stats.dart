@@ -4,7 +4,7 @@ part 'glances_stats.freezed.dart';
 part 'glances_stats.g.dart';
 
 @freezed
-class GlancesStats with _$GlancesStats {
+abstract class GlancesStats with _$GlancesStats {
   const factory GlancesStats({
     required GlancesCpu cpu,
     required GlancesMemory memory,
@@ -19,7 +19,7 @@ class GlancesStats with _$GlancesStats {
 }
 
 @freezed
-class GlancesCpu with _$GlancesCpu {
+abstract class GlancesCpu with _$GlancesCpu {
   const factory GlancesCpu({
     required int physicalCores,
     required int logicalCores,
@@ -33,7 +33,7 @@ class GlancesCpu with _$GlancesCpu {
 }
 
 @freezed
-class GlancesCpuCore with _$GlancesCpuCore {
+abstract class GlancesCpuCore with _$GlancesCpuCore {
   const factory GlancesCpuCore({
     required int id,
     required double usage,
@@ -45,7 +45,7 @@ class GlancesCpuCore with _$GlancesCpuCore {
 }
 
 @freezed
-class GlancesUptime with _$GlancesUptime {
+abstract class GlancesUptime with _$GlancesUptime {
   const factory GlancesUptime({
     required int days,
     required int hours,
@@ -59,7 +59,7 @@ class GlancesUptime with _$GlancesUptime {
 }
 
 @freezed
-class GlancesMemory with _$GlancesMemory {
+abstract class GlancesMemory with _$GlancesMemory {
   const factory GlancesMemory({
     required double percentage,
     required int used,
@@ -71,7 +71,7 @@ class GlancesMemory with _$GlancesMemory {
 }
 
 @freezed
-class GlancesSwap with _$GlancesSwap {
+abstract class GlancesSwap with _$GlancesSwap {
   const factory GlancesSwap({
     required double percentage,
     required int used,
@@ -83,7 +83,7 @@ class GlancesSwap with _$GlancesSwap {
 }
 
 @freezed
-class GlancesNetwork with _$GlancesNetwork {
+abstract class GlancesNetwork with _$GlancesNetwork {
   const factory GlancesNetwork({
     required String interface,
     required int rxSpeed,
@@ -95,7 +95,7 @@ class GlancesNetwork with _$GlancesNetwork {
 }
 
 @freezed
-class GlancesDisk with _$GlancesDisk {
+abstract class GlancesDisk with _$GlancesDisk {
   const factory GlancesDisk({
     required String path,
     required double percentage,

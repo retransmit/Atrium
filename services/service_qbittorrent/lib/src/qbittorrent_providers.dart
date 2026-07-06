@@ -1,6 +1,7 @@
 import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import 'models/qbit_detail.dart';
 import 'models/qbit_torrent.dart';

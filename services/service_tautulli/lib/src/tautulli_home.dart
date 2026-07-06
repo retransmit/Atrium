@@ -64,7 +64,7 @@ class _ActivityTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<TautulliActivity> activity =
         ref.watch(tautulliActivityProvider(instance));
-    final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).valueOrNull;
+    final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).value;
 
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(tautulliActivityProvider(instance)),
@@ -403,7 +403,7 @@ class _SessionSheetState extends ConsumerState<_SessionSheet> {
     final ThemeData theme = Theme.of(context);
     final TautulliSession s = widget.session;
     final TautulliApi? api =
-        ref.watch(tautulliApiProvider(widget.instance)).valueOrNull;
+        ref.watch(tautulliApiProvider(widget.instance)).value;
     final String video = _streamLine(
       s.videoDecision,
       s.videoCodec,
@@ -603,7 +603,7 @@ class _HistoryTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<TautulliHistoryPage> history =
         ref.watch(tautulliHistoryProvider(instance));
-    final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).valueOrNull;
+    final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).value;
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(tautulliHistoryProvider(instance)),
       child: AsyncValueView<TautulliHistoryPage>(
@@ -743,7 +743,7 @@ class _StatsTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<TautulliHomeStat>> stats =
         ref.watch(tautulliHomeStatsProvider(instance));
-    final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).valueOrNull;
+    final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).value;
     return RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(tautulliHomeStatsProvider(instance)),
@@ -945,7 +945,7 @@ class _UsersTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<TautulliUser>> users =
         ref.watch(tautulliUsersProvider(instance));
-    final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).valueOrNull;
+    final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).value;
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(tautulliUsersProvider(instance)),
       child: AsyncValueView<List<TautulliUser>>(
