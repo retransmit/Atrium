@@ -213,7 +213,7 @@ enum EmbyViewMode { list, grid }
 
 /// View mode for library items (list or grid)
 final embyViewModeProvider =
-    StateProviderFamily<EmbyViewMode, Instance>((ref, instance) {
+    StateProvider.family<EmbyViewMode, Instance>((ref, instance) {
   return EmbyViewMode.grid;
 });
 
