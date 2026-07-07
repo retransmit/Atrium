@@ -258,6 +258,27 @@ final sonarrWantedCutoffProvider =
   return api.getWantedCutoff();
 });
 
+/// The calendar entries for an instance for a given month.
+final sonarrCalendarProvider =
+    FutureProvider.autoDispose.family<List<SonarrEpisode>, (Instance, DateTime)>((
+  Ref ref,
+  (Instance, DateTime) key,
+) async {
+  final (Instance instance, DateTime month) = key;
+  final SonarrApi api = await ref.watch(sonarrApiProvider(instance).future);
+
+  // Calculate local month boundaries
+  final DateTime start = DateTime(month.year, month.month);
+  final DateTime end = DateTime(month.year, month.month + 1).subtract(const Duration(seconds: 1));
+
+  final List<SonarrEpisode> episodes = await api.getCalendar(
+    start: start,
+    end: end,
+  );
+
+  return episodes;
+});
+
 /// Search query for the Wanted tab.
 final sonarrWantedSearchQueryProvider =
     StateProvider.family<String, Instance>((ref, instance) => '');
