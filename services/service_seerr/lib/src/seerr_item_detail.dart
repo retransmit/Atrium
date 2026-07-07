@@ -35,7 +35,7 @@ class SeerrItemDetailScreen extends ConsumerWidget {
               mediaType: item.mediaType,
               tmdbId: item.id,
             ),),)
-            .valueOrNull ??
+            .value ??
         item;
 
     final String? backdrop = full.backdropPath ?? item.backdropPath;

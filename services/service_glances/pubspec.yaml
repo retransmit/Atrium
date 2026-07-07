@@ -16,8 +16,8 @@ dependencies:
   dio: ^5.7.0
   flutter:
     sdk: flutter
-  flutter_riverpod: ^2.6.1
-  freezed_annotation: ^2.4.4
+  flutter_riverpod: ^3.3.2
+  freezed_annotation: ^3.1.0
   hive_ce: ^2.10.1
   json_annotation: ^4.9.0
 
@@ -26,5 +26,5 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   flutter_test:
     sdk: flutter
-  freezed: ^2.5.7
+  freezed: ^3.2.5
   json_serializable: ^6.8.0
