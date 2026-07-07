@@ -648,3 +648,27 @@ final sonarrBackupsProvider = FutureProvider.autoDispose
   final SonarrApi api = await ref.watch(sonarrApiProvider(instance).future);
   return api.getBackups();
 });
+
+/// Track selection state for Series
+final sonarrSeriesSelectionProvider =
+    StateProvider.family<Set<int>, Instance>((ref, instance) => <int>{});
+
+/// Track selection state for Queue
+final sonarrQueueSelectionProvider =
+    StateProvider.family<Set<int>, Instance>((ref, instance) => <int>{});
+
+/// Track selection state for Blocklist
+final sonarrBlocklistSelectionProvider =
+    StateProvider.family<Set<int>, Instance>((ref, instance) => <int>{});
+
+/// Parse a title / release name
+final sonarrParseResultProvider = FutureProvider.autoDispose
+    .family<Map<String, dynamic>?, (Instance, String)>((
+  Ref ref,
+  (Instance, String) key,
+) async {
+  final (Instance instance, String title) = key;
+  if (title.trim().isEmpty) return null;
+  final SonarrApi api = await ref.watch(sonarrApiProvider(instance).future);
+  return api.parseTitle(title);
+});
