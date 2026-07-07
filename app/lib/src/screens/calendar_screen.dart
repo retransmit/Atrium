@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:service_radarr/service_radarr.dart';
+import 'package:service_sonarr/service_sonarr.dart';
 
 /// Aggregated calendar event representation.
 sealed class CalendarEvent {
@@ -63,6 +64,31 @@ class RadarrCalendarEvent extends CalendarEvent {
   }
 }
 
+class SonarrCalendarEvent extends CalendarEvent {
+  SonarrCalendarEvent(this.episode, super.instance);
+  final SonarrEpisode episode;
+
+  @override
+  String get title => episode.series != null
+      ? '${episode.series!.title} - S${episode.seasonNumber.toString().padLeft(2, '0')}E${episode.episodeNumber.toString().padLeft(2, '0')}'
+      : episode.title;
+
+  @override
+  DateTime get date {
+    if (episode.airDateUtc == null || episode.airDateUtc!.isEmpty) {
+      return DateTime.now();
+    }
+    return DateTime.parse(episode.airDateUtc!).toLocal();
+  }
+
+  @override
+  bool get hasFile => episode.hasFile;
+
+  @override
+  bool get monitored => episode.monitored;
+}
+
+
 /// Aggregated calendar provider for all active Radarr instances.
 final globalCalendarProvider =
     FutureProvider.autoDispose.family<List<CalendarEvent>, DateTime>((
@@ -78,6 +104,14 @@ final globalCalendarProvider =
         ref.watch(radarrCalendarProvider((instance, month)).future).then(
               (List<RadarrMovie> movies) => movies
                   .map((RadarrMovie m) => RadarrCalendarEvent(m, instance, month))
+                  .toList(),
+            ),
+      );
+    } else if (instance.kind == ServiceKind.sonarr) {
+      futures.add(
+        ref.watch(sonarrCalendarProvider((instance, month)).future).then(
+              (List<SonarrEpisode> episodes) => episodes
+                  .map((SonarrEpisode e) => SonarrCalendarEvent(e, instance))
                   .toList(),
             ),
       );
@@ -643,6 +677,25 @@ class _EventTile extends ConsumerWidget {
           );
 
       posterWidget = _Poster(imageUrl: imageUrl, icon: Icons.movie_outlined);
+    } else if (event is SonarrCalendarEvent) {
+      final SonarrEpisode episode = (event as SonarrCalendarEvent).episode;
+      final SonarrApi? api = ref.watch(sonarrApiProvider(instance)).value;
+      final SonarrImage? poster =
+          episode.series?.images.firstWhereOrNull((SonarrImage i) => i.coverType == 'poster');
+      final String? imageUrl = poster == null ? null : api?.posterUrl(poster);
+
+      releaseType = 'S${episode.seasonNumber.toString().padLeft(2, '0')}E${episode.episodeNumber.toString().padLeft(2, '0')}';
+
+      onTap = () => Navigator.of(context, rootNavigator: true).push(
+            MaterialPageRoute<void>(
+              builder: (_) => SeriesDetailScreen(
+                instance: instance,
+                series: episode.series ?? SonarrSeries(id: episode.seriesId, title: ''),
+              ),
+            ),
+          );
+
+      posterWidget = _Poster(imageUrl: imageUrl, icon: Icons.tv_outlined);
     }
 
     final bool isFuture = event.date.isAfter(DateTime.now());

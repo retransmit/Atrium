@@ -1,4 +1,4 @@
-﻿import 'package:core_networking/core_networking.dart';
+import 'package:core_networking/core_networking.dart';
 import 'package:dio/dio.dart';
 
 import 'models/sonarr_blocklist_item.dart';
@@ -44,6 +44,30 @@ class SonarrApi {
       final Response<dynamic> resp = await _dio.get<dynamic>(
         '$_base/episode',
         queryParameters: <String, dynamic>{'seriesId': seriesId},
+      );
+      return (resp.data as List<dynamic>)
+          .map(
+            (dynamic e) => SonarrEpisode.fromJson(e as Map<String, dynamic>),
+          )
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<List<SonarrEpisode>> getCalendar({
+    required DateTime start,
+    required DateTime end,
+    bool includeSeries = true,
+  }) async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>(
+        '$_base/calendar',
+        queryParameters: <String, dynamic>{
+          'start': start.toUtc().toIso8601String(),
+          'end': end.toUtc().toIso8601String(),
+          'includeSeries': includeSeries,
+        },
       );
       return (resp.data as List<dynamic>)
           .map(
