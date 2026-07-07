@@ -1,7 +1,7 @@
 # Sonarr API Comparison results
 Total spec endpoints: 234
-Implemented: 115
-Unimplemented: 119
+Implemented: 118
+Unimplemented: 116
 
 ## Unimplemented Endpoints
 - `GET` `/api`
@@ -16,7 +16,6 @@ Unimplemented: 119
 - `GET` `/api/v3/autotagging/schema`
 - `POST` `/api/v3/system/backup/restore/{id}`
 - `POST` `/api/v3/system/backup/restore/upload`
-- `DELETE` `/api/v3/blocklist/bulk`
 - `GET` `/api/v3/calendar/{id}`
 - `GET` `/feed/v3/calendar/sonarr.ics`
 - `GET` `/api/v3/command`
@@ -93,11 +92,9 @@ Unimplemented: 119
 - `GET` `/api/v3/config/naming/examples`
 - `POST` `/api/v3/notification/testall`
 - `POST` `/api/v3/notification/action/{name}`
-- `GET` `/api/v3/parse`
 - `GET` `/ping`
 - `GET` `/api/v3/qualitydefinition/{id}`
 - `GET` `/api/v3/qualitydefinition/limits`
-- `DELETE` `/api/v3/queue/bulk`
 - `POST` `/api/v3/queue/grab/{id}`
 - `POST` `/api/v3/queue/grab/bulk`
 - `GET` `/api/v3/queue/details`
@@ -129,6 +126,7 @@ Unimplemented: 119
 - `DELETE` `/api/v3/system/backup/{id}`
 - `GET` `/api/v3/blocklist`
 - `DELETE` `/api/v3/blocklist/{id}`
+- `DELETE` `/api/v3/blocklist/bulk`
 - `GET` `/api/v3/calendar`
 - `POST` `/api/v3/command`
 - `GET` `/api/v3/customformat`
@@ -198,6 +196,7 @@ Unimplemented: 119
 - `GET` `/api/v3/notification/{id}`
 - `GET` `/api/v3/notification/schema`
 - `POST` `/api/v3/notification/test`
+- `GET` `/api/v3/parse`
 - `PUT` `/api/v3/qualitydefinition/{id}`
 - `GET` `/api/v3/qualitydefinition`
 - `PUT` `/api/v3/qualitydefinition/update`
@@ -208,6 +207,7 @@ Unimplemented: 119
 - `GET` `/api/v3/qualityprofile/{id}`
 - `GET` `/api/v3/qualityprofile/schema`
 - `DELETE` `/api/v3/queue/{id}`
+- `DELETE` `/api/v3/queue/bulk`
 - `GET` `/api/v3/queue`
 - `POST` `/api/v3/release`
 - `GET` `/api/v3/release`

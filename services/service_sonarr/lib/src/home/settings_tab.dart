@@ -8,6 +8,7 @@ import 'settings/general_settings_screen.dart';
 import 'settings/indexers_settings_screen.dart';
 import 'settings/media_management_settings_screen.dart';
 import 'settings/metadata_settings_screen.dart';
+import 'settings/parse_title_dialog.dart';
 import 'settings/profiles_settings_screen.dart';
 import 'settings/quality_definitions_screen.dart';
 import 'settings/tags_settings_screen.dart';
@@ -111,6 +112,21 @@ class SettingsTab extends StatelessWidget {
             icon: Icons.label_outline,
             screen: TagsSettingsScreen(instance: instance),
           ),
+          const SizedBox(height: Insets.md),
+
+          _buildCategoryHeader(context, 'Diagnostics & Troubleshooting'),
+          _buildSettingsCard(
+            context: context,
+            title: 'Parse Title',
+            subtitle: 'Extract metadata and check matching series database results for any release name.',
+            icon: Icons.troubleshoot_outlined,
+            onTap: () {
+              showDialog<void>(
+                context: context,
+                builder: (context) => SonarrParseTitleDialog(instance: instance),
+              ).ignore();
+            },
+          ),
         ],
       ),
     );
@@ -136,7 +152,8 @@ class SettingsTab extends StatelessWidget {
     required String title,
     required String subtitle,
     required IconData icon,
-    required Widget screen,
+    Widget? screen,
+    VoidCallback? onTap,
   }) {
     final theme = Theme.of(context);
 
@@ -149,13 +166,15 @@ class SettingsTab extends StatelessWidget {
       ),
       child: InkWell(
         borderRadius: Radii.card,
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute<void>(
-              builder: (context) => screen,
-            ),
-          );
+        onTap: onTap ?? () {
+          if (screen != null) {
+            Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                builder: (context) => screen,
+              ),
+            );
+          }
         },
         child: Padding(
           padding: const EdgeInsets.all(Insets.md),
