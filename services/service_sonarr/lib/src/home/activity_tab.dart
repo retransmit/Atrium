@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:core_models/core_models.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -22,10 +23,11 @@ class ActivityTab extends ConsumerStatefulWidget {
 }
 
 class _ActivityTabState extends ConsumerState<ActivityTab>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, TickerProviderStateMixin {
   late final TextEditingController _searchController;
   late final FocusNode _searchFocusNode;
   double _lastBottomInset = 0;
+  late final TabController _tabController;
 
   @override
   void initState() {
@@ -35,6 +37,14 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
         ref.read(sonarrActivitySearchQueryProvider(widget.instance));
     _searchController = TextEditingController(text: initialQuery);
     _searchFocusNode = FocusNode()..addListener(_onFocusChange);
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) {
+        ref.read(sonarrQueueSelectionProvider(widget.instance).notifier).state = {};
+        ref.read(sonarrBlocklistSelectionProvider(widget.instance).notifier).state = {};
+        setState(() {});
+      }
+    });
   }
 
   @override
@@ -45,6 +55,7 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
     _searchController.dispose();
     _searchFocusNode.removeListener(_onFocusChange);
     _searchFocusNode.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -77,6 +88,14 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final grouped = ref.watch(sonarrActivityGroupedProvider(widget.instance));
+    final queueSelection = ref.watch(sonarrQueueSelectionProvider(widget.instance));
+    final blocklistSelection = ref.watch(sonarrBlocklistSelectionProvider(widget.instance));
+    final activeSelection = _tabController.index == 0
+        ? queueSelection
+        : _tabController.index == 2
+            ? blocklistSelection
+            : <int>{};
+    final isSelecting = activeSelection.isNotEmpty;
 
     return PopScope<Object?>(
       canPop: Scaffold.of(context).isDrawerOpen ||
@@ -94,10 +113,19 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
         ref.read(sonarrActivitySearchQueryProvider(widget.instance).notifier).state = '';
         _updateSearchActiveState();
       },
-      child: DefaultTabController(
-        length: 3,
-        child: Scaffold(
+      child: Scaffold(
           backgroundColor: theme.colorScheme.surface,
+          bottomNavigationBar: isSelecting
+              ? _ActivityBulkActionsBar(
+                  instance: widget.instance,
+                  selectedIds: activeSelection,
+                  isQueue: _tabController.index == 0,
+                  onClear: () {
+                    ref.read(sonarrQueueSelectionProvider(widget.instance).notifier).state = {};
+                    ref.read(sonarrBlocklistSelectionProvider(widget.instance).notifier).state = {};
+                  },
+                )
+              : null,
           body: NestedScrollView(
             headerSliverBuilder: (BuildContext innerContext, bool innerBoxIsScrolled) {
               return <Widget>[
@@ -109,16 +137,31 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
                   surfaceTintColor: Colors.transparent,
                   backgroundColor: theme.colorScheme.surface,
                   toolbarHeight: 72,
-                  titleSpacing: 0,
+                  titleSpacing: isSelecting ? 16 : 0,
                   leadingWidth: 56,
-                  leading: IconButton(
-                    icon: const Icon(Icons.menu),
-                    onPressed: () {
-                      // Call on outer context of the build method to resolve the parent Scaffold drawer.
-                      Scaffold.of(context).openDrawer();
-                    },
-                  ),
-                  title: SearchBar(
+                  leading: isSelecting
+                      ? IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () {
+                            ref.read(sonarrQueueSelectionProvider(widget.instance).notifier).state = {};
+                            ref.read(sonarrBlocklistSelectionProvider(widget.instance).notifier).state = {};
+                          },
+                        )
+                      : IconButton(
+                          icon: const Icon(Icons.menu),
+                          onPressed: () {
+                            // Call on outer context of the build method to resolve the parent Scaffold drawer.
+                            Scaffold.of(context).openDrawer();
+                          },
+                        ),
+                  title: isSelecting
+                      ? Text(
+                          '${activeSelection.length} selected',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : SearchBar(
                     focusNode: _searchFocusNode,
                     controller: _searchController,
                     hintText: 'Search activity...',
@@ -162,23 +205,26 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
                     },
                   ),
                   actions: <Widget>[
-                    IconButton(
-                      icon: Icon(
-                        grouped ? Icons.format_list_bulleted : Icons.group_work_outlined,
+                    if (!isSelecting) ...[
+                      IconButton(
+                        icon: Icon(
+                          grouped ? Icons.format_list_bulleted : Icons.group_work_outlined,
+                        ),
+                        tooltip: grouped ? 'Switch to plain list' : 'Switch to grouped view',
+                        onPressed: () {
+                          ref
+                              .read(
+                                sonarrActivityGroupedProvider(widget.instance)
+                                    .notifier,
+                              )
+                              .state = !grouped;
+                        },
                       ),
-                      tooltip: grouped ? 'Switch to plain list' : 'Switch to grouped view',
-                      onPressed: () {
-                        ref
-                            .read(
-                              sonarrActivityGroupedProvider(widget.instance)
-                                  .notifier,
-                            )
-                            .state = !grouped;
-                      },
-                    ),
+                    ],
                     const SizedBox(width: 8),
                   ],
                   bottom: TabBar(
+                    controller: _tabController,
                     dividerColor: Colors.transparent,
                     indicatorColor: theme.colorScheme.primary,
                     labelColor: theme.colorScheme.primary,
@@ -198,6 +244,7 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
               ];
             },
             body: TabBarView(
+              controller: _tabController,
               children: <Widget>[
                 _QueueView(instance: widget.instance),
                 _HistoryView(instance: widget.instance),
@@ -206,7 +253,6 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
             ),
           ),
         ),
-      ),
     );
   }
 }
@@ -334,6 +380,19 @@ class _QueueItemCard extends ConsumerWidget {
     final theme = Theme.of(context);
     final api = ref.watch(sonarrApiProvider(instance)).value;
     final item = group.first;
+    final selection = ref.watch(sonarrQueueSelectionProvider(instance));
+    final isSelecting = selection.isNotEmpty;
+    final groupIds = group.map((i) => i.id).toList();
+    final isSelected = groupIds.every(selection.contains);
+
+    void toggleSelection() {
+      final notifier = ref.read(sonarrQueueSelectionProvider(instance).notifier);
+      if (isSelected) {
+        notifier.state = selection.where((id) => !groupIds.contains(id)).toSet();
+      } else {
+        notifier.state = {...selection, ...groupIds};
+      }
+    }
 
     // Calculate aggregated size and progress
     double totalSize = 0.0;
@@ -383,7 +442,14 @@ class _QueueItemCard extends ConsumerWidget {
       color: theme.colorScheme.surfaceContainerLow,
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => _showQueueDetails(context, ref, group),
+        onTap: () {
+          if (isSelecting) {
+            toggleSelection();
+          } else {
+            _showQueueDetails(context, ref, group);
+          }
+        },
+        onLongPress: toggleSelection,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
@@ -394,28 +460,51 @@ class _QueueItemCard extends ConsumerWidget {
                 child: SizedBox(
                   width: 50,
                   height: 75,
-                  child: posterUrl != null
-                    ? CachedNetworkImage(
-                        imageUrl: posterUrl,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                        ),
-                        errorWidget: (context, url, err) => Container(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          child: Icon(
-                            Icons.live_tv,
-                            color: theme.colorScheme.outline,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      posterUrl != null
+                        ? CachedNetworkImage(
+                            imageUrl: posterUrl,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              color: theme.colorScheme.surfaceContainerHighest,
+                            ),
+                            errorWidget: (context, url, err) => Container(
+                              color: theme.colorScheme.surfaceContainerHighest,
+                              child: Icon(
+                                Icons.live_tv,
+                                color: theme.colorScheme.outline,
+                              ),
+                            ),
+                          )
+                        : Container(
+                            color: theme.colorScheme.surfaceContainerHighest,
+                            child: Icon(
+                              Icons.live_tv,
+                              color: theme.colorScheme.outline,
+                            ),
+                          ),
+                      if (isSelected)
+                        Container(
+                          color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.primary,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.check,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                            ),
                           ),
                         ),
-                      )
-                    : Container(
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        child: Icon(
-                          Icons.live_tv,
-                          color: theme.colorScheme.outline,
-                        ),
-                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1347,6 +1436,19 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final api = ref.watch(sonarrApiProvider(widget.instance)).value;
+    final selection = ref.watch(sonarrBlocklistSelectionProvider(widget.instance));
+    final isSelecting = selection.isNotEmpty;
+    final groupIds = widget.items.map((i) => i.id).toList();
+    final isGroupSelected = groupIds.every(selection.contains);
+
+    void toggleGroupSelection() {
+      final notifier = ref.read(sonarrBlocklistSelectionProvider(widget.instance).notifier);
+      if (isGroupSelected) {
+        notifier.state = selection.where((id) => !groupIds.contains(id)).toSet();
+      } else {
+        notifier.state = {...selection, ...groupIds};
+      }
+    }
 
     String? posterUrl;
     if (widget.series?.images != null && api != null) {
@@ -1378,10 +1480,15 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
               bottomRight: Radius.circular(_isExpanded ? 0 : 20),
             ),
             onTap: () {
-              setState(() {
-                _isExpanded = !_isExpanded;
-              });
+              if (isSelecting) {
+                toggleGroupSelection();
+              } else {
+                setState(() {
+                  _isExpanded = !_isExpanded;
+                });
+              }
             },
+            onLongPress: toggleGroupSelection,
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
@@ -1391,30 +1498,53 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
                     child: SizedBox(
                       width: 36,
                       height: 54,
-                      child: posterUrl != null
-                          ? CachedNetworkImage(
-                              imageUrl: posterUrl,
-                              fit: BoxFit.cover,
-                              placeholder: (context, url) => Container(
-                                color: theme.colorScheme.surfaceContainerHighest,
-                              ),
-                              errorWidget: (context, url, err) => Container(
-                                color: theme.colorScheme.surfaceContainerHighest,
-                                child: Icon(
-                                  Icons.live_tv,
-                                  size: 18,
-                                  color: theme.colorScheme.outline,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          posterUrl != null
+                              ? CachedNetworkImage(
+                                  imageUrl: posterUrl,
+                                  fit: BoxFit.cover,
+                                  placeholder: (context, url) => Container(
+                                    color: theme.colorScheme.surfaceContainerHighest,
+                                  ),
+                                  errorWidget: (context, url, err) => Container(
+                                    color: theme.colorScheme.surfaceContainerHighest,
+                                    child: Icon(
+                                      Icons.live_tv,
+                                      size: 18,
+                                      color: theme.colorScheme.outline,
+                                    ),
+                                  ),
+                                )
+                              : Container(
+                                  color: theme.colorScheme.surfaceContainerHighest,
+                                  child: Icon(
+                                    Icons.live_tv,
+                                    size: 18,
+                                    color: theme.colorScheme.outline,
+                                  ),
+                                ),
+                          if (isGroupSelected)
+                            Container(
+                              color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                              child: Center(
+                                child: Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.check,
+                                    size: 10,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
-                            )
-                          : Container(
-                              color: theme.colorScheme.surfaceContainerHighest,
-                              child: Icon(
-                                Icons.live_tv,
-                                size: 18,
-                                color: theme.colorScheme.outline,
-                              ),
                             ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1474,83 +1604,107 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
                 itemCount: widget.items.length,
                 itemBuilder: (BuildContext context, int index) {
                   final item = widget.items[index];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Row(
-                      children: <Widget>[
-                        Icon(
-                          Icons.block_outlined,
-                          color: theme.colorScheme.error,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                item.sourceTitle ?? 'Unknown Release',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              if (item.message != null && item.message!.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 2),
-                                  child: Text(
-                                    item.message!,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.error,
-                                      fontSize: 11,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
+                  final isItemSelected = selection.contains(item.id);
+
+                  void toggleItemSelection() {
+                    final notifier = ref.read(sonarrBlocklistSelectionProvider(widget.instance).notifier);
+                    if (isItemSelected) {
+                      notifier.state = selection.where((id) => id != item.id).toSet();
+                    } else {
+                      notifier.state = {...selection, item.id};
+                    }
+                  }
+
+                  return InkWell(
+                    onTap: isSelecting ? toggleItemSelection : null,
+                    onLongPress: toggleItemSelection,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Row(
+                        children: <Widget>[
+                          isSelecting
+                              ? Padding(
+                                  padding: const EdgeInsets.only(right: 4.0),
+                                  child: Checkbox(
+                                    value: isItemSelected,
+                                    onChanged: (_) => toggleItemSelection(),
                                   ),
+                                )
+                              : Icon(
+                                  Icons.block_outlined,
+                                  color: theme.colorScheme.error,
+                                  size: 20,
                                 ),
-                              const SizedBox(height: 2),
-                              Row(
-                                children: <Widget>[
-                                  if (item.indexer != null)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 1,
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  item.sourceTitle ?? 'Unknown Release',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                if (item.message != null && item.message!.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 2),
+                                    child: Text(
+                                      item.message!,
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.error,
+                                        fontSize: 11,
                                       ),
-                                      margin: const EdgeInsets.only(right: 6),
-                                      decoration: BoxDecoration(
-                                        color: theme.colorScheme.surfaceContainerHighest,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        item.indexer!,
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w500,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                const SizedBox(height: 2),
+                                Row(
+                                  children: <Widget>[
+                                    if (item.indexer != null)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 1,
+                                        ),
+                                        margin: const EdgeInsets.only(right: 6),
+                                        decoration: BoxDecoration(
+                                          color: theme.colorScheme.surfaceContainerHighest,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          item.indexer!,
+                                          style: theme.textTheme.bodySmall?.copyWith(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                         ),
                                       ),
+                                    Text(
+                                      _formatDateTime(item.date),
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.outline,
+                                        fontSize: 10,
+                                      ),
                                     ),
-                                  Text(
-                                    _formatDateTime(item.date),
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.outline,
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                ],
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (!isSelecting)
+                            IconButton(
+                              icon: Icon(
+                                Icons.delete_outline,
+                                color: theme.colorScheme.error,
                               ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(
-                            Icons.delete_outline,
-                            color: theme.colorScheme.error,
-                          ),
-                          onPressed: () => _confirmDeleteBlocklistItem(context, ref, widget.instance, item),
-                        ),
-                      ],
+                              onPressed: () => _confirmDeleteBlocklistItem(context, ref, widget.instance, item),
+                            ),
+                        ],
+                      ),
                     ),
                   );
                 },
@@ -1575,6 +1729,19 @@ class _PlainBlocklistCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final selection = ref.watch(sonarrBlocklistSelectionProvider(instance));
+    final isSelecting = selection.isNotEmpty;
+    final isSelected = selection.contains(item.id);
+
+    void toggleSelection() {
+      final notifier = ref.read(sonarrBlocklistSelectionProvider(instance).notifier);
+      if (isSelected) {
+        notifier.state = selection.where((id) => id != item.id).toSet();
+      } else {
+        notifier.state = {...selection, item.id};
+      }
+    }
+
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 8),
@@ -1586,12 +1753,19 @@ class _PlainBlocklistCard extends ConsumerWidget {
       ),
       color: theme.colorScheme.surfaceContainerLow,
       child: ListTile(
+        onTap: isSelecting ? toggleSelection : null,
+        onLongPress: toggleSelection,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        leading: Icon(
-          Icons.block_outlined,
-          color: theme.colorScheme.error,
-          size: 22,
-        ),
+        leading: isSelecting
+            ? Checkbox(
+                value: isSelected,
+                onChanged: (_) => toggleSelection(),
+              )
+            : Icon(
+                Icons.block_outlined,
+                color: theme.colorScheme.error,
+                size: 22,
+              ),
         title: Text(
           item.sourceTitle ?? 'Unknown Release',
           style: theme.textTheme.bodyMedium?.copyWith(
@@ -1630,13 +1804,15 @@ class _PlainBlocklistCard extends ConsumerWidget {
             ),
           ],
         ),
-        trailing: IconButton(
-          icon: Icon(
-            Icons.delete_outline,
-            color: theme.colorScheme.error,
-          ),
-          onPressed: () => _confirmDeleteBlocklistItem(context, ref, instance, item),
-        ),
+        trailing: isSelecting
+            ? null
+            : IconButton(
+                icon: Icon(
+                  Icons.delete_outline,
+                  color: theme.colorScheme.error,
+                ),
+                onPressed: () => _confirmDeleteBlocklistItem(context, ref, instance, item),
+              ),
       ),
     );
   }
@@ -1906,3 +2082,307 @@ String _formatDateTime(String? isoDate) {
     return isoDate;
   }
 }
+class _ActivityBulkActionsBar extends StatelessWidget {
+  const _ActivityBulkActionsBar({
+    required this.instance,
+    required this.selectedIds,
+    required this.isQueue,
+    required this.onClear,
+  });
+
+  final Instance instance;
+  final Set<int> selectedIds;
+  final bool isQueue;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainer,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.fromLTRB(
+        Insets.md,
+        Insets.sm,
+        Insets.md,
+        Insets.sm + MediaQuery.paddingOf(context).bottom,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          if (isQueue) ...[
+            TextButton.icon(
+              style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.primary,
+              ),
+              onPressed: () {
+                showDialog<void>(
+                  context: context,
+                  builder: (BuildContext context) => _QueueBulkGrabDialog(
+                    instance: instance,
+                    selectedIds: selectedIds,
+                    onClear: onClear,
+                  ),
+                ).ignore();
+              },
+              icon: const Icon(Icons.download_outlined),
+              label: const Text('Force Grab'),
+            ),
+            TextButton.icon(
+              style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.error,
+              ),
+              onPressed: () {
+                showDialog<void>(
+                  context: context,
+                  builder: (BuildContext context) => _QueueBulkDeleteDialog(
+                    instance: instance,
+                    selectedIds: selectedIds,
+                    onClear: onClear,
+                  ),
+                ).ignore();
+              },
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('Remove'),
+            ),
+          ] else ...[
+            TextButton.icon(
+              style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.error,
+              ),
+              onPressed: () {
+                showDialog<void>(
+                  context: context,
+                  builder: (BuildContext context) => _BlocklistBulkDeleteDialog(
+                    instance: instance,
+                    selectedIds: selectedIds,
+                    onClear: onClear,
+                  ),
+                ).ignore();
+              },
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('Remove'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _QueueBulkGrabDialog extends ConsumerWidget {
+  const _QueueBulkGrabDialog({
+    required this.instance,
+    required this.selectedIds,
+    required this.onClear,
+  });
+
+  final Instance instance;
+  final Set<int> selectedIds;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return AlertDialog(
+      title: Text('Force Grab ${selectedIds.length} Releases?'),
+      content: const Text('Are you sure you want to force download the selected releases from the queue?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            final navigator = Navigator.of(context);
+            showDialog<void>(
+              context: context,
+              barrierDismissible: false,
+              builder: (ctx) => const Center(child: CircularProgressIndicator(),),
+            ).ignore();
+
+            try {
+              final api = await ref.read(sonarrApiProvider(instance).future);
+              for (final id in selectedIds) {
+                await api.runCommand(<String, dynamic>{
+                  'name': 'QueueGrab',
+                  'queueId': id,
+                });
+              }
+              ref.invalidate(sonarrQueueProvider(instance));
+              onClear();
+
+              if (!context.mounted) return;
+              navigator.pop(); // pop loading
+              navigator.pop(); // pop dialog
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Forced grab successfully triggered')),
+              );
+            } catch (e) {
+              if (!context.mounted) return;
+              navigator.pop(); // pop loading
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error grabbing items: $e')),
+              );
+            }
+          },
+          child: const Text('Force Grab'),
+        ),
+      ],
+    );
+  }
+}
+
+class _QueueBulkDeleteDialog extends ConsumerStatefulWidget {
+  const _QueueBulkDeleteDialog({
+    required this.instance,
+    required this.selectedIds,
+    required this.onClear,
+  });
+
+  final Instance instance;
+  final Set<int> selectedIds;
+  final VoidCallback onClear;
+
+  @override
+  ConsumerState<_QueueBulkDeleteDialog> createState() => _QueueBulkDeleteDialogState();
+}
+
+class _QueueBulkDeleteDialogState extends ConsumerState<_QueueBulkDeleteDialog> {
+  bool _blocklist = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Remove ${widget.selectedIds.length} items from Queue?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Are you sure you want to remove these items from download client queue?'),
+          const SizedBox(height: 16),
+          CheckboxListTile(
+            title: const Text('Add items to blocklist'),
+            value: _blocklist,
+            contentPadding: EdgeInsets.zero,
+            onChanged: (val) => setState(() => _blocklist = val ?? false),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.error,
+            foregroundColor: Theme.of(context).colorScheme.onError,
+          ),
+          onPressed: () async {
+            final navigator = Navigator.of(context);
+            showDialog<void>(
+              context: context,
+              barrierDismissible: false,
+              builder: (ctx) => const Center(child: CircularProgressIndicator(),),
+            ).ignore();
+
+            try {
+              final api = await ref.read(sonarrApiProvider(widget.instance).future);
+              await api.bulkDeleteQueue(widget.selectedIds.toList(), blocklist: _blocklist);
+              ref.invalidate(sonarrQueueProvider(widget.instance));
+              widget.onClear();
+              
+              if (!context.mounted) return;
+              navigator.pop(); // pop loading
+              navigator.pop(); // pop dialog
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Successfully removed items')),
+              );
+            } catch (e) {
+              if (!context.mounted) return;
+              navigator.pop(); // pop loading
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error removing items: $e')),
+              );
+            }
+          },
+          child: const Text('Remove'),
+        ),
+      ],
+    );
+  }
+}
+
+class _BlocklistBulkDeleteDialog extends ConsumerWidget {
+  const _BlocklistBulkDeleteDialog({
+    required this.instance,
+    required this.selectedIds,
+    required this.onClear,
+  });
+
+  final Instance instance;
+  final Set<int> selectedIds;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return AlertDialog(
+      title: Text('Remove ${selectedIds.length} items from Blocklist?'),
+      content: const Text('Are you sure you want to remove these items from blocklist? Sonarr will be able to search and grab these releases again.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.error,
+            foregroundColor: Theme.of(context).colorScheme.onError,
+          ),
+          onPressed: () async {
+            final navigator = Navigator.of(context);
+            showDialog<void>(
+              context: context,
+              barrierDismissible: false,
+              builder: (ctx) => const Center(child: CircularProgressIndicator(),),
+            ).ignore();
+
+            try {
+              final api = await ref.read(sonarrApiProvider(instance).future);
+              await api.bulkDeleteBlocklist(selectedIds.toList());
+              ref.invalidate(sonarrBlocklistProvider(instance));
+              onClear();
+              
+              if (!context.mounted) return;
+              navigator.pop(); // pop loading
+              navigator.pop(); // pop dialog
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Successfully removed items from blocklist')),
+              );
+            } catch (e) {
+              if (!context.mounted) return;
+              navigator.pop(); // pop loading
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error removing items: $e')),
+              );
+            }
+          },
+          child: const Text('Remove'),
+        ),
+      ],
+    );
+  }
+}
+
