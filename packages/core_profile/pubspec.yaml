@@ -15,7 +15,7 @@ dependencies:
   core_storage:
   flutter:
     sdk: flutter
-  flutter_riverpod: ^2.6.1
+  flutter_riverpod: ^3.3.2
   hive_ce: ^2.10.1
   meta: ^1.16.0
   uuid: ^4.5.1
