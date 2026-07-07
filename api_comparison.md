@@ -1,7 +1,7 @@
 # Sonarr API Comparison results
 Total spec endpoints: 234
-Implemented: 114
-Unimplemented: 120
+Implemented: 115
+Unimplemented: 119
 
 ## Unimplemented Endpoints
 - `GET` `/api`
@@ -17,7 +17,6 @@ Unimplemented: 120
 - `POST` `/api/v3/system/backup/restore/{id}`
 - `POST` `/api/v3/system/backup/restore/upload`
 - `DELETE` `/api/v3/blocklist/bulk`
-- `GET` `/api/v3/calendar`
 - `GET` `/api/v3/calendar/{id}`
 - `GET` `/feed/v3/calendar/sonarr.ics`
 - `GET` `/api/v3/command`
@@ -130,6 +129,7 @@ Unimplemented: 120
 - `DELETE` `/api/v3/system/backup/{id}`
 - `GET` `/api/v3/blocklist`
 - `DELETE` `/api/v3/blocklist/{id}`
+- `GET` `/api/v3/calendar`
 - `POST` `/api/v3/command`
 - `GET` `/api/v3/customformat`
 - `POST` `/api/v3/customformat`
