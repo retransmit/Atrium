@@ -103,7 +103,7 @@ final Provider<List<Instance>> activeInstancesProvider =
 });
 
 /// Active-profile instances of a particular [ServiceKind].
-final ProviderFamily<List<Instance>, ServiceKind> instancesByKindProvider =
+final instancesByKindProvider =
     Provider.family<List<Instance>, ServiceKind>((Ref ref, ServiceKind kind) {
   return ref
       .watch(activeInstancesProvider)
@@ -112,7 +112,7 @@ final ProviderFamily<List<Instance>, ServiceKind> instancesByKindProvider =
 });
 
 /// A single active-profile instance by id, or null.
-final ProviderFamily<Instance?, String> instanceByIdProvider =
+final instanceByIdProvider =
     Provider.family<Instance?, String>((Ref ref, String id) {
   return ref
       .watch(activeInstancesProvider)

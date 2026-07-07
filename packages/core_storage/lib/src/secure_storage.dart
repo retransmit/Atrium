@@ -17,12 +17,7 @@ class AtriumSecureStorage {
   /// [FlutterSecureStorage] in tests.
   AtriumSecureStorage({FlutterSecureStorage? store})
       : _store = store ??
-            const FlutterSecureStorage(
-              aOptions: AndroidOptions(
-                encryptedSharedPreferences: true,
-                resetOnError: true,
-              ),
-            );
+            const FlutterSecureStorage();
 
   final FlutterSecureStorage _store;
 

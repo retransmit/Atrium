@@ -186,7 +186,7 @@ class _BazarrProfileEditScreenState
     final NavigatorState nav = Navigator.of(context);
     try {
       final List<BazarrLanguageProfile> current =
-          ref.read(bazarrProfilesProvider(widget.instance)).valueOrNull ??
+          ref.read(bazarrProfilesProvider(widget.instance)).value ??
               const <BazarrLanguageProfile>[];
       int maxId = 0;
       for (final BazarrLanguageProfile p in current) {

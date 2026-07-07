@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import 'emby_client.dart';
 import 'models/emby_item.dart';
@@ -212,7 +213,7 @@ enum EmbyViewMode { list, grid }
 
 /// View mode for library items (list or grid)
 final embyViewModeProvider =
-    StateProviderFamily<EmbyViewMode, Instance>((ref, instance) {
+    StateProvider.family<EmbyViewMode, Instance>((ref, instance) {
   return EmbyViewMode.grid;
 });
 

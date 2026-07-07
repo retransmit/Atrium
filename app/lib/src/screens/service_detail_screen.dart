@@ -13,8 +13,8 @@ import 'package:service_prowlarr/service_prowlarr.dart';
 import 'package:service_qbittorrent/service_qbittorrent.dart';
 import 'package:service_radarr/service_radarr.dart';
 import 'package:service_sabnzbd/service_sabnzbd.dart';
-import 'package:service_sonarr/service_sonarr.dart';
 import 'package:service_glances/service_glances.dart';
+import 'package:service_sonarr/service_sonarr.dart';
 import 'package:service_tautulli/service_tautulli.dart';
 
 /// Routes an instance to its service-specific screen, dispatching on
@@ -34,6 +34,9 @@ class ServiceDetailScreen extends ConsumerWidget {
     final Instance? instance = ref.watch(instanceByIdProvider(instanceId));
     if (instance == null) {
       return const _NotFound();
+    }
+    if (instance.kind == ServiceKind.sonarr) {
+      return SonarrHome(instance: instance);
     }
     return Scaffold(
       appBar: AppBar(
@@ -125,31 +128,6 @@ class ServiceDetailScreen extends ConsumerWidget {
                 );
               },
             ),
-          if (instance.kind == ServiceKind.sonarr)
-            Consumer(
-              builder: (BuildContext context, WidgetRef ref, Widget? child) {
-                final int activeTab = ref.watch(sonarrActiveTabBarIndexProvider(instance));
-                if (activeTab != 0) {
-                  return const SizedBox.shrink();
-                }
-                final SonarrViewMode viewMode = ref.watch(sonarrViewModeProvider(instance));
-                return IconButton(
-                  tooltip: viewMode == SonarrViewMode.grid
-                      ? 'Switch to Banner List'
-                      : 'Switch to Grid',
-                  icon: Icon(viewMode == SonarrViewMode.grid
-                      ? Icons.view_headline
-                      : Icons.grid_view),
-                  onPressed: () {
-                    ref.read(sonarrViewModeProvider(instance).notifier).setViewMode(
-                          viewMode == SonarrViewMode.grid
-                              ? SonarrViewMode.banner
-                              : SonarrViewMode.grid,
-                        );
-                  },
-                );
-              },
-            ),
           if (instance.kind == ServiceKind.qbittorrent)
             QbittorrentAppBarActions(instance: instance),
           Consumer(
@@ -178,7 +156,9 @@ class ServiceDetailScreen extends ConsumerWidget {
 
   Widget _bodyFor(Instance instance) {
     return switch (instance.kind) {
-      ServiceKind.sonarr => SonarrHome(instance: instance),
+      ServiceKind.sonarr => const Center(
+          child: Text('Sonarr integration starts here!'),
+        ),
       ServiceKind.radarr => RadarrHome(instance: instance),
       ServiceKind.prowlarr => ProwlarrHome(instance: instance),
       ServiceKind.bazarr => BazarrHome(instance: instance),
