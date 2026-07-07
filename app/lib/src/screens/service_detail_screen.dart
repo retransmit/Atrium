@@ -17,6 +17,8 @@ import 'package:service_glances/service_glances.dart';
 import 'package:service_sonarr/service_sonarr.dart';
 import 'package:service_tautulli/service_tautulli.dart';
 
+import 'dashboard_screen.dart';
+
 /// Routes an instance to its service-specific screen, dispatching on
 /// [ServiceKind]. The switch is exhaustive - every service has a UI module.
 class ServiceDetailScreen extends ConsumerWidget {
@@ -36,10 +38,30 @@ class ServiceDetailScreen extends ConsumerWidget {
       return const _NotFound();
     }
     if (instance.kind == ServiceKind.sonarr) {
-      return SonarrHome(instance: instance);
+      return SonarrHome(
+        instance: instance,
+        drawer: ServicesDrawer(
+          instances: ref.watch(activeInstancesProvider),
+          profile: ref.watch(activeProfileProvider),
+        ),
+      );
     }
     return Scaffold(
+      drawer: ServicesDrawer(
+        instances: ref.watch(activeInstancesProvider),
+        profile: ref.watch(activeProfileProvider),
+      ),
       appBar: AppBar(
+        leading: Builder(
+          builder: (BuildContext context) {
+            return IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () {
+                Scaffold.of(context).openDrawer();
+              },
+            );
+          },
+        ),
         title: instance.kind == ServiceKind.emby
             ? TextField(
                 readOnly: true,
@@ -58,7 +80,10 @@ class ServiceDetailScreen extends ConsumerWidget {
                   hintText: 'Search Emby...',
                   hintStyle: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         fontSize: 16,
-                        color: Theme.of(context).colorScheme.onSecondaryContainer.withValues(alpha: 0.7),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSecondaryContainer
+                            .withValues(alpha: 0.7),
                       ),
                   prefixIcon: Icon(
                     Icons.search,
@@ -98,7 +123,8 @@ class ServiceDetailScreen extends ConsumerWidget {
                   delegate: switch (instance.kind) {
                     ServiceKind.emby => EmbySearchDelegate(instance: instance),
                     ServiceKind.plex => PlexSearchDelegate(instance: instance),
-                    ServiceKind.seerr => SeerrSearchDelegate(instance: instance),
+                    ServiceKind.seerr =>
+                      SeerrSearchDelegate(instance: instance),
                     _ => JellyfinSearchDelegate(instance: instance),
                   },
                 );
@@ -107,11 +133,13 @@ class ServiceDetailScreen extends ConsumerWidget {
           if (instance.kind == ServiceKind.emby)
             Consumer(
               builder: (BuildContext context, WidgetRef ref, Widget? child) {
-                final int activeTab = ref.watch(embyActiveTabBarIndexProvider(instance));
+                final int activeTab =
+                    ref.watch(embyActiveTabBarIndexProvider(instance));
                 if (activeTab == 0) {
                   return const SizedBox.shrink();
                 }
-                final EmbyViewMode viewMode = ref.watch(embyViewModeProvider(instance));
+                final EmbyViewMode viewMode =
+                    ref.watch(embyViewModeProvider(instance));
                 return IconButton(
                   tooltip: viewMode == EmbyViewMode.grid
                       ? 'Switch to List View'
@@ -133,7 +161,8 @@ class ServiceDetailScreen extends ConsumerWidget {
           Consumer(
             builder: (BuildContext context, WidgetRef ref, Widget? child) {
               if (instance.kind == ServiceKind.qbittorrent) {
-                final Set<String> selectedHashes = ref.watch(qbitSelectionProvider(instance));
+                final Set<String> selectedHashes =
+                    ref.watch(qbitSelectionProvider(instance));
                 if (selectedHashes.isNotEmpty) {
                   return const SizedBox.shrink();
                 }
