@@ -1502,4 +1502,90 @@ class SonarrApi {
       throw NetworkException.fromDio(e);
     }
   }
+
+  Future<void> bulkDeleteQueue(
+    List<int> ids, {
+    bool removeFromClient = true,
+    bool blocklist = false,
+  }) async {
+    try {
+      await _dio.delete<dynamic>(
+        '$_base/queue/bulk',
+        queryParameters: <String, dynamic>{
+          'removeFromClient': removeFromClient,
+          'blocklist': blocklist,
+        },
+        data: <String, dynamic>{
+          'ids': ids,
+        },
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<void> bulkDeleteBlocklist(List<int> ids) async {
+    try {
+      await _dio.delete<dynamic>(
+        '$_base/blocklist/bulk',
+        data: <String, dynamic>{
+          'ids': ids,
+        },
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<void> bulkUpdateSeries(Map<String, dynamic> payload) async {
+    try {
+      await _dio.put<dynamic>(
+        '$_base/series/editor',
+        data: payload,
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<void> bulkDeleteSeries(
+    List<int> seriesIds, {
+    bool deleteFiles = false,
+  }) async {
+    try {
+      await _dio.delete<dynamic>(
+        '$_base/series/editor',
+        queryParameters: <String, dynamic>{
+          'deleteFiles': deleteFiles,
+        },
+        data: <String, dynamic>{
+          'seriesIds': seriesIds,
+        },
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> parseTitle(String title) async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>(
+        '$_base/parse',
+        queryParameters: <String, dynamic>{
+          'title': title,
+        },
+      );
+      return resp.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<void> cancelCommand(int commandId) async {
+    try {
+      await _dio.delete<dynamic>('$_base/command/$commandId');
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
 }
