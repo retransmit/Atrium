@@ -24,7 +24,7 @@ class DashboardScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(profile == null ? 'Atrium' : profile.name),
       ),
-      drawer: _ServicesDrawer(instances: instances, profile: profile),
+      drawer: ServicesDrawer(instances: instances, profile: profile),
       // Wide left-edge drag zone so the sidebar opens with a swipe from well
       // inside the screen, clear of Android's system back-gesture strip - no
       // need to hit the hamburger.
@@ -66,42 +66,64 @@ class _DashboardWidgets extends StatelessWidget {
 /// The sidebar: configured services grouped by role (each with a live health
 /// dot), with settings, add-service and the active-profile pill along the
 /// bottom.
-class _ServicesDrawer extends StatelessWidget {
-  const _ServicesDrawer({required this.instances, required this.profile});
+class ServicesDrawer extends ConsumerWidget {
+  const ServicesDrawer({
+    required this.instances,
+    required this.profile,
+    super.key,
+  });
 
   final List<Instance> instances;
   final Profile? profile;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
+    final List<Profile> profiles = ref.watch(profileListProvider).value ?? <Profile>[];
+
     return Drawer(
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                Insets.lg,
-                Insets.lg,
-                Insets.lg,
-                Insets.md,
-              ),
-              child: Row(
-                children: <Widget>[
-                  Icon(Icons.dns_rounded, color: cs.primary, size: 28),
-                  const SizedBox(width: Insets.sm),
-                  Expanded(
-                    child: Text(
-                      'Atrium',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleLarge
-                          ?.copyWith(fontWeight: FontWeight.bold),
+            InkWell(
+              onTap: () {
+                final GoRouter router = GoRouter.of(context);
+                Navigator.of(context).pop();
+                router.go(AtriumRoutes.dashboard);
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Insets.lg,
+                  vertical: Insets.md,
+                ),
+                child: Row(
+                  children: <Widget>[
+                    Icon(Icons.dns_rounded, color: cs.primary, size: 28),
+                    const SizedBox(width: Insets.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            'Atrium',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            'Dashboard',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             const Divider(height: 1),
@@ -128,8 +150,7 @@ class _ServicesDrawer extends StatelessWidget {
                   IconButton(
                     tooltip: 'Settings',
                     icon: Icon(Icons.settings, color: cs.onSurfaceVariant),
-                    onPressed: () =>
-                        _navTo(context, AtriumRoutes.settingsName),
+                    onPressed: () => _navTo(context, AtriumRoutes.settingsName),
                   ),
                   IconButton(
                     tooltip: 'Add service',
@@ -139,9 +160,99 @@ class _ServicesDrawer extends StatelessWidget {
                   ),
                   const SizedBox(width: Insets.xs),
                   Expanded(
-                    child: _ProfilePill(
-                      label: profile?.name ?? 'Default',
-                      onTap: () => _navTo(context, AtriumRoutes.profilesName),
+                    child: Builder(
+                      builder: (BuildContext pillContext) {
+                        return _ProfilePill(
+                          label: profile?.name ?? 'Default',
+                          onTap: () async {
+                            final RenderBox button = pillContext.findRenderObject()! as RenderBox;
+                            final RenderBox overlay = Navigator.of(context, rootNavigator: true).overlay!.context.findRenderObject()! as RenderBox;
+                            final RelativeRect position = RelativeRect.fromRect(
+                              Rect.fromPoints(
+                                button.localToGlobal(const Offset(0, -100), ancestor: overlay),
+                                button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
+                              ),
+                              Offset.zero & overlay.size,
+                            );
+
+                            final String? selected = await showMenu<String>(
+                              context: context,
+                              useRootNavigator: true,
+                              position: position,
+                              items: <PopupMenuEntry<String>>[
+                                for (final Profile p in profiles)
+                                  PopupMenuItem<String>(
+                                    value: p.id,
+                                    child: Row(
+                                      children: <Widget>[
+                                        Icon(
+                                          Icons.smartphone,
+                                          size: 16,
+                                          color: p.id == profile?.id
+                                              ? cs.primary
+                                              : cs.outline,
+                                        ),
+                                        const SizedBox(width: Insets.sm),
+                                        Expanded(
+                                          child: Text(
+                                            p.name,
+                                            style: TextStyle(
+                                              fontWeight: p.id == profile?.id
+                                                  ? FontWeight.bold
+                                                  : FontWeight.normal,
+                                            ),
+                                          ),
+                                        ),
+                                        if (p.id == profile?.id)
+                                          Icon(
+                                            Icons.check,
+                                            size: 16,
+                                            color: cs.primary,
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                const PopupMenuDivider(),
+                                const PopupMenuItem<String>(
+                                  value: 'manage',
+                                  child: Row(
+                                    children: <Widget>[
+                                      Icon(Icons.manage_accounts_outlined, size: 16),
+                                      SizedBox(width: Insets.sm),
+                                      Text('Manage profiles'),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            );
+
+                            if (selected != null && pillContext.mounted) {
+                              if (selected == 'manage') {
+                                _navTo(pillContext, AtriumRoutes.profilesName);
+                              } else {
+                                // Capture before the await: switching profiles
+                                // rebuilds the tree under this context.
+                                final GoRouter router = GoRouter.of(pillContext);
+                                final ScaffoldState? scaffold =
+                                    Scaffold.maybeOf(pillContext);
+                                await ref
+                                    .read(activeProfileIdProvider.notifier)
+                                    .select(selected);
+                                // Switch succeeded: close the drawer if still
+                                // open and land on the dashboard so the user
+                                // never sees a NotFound service screen from
+                                // the old profile.
+                                if (scaffold != null &&
+                                    scaffold.mounted &&
+                                    scaffold.isDrawerOpen) {
+                                  scaffold.closeDrawer();
+                                }
+                                router.go(AtriumRoutes.dashboard);
+                              }
+                            }
+                          },
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -287,7 +398,7 @@ class _ProfilePill extends StatelessWidget {
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  Icons.keyboard_arrow_up,
+                  Icons.unfold_more,
                   size: 18,
                   color: cs.onSurfaceVariant,
                 ),
