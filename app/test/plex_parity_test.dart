@@ -151,4 +151,115 @@ void main() {
     expect(find.text('Now Streaming'), findsOneWidget);
     expect(find.text('Dune'), findsOneWidget);
   });
+
+  testWidgets('PlexSeasonScreen lists seasons', (WidgetTester tester) async {
+    final Instance instance = makeInstance();
+    const PlexMetadata show =
+        PlexMetadata(ratingKey: '100', title: 'The Wire', type: 'show');
+    await pumpBody(
+      tester,
+      <Override>[
+        plexApiProvider(instance)
+            .overrideWith((Ref ref) async => PlexApi(Dio(), token: 'tok')),
+        plexChildrenProvider((instance, '100')).overrideWith(
+          (Ref ref) async => const <PlexMetadata>[
+            PlexMetadata(
+              ratingKey: '101',
+              title: 'Season 1',
+              type: 'season',
+              index: 1,
+            ),
+          ],
+        ),
+      ],
+      PlexSeasonScreen(instance: instance, show: show),
+      pumps: 3,
+    );
+    expect(find.text('The Wire'), findsOneWidget);
+    expect(find.text('Season 1'), findsOneWidget);
+  });
+
+  testWidgets('PlexAlbumScreen lists tracks', (WidgetTester tester) async {
+    final Instance instance = makeInstance();
+    const PlexMetadata album =
+        PlexMetadata(ratingKey: '200', title: 'OK Computer', type: 'album');
+    await pumpBody(
+      tester,
+      <Override>[
+        plexApiProvider(instance)
+            .overrideWith((Ref ref) async => PlexApi(Dio(), token: 'tok')),
+        plexChildrenProvider((instance, '200')).overrideWith(
+          (Ref ref) async => const <PlexMetadata>[
+            PlexMetadata(
+              ratingKey: '201',
+              title: 'Airbag',
+              type: 'track',
+              index: 1,
+              duration: 284000,
+            ),
+          ],
+        ),
+      ],
+      PlexAlbumScreen(instance: instance, album: album),
+      pumps: 3,
+    );
+    expect(find.text('OK Computer'), findsOneWidget);
+    expect(find.text('Airbag'), findsOneWidget);
+  });
+
+  testWidgets('library grid filters by genre', (WidgetTester tester) async {
+    final Instance instance = makeInstance();
+    await pumpBody(
+      tester,
+      <Override>[
+        plexApiProvider(instance)
+            .overrideWith((Ref ref) async => PlexApi(Dio(), token: 'tok')),
+        plexLibrariesProvider(instance).overrideWith(
+          (Ref ref) async => const <PlexLibrary>[
+            PlexLibrary(key: '1', title: 'Movies', type: 'movie'),
+          ],
+        ),
+        plexSessionsProvider(instance)
+            .overrideWith((Ref ref) async => const <PlexSession>[]),
+        plexOnDeckProvider(instance)
+            .overrideWith((Ref ref) async => const <PlexMetadata>[]),
+        plexRecentlyAddedProvider(instance)
+            .overrideWith((Ref ref) async => const <PlexMetadata>[]),
+        plexItemsProvider((instance, '1')).overrideWith(
+          (Ref ref) async => const <PlexMetadata>[
+            PlexMetadata(ratingKey: '10', title: 'Heat', type: 'movie'),
+          ],
+        ),
+        plexGenresProvider((instance, '1')).overrideWith(
+          (Ref ref) async => const <PlexGenreDir>[
+            PlexGenreDir(key: '5', title: 'Action'),
+          ],
+        ),
+        plexGenreItemsProvider((instance, '1', '5')).overrideWith(
+          (Ref ref) async => const <PlexMetadata>[
+            PlexMetadata(ratingKey: '11', title: 'Die Hard', type: 'movie'),
+          ],
+        ),
+      ],
+      PlexHome(instance: instance),
+      pumps: 4,
+    );
+
+    // Open the Movies library: unfiltered grid plus the genre strip.
+    await tester.tap(find.text('Movies'));
+    for (int i = 0; i < 3; i++) {
+      await tester.pump();
+    }
+    expect(find.text('Heat'), findsOneWidget);
+    expect(find.text('All'), findsOneWidget);
+    expect(find.text('Action'), findsOneWidget);
+
+    // Selecting a genre swaps the grid to the genre-filtered source.
+    await tester.tap(find.text('Action'));
+    for (int i = 0; i < 3; i++) {
+      await tester.pump();
+    }
+    expect(find.text('Die Hard'), findsOneWidget);
+    expect(find.text('Heat'), findsNothing);
+  });
 }

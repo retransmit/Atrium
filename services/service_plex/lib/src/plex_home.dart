@@ -9,7 +9,9 @@ import 'models/plex_models.dart';
 import 'models/plex_session.dart';
 import 'plex_api.dart';
 import 'plex_item_detail.dart';
+import 'plex_music_screens.dart';
 import 'plex_providers.dart';
+import 'plex_season_screen.dart';
 import 'plex_session_detail_screen.dart';
 
 /// Plex item types that open the detail screen; everything else is a container
@@ -18,8 +20,9 @@ import 'plex_session_detail_screen.dart';
 const Set<String> plexPlayableTypes = <String>{'movie', 'episode', 'clip'};
 
 /// Plex's per-instance UI: a Home tab (Continue Watching + Recently Added)
-/// plus a chip per library backed by a poster grid. Tapping a movie/episode
-/// opens its detail screen; tapping a show/season drills into its children.
+/// plus a chip per library backed by a poster grid with genre filter chips.
+/// Tapping a movie/episode opens its detail screen; a show opens its seasons,
+/// an artist its albums, and other containers drill into their children.
 class PlexHome extends ConsumerStatefulWidget {
   const PlexHome({required this.instance, super.key});
 
@@ -111,8 +114,9 @@ class _LibraryChips extends StatelessWidget {
 
 /// Grid of items, sourced either from a library section ([isSection] true,
 /// [id] = sectionKey) or from a parent's children ([isSection] false, [id] =
-/// ratingKey).
-class _ItemsGrid extends ConsumerWidget {
+/// ratingKey). Section grids carry a genre-chip strip that swaps the grid to
+/// a genre-filtered source.
+class _ItemsGrid extends ConsumerStatefulWidget {
   const _ItemsGrid({
     required this.instance,
     required this.id,
@@ -123,17 +127,37 @@ class _ItemsGrid extends ConsumerWidget {
   final String id;
   final bool isSection;
 
-  FutureProvider<List<PlexMetadata>> get _provider => isSection
-      ? plexItemsProvider((instance, id))
-      : plexChildrenProvider((instance, id));
+  @override
+  ConsumerState<_ItemsGrid> createState() => _ItemsGridState();
+}
+
+class _ItemsGridState extends ConsumerState<_ItemsGrid> {
+  /// Selected genre directory key; null means unfiltered ("All").
+  String? _genreKey;
+
+  FutureProvider<List<PlexMetadata>> get _provider {
+    if (!widget.isSection) {
+      return plexChildrenProvider((widget.instance, widget.id));
+    }
+    final String? genreKey = _genreKey;
+    if (genreKey != null) {
+      return plexGenreItemsProvider((widget.instance, widget.id, genreKey));
+    }
+    return plexItemsProvider((widget.instance, widget.id));
+  }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final AsyncValue<List<PlexMetadata>> items = ref.watch(_provider);
-    final PlexApi? api = ref.watch(plexApiProvider(instance)).value;
+    final PlexApi? api = ref.watch(plexApiProvider(widget.instance)).value;
 
-    return RefreshIndicator(
-      onRefresh: () async => ref.invalidate(_provider),
+    final Widget grid = RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(_provider);
+        if (widget.isSection) {
+          ref.invalidate(plexGenresProvider((widget.instance, widget.id)));
+        }
+      },
       child: AsyncValueView<List<PlexMetadata>>(
         value: items,
         onRetry: () => ref.invalidate(_provider),
@@ -157,12 +181,63 @@ class _ItemsGrid extends ConsumerWidget {
             itemBuilder: (BuildContext context, int index) {
               final PlexMetadata item = list[index];
               return PlexPosterCard(
-                instance: instance,
+                instance: widget.instance,
                 item: item,
                 imageUrl: api?.imageUrl(item.thumb),
-                onTap: () => openPlexItem(context, instance, item),
+                onTap: () => openPlexItem(context, widget.instance, item),
               );
             },
+          );
+        },
+      ),
+    );
+
+    if (!widget.isSection) {
+      return grid;
+    }
+    return Column(
+      children: <Widget>[
+        _genreStrip(),
+        Expanded(child: grid),
+      ],
+    );
+  }
+
+  /// Horizontal genre filter chips for a section. Renders nothing while the
+  /// genre list is empty, loading, or errored so the grid is never blocked.
+  Widget _genreStrip() {
+    final List<PlexGenreDir> genres = ref
+            .watch(plexGenresProvider((widget.instance, widget.id)))
+            .value ??
+        const <PlexGenreDir>[];
+    if (genres.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return SizedBox(
+      height: 48,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
+        itemCount: genres.length + 1,
+        separatorBuilder: (_, __) => const SizedBox(width: Insets.sm),
+        itemBuilder: (BuildContext context, int index) {
+          if (index == 0) {
+            return Center(
+              child: FilterChip(
+                label: const Text('All'),
+                selected: _genreKey == null,
+                onSelected: (_) => setState(() => _genreKey = null),
+              ),
+            );
+          }
+          final PlexGenreDir genre = genres[index - 1];
+          return Center(
+            child: FilterChip(
+              label: Text(genre.title),
+              selected: _genreKey == genre.key,
+              onSelected: (bool selected) =>
+                  setState(() => _genreKey = selected ? genre.key : null),
+            ),
           );
         },
       ),
@@ -170,14 +245,30 @@ class _ItemsGrid extends ConsumerWidget {
   }
 }
 
-/// Opens [item]: a playable type goes to its detail screen, a container drills
-/// into a child grid. Uses the root navigator so GoRouter's shell rebuilds
-/// don't sweep the pushed route.
+/// Opens [item]: a playable type goes to its detail screen, a show to its
+/// season list, an artist/album into the music flow, and any other container
+/// drills into a child grid. Uses the root navigator so GoRouter's shell
+/// rebuilds don't sweep the pushed route.
 void openPlexItem(BuildContext context, Instance instance, PlexMetadata item) {
   if (plexPlayableTypes.contains(item.type)) {
     pushScreen<void>(
       context,
       PlexItemDetailScreen(instance: instance, ratingKey: item.ratingKey),
+    );
+  } else if (item.type == 'show') {
+    pushScreen<void>(
+      context,
+      PlexSeasonScreen(instance: instance, show: item),
+    );
+  } else if (item.type == 'artist') {
+    pushScreen<void>(
+      context,
+      PlexArtistScreen(instance: instance, artist: item),
+    );
+  } else if (item.type == 'album') {
+    pushScreen<void>(
+      context,
+      PlexAlbumScreen(instance: instance, album: item),
     );
   } else {
     pushScreen<void>(
