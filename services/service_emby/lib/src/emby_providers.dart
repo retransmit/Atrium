@@ -7,7 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import 'emby_client.dart';
-import 'models/emby_auth.dart';
 import 'models/emby_item.dart';
 import 'models/emby_remote_image.dart';
 import 'models/emby_session.dart';
@@ -53,24 +52,8 @@ final embyViewsProvider = FutureProvider.family<List<EmbyView>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
-  final EmbyClient client = await ref.read(embyClientProvider(instance).future);
+  final EmbyClient client = await ref.watch(embyClientProvider(instance).future);
   return client.getViews();
-});
-
-final embyVirtualFoldersProvider = FutureProvider.family<List<EmbyVirtualFolder>, Instance>((
-  Ref ref,
-  Instance instance,
-) async {
-  final EmbyClient client = await ref.read(embyClientProvider(instance).future);
-  return client.getVirtualFolders();
-});
-
-final embySelectableMediaFoldersProvider = FutureProvider.family<List<EmbyVirtualFolder>, Instance>((
-  Ref ref,
-  Instance instance,
-) async {
-  final EmbyClient client = await ref.read(embyClientProvider(instance).future);
-  return client.getSelectableMediaFolders();
 });
 
 
@@ -195,22 +178,6 @@ final embyLibraryScanProvider =
       // Ignore polling errors
     }
   }
-});
-
-final embyUsersProvider = FutureProvider.autoDispose.family<List<EmbyUser>, Instance>((
-  Ref ref,
-  Instance instance,
-) async {
-  final EmbyClient client = await ref.watch(embyClientProvider(instance).future);
-  return client.getUsers();
-});
-
-final embyCurrentUserProvider = FutureProvider.autoDispose.family<EmbyUser, Instance>((
-  Ref ref,
-  Instance instance,
-) async {
-  final EmbyClient client = await ref.watch(embyClientProvider(instance).future);
-  return client.getCurrentUser();
 });
 
 final embyNextUpProvider = FutureProvider.family<List<EmbyItem>, Instance>((
@@ -355,7 +322,7 @@ final embyArtistBioProvider =
 });
 
 final embyRemoteImagesProvider =
-    FutureProvider.family<List<EmbyRemoteImage>, (Instance, String, String)>((
+    FutureProvider.autoDispose.family<List<EmbyRemoteImage>, (Instance, String, String)>((
   Ref ref,
   (Instance, String, String) key,
 ) async {

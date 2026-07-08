@@ -30,12 +30,52 @@ class _EmbyRemoteImagesScreenState
     extends ConsumerState<EmbyRemoteImagesScreen> {
   bool _isSaving = false;
 
+  /// Server-supplied remote image URLs must be absolute https URLs before we
+  /// render them or echo them back to the server.
+  bool _isValidRemoteImageUrl(String? u) {
+    if (u == null) return false;
+    final Uri? uri = Uri.tryParse(u);
+    return uri != null && uri.scheme == 'https' && uri.hasAuthority;
+  }
+
+  Future<void> _confirmAndSet(String imageUrl) async {
+    final bool needsConfirm =
+        widget.imageType == 'Primary' || widget.imageType == 'Banner';
+    if (needsConfirm) {
+      final bool confirmed = await showDialog<bool>(
+            context: context,
+            builder: (BuildContext context) => AlertDialog(
+              title: Text('Replace ${widget.imageType.toLowerCase()}?'),
+              content: Text(
+                'This replaces the current ${widget.imageType.toLowerCase()} '
+                'image and cannot be undone.',
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Replace'),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+      if (!confirmed) return;
+    }
+    await _setImage(imageUrl);
+  }
+
   Future<void> _setImage(String imageUrl) async {
     if (_isSaving) return;
+    if (!_isValidRemoteImageUrl(imageUrl)) return;
     setState(() => _isSaving = true);
     try {
       final EmbyClient client =
           await ref.read(embyClientProvider(widget.instance).future);
+      if (!mounted) return;
       final EmbyItem? oldItem = ref
           .read(embyItemDetailsProvider((widget.instance, widget.itemId)))
           .value;
@@ -50,9 +90,6 @@ class _EmbyRemoteImagesScreenState
         }
       }
 
-      print('--- STARTING REMOTE IMAGE CHANGE ---');
-      print('Type: ${widget.imageType}');
-      print('Old Tagged URL: $oldTaggedUrl');
 
       await client.setRemoteImage(widget.itemId, imageUrl, widget.imageType);
 
@@ -65,31 +102,35 @@ class _EmbyRemoteImagesScreenState
         await CachedNetworkImage.evictFromCache(oldTaggedUrl);
       }
 
-      // Give the server time to download and apply the new image
-      // We poll until the tag actually changes, or timeout after 5 seconds.
-      int attempts = 0;
-      while (attempts < 10) {
-        await Future<void>.delayed(const Duration(milliseconds: 500));
-        final EmbyItem updatedItem = await client.getItemDetails(widget.itemId);
-        String? newTaggedUrl;
-        if (widget.imageType == 'Backdrop') {
-          newTaggedUrl = client.backdropImageUrl(updatedItem);
-        } else if (widget.imageType == 'Primary') {
-          newTaggedUrl = client.imageUrl(updatedItem);
-        } else if (widget.imageType == 'Banner') {
-          newTaggedUrl = client.bannerImageUrl(updatedItem);
+      // Give the server time to download and apply the new image.
+      // We poll until the tag actually changes, or time out after ~5 seconds.
+      // The write already succeeded, so a transient poll error must not be
+      // surfaced as a failure - fall through and refresh regardless.
+      try {
+        int attempts = 0;
+        while (attempts < 10) {
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+          if (!mounted) return;
+          final EmbyItem updatedItem =
+              await client.getItemDetails(widget.itemId);
+          String? newTaggedUrl;
+          if (widget.imageType == 'Backdrop') {
+            newTaggedUrl = client.backdropImageUrl(updatedItem);
+          } else if (widget.imageType == 'Primary') {
+            newTaggedUrl = client.imageUrl(updatedItem);
+          } else if (widget.imageType == 'Banner') {
+            newTaggedUrl = client.bannerImageUrl(updatedItem);
+          }
+
+          if (newTaggedUrl != oldTaggedUrl) {
+            break; // The tag has successfully changed!
+          }
+          attempts++;
         }
-        
-        if (newTaggedUrl != oldTaggedUrl) {
-          print('Polling attempt $attempts: Success! New Tagged URL: $newTaggedUrl');
-          break; // The tag has successfully changed!
-        } else {
-          print('Polling attempt $attempts: Tag did not change. URL: $newTaggedUrl');
-        }
-        attempts++;
+      } catch (_) {
+        // Best-effort wait only; the write already succeeded.
       }
 
-      print('--- INVALIDATING PROVIDERS ---');
       if (!mounted) return;
 
       // Invalidate relevant providers to force refresh of the image
@@ -130,7 +171,7 @@ class _EmbyRemoteImagesScreenState
   Widget build(BuildContext context) {
     final AsyncValue<List<EmbyRemoteImage>> imagesAsync = ref.watch(
       embyRemoteImagesProvider(
-          (widget.instance, widget.itemId, widget.imageType)),
+          (widget.instance, widget.itemId, widget.imageType),),
     );
 
     return Scaffold(
@@ -143,7 +184,7 @@ class _EmbyRemoteImagesScreenState
             value: imagesAsync,
             onRetry: () => ref.invalidate(
               embyRemoteImagesProvider(
-                  (widget.instance, widget.itemId, widget.imageType)),
+                  (widget.instance, widget.itemId, widget.imageType),),
             ),
             data: (List<EmbyRemoteImage> images) {
               if (images.isEmpty) {
@@ -162,15 +203,18 @@ class _EmbyRemoteImagesScreenState
                 itemBuilder: (BuildContext context, int index) {
                   final EmbyRemoteImage image = images[index];
                   final String? url = image.url ?? image.thumbnailUrl;
-                  if (url == null) return const SizedBox.shrink();
+                  if (!_isValidRemoteImageUrl(url)) {
+                    return const SizedBox.shrink();
+                  }
+                  final String validUrl = url!;
 
                   return InkWell(
-                    onTap: () => _setImage(url),
+                    onTap: () => _confirmAndSet(validUrl),
                     borderRadius: Radii.card,
                     child: ClipRRect(
                       borderRadius: Radii.card,
                       child: CachedNetworkImage(
-                        imageUrl: url,
+                        imageUrl: validUrl,
                         fit: BoxFit.cover,
                         placeholder: (BuildContext context, String url) =>
                             Container(

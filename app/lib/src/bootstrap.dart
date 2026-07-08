@@ -4,7 +4,6 @@ import 'package:core_profile/core_profile.dart';
 import 'package:core_storage/core_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
-import 'package:hive_ce/hive.dart';
 
 import 'connection_cache_store.dart';
 import 'preferences.dart';

@@ -74,9 +74,6 @@ class EmbyClient {
     }
     dio.interceptors.add(
       InterceptorsWrapper(
-        onRequest: (RequestOptions options, RequestInterceptorHandler handler) {
-          handler.next(options);
-        },
         onResponse:
             (Response<dynamic> response, ResponseInterceptorHandler handler) {
           if (response.data == null) {
@@ -156,39 +153,6 @@ class EmbyClient {
             (map['Items'] as List<dynamic>?) ?? <dynamic>[];
         return items
             .map((dynamic e) => EmbyView.fromJson(e as Map<String, dynamic>))
-            .toList();
-      });
-
-  Future<List<EmbyVirtualFolder>> getSelectableMediaFolders() => _guarded(() async {
-        final Response<dynamic> resp = await _dio.get<dynamic>('Library/SelectableMediaFolders');
-        final List<dynamic> items = (resp.data as List<dynamic>?) ?? <dynamic>[];
-        return items.map((dynamic e) {
-          final map = e as Map<String, dynamic>;
-          final List<dynamic>? subFoldersList = map['SubFolders'] as List<dynamic>?;
-          final List<String> subFolderIds = subFoldersList
-                  ?.map((dynamic s) {
-                    final subMap = s as Map<String, dynamic>;
-                    final idStr = subMap['Id']?.toString() ?? subMap['Guid']?.toString() ?? '';
-                    return idStr;
-                  })
-                  .where((String id) => id.isNotEmpty)
-                  .toList() ??
-              <String>[];
-              
-          return EmbyVirtualFolder(
-            name: map['Name'] as String? ?? '',
-            itemId: map['Guid'] as String? ?? map['Id'] as String? ?? '',
-            collectionType: map['CollectionType'] as String?,
-            subFolderIds: subFolderIds,
-          );
-        }).toList();
-      });
-
-  Future<List<EmbyVirtualFolder>> getVirtualFolders() => _guarded(() async {
-        final Response<dynamic> resp = await _dio.get<dynamic>('Library/VirtualFolders');
-        final List<dynamic> items = (resp.data as List<dynamic>?) ?? <dynamic>[];
-        return items
-            .map((dynamic e) => EmbyVirtualFolder.fromJson(e as Map<String, dynamic>))
             .toList();
       });
 
@@ -751,7 +715,7 @@ class EmbyClient {
   }
 
   Future<List<EmbyRemoteImage>> getRemoteImages(
-          String itemId, String imageType) =>
+          String itemId, String imageType,) =>
       _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
           'Items/$itemId/RemoteImages',
@@ -766,7 +730,7 @@ class EmbyClient {
       });
 
   Future<void> setRemoteImage(
-          String itemId, String imageUrl, String imageType) =>
+          String itemId, String imageUrl, String imageType,) =>
       _guarded(() async {
         List<String> oldBackdrops = <String>[];
         if (imageType == 'Backdrop') {
@@ -785,49 +749,43 @@ class EmbyClient {
         );
 
         if (imageType == 'Backdrop') {
-          try {
-            final newItem = await getItemDetails(itemId);
-            final newBackdrops = newItem.backdropImageTags;
-            
-            int indexToMove = -1;
-            for (int i = 0; i < newBackdrops.length; i++) {
-              if (!oldBackdrops.contains(newBackdrops[i])) {
-                indexToMove = i;
-                break;
-              }
-            }
+          final newItem = await getItemDetails(itemId);
+          final newBackdrops = newItem.backdropImageTags;
 
-            if (indexToMove != -1 && indexToMove > 0) {
-              try {
-                await _dio.post<dynamic>(
-                  'Items/$itemId/Images/Backdrop/$indexToMove/Index',
-                  queryParameters: <String, dynamic>{
-                    'newIndex': 0,
-                  },
-                );
-                // Cleared successfully on server, remove any local override.
-                setLocalOverride?.call(itemId, 'Backdrop', '');
-              } catch (e) {
-                print('Failed to move backdrop: $e');
-                if (e is DioException && e.response?.statusCode == 500) {
-                  // Fallback: save the tag locally.
-                  final String localTag = newBackdrops[indexToMove];
-                  setLocalOverride?.call(itemId, 'Backdrop', localTag);
-                } else {
-                  rethrow;
-                }
+          int indexToMove = -1;
+          for (int i = 0; i < newBackdrops.length; i++) {
+            if (!oldBackdrops.contains(newBackdrops[i])) {
+              indexToMove = i;
+              break;
+            }
+          }
+
+          if (indexToMove != -1 && indexToMove > 0) {
+            try {
+              await _dio.post<dynamic>(
+                'Items/$itemId/Images/Backdrop/$indexToMove/Index',
+                queryParameters: <String, dynamic>{
+                  'newIndex': 0,
+                },
+              );
+              // Cleared successfully on server, remove any local override.
+              setLocalOverride?.call(itemId, 'Backdrop', '');
+            } catch (e) {
+              if (e is DioException && e.response?.statusCode == 500) {
+                // Fallback: save the tag locally.
+                final String localTag = newBackdrops[indexToMove];
+                setLocalOverride?.call(itemId, 'Backdrop', localTag);
+              } else {
+                rethrow;
               }
             }
-          } catch (e) {
-            print('Failed to fetch item details for backdrop update: $e');
-            rethrow;
           }
         }
       });
 
   /// Fetches available remote images and commands Emby to download the first one available.
   Future<void> downloadFirstAvailableRemoteImage(
-          String itemId, String imageType) =>
+          String itemId, String imageType,) =>
       _guarded(() async {
         // Step 1: Fetch Available Images
         final Response<dynamic> getResp = await _dio.get<dynamic>(
@@ -894,106 +852,7 @@ class EmbyClient {
         return null;
       });
 
-  Future<List<EmbyUser>> getUsers() => _guarded(() async {
-        final Response<dynamic> resp = await _dio.get<dynamic>('Users');
-        List<dynamic> users = <dynamic>[];
-        if (resp.data is List) {
-          users = resp.data as List<dynamic>;
-        } else if (resp.data is Map<String, dynamic> && resp.data['Items'] != null) {
-          users = resp.data['Items'] as List<dynamic>;
-        }
-        return users.map((dynamic u) => EmbyUser.fromJson(u as Map<String, dynamic>)).toList();
-      });
-
-  Future<List<EmbyUser>> getPublicUsers() async {
-        try {
-          final Response<dynamic> resp = await _dio.get<dynamic>('Users/Public');
-          List<dynamic> users = <dynamic>[];
-          if (resp.data is List) {
-            users = resp.data as List<dynamic>;
-          } else if (resp.data is Map<String, dynamic> && resp.data['Items'] != null) {
-            users = resp.data['Items'] as List<dynamic>;
-          }
-          return users.map((dynamic u) => EmbyUser.fromJson(u as Map<String, dynamic>)).toList();
-        } catch (e) {
-          return <EmbyUser>[];
-        }
-      }
-
-  Future<EmbyUser> getCurrentUser() => _guarded(() async {
-        final Response<dynamic> resp = await _dio.get<dynamic>('Users/$_userId');
-        return EmbyUser.fromJson(resp.data as Map<String, dynamic>);
-      });
-
-  Future<EmbyUser> getUser(String id) => _guarded(() async {
-        final Response<dynamic> resp = await _dio.get<dynamic>('Users/$id');
-        return EmbyUser.fromJson(resp.data as Map<String, dynamic>);
-      });
-
-  Future<void> createUser(String name) => _guarded(() async {
-        await _dio.post<dynamic>('Users/New', data: <String, dynamic>{'Name': name});
-      });
-
-  Future<void> deleteUser(String id) => _guarded(() async {
-        await _dio.delete<dynamic>('Users/$id');
-      });
-
-  Future<void> updateUserPassword(String id, String currentPw, String newPw) => _guarded(() async {
-        await _dio.post<dynamic>('Users/$id/Password', data: <String, dynamic>{
-          'CurrentPw': currentPw,
-          'NewPw': newPw,
-        });
-      });
-
-  Future<void> restrictUserLibraryAccess(String userId, List<String> allowedFolderIds) => _guarded(() async {
-        // Fallback to GET /Users/$userId if GET /Users/$userId/Policy throws 404.
-        Map<String, dynamic> rawPolicy;
-        try {
-          final Response<dynamic> policyResp = await _dio.get<dynamic>('Users/$userId/Policy');
-          rawPolicy = policyResp.data as Map<String, dynamic>;
-        } on DioException catch (e) {
-          if (e.response?.statusCode == 404) {
-            final Response<dynamic> userResp = await _dio.get<dynamic>('Users/$userId');
-            final Map<String, dynamic> rawUser = userResp.data as Map<String, dynamic>;
-            rawPolicy = rawUser['Policy'] as Map<String, dynamic>;
-          } else {
-            rethrow;
-          }
-        }
-
-        rawPolicy['EnableAllFolders'] = false;
-        rawPolicy['EnabledFolders'] = allowedFolderIds;
-
-        await _dio.post<dynamic>(
-          'Users/$userId/Policy',
-          data: rawPolicy,
-          options: Options(
-            headers: <String, dynamic>{
-              'Content-Type': 'application/json',
-              // X-Emby-Token is automatically injected by Dio interceptor
-            },
-          ),
-        );
-      });
-
-  Future<void> updateUserPolicy(String id, EmbyUserPolicy policy) => _guarded(() async {
-        final Response<dynamic> userResp = await _dio.get<dynamic>('Users/$id');
-        final Map<String, dynamic> rawUser = userResp.data as Map<String, dynamic>;
-        final Map<String, dynamic> rawPolicy = rawUser['Policy'] as Map<String, dynamic>;
-
-        rawPolicy['IsAdministrator'] = policy.isAdministrator;
-        rawPolicy['EnableAllFolders'] = policy.enableAllFolders;
-        rawPolicy['EnabledFolders'] = policy.enabledFolders;
-
-        await _dio.post<dynamic>(
-          'Users/$id/Policy',
-          data: rawPolicy,
-        );
-      });
-
   void close() => _dio.close(force: true);
-
-  String get adminToken => _token ?? '';
 
   Future<T> _guarded<T>(Future<T> Function() call) async {
     if (!_loggedIn) {

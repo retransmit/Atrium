@@ -1,10 +1,10 @@
 import 'package:core_models/core_models.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'emby_client.dart';
 import 'emby_providers.dart';
-import 'package:core_ui/core_ui.dart';
 
 class EmbySettingsScreen extends ConsumerWidget {
   const EmbySettingsScreen({required this.instance, super.key});
@@ -48,6 +48,7 @@ class EmbySettingsScreen extends ConsumerWidget {
                     try {
                       final EmbyClient client = await ref.read(embyClientProvider(instance).future);
                       await client.startLibraryScan();
+                      if (!context.mounted) return;
                       ref.invalidate(embyLibraryScanProvider(instance));
                     } catch (e) {
                       if (context.mounted) {

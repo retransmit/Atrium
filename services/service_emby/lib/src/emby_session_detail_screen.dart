@@ -42,6 +42,7 @@ class _EmbySessionDetailScreenState
 
     PaletteGenerator.fromImageProvider(
       CachedNetworkImageProvider(posterUrl),
+      size: const Size(200, 300),
     ).then((PaletteGenerator palette) {
       if (mounted) {
         setState(() {
@@ -59,10 +60,6 @@ class _EmbySessionDetailScreenState
             (ActiveSession s) => s.id == widget.initialSession.id,) ??
         widget.initialSession;
 
-    final EmbyClient? client =
-        ref.read(embyClientProvider(widget.instance)).value;
-
-    final String? backdropUrl = session.backdropUrl;
     final String? posterUrl = session.posterUrl;
 
     ThemeData theme = Theme.of(context);
@@ -142,10 +139,10 @@ class _EmbySessionDetailScreenState
         children: <Widget>[
           // Background blurred image
           if (session.posterUrl != null)
-            Image.network(
-              session.posterUrl!,
+            CachedNetworkImage(
+              imageUrl: session.posterUrl!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
+              errorWidget: (_, __, ___) =>
                   Container(color: theme.colorScheme.surface),
             ),
           // Blur and gradient overlay
@@ -188,11 +185,11 @@ class _EmbySessionDetailScreenState
                               ScaffoldMessenger.of(context);
                           try {
                             final EmbyClient client = await ref.read(
-                                embyClientProvider(widget.instance).future);
+                                embyClientProvider(widget.instance).future,);
                             await client.toggleMute(session.id);
                             if (mounted) {
                               ref.invalidate(
-                                  embyFastSessionsProvider(widget.instance));
+                                  embyFastSessionsProvider(widget.instance),);
                             }
                           } catch (_) {
                             messenger.showSnackBar(
@@ -207,8 +204,7 @@ class _EmbySessionDetailScreenState
                             trackHeight: 16,
                             thumbShape: const ExpressiveSliderThumbShape(),
                             trackShape: const ExpressiveSliderTrackShape(),
-                            overlayShape: const RoundSliderOverlayShape(
-                                overlayRadius: 24),
+                            overlayShape: const RoundSliderOverlayShape(),
                             activeTrackColor: theme.colorScheme.primary,
                             inactiveTrackColor: Colors.white.withValues(alpha: 0.2),
                             thumbColor: theme.colorScheme.primary,
@@ -238,16 +234,16 @@ class _EmbySessionDetailScreenState
                                   ScaffoldMessenger.of(context);
                               try {
                                 final EmbyClient client = await ref.read(
-                                    embyClientProvider(widget.instance).future);
+                                    embyClientProvider(widget.instance).future,);
                                 await client.setVolume(session.id, targetVol);
                                 if (mounted) {
                                   ref.invalidate(embyFastSessionsProvider(
-                                      widget.instance));
+                                      widget.instance,),);
                                 }
                               } catch (_) {
                                 messenger.showSnackBar(
                                   const SnackBar(
-                                      content: Text('Action failed')),
+                                      content: Text('Action failed'),),
                                 );
                               }
                             },
@@ -265,14 +261,10 @@ class _EmbySessionDetailScreenState
                               flex: 20,
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
-                                crossAxisAlignment: CrossAxisAlignment.center,
                                 children: <Widget>[
                                   // Left animated music bars
                                   AnimatedMusicBars(
                                     color: theme.colorScheme.primary,
-                                    barCount: 4,
-                                    barWidth: 5,
-                                    height: 60,
                                     isPlaying: playing,
                                   ),
                                   const SizedBox(width: Insets.sm),
@@ -317,9 +309,6 @@ class _EmbySessionDetailScreenState
                                   // Right animated music bars
                                   AnimatedMusicBars(
                                     color: theme.colorScheme.primary,
-                                    barCount: 4,
-                                    barWidth: 5,
-                                    height: 60,
                                     isPlaying: playing,
                                   ),
                                 ],
@@ -340,6 +329,7 @@ class _EmbySessionDetailScreenState
                           child: AutoScrollText(
                             text: session.showTitle,
                             style: theme.textTheme.titleLarge?.copyWith(
+                              color: Colors.white,
                               fontWeight: FontWeight.bold,
                               height: 1.2,
                             ),
@@ -354,7 +344,7 @@ class _EmbySessionDetailScreenState
                             child: AutoScrollText(
                               text: session.episodeName!,
                               style: theme.textTheme.titleMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
+                                color: Colors.white70,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -376,7 +366,7 @@ class _EmbySessionDetailScreenState
                           thumbColor: theme.colorScheme.primary,
                           thumbShape: const ExpressiveSliderThumbShape(),
                           trackShape: const ExpressiveSliderTrackShape(),
-                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 24),
+                          overlayShape: const RoundSliderOverlayShape(),
                         ),
                         child: Slider(
                           value: pct.clamp(0.0, 1.0),
@@ -423,14 +413,14 @@ class _EmbySessionDetailScreenState
                             Text(
                               session.timePosition,
                               style: theme.textTheme.labelMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
+                                color: Colors.white70,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                             Text(
                               session.timeDuration,
                               style: theme.textTheme.labelMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
+                                color: Colors.white70,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -672,16 +662,16 @@ class _EmbySessionDetailScreenState
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: <Widget>[
-                            Icon(
+                            const Icon(
                               Icons.speaker,
                               size: 16,
-                              color: theme.colorScheme.onSurfaceVariant,
+                              color: Colors.white70,
                             ),
                             const SizedBox(width: 8),
                             Text(
                               session.device,
                               style: theme.textTheme.labelLarge?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
+                                color: Colors.white70,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -700,16 +690,16 @@ class _EmbySessionDetailScreenState
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: <Widget>[
-                            Icon(
+                            const Icon(
                               Icons.person,
                               size: 16,
-                              color: theme.colorScheme.onSurfaceVariant,
+                              color: Colors.white70,
                             ),
                             const SizedBox(width: 8),
                             Text(
                               session.user,
                               style: theme.textTheme.labelLarge?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
+                                color: Colors.white70,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -931,7 +921,6 @@ class _AnimatedMusicBarsState extends State<AnimatedMusicBars>
       height: widget.height,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: List<Widget>.generate(widget.barCount, (int i) {
           return AnimatedBuilder(
             animation: _animations[i],

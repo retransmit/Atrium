@@ -99,8 +99,6 @@ class EmbyItemDetailScreen extends ConsumerWidget {
             ref.invalidate(embyItemDetailsProvider((instance, itemId))),
         data: (EmbyItem item) {
           final String? backdropUrl = client?.backdropImageUrl(item);
-          print('--- ITEM DETAIL BUILD (Type: ${item.type}) ---');
-          print('Item Detail Backdrop URL: $backdropUrl');
           
           return CustomScrollView(
             slivers: <Widget>[

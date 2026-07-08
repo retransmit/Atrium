@@ -1,13 +1,13 @@
 import 'dart:async';
 
 import 'package:core_models/core_models.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/sonarr_episode.dart';
 import '../models/sonarr_series.dart';
 import '../sonarr_providers.dart';
-import 'package:core_ui/core_ui.dart';
 
 /// Starts the Sonarr Manual Import user flow.
 void showManualImportFlow(

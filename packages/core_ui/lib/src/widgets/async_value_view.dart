@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'state_views.dart';
-import 'package:core_ui/core_ui.dart';
+import '../../core_ui.dart';
 
 /// Renders a Riverpod [AsyncValue] with consistent loading / error / data
 /// handling so screens don't each reinvent the `.when(...)` boilerplate.

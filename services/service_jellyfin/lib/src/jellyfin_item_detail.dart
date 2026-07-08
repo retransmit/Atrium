@@ -92,8 +92,6 @@ class JellyfinItemDetailScreen extends ConsumerWidget {
             ref.invalidate(jellyfinItemDetailsProvider((instance, itemId))),
         data: (JellyfinItem item) {
           final String? backdropUrl = client?.backdropImageUrl(item);
-          print('--- ITEM DETAIL BUILD (Type: ${item.type}) ---');
-          print('Item Detail Backdrop URL: $backdropUrl');
           
           return CustomScrollView(
             slivers: <Widget>[

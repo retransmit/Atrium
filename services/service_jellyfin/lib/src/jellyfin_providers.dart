@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import 'jellyfin_client.dart';
-import 'models/jellyfin_auth.dart';
 import 'models/jellyfin_item.dart';
 import 'models/jellyfin_remote_image.dart';
 import 'models/jellyfin_session.dart';
@@ -54,16 +53,8 @@ final jellyfinViewsProvider = FutureProvider.family<List<JellyfinView>, Instance
   Ref ref,
   Instance instance,
 ) async {
-  final JellyfinClient client = await ref.read(jellyfinClientProvider(instance).future);
+  final JellyfinClient client = await ref.watch(jellyfinClientProvider(instance).future);
   return client.getViews();
-});
-
-final jellyfinVirtualFoldersProvider = FutureProvider.family<List<JellyfinVirtualFolder>, Instance>((
-  Ref ref,
-  Instance instance,
-) async {
-  final JellyfinClient client = await ref.read(jellyfinClientProvider(instance).future);
-  return client.getVirtualFolders();
 });
 
 /// Flattened items within a root library, using recursive fetch based on CollectionType.
@@ -200,22 +191,6 @@ final jellyfinLibraryScanProvider =
   }
 });
 
-final jellyfinUsersProvider = FutureProvider.autoDispose.family<List<JellyfinUser>, Instance>((
-  Ref ref,
-  Instance instance,
-) async {
-  final JellyfinClient client = await ref.watch(jellyfinClientProvider(instance).future);
-  return client.getUsers();
-});
-
-final jellyfinCurrentUserProvider = FutureProvider.autoDispose.family<JellyfinUser, Instance>((
-  Ref ref,
-  Instance instance,
-) async {
-  final JellyfinClient client = await ref.watch(jellyfinClientProvider(instance).future);
-  return client.getCurrentUser();
-});
-
 final jellyfinSessionsProvider =
     StreamProvider.autoDispose.family<List<ActiveSession>, Instance>((
   Ref ref,
@@ -342,7 +317,7 @@ final jellyfinFastSessionsProvider =
   }
 });
 
-final jellyfinRemoteImagesProvider = FutureProvider.family<
+final jellyfinRemoteImagesProvider = FutureProvider.autoDispose.family<
     List<JellyfinRemoteImage>, (Instance, String, String)>((
   Ref ref,
   (Instance, String, String) key,
