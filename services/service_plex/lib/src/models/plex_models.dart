@@ -162,3 +162,15 @@ abstract class PlexGenre with _$PlexGenre {
   factory PlexGenre.fromJson(Map<String, dynamic> json) =>
       _$PlexGenreFromJson(json);
 }
+
+/// A genre directory entry from `/library/sections/{key}/genre`.
+@freezed
+abstract class PlexGenreDir with _$PlexGenreDir {
+  const factory PlexGenreDir({
+    @Default('') String key,
+    @Default('') String title,
+  }) = _PlexGenreDir;
+
+  factory PlexGenreDir.fromJson(Map<String, dynamic> json) =>
+      _$PlexGenreDirFromJson(json);
+}
