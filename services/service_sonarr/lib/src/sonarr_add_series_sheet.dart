@@ -445,7 +445,7 @@ class _SonarrAddSeriesSheetState extends ConsumerState<SonarrAddSeriesSheet> {
                     ),
                     onPressed: _submitting ? null : _submit,
                     child: _submitting
-                        ? CircularProgressIndicator(color: cs.onPrimary)
+                        ? ExpressiveProgressIndicator(color: cs.onPrimary)
                         : const Text(
                             'Add Series',
                             style: TextStyle(
@@ -569,7 +569,7 @@ class _PosterImage extends ConsumerWidget {
       placeholder: (context, url) => Container(
         color: Theme.of(context).colorScheme.surfaceContainerHigh,
         child: const Center(
-          child: CircularProgressIndicator(),
+          child: ExpressiveProgressIndicator(),
         ),
       ),
       errorWidget: (context, url, error) => Container(

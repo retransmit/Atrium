@@ -335,7 +335,7 @@ class _QualityProfilesTab extends ConsumerWidget {
         child: const Icon(Icons.add),
       ),
       body: profilesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: ExpressiveProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (profiles) {
           if (profiles.isEmpty) {
@@ -671,7 +671,7 @@ class _DelayProfilesTab extends ConsumerWidget {
         child: const Icon(Icons.add),
       ),
       body: delayProfilesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: ExpressiveProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (profiles) {
           if (profiles.isEmpty) {
@@ -891,7 +891,7 @@ class _ReleaseProfilesTab extends ConsumerWidget {
         child: const Icon(Icons.add),
       ),
       body: releaseProfilesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: ExpressiveProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (profiles) {
           if (profiles.isEmpty) {
@@ -1082,7 +1082,7 @@ class _CustomFormatsTab extends ConsumerWidget {
         child: const Icon(Icons.add),
       ),
       body: customFormatsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: ExpressiveProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (formats) {
           if (formats.isEmpty) {

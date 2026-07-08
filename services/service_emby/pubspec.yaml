@@ -13,6 +13,7 @@ dependencies:
   core_models:
   core_networking:
   core_profile:
+  core_storage: ^0.0.0
   core_ui:
   dio: ^5.7.0
   flutter:
@@ -24,6 +25,7 @@ dependencies:
   intl: ^0.20.1
   json_annotation: ^4.9.0
   meta: ^1.16.0
+  palette_generator: ^0.3.3+7
   url_launcher: ^6.3.2
 
 dev_dependencies:

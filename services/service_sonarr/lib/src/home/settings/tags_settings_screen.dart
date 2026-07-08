@@ -99,7 +99,7 @@ class TagsSettingsScreen extends ConsumerWidget {
         child: const Icon(Icons.add),
       ),
       body: tagsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: ExpressiveProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (tags) {
           if (tags.isEmpty) {

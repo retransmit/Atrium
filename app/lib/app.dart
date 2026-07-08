@@ -167,7 +167,7 @@ class _LockScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             if (authenticating)
-              const CircularProgressIndicator()
+              const ExpressiveProgressIndicator()
             else
               FilledButton.icon(
                 onPressed: onUnlock,

@@ -7,3 +7,4 @@ library;
 export 'src/biometric_gate.dart';
 export 'src/hive_setup.dart';
 export 'src/secure_storage.dart';
+export 'package:hive_ce_flutter/hive_flutter.dart';

@@ -13,3 +13,5 @@ export 'src/emby_search.dart';
 export 'src/models/emby_auth.dart';
 export 'src/models/emby_item.dart';
 export 'src/models/emby_view.dart';
+export 'src/emby_settings_screen.dart';
+export 'src/emby_session_detail_screen.dart';

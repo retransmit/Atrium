@@ -310,7 +310,7 @@ class ConnectSettingsScreen extends ConsumerWidget {
         child: const Icon(Icons.add),
       ),
       body: notificationsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: ExpressiveProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (notifications) {
           if (notifications.isEmpty) {

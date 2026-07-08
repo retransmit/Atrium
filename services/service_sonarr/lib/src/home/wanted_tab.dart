@@ -479,7 +479,7 @@ class _EpisodeListLayout extends ConsumerWidget {
     final bool isGrouped = ref.watch(sonarrWantedGroupedProvider(instance));
 
     return listAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: ExpressiveProgressIndicator()),
       error: (e, s) => Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -1369,7 +1369,7 @@ class _EpisodeDetailsSheetState extends ConsumerState<_EpisodeDetailsSheet> {
                   ),
 
                   _historyLoading
-                      ? const Center(child: CircularProgressIndicator())
+                      ? const Center(child: ExpressiveProgressIndicator())
                       : _historyError != null
                           ? Center(
                               child: Text(

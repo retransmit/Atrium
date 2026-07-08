@@ -30,9 +30,11 @@ class JellyfinSearchDelegate extends SearchDelegate<void> {
           final JellyfinViewMode viewMode =
               ref.watch(jellyfinViewModeProvider(instance));
           return IconButton(
-            icon: Icon(viewMode == JellyfinViewMode.grid
-                ? Icons.view_headline
-                : Icons.grid_view,),
+            icon: Icon(
+              viewMode == JellyfinViewMode.grid
+                  ? Icons.view_headline
+                  : Icons.grid_view,
+            ),
             tooltip: viewMode == JellyfinViewMode.grid
                 ? 'Switch to List View'
                 : 'Switch to Grid View',
@@ -83,10 +85,11 @@ class _SearchResults extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final JellyfinClient? client = ref.watch(jellyfinClientProvider(instance)).value;
+    final JellyfinClient? client =
+        ref.watch(jellyfinClientProvider(instance)).value;
 
     if (client == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: ExpressiveProgressIndicator());
     }
 
     if (query.trim().isEmpty) {
@@ -95,9 +98,10 @@ class _SearchResults extends ConsumerWidget {
 
     return FutureBuilder<List<JellyfinItem>>(
       future: client.searchItems(query.trim()),
-      builder: (BuildContext context, AsyncSnapshot<List<JellyfinItem>> snapshot) {
+      builder:
+          (BuildContext context, AsyncSnapshot<List<JellyfinItem>> snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: ExpressiveProgressIndicator());
         }
         if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
@@ -112,7 +116,8 @@ class _SearchResults extends ConsumerWidget {
           );
         }
 
-        final JellyfinViewMode viewMode = ref.watch(jellyfinViewModeProvider(instance));
+        final JellyfinViewMode viewMode =
+            ref.watch(jellyfinViewModeProvider(instance));
 
         if (viewMode == JellyfinViewMode.list) {
           return ListView.builder(
@@ -151,7 +156,8 @@ class _SearchResults extends ConsumerWidget {
     );
   }
 
-  void _openItem(BuildContext context, JellyfinClient client, JellyfinItem item) {
+  void _openItem(
+      BuildContext context, JellyfinClient client, JellyfinItem item) {
     if (item.type == 'MusicAlbum') {
       pushScreen<void>(
         context,
@@ -162,6 +168,7 @@ class _SearchResults extends ConsumerWidget {
           albumArtist:
               item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
           albumOverview: item.overview,
+          albumGenres: item.genres,
           albumImageUrl: client.imageUrl(item),
         ),
       );

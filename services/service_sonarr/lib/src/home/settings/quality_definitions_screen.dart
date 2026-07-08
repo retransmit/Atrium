@@ -72,7 +72,7 @@ class _QualityDefinitionsScreenState extends ConsumerState<QualityDefinitionsScr
               child: SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: ExpressiveProgressIndicator(strokeWidth: 2),
               ),
             )
           else
@@ -83,7 +83,7 @@ class _QualityDefinitionsScreenState extends ConsumerState<QualityDefinitionsScr
         ],
       ),
       body: definitionsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: ExpressiveProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (data) {
           _initializeValues(data);

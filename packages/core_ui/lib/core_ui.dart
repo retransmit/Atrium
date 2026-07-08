@@ -14,3 +14,5 @@ export 'src/widgets/async_value_view.dart';
 export 'src/widgets/service_tile.dart';
 export 'src/widgets/state_views.dart';
 export 'src/widgets/status_chip.dart';
+export 'src/widgets/expressive_slider.dart';
+export 'src/widgets/expressive_progress_indicator.dart';

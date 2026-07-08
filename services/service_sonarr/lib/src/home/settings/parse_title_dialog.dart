@@ -180,7 +180,7 @@ class _SonarrParseTitleDialogState extends ConsumerState<SonarrParseTitleDialog>
                     loading: () => const Center(
                       child: Padding(
                         padding: EdgeInsets.all(Insets.lg),
-                        child: CircularProgressIndicator(),
+                        child: ExpressiveProgressIndicator(),
                       ),
                     ),
                     error: (e, _) => Center(

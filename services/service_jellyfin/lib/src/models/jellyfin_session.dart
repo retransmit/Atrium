@@ -16,9 +16,13 @@ class ActiveSession {
     required this.timeDuration,
     required this.positionTicks,
     required this.durationTicks,
+    required this.volumeLevel,
+    required this.isMuted,
     this.episodeName,
     this.posterUrl,
+    this.backdropUrl,
     this.aspectRatio,
+    this.itemId,
   });
 
   /// The session identifier.
@@ -48,15 +52,27 @@ class ActiveSession {
   /// Total runtime, formatted as `h:mm:ss` / `mm:ss`.
   final String timeDuration;
 
-  /// Current position in ticks (1 tick = 100ns).
+  /// Current volume level (0-100).
+  final int volumeLevel;
+
+  /// Whether the session is currently muted.
+  final bool isMuted;
+
+  /// Raw position in ticks (1 tick = 100ns).
   final int positionTicks;
 
   /// Total duration in ticks (1 tick = 100ns).
   final int durationTicks;
 
-  /// Backdrop/poster image URL for the now-playing item, if available.
+  /// Poster image URL for the now-playing item, if available.
   final String? posterUrl;
+
+  /// Backdrop image URL for the now-playing item, if available.
+  final String? backdropUrl;
 
   /// Aspect ratio of the poster image, if available.
   final double? aspectRatio;
+
+  /// The item ID for the current playing item (used for fetching images, etc.)
+  final String? itemId;
 }
