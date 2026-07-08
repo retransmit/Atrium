@@ -78,7 +78,7 @@ class SonarrCalendarEvent extends CalendarEvent {
     if (episode.airDateUtc == null || episode.airDateUtc!.isEmpty) {
       return DateTime.now();
     }
-    return DateTime.parse(episode.airDateUtc!).toLocal();
+    return (DateTime.tryParse(episode.airDateUtc!) ?? DateTime.now()).toLocal();
   }
 
   @override
@@ -89,7 +89,7 @@ class SonarrCalendarEvent extends CalendarEvent {
 }
 
 
-/// Aggregated calendar provider for all active Radarr instances.
+/// Aggregated calendar provider for all active Sonarr and Radarr instances.
 final globalCalendarProvider =
     FutureProvider.autoDispose.family<List<CalendarEvent>, DateTime>((
   Ref ref,
@@ -301,7 +301,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     ref.watch(globalCalendarProvider(prevMonth));
 
     final bool hasCalendarServices = ref.watch(activeInstancesProvider).any(
-      (Instance i) => i.kind == ServiceKind.radarr,
+      (Instance i) =>
+          i.kind == ServiceKind.radarr || i.kind == ServiceKind.sonarr,
     );
 
     if (!hasCalendarServices) {
@@ -310,7 +311,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         body: const EmptyView(
           icon: Icons.calendar_today_outlined,
           title: 'No calendar services',
-          message: 'Add a Radarr service to see your release schedule here.',
+          message:
+              'Add a Sonarr or Radarr service to see your release schedule here.',
         ),
       );
     }

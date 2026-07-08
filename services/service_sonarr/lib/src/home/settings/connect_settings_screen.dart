@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../sonarr_providers.dart';
+import 'widgets/confirm_delete.dart';
 import 'widgets/dynamic_schema_form.dart';
 
 class ConnectSettingsScreen extends ConsumerWidget {
@@ -28,6 +29,7 @@ class ConnectSettingsScreen extends ConsumerWidget {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
       builder: (context) {
         return Container(
           padding: const EdgeInsets.all(Insets.md),
@@ -273,6 +275,7 @@ class ConnectSettingsScreen extends ConsumerWidget {
 
   Future<void> _deleteNotification(
       BuildContext context, WidgetRef ref, int id,) async {
+    if (!await confirmDelete(context, 'this notification')) return;
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
       await api.deleteNotification(id);

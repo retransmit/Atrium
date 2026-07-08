@@ -29,14 +29,23 @@ class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
   late final TextEditingController _usernameController;
   late final TextEditingController _passwordController;
   late final TextEditingController _apiKeyController;
+  late final TextEditingController _branchController;
 
   bool _enableSsl = false;
   String _logLevel = 'info';
-  String _branch = 'main';
 
   bool _saving = false;
   bool _initialized = false;
   Map<String, dynamic>? _rawHostConfig;
+
+  static const List<String> _logLevels = [
+    'fatal',
+    'error',
+    'warn',
+    'info',
+    'debug',
+    'trace',
+  ];
 
   @override
   void initState() {
@@ -47,6 +56,7 @@ class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
     _usernameController = TextEditingController();
     _passwordController = TextEditingController();
     _apiKeyController = TextEditingController();
+    _branchController = TextEditingController();
   }
 
   @override
@@ -57,6 +67,7 @@ class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
     _usernameController.dispose();
     _passwordController.dispose();
     _apiKeyController.dispose();
+    _branchController.dispose();
     super.dispose();
   }
 
@@ -74,10 +85,33 @@ class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
 
     _enableSsl = config['enableSsl'] as bool? ?? false;
     _logLevel = (config['logLevel'] as String?) ?? 'info';
-    _branch = (config['branch'] as String?) ?? 'main';
+    _branchController.text = (config['branch'] as String?) ?? 'main';
   }
 
-  void _regenerateApiKey() {
+  Future<void> _regenerateApiKey() async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Regenerate API Key?'),
+        content: const Text(
+          'This replaces the Sonarr API key. The server key changes '
+          'immediately once you save, and this app will lose access to this '
+          'instance until you update its API key in the instance settings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Regenerate'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
     final rand = Random.secure();
     final values = List<int>.generate(16, (i) => rand.nextInt(256));
     final key = values.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
@@ -106,7 +140,7 @@ class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
       payload['apiKey'] = _apiKeyController.text.trim();
       payload['enableSsl'] = _enableSsl;
       payload['logLevel'] = _logLevel;
-      payload['branch'] = _branch;
+      payload['branch'] = _branchController.text.trim();
 
       await api.updateHostConfig(payload);
       ref.invalidate(sonarrHostConfigProvider(widget.instance));
@@ -342,10 +376,24 @@ class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
                             labelText: 'Log Level',
                             border: OutlineInputBorder(),
                           ),
-                          items: const [
-                            DropdownMenuItem(value: 'info', child: Text('Info')),
-                            DropdownMenuItem(value: 'debug', child: Text('Debug')),
-                            DropdownMenuItem(value: 'trace', child: Text('Trace')),
+                          items: [
+                            const DropdownMenuItem(
+                                value: 'fatal', child: Text('Fatal'),),
+                            const DropdownMenuItem(
+                                value: 'error', child: Text('Error'),),
+                            const DropdownMenuItem(
+                                value: 'warn', child: Text('Warn'),),
+                            const DropdownMenuItem(
+                                value: 'info', child: Text('Info'),),
+                            const DropdownMenuItem(
+                                value: 'debug', child: Text('Debug'),),
+                            const DropdownMenuItem(
+                                value: 'trace', child: Text('Trace'),),
+                            // Keep any unexpected server value selectable so
+                            // the dropdown never hits the missing-value assert.
+                            if (!_logLevels.contains(_logLevel))
+                              DropdownMenuItem(
+                                  value: _logLevel, child: Text(_logLevel),),
                           ],
                           onChanged: (val) {
                             if (val != null) {
@@ -354,21 +402,18 @@ class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
                           },
                         ),
                         const SizedBox(height: Insets.md),
-                        DropdownButtonFormField<String>(
-                          initialValue: _branch,
+                        TextFormField(
+                          controller: _branchController,
                           decoration: const InputDecoration(
                             labelText: 'Update Branch',
                             border: OutlineInputBorder(),
+                            helperText:
+                                'Branch used for server updates, e.g. main or develop',
                           ),
-                          items: const [
-                            DropdownMenuItem(value: 'main', child: Text('Main (Stable)')),
-                            DropdownMenuItem(value: 'develop', child: Text('Develop (Beta)')),
-                          ],
-                          onChanged: (val) {
-                            if (val != null) {
-                              setState(() => _branch = val);
-                            }
-                          },
+                          validator: (val) =>
+                              (val == null || val.trim().isEmpty)
+                                  ? 'Required'
+                                  : null,
                         ),
                       ],
                     ),

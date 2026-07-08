@@ -373,13 +373,40 @@ class _ImportListsTab extends ConsumerWidget {
                     final payload = Map<String, dynamic>.from(list);
                     payload['fields'] = updatedFields;
 
-                    // Sonarr requires standard parameters
-                    payload['rootFolderPath'] = '/data/media/anime'; // Fallback
-                    payload['qualityProfileId'] = 1;
-                    payload['seriesType'] = 'standard';
-                    payload['seasonFolder'] = true;
-
                     if (isNew) {
+                      // New lists need root folder, quality profile and
+                      // series defaults. Fill them from the server only
+                      // when the schema payload lacks a value; if a lookup
+                      // returns nothing, omit the key and let the server
+                      // validate. Edits keep the fetched list's own values.
+                      final dynamic existingRoot = payload['rootFolderPath'];
+                      if (existingRoot == null ||
+                          (existingRoot is String && existingRoot.isEmpty)) {
+                        final rootFolders = await ref.read(
+                          sonarrRootFoldersProvider(instance).future,
+                        );
+                        final path = rootFolders.isNotEmpty
+                            ? rootFolders.first['path'] as String?
+                            : null;
+                        if (path != null && path.isNotEmpty) {
+                          payload['rootFolderPath'] = path;
+                        }
+                      }
+                      final dynamic existingProfile =
+                          payload['qualityProfileId'];
+                      if (existingProfile == null || existingProfile == 0) {
+                        final profiles = await ref.read(
+                          sonarrQualityProfilesProvider(instance).future,
+                        );
+                        final profileId = profiles.isNotEmpty
+                            ? profiles.first['id'] as int?
+                            : null;
+                        if (profileId != null) {
+                          payload['qualityProfileId'] = profileId;
+                        }
+                      }
+                      payload['seriesType'] ??= 'standard';
+                      payload['seasonFolder'] ??= true;
                       await api.createImportList(payload);
                     } else {
                       await api.updateImportList(payload);
@@ -567,7 +594,7 @@ class _IndexerOptionsTabState extends ConsumerState<_IndexerOptionsTab> {
       payload['rssSyncInterval'] = int.tryParse(_rssIntervalController.text.trim()) ?? 15;
 
       await api.updateIndexerConfig(payload);
-      ref.invalidate(sonarrImportListConfigProvider(widget.instance));
+      ref.invalidate(sonarrIndexerConfigProvider(widget.instance));
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -588,7 +615,7 @@ class _IndexerOptionsTabState extends ConsumerState<_IndexerOptionsTab> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final configAsync = ref.watch(sonarrImportListConfigProvider(widget.instance));
+    final configAsync = ref.watch(sonarrIndexerConfigProvider(widget.instance));
 
     return configAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),

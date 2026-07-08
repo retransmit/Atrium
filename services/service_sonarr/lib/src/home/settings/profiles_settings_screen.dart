@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../sonarr_providers.dart';
+import 'widgets/confirm_delete.dart';
 
 class ProfilesSettingsScreen extends ConsumerStatefulWidget {
   const ProfilesSettingsScreen({
@@ -127,7 +128,7 @@ class _QualityProfilesTab extends ConsumerWidget {
               if (quality != null) {
                 cutoffOptions.add(quality);
               } else {
-                // It's a group — add it as a selectable cutoff
+                // It's a group - add it as a selectable cutoff
                 final groupName = item['name'] as String? ?? '';
                 final groupId = item['id'] as int? ?? 0;
                 cutoffOptions.add({'id': groupId, 'name': groupName});
@@ -232,6 +233,31 @@ class _QualityProfilesTab extends ConsumerWidget {
                     final name = nameController.text.trim();
                     if (name.isEmpty) return;
 
+                    // Sonarr requires the cutoff to reference an allowed
+                    // quality or group id, even when upgrades are disabled.
+                    final allowedIds = <int>[];
+                    for (final item in editableItems) {
+                      if (item['allowed'] as bool? ?? false) {
+                        final quality =
+                            item['quality'] as Map<String, dynamic>?;
+                        final itemId = quality != null
+                            ? quality['id'] as int?
+                            : item['id'] as int?;
+                        if (itemId != null) allowedIds.add(itemId);
+                      }
+                    }
+                    if (allowedIds.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Allow at least one quality first.'),
+                        ),
+                      );
+                      return;
+                    }
+                    final effectiveCutoff = allowedIds.contains(cutoffId)
+                        ? cutoffId
+                        : allowedIds.first;
+
                     try {
                       final api = await ref.read(sonarrApiProvider(instance).future);
                       final payload = isEdit
@@ -240,7 +266,7 @@ class _QualityProfilesTab extends ConsumerWidget {
 
                       payload['name'] = name;
                       payload['upgradeAllowed'] = upgradeAllowed;
-                      payload['cutoff'] = cutoffId;
+                      payload['cutoff'] = effectiveCutoff;
                       payload['items'] = editableItems;
 
                       if (isEdit) {
@@ -277,6 +303,7 @@ class _QualityProfilesTab extends ConsumerWidget {
   }
 
   Future<void> _deleteProfile(BuildContext context, WidgetRef ref, int id) async {
+    if (!await confirmDelete(context, 'this quality profile')) return;
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
       await api.deleteQualityProfile(id);
@@ -527,10 +554,20 @@ class _DelayProfilesTab extends ConsumerWidget {
                         labelText: 'Preferred Protocol',
                         border: OutlineInputBorder(),
                       ),
-                      items: const [
-                        DropdownMenuItem(value: 'usenet', child: Text('Usenet')),
-                        DropdownMenuItem(value: 'torrent', child: Text('Torrent')),
-                        DropdownMenuItem(value: 'equal', child: Text('Equal')),
+                      // Sonarr only accepts usenet or torrent here. Keep any
+                      // unexpected fetched value selectable so the dropdown
+                      // never hits the missing-value assert.
+                      items: [
+                        const DropdownMenuItem(
+                            value: 'usenet', child: Text('Usenet'),),
+                        const DropdownMenuItem(
+                            value: 'torrent', child: Text('Torrent'),),
+                        if (preferredProtocol != 'usenet' &&
+                            preferredProtocol != 'torrent')
+                          DropdownMenuItem(
+                            value: preferredProtocol,
+                            child: Text(preferredProtocol),
+                          ),
                       ],
                       onChanged: (val) {
                         if (val != null) {
@@ -604,6 +641,7 @@ class _DelayProfilesTab extends ConsumerWidget {
 
   Future<void> _deleteDelayProfile(
       BuildContext context, WidgetRef ref, int id,) async {
+    if (!await confirmDelete(context, 'this delay profile')) return;
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
       await api.deleteDelayProfile(id);
@@ -700,15 +738,29 @@ class _ReleaseProfilesTab extends ConsumerWidget {
 
   final Instance instance;
 
+  /// Sonarr v3.0.6+ returns `required`/`ignored` as arrays of terms; older
+  /// versions used a single comma separated string. Accept both shapes.
+  static String _termsToText(dynamic value) {
+    if (value is List) return value.join(', ');
+    return (value as String?) ?? '';
+  }
+
+  /// Sonarr expects `required`/`ignored` to be saved as arrays of terms.
+  static List<String> _textToTerms(String text) => text
+      .split(',')
+      .map((term) => term.trim())
+      .where((term) => term.isNotEmpty)
+      .toList();
+
   Future<void> _showReleaseProfileDialog(
       BuildContext context, WidgetRef ref, [Map<String, dynamic>? profile,]) async {
     final isEdit = profile != null;
-    
+
     final nameController = TextEditingController(text: profile?['name'] as String? ?? '');
     final requiredController = TextEditingController(
-        text: (profile?['required'] as String?) ?? '',);
+        text: _termsToText(profile?['required']),);
     final ignoredController = TextEditingController(
-        text: (profile?['ignored'] as String?) ?? '',);
+        text: _termsToText(profile?['ignored']),);
     bool enabled = profile?['enabled'] as bool? ?? true;
 
     await showDialog<void>(
@@ -772,8 +824,8 @@ class _ReleaseProfilesTab extends ConsumerWidget {
                             };
 
                       payload['name'] = nameController.text.trim();
-                      payload['required'] = requiredController.text.trim();
-                      payload['ignored'] = ignoredController.text.trim();
+                      payload['required'] = _textToTerms(requiredController.text);
+                      payload['ignored'] = _textToTerms(ignoredController.text);
                       payload['enabled'] = enabled;
 
                       if (isEdit) {
@@ -809,6 +861,7 @@ class _ReleaseProfilesTab extends ConsumerWidget {
 
   Future<void> _deleteReleaseProfile(
       BuildContext context, WidgetRef ref, int id,) async {
+    if (!await confirmDelete(context, 'this release profile')) return;
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
       await api.deleteReleaseProfile(id);
@@ -852,8 +905,8 @@ class _ReleaseProfilesTab extends ConsumerWidget {
               final profile = profiles[index];
               final id = profile['id'] as int;
               final name = (profile['name'] as String?) ?? 'Release Profile';
-              final requiredStr = (profile['required'] as String?) ?? '';
-              final ignoredStr = (profile['ignored'] as String?) ?? '';
+              final requiredStr = _termsToText(profile['required']);
+              final ignoredStr = _termsToText(profile['ignored']);
               final isEnabled = profile['enabled'] as bool? ?? false;
 
               return Card(
@@ -938,6 +991,15 @@ class _CustomFormatsTab extends ConsumerWidget {
                       value: includeWhenRenaming,
                       onChanged: (val) => setDialogState(() => includeWhenRenaming = val),
                     ),
+                    if (!isEdit) ...[
+                      const SizedBox(height: Insets.md),
+                      Text(
+                        'Creating custom formats needs specifications - use the Sonarr web UI for now.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -947,29 +1009,27 @@ class _CustomFormatsTab extends ConsumerWidget {
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton(
-                  onPressed: () async {
+                  // Sonarr rejects custom formats without specifications and
+                  // this app has no specification editor yet, so creating new
+                  // formats is disabled. Editing an existing format round-trips
+                  // its fetched specifications untouched.
+                  onPressed: !isEdit
+                      ? null
+                      : () async {
                     try {
                       final api = await ref.read(sonarrApiProvider(instance).future);
-                      final payload = format != null
-                          ? Map<String, dynamic>.from(format)
-                          : <String, dynamic>{
-                              'specifications': <dynamic>[],
-                            };
+                      final payload = Map<String, dynamic>.from(format);
 
                       payload['name'] = nameController.text.trim();
                       payload['includeCustomFormatWhenRenaming'] = includeWhenRenaming;
 
-                      if (isEdit) {
-                        await api.updateCustomFormat(payload);
-                      } else {
-                        await api.createCustomFormat(payload);
-                      }
+                      await api.updateCustomFormat(payload);
 
                       ref.invalidate(sonarrCustomFormatsProvider(instance));
                       if (context.mounted) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Custom format ${isEdit ? 'updated' : 'created'}!')),
+                          const SnackBar(content: Text('Custom format updated!')),
                         );
                       }
                     } catch (e) {
@@ -992,6 +1052,7 @@ class _CustomFormatsTab extends ConsumerWidget {
 
   Future<void> _deleteCustomFormat(
       BuildContext context, WidgetRef ref, int id,) async {
+    if (!await confirmDelete(context, 'this custom format')) return;
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
       await api.deleteCustomFormat(id);

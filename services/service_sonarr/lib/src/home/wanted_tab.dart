@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:core_models/core_models.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +9,7 @@ import '../models/sonarr_episode.dart';
 import '../models/sonarr_history_item.dart';
 import '../models/sonarr_series.dart';
 import '../sonarr_providers.dart';
+import '../sonarr_release_search_screen.dart';
 import 'manual_import_dialog.dart';
 
 class WantedTab extends ConsumerStatefulWidget {
@@ -28,7 +30,6 @@ class _WantedTabState extends ConsumerState<WantedTab>
   late final FocusNode _searchFocusNode;
 
   double _lastBottomInset = 0;
-  final Set<int> _selectedEpisodeIds = <int>{};
 
   @override
   void initState() {
@@ -77,12 +78,23 @@ class _WantedTabState extends ConsumerState<WantedTab>
   }
 
   void _clearSelection() {
-    setState(_selectedEpisodeIds.clear);
+    ref.read(sonarrWantedSelectionProvider(widget.instance).notifier).state =
+        <int>{};
+  }
+
+  /// Re-publishes the selection set after callers mutate it in place, so
+  /// watchers (this tab and SonarrHome's back handling) rebuild.
+  void _notifySelectionChanged() {
+    final notifier =
+        ref.read(sonarrWantedSelectionProvider(widget.instance).notifier);
+    notifier.state = Set<int>.of(notifier.state);
   }
 
   Future<void> _searchSelected() async {
-    if (_selectedEpisodeIds.isEmpty) return;
-    final List<int> ids = _selectedEpisodeIds.toList();
+    final Set<int> selected =
+        ref.read(sonarrWantedSelectionProvider(widget.instance));
+    if (selected.isEmpty) return;
+    final List<int> ids = selected.toList();
     _clearSelection();
 
     try {
@@ -103,23 +115,24 @@ class _WantedTabState extends ConsumerState<WantedTab>
   }
 
   Future<void> _unmonitorSelected() async {
-    if (_selectedEpisodeIds.isEmpty) return;
-    final List<int> ids = _selectedEpisodeIds.toList();
+    final Set<int> selected =
+        ref.read(sonarrWantedSelectionProvider(widget.instance));
+    if (selected.isEmpty) return;
+    final List<int> ids = selected.toList();
     _clearSelection();
 
     try {
       final api = await ref.read(sonarrApiProvider(widget.instance).future);
       await api.updateEpisodeMonitor(episodeIds: ids, monitored: false);
-      
+      if (!mounted) return;
+
       // Refresh providers
       ref.invalidate(sonarrWantedMissingProvider(widget.instance));
       ref.invalidate(sonarrWantedCutoffProvider(widget.instance));
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Unmonitored ${ids.length} selected episodes.')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unmonitored ${ids.length} selected episodes.')),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -170,174 +183,168 @@ class _WantedTabState extends ConsumerState<WantedTab>
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final bool hasSelection = _selectedEpisodeIds.isNotEmpty;
+    final Set<int> selectedEpisodeIds =
+        ref.watch(sonarrWantedSelectionProvider(widget.instance));
+    final bool hasSelection = selectedEpisodeIds.isNotEmpty;
     final bool isGrouped = ref.watch(sonarrWantedGroupedProvider(widget.instance));
 
-    return PopScope<Object?>(
-      canPop: Scaffold.of(context).isDrawerOpen ||
-          (!hasSelection && !_searchFocusNode.hasFocus && _searchController.text.isEmpty),
-      onPopInvokedWithResult: (bool didPop, Object? result) {
-        if (didPop) return;
-        if (Scaffold.of(context).isDrawerOpen) return;
-        if (hasSelection) {
-          _clearSelection();
-          return;
-        }
-        if (_searchFocusNode.hasFocus) {
-          _searchFocusNode.unfocus();
-          return;
-        }
+    // Keep the local controller in sync when the search query is cleared
+    // externally (SonarrHome unwinds search state on system back).
+    ref.listen<String>(sonarrWantedSearchQueryProvider(widget.instance),
+        (String? previous, String next) {
+      if (next.isEmpty && _searchController.text.isNotEmpty) {
         setState(() {
           _searchController.clear();
         });
-        ref.read(sonarrWantedSearchQueryProvider(widget.instance).notifier).state = '';
+        _searchFocusNode.unfocus();
         _updateSearchActiveState();
-      },
-      child: DefaultTabController(
-        length: 2,
-        child: Scaffold(
-          backgroundColor: theme.colorScheme.surface,
-          body: NestedScrollView(
-            headerSliverBuilder: (BuildContext innerContext, bool innerBoxIsScrolled) {
-              return <Widget>[
-                SliverAppBar(
-                  floating: true,
-                  snap: true,
-                  pinned: true,
-                  scrolledUnderElevation: 0.0,
-                  surfaceTintColor: Colors.transparent,
-                  backgroundColor: theme.colorScheme.surface,
-                  toolbarHeight: 72,
-                  titleSpacing: 0,
-                  leadingWidth: 56,
-                  leading: hasSelection
-                      ? IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: _clearSelection,
-                        )
-                      : IconButton(
-                          icon: const Icon(Icons.menu),
-                          onPressed: () {
-                            Scaffold.of(context).openDrawer();
-                          },
+      }
+    });
+
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: theme.colorScheme.surface,
+        body: NestedScrollView(
+          headerSliverBuilder: (BuildContext innerContext, bool innerBoxIsScrolled) {
+            return <Widget>[
+              SliverAppBar(
+                floating: true,
+                snap: true,
+                pinned: true,
+                scrolledUnderElevation: 0.0,
+                surfaceTintColor: Colors.transparent,
+                backgroundColor: theme.colorScheme.surface,
+                toolbarHeight: 72,
+                titleSpacing: 0,
+                leadingWidth: 56,
+                leading: hasSelection
+                    ? IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: _clearSelection,
+                      )
+                    : IconButton(
+                        icon: const Icon(Icons.menu),
+                        onPressed: () {
+                          Scaffold.of(context).openDrawer();
+                        },
+                      ),
+                title: hasSelection
+                    ? Padding(
+                        padding: const EdgeInsets.only(left: 8.0),
+                        child: Text(
+                          '${selectedEpisodeIds.length} Selected',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                  title: hasSelection
-                      ? Padding(
-                          padding: const EdgeInsets.only(left: 8.0),
-                          child: Text(
-                            '${_selectedEpisodeIds.length} Selected',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        )
-                      : SearchBar(
-                          focusNode: _searchFocusNode,
-                          controller: _searchController,
-                          hintText: 'Search wanted...',
-                          onTapOutside: (event) {
-                            if (_searchFocusNode.hasFocus) {
-                              _searchFocusNode.unfocus();
-                            }
-                          },
-                          elevation: const WidgetStatePropertyAll<double>(0),
-                          backgroundColor: WidgetStatePropertyAll<Color>(
-                            theme.colorScheme.surfaceContainerHigh,
-                          ),
-                          trailing: <Widget>[
-                            if (_searchController.text.isNotEmpty)
-                              IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () {
-                                  setState(() {
-                                    _searchController.clear();
-                                  });
-                                  ref
-                                      .read(
-                                        sonarrWantedSearchQueryProvider(
-                                          widget.instance,
-                                        ).notifier,
-                                      )
-                                      .state = '';
-                                  _updateSearchActiveState();
-                                },
-                              ),
-                          ],
-                          onChanged: (String value) {
-                            setState(() {});
-                            ref
-                                .read(
-                                  sonarrWantedSearchQueryProvider(widget.instance)
-                                      .notifier,
-                                )
-                                .state = value;
-                            _updateSearchActiveState();
-                          },
+                      )
+                    : SearchBar(
+                        focusNode: _searchFocusNode,
+                        controller: _searchController,
+                        hintText: 'Search wanted...',
+                        onTapOutside: (event) {
+                          if (_searchFocusNode.hasFocus) {
+                            _searchFocusNode.unfocus();
+                          }
+                        },
+                        elevation: const WidgetStatePropertyAll<double>(0),
+                        backgroundColor: WidgetStatePropertyAll<Color>(
+                          theme.colorScheme.surfaceContainerHigh,
                         ),
-                  actions: hasSelection
-                      ? <Widget>[
-                          IconButton(
-                            icon: const Icon(Icons.search),
-                            tooltip: 'Search Selected',
-                            onPressed: _searchSelected,
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.bookmark_border),
-                            tooltip: 'Unmonitor Selected',
-                            onPressed: _unmonitorSelected,
-                          ),
-                          const SizedBox(width: 8),
-                        ]
-                      : <Widget>[
-                          IconButton(
-                            icon: Icon(
-                              isGrouped ? Icons.format_list_bulleted : Icons.group_work_outlined,
+                        trailing: <Widget>[
+                          if (_searchController.text.isNotEmpty)
+                            IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                setState(() {
+                                  _searchController.clear();
+                                });
+                                ref
+                                    .read(
+                                      sonarrWantedSearchQueryProvider(
+                                        widget.instance,
+                                      ).notifier,
+                                    )
+                                    .state = '';
+                                _updateSearchActiveState();
+                              },
                             ),
-                            tooltip: isGrouped ? 'Switch to plain list' : 'Switch to grouped view',
-                            onPressed: () {
-                              ref
-                                  .read(sonarrWantedGroupedProvider(widget.instance).notifier)
-                                  .update((state) => !state);
-                            },
-                          ),
-                          const SizedBox(width: 8),
                         ],
-                  bottom: TabBar(
-                    dividerColor: Colors.transparent,
-                    indicatorColor: theme.colorScheme.primary,
-                    labelColor: theme.colorScheme.primary,
-                    unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    labelStyle: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    unselectedLabelStyle: theme.textTheme.titleSmall,
-                    tabs: const <Widget>[
-                      Tab(text: 'Missing'),
-                      Tab(text: 'Cutoff Unmet'),
-                    ],
+                        onChanged: (String value) {
+                          setState(() {});
+                          ref
+                              .read(
+                                sonarrWantedSearchQueryProvider(widget.instance)
+                                    .notifier,
+                              )
+                              .state = value;
+                          _updateSearchActiveState();
+                        },
+                      ),
+                actions: hasSelection
+                    ? <Widget>[
+                        IconButton(
+                          icon: const Icon(Icons.search),
+                          tooltip: 'Search Selected',
+                          onPressed: _searchSelected,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.bookmark_border),
+                          tooltip: 'Unmonitor Selected',
+                          onPressed: _unmonitorSelected,
+                        ),
+                        const SizedBox(width: 8),
+                      ]
+                    : <Widget>[
+                        IconButton(
+                          icon: Icon(
+                            isGrouped ? Icons.format_list_bulleted : Icons.group_work_outlined,
+                          ),
+                          tooltip: isGrouped ? 'Switch to plain list' : 'Switch to grouped view',
+                          onPressed: () {
+                            ref
+                                .read(sonarrWantedGroupedProvider(widget.instance).notifier)
+                                .update((state) => !state);
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                bottom: TabBar(
+                  dividerColor: Colors.transparent,
+                  indicatorColor: theme.colorScheme.primary,
+                  labelColor: theme.colorScheme.primary,
+                  unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  labelStyle: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
+                  unselectedLabelStyle: theme.textTheme.titleSmall,
+                  tabs: const <Widget>[
+                    Tab(text: 'Missing'),
+                    Tab(text: 'Cutoff Unmet'),
+                  ],
                 ),
-              ];
-            },
-            body: TabBarView(
-              children: <Widget>[
-                _MissingListView(
-                  instance: widget.instance,
-                  selectedIds: _selectedEpisodeIds,
-                  onSelectionChanged: () => setState(() {}),
-                  formatAirDate: _formatAirDate,
-                  onBulkSearch: () => _bulkSearchAll(false),
-                ),
-                _CutoffUnmetListView(
-                  instance: widget.instance,
-                  selectedIds: _selectedEpisodeIds,
-                  onSelectionChanged: () => setState(() {}),
-                  formatAirDate: _formatAirDate,
-                  onBulkSearch: () => _bulkSearchAll(true),
-                ),
-              ],
-            ),
+              ),
+            ];
+          },
+          body: TabBarView(
+            children: <Widget>[
+              _MissingListView(
+                instance: widget.instance,
+                selectedIds: selectedEpisodeIds,
+                onSelectionChanged: _notifySelectionChanged,
+                formatAirDate: _formatAirDate,
+                onBulkSearch: () => _bulkSearchAll(false),
+              ),
+              _CutoffUnmetListView(
+                instance: widget.instance,
+                selectedIds: selectedEpisodeIds,
+                onSelectionChanged: _notifySelectionChanged,
+                formatAirDate: _formatAirDate,
+                onBulkSearch: () => _bulkSearchAll(true),
+              ),
+            ],
           ),
         ),
       ),
@@ -449,6 +456,7 @@ class _EpisodeListLayout extends ConsumerWidget {
   void _showEpisodeDetails(BuildContext context, WidgetRef ref, SonarrEpisode episode) {
     showModalBottomSheet<void>(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
       shape: const RoundedRectangleBorder(
@@ -766,7 +774,13 @@ class _EpisodeListLayout extends ConsumerWidget {
                               icon: const Icon(Icons.person_search_outlined, size: 20),
                               tooltip: 'Interactive Search',
                               onPressed: () {
-                                _showEpisodeDetails(context, ref, episode);
+                                pushScreen<void>(
+                                  context,
+                                  SonarrReleaseSearchScreen(
+                                    instance: instance,
+                                    episode: episode,
+                                  ),
+                                );
                               },
                             ),
                           ],
@@ -1427,7 +1441,13 @@ class _EpisodeDetailsSheetState extends ConsumerState<_EpisodeDetailsSheet> {
                           ),
                           onPressed: () {
                             Navigator.of(context).pop();
-                            widget.onSearchTriggered(widget.episode.id);
+                            pushScreen<void>(
+                              context,
+                              SonarrReleaseSearchScreen(
+                                instance: widget.instance,
+                                episode: widget.episode,
+                              ),
+                            );
                           },
                           icon: const Icon(Icons.person_search_outlined),
                           label: const Text(

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
@@ -101,6 +103,15 @@ class _QualityDefinitionsScreenState extends ConsumerState<QualityDefinitionsScr
 
               final bool isUnlimited = maxVal == null || maxVal == 0;
 
+              // Server values can exceed the default 400 MB/min ceiling.
+              // Grow the slider ranges instead of letting clamp() throw
+              // when its min ends up greater than its max.
+              final double minSliderMax = math.max(400.0, minVal);
+              final double prefSliderMax =
+                  math.max(math.max(400.0, prefVal), minVal + 1.0);
+              final double maxSliderMax =
+                  math.max(math.max(400.0, maxVal ?? 0.0), prefVal + 1.0);
+
               return Card(
                 margin: const EdgeInsets.only(bottom: Insets.md),
                 elevation: 0,
@@ -128,8 +139,8 @@ class _QualityDefinitionsScreenState extends ConsumerState<QualityDefinitionsScr
                         style: theme.textTheme.bodySmall,
                       ),
                       Slider(
-                        value: minVal.clamp(0.0, 400.0),
-                        max: 400.0,
+                        value: minVal.clamp(0.0, minSliderMax),
+                        max: minSliderMax,
                         divisions: 400,
                         onChanged: (val) {
                           setState(() {
@@ -147,9 +158,9 @@ class _QualityDefinitionsScreenState extends ConsumerState<QualityDefinitionsScr
                         style: theme.textTheme.bodySmall,
                       ),
                       Slider(
-                        value: prefVal.clamp(minVal, 400.0),
+                        value: prefVal.clamp(minVal, prefSliderMax),
                         min: minVal,
-                        max: 400.0,
+                        max: prefSliderMax,
                         divisions: 400,
                         onChanged: (val) {
                           setState(() {
@@ -190,9 +201,9 @@ class _QualityDefinitionsScreenState extends ConsumerState<QualityDefinitionsScr
                       ),
                       if (!isUnlimited)
                         Slider(
-                          value: maxVal.clamp(prefVal, 400.0),
+                          value: maxVal.clamp(prefVal, maxSliderMax),
                           min: prefVal,
-                          max: 400.0,
+                          max: maxSliderMax,
                           divisions: 400,
                           onChanged: (val) {
                             setState(() {

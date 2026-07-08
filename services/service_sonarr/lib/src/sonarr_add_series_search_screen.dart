@@ -227,20 +227,18 @@ class _SonarrAddSeriesSearchScreenState
                             }
                             if (isAdded) {
                               // Already added: go to details screen
-                              Navigator.push(
+                              pushScreen<void>(
                                 context,
-                                MaterialPageRoute<void>(
-                                  builder: (BuildContext context) =>
-                                      SeriesDetailScreen(
-                                    instance: widget.instance,
-                                    series: localMatch,
-                                  ),
+                                SeriesDetailScreen(
+                                  instance: widget.instance,
+                                  series: localMatch,
                                 ),
                               );
                             } else {
                               // Not added: open configuration sheet
                               showModalBottomSheet<void>(
                                 context: context,
+                                useRootNavigator: true,
                                 isScrollControlled: true,
                                 useSafeArea: true,
                                 shape: const RoundedRectangleBorder(
@@ -402,7 +400,7 @@ class _SonarrAddSeriesSearchScreenState
   Color _statusColor(String status, ThemeData theme) {
     return switch (status.toLowerCase()) {
       'continuing' => theme.colorScheme.primary,
-      'upcoming' => Colors.orange,
+      'upcoming' => theme.colorScheme.secondary,
       _ => theme.colorScheme.outline,
     };
   }

@@ -21,6 +21,7 @@ class _DynamicSchemaFormState extends State<DynamicSchemaForm> {
   final _formKey = GlobalKey<FormState>();
   late List<Map<String, dynamic>> _localFields;
   final Map<String, TextEditingController> _controllers = {};
+  final Map<String, String> _initialTexts = {};
   bool _showAdvanced = false;
   bool _testing = false;
   String? _testError;
@@ -35,9 +36,15 @@ class _DynamicSchemaFormState extends State<DynamicSchemaForm> {
       final type = field['type'] as String?;
       final value = field['value'];
 
-      if (type == 'textbox' || type == 'password' || type == 'oAuth') {
-        _controllers[name] = TextEditingController(text: value?.toString() ?? '');
-      }
+      // Checkbox and select render dedicated widgets; every other type
+      // (textbox, password, oAuth, number, path, tagSelect, device,
+      // keyValueList, ...) falls through to a text field and needs a
+      // controller, otherwise the input is silently discarded on save.
+      if (type == 'checkbox' || type == 'select') continue;
+      final text =
+          value is List ? value.join(',') : value?.toString() ?? '';
+      _controllers[name] = TextEditingController(text: text);
+      _initialTexts[name] = text;
     }
   }
 
@@ -49,25 +56,39 @@ class _DynamicSchemaFormState extends State<DynamicSchemaForm> {
     super.dispose();
   }
 
+  /// Writes the text controllers back into [fields] with type-appropriate
+  /// parsing. Fields whose text is unchanged keep their original raw value so
+  /// complex types (lists, key-value maps) round-trip untouched.
+  void _applyControllerValues(List<Map<String, dynamic>> fields) {
+    for (final field in fields) {
+      final name = field['name'] as String;
+      final controller = _controllers[name];
+      if (controller == null) continue;
+
+      final text = controller.text.trim();
+      if (text == (_initialTexts[name] ?? '').trim()) continue;
+
+      if (field['isFloat'] as bool? ?? false) {
+        field['value'] = double.tryParse(text);
+      } else if (field['type'] == 'number') {
+        field['value'] = num.tryParse(text);
+      } else if (field['value'] is List) {
+        field['value'] = text
+            .split(',')
+            .map((term) => term.trim())
+            .where((term) => term.isNotEmpty)
+            .map((term) => num.tryParse(term) ?? term)
+            .toList();
+      } else {
+        field['value'] = text;
+      }
+    }
+  }
+
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
 
-    // Collect values from controllers
-    for (final field in _localFields) {
-      final name = field['name'] as String;
-
-      if (_controllers.containsKey(name)) {
-        final text = _controllers[name]!.text.trim();
-        // Parse numbers if applicable (though Sonarr fields are usually strings or ints)
-        if (field['isFloat'] as bool? ?? false) {
-          field['value'] = double.tryParse(text);
-        } else if (field['type'] == 'number') {
-          field['value'] = int.tryParse(text);
-        } else {
-          field['value'] = text;
-        }
-      }
-    }
+    _applyControllerValues(_localFields);
 
     widget.onSave(_localFields);
   }
@@ -84,19 +105,7 @@ class _DynamicSchemaFormState extends State<DynamicSchemaForm> {
 
     // Collect temporary values
     final testFields = _localFields.map(Map<String, dynamic>.from).toList();
-    for (final field in testFields) {
-      final name = field['name'] as String;
-      if (_controllers.containsKey(name)) {
-        final text = _controllers[name]!.text.trim();
-        if (field['isFloat'] as bool? ?? false) {
-          field['value'] = double.tryParse(text);
-        } else if (field['type'] == 'number') {
-          field['value'] = int.tryParse(text);
-        } else {
-          field['value'] = text;
-        }
-      }
-    }
+    _applyControllerValues(testFields);
 
     try {
       await widget.onTest!(testFields);
@@ -127,8 +136,15 @@ class _DynamicSchemaFormState extends State<DynamicSchemaForm> {
 
     // Filter fields to build based on hidden/visibility properties
     final visibleFields = _localFields.where((f) {
-      final hidden = f['hidden'] == 'hidden' || f['hidden'] == 'true';
-      if (hidden) return false;
+      final hiddenMode = f['hidden'];
+      if (hiddenMode == 'hidden' || hiddenMode == 'true') return false;
+      if (hiddenMode == 'hiddenIfNotSet') {
+        final value = f['value'];
+        final notSet = value == null ||
+            (value is String && value.isEmpty) ||
+            (value is List && value.isEmpty);
+        if (notSet) return false;
+      }
       final isAdvanced = f['advanced'] as bool? ?? false;
       if (isAdvanced && !_showAdvanced) return false;
       return true;

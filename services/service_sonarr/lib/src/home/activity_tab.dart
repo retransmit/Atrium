@@ -97,162 +97,158 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
             : <int>{};
     final isSelecting = activeSelection.isNotEmpty;
 
-    return PopScope<Object?>(
-      canPop: Scaffold.of(context).isDrawerOpen ||
-          (!_searchFocusNode.hasFocus && _searchController.text.isEmpty),
-      onPopInvokedWithResult: (bool didPop, Object? result) {
-        if (didPop) return;
-        if (Scaffold.of(context).isDrawerOpen) return;
-        if (_searchFocusNode.hasFocus) {
-          _searchFocusNode.unfocus();
-          return;
-        }
+    // Keep the local controller in sync when the search query is cleared
+    // externally (SonarrHome unwinds search state on system back).
+    ref.listen<String>(sonarrActivitySearchQueryProvider(widget.instance),
+        (String? previous, String next) {
+      if (next.isEmpty && _searchController.text.isNotEmpty) {
         setState(() {
           _searchController.clear();
         });
-        ref.read(sonarrActivitySearchQueryProvider(widget.instance).notifier).state = '';
+        _searchFocusNode.unfocus();
         _updateSearchActiveState();
-      },
-      child: Scaffold(
-          backgroundColor: theme.colorScheme.surface,
-          bottomNavigationBar: isSelecting
-              ? _ActivityBulkActionsBar(
-                  instance: widget.instance,
-                  selectedIds: activeSelection,
-                  isQueue: _tabController.index == 0,
-                  onClear: () {
-                    ref.read(sonarrQueueSelectionProvider(widget.instance).notifier).state = {};
-                    ref.read(sonarrBlocklistSelectionProvider(widget.instance).notifier).state = {};
-                  },
-                )
-              : null,
-          body: NestedScrollView(
-            headerSliverBuilder: (BuildContext innerContext, bool innerBoxIsScrolled) {
-              return <Widget>[
-                SliverAppBar(
-                  floating: true,
-                  snap: true,
-                  pinned: true,
-                  scrolledUnderElevation: 0.0,
-                  surfaceTintColor: Colors.transparent,
-                  backgroundColor: theme.colorScheme.surface,
-                  toolbarHeight: 72,
-                  titleSpacing: isSelecting ? 16 : 0,
-                  leadingWidth: 56,
-                  leading: isSelecting
-                      ? IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () {
-                            ref.read(sonarrQueueSelectionProvider(widget.instance).notifier).state = {};
-                            ref.read(sonarrBlocklistSelectionProvider(widget.instance).notifier).state = {};
-                          },
-                        )
-                      : IconButton(
-                          icon: const Icon(Icons.menu),
-                          onPressed: () {
-                            // Call on outer context of the build method to resolve the parent Scaffold drawer.
-                            Scaffold.of(context).openDrawer();
-                          },
-                        ),
-                  title: isSelecting
-                      ? Text(
-                          '${activeSelection.length} selected',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        )
-                      : SearchBar(
-                    focusNode: _searchFocusNode,
-                    controller: _searchController,
-                    hintText: 'Search activity...',
-                    onTapOutside: (event) {
-                      if (_searchFocusNode.hasFocus) {
-                        _searchFocusNode.unfocus();
-                      }
-                    },
-                    elevation: const WidgetStatePropertyAll<double>(0),
-                    backgroundColor: WidgetStatePropertyAll<Color>(
-                      theme.colorScheme.surfaceContainerHigh,
+      }
+    });
+
+    return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
+      bottomNavigationBar: isSelecting
+          ? _ActivityBulkActionsBar(
+              instance: widget.instance,
+              selectedIds: activeSelection,
+              isQueue: _tabController.index == 0,
+              onClear: () {
+                ref.read(sonarrQueueSelectionProvider(widget.instance).notifier).state = {};
+                ref.read(sonarrBlocklistSelectionProvider(widget.instance).notifier).state = {};
+              },
+            )
+          : null,
+      body: NestedScrollView(
+        headerSliverBuilder: (BuildContext innerContext, bool innerBoxIsScrolled) {
+          return <Widget>[
+            SliverAppBar(
+              floating: true,
+              snap: true,
+              pinned: true,
+              scrolledUnderElevation: 0.0,
+              surfaceTintColor: Colors.transparent,
+              backgroundColor: theme.colorScheme.surface,
+              toolbarHeight: 72,
+              titleSpacing: isSelecting ? 16 : 0,
+              leadingWidth: 56,
+              leading: isSelecting
+                  ? IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        ref.read(sonarrQueueSelectionProvider(widget.instance).notifier).state = {};
+                        ref.read(sonarrBlocklistSelectionProvider(widget.instance).notifier).state = {};
+                      },
+                    )
+                  : IconButton(
+                      icon: const Icon(Icons.menu),
+                      onPressed: () {
+                        // Call on outer context of the build method to resolve the parent Scaffold drawer.
+                        Scaffold.of(context).openDrawer();
+                      },
                     ),
-                    trailing: <Widget>[
-                      if (_searchController.text.isNotEmpty)
-                        IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            setState(() {
-                              _searchController.clear();
-                            });
-                            ref
-                                .read(
-                                  sonarrActivitySearchQueryProvider(
-                                    widget.instance,
-                                  ).notifier,
-                                )
-                                .state = '';
-                            _updateSearchActiveState();
-                          },
-                        ),
-                    ],
-                    onChanged: (String value) {
-                      setState(() {});
+              title: isSelecting
+                  ? Text(
+                      '${activeSelection.length} selected',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  : SearchBar(
+                focusNode: _searchFocusNode,
+                controller: _searchController,
+                hintText: 'Search activity...',
+                onTapOutside: (event) {
+                  if (_searchFocusNode.hasFocus) {
+                    _searchFocusNode.unfocus();
+                  }
+                },
+                elevation: const WidgetStatePropertyAll<double>(0),
+                backgroundColor: WidgetStatePropertyAll<Color>(
+                  theme.colorScheme.surfaceContainerHigh,
+                ),
+                trailing: <Widget>[
+                  if (_searchController.text.isNotEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        setState(() {
+                          _searchController.clear();
+                        });
+                        ref
+                            .read(
+                              sonarrActivitySearchQueryProvider(
+                                widget.instance,
+                              ).notifier,
+                            )
+                            .state = '';
+                        _updateSearchActiveState();
+                      },
+                    ),
+                ],
+                onChanged: (String value) {
+                  setState(() {});
+                  ref
+                      .read(
+                        sonarrActivitySearchQueryProvider(widget.instance)
+                            .notifier,
+                      )
+                      .state = value;
+                  _updateSearchActiveState();
+                },
+              ),
+              actions: <Widget>[
+                if (!isSelecting) ...[
+                  IconButton(
+                    icon: Icon(
+                      grouped ? Icons.format_list_bulleted : Icons.group_work_outlined,
+                    ),
+                    tooltip: grouped ? 'Switch to plain list' : 'Switch to grouped view',
+                    onPressed: () {
                       ref
                           .read(
-                            sonarrActivitySearchQueryProvider(widget.instance)
+                            sonarrActivityGroupedProvider(widget.instance)
                                 .notifier,
                           )
-                          .state = value;
-                      _updateSearchActiveState();
+                          .state = !grouped;
                     },
                   ),
-                  actions: <Widget>[
-                    if (!isSelecting) ...[
-                      IconButton(
-                        icon: Icon(
-                          grouped ? Icons.format_list_bulleted : Icons.group_work_outlined,
-                        ),
-                        tooltip: grouped ? 'Switch to plain list' : 'Switch to grouped view',
-                        onPressed: () {
-                          ref
-                              .read(
-                                sonarrActivityGroupedProvider(widget.instance)
-                                    .notifier,
-                              )
-                              .state = !grouped;
-                        },
-                      ),
-                    ],
-                    const SizedBox(width: 8),
-                  ],
-                  bottom: TabBar(
-                    controller: _tabController,
-                    dividerColor: Colors.transparent,
-                    indicatorColor: theme.colorScheme.primary,
-                    labelColor: theme.colorScheme.primary,
-                    unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    labelStyle: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                    unselectedLabelStyle: theme.textTheme.titleSmall,
-                    tabs: const <Widget>[
-                      Tab(text: 'Queue'),
-                      Tab(text: 'History'),
-                      Tab(text: 'Blocklist'),
-                    ],
-                  ),
-                ),
-              ];
-            },
-            body: TabBarView(
-              controller: _tabController,
-              children: <Widget>[
-                _QueueView(instance: widget.instance),
-                _HistoryView(instance: widget.instance),
-                _BlocklistView(instance: widget.instance),
+                ],
+                const SizedBox(width: 8),
               ],
+              bottom: TabBar(
+                controller: _tabController,
+                dividerColor: Colors.transparent,
+                indicatorColor: theme.colorScheme.primary,
+                labelColor: theme.colorScheme.primary,
+                unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+                indicatorSize: TabBarIndicatorSize.tab,
+                labelStyle: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+                unselectedLabelStyle: theme.textTheme.titleSmall,
+                tabs: const <Widget>[
+                  Tab(text: 'Queue'),
+                  Tab(text: 'History'),
+                  Tab(text: 'Blocklist'),
+                ],
+              ),
             ),
-          ),
+          ];
+        },
+        body: TabBarView(
+          controller: _tabController,
+          children: <Widget>[
+            _QueueView(instance: widget.instance),
+            _HistoryView(instance: widget.instance),
+            _BlocklistView(instance: widget.instance),
+          ],
         ),
+      ),
     );
   }
 }
@@ -2202,38 +2198,41 @@ class _QueueBulkGrabDialog extends ConsumerWidget {
         ),
         ElevatedButton(
           onPressed: () async {
-            final navigator = Navigator.of(context);
+            final NavigatorState nav =
+                Navigator.of(context, rootNavigator: true);
             showDialog<void>(
               context: context,
               barrierDismissible: false,
-              builder: (ctx) => const Center(child: CircularProgressIndicator(),),
+              builder: (ctx) => const PopScope<Object?>(
+                canPop: false,
+                child: Center(child: CircularProgressIndicator()),
+              ),
             ).ignore();
 
+            Object? error;
             try {
               final api = await ref.read(sonarrApiProvider(instance).future);
-              for (final id in selectedIds) {
-                await api.runCommand(<String, dynamic>{
-                  'name': 'QueueGrab',
-                  'queueId': id,
-                });
-              }
-              ref.invalidate(sonarrQueueProvider(instance));
-              onClear();
-
-              if (!context.mounted) return;
-              navigator.pop(); // pop loading
-              navigator.pop(); // pop dialog
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Forced grab successfully triggered')),
-              );
+              await api.grabQueueItems(selectedIds.toList());
             } catch (e) {
-              if (!context.mounted) return;
-              navigator.pop(); // pop loading
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error grabbing items: $e')),
-              );
+              error = e;
+            } finally {
+              if (nav.mounted) nav.pop(); // pop loading
             }
+
+            if (!context.mounted) return;
+            if (error != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error grabbing items: $error')),
+              );
+              return;
+            }
+            ref.invalidate(sonarrQueueProvider(instance));
+            onClear();
+            Navigator.pop(context); // pop dialog
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Forced grab successfully triggered')),
+            );
           },
           child: const Text('Force Grab'),
         ),
@@ -2289,33 +2288,42 @@ class _QueueBulkDeleteDialogState extends ConsumerState<_QueueBulkDeleteDialog> 
             foregroundColor: Theme.of(context).colorScheme.onError,
           ),
           onPressed: () async {
-            final navigator = Navigator.of(context);
+            final NavigatorState nav =
+                Navigator.of(context, rootNavigator: true);
             showDialog<void>(
               context: context,
               barrierDismissible: false,
-              builder: (ctx) => const Center(child: CircularProgressIndicator(),),
+              builder: (ctx) => const PopScope<Object?>(
+                canPop: false,
+                child: Center(child: CircularProgressIndicator()),
+              ),
             ).ignore();
 
+            Object? error;
             try {
-              final api = await ref.read(sonarrApiProvider(widget.instance).future);
+              final api =
+                  await ref.read(sonarrApiProvider(widget.instance).future);
               await api.bulkDeleteQueue(widget.selectedIds.toList(), blocklist: _blocklist);
-              ref.invalidate(sonarrQueueProvider(widget.instance));
-              widget.onClear();
-              
-              if (!context.mounted) return;
-              navigator.pop(); // pop loading
-              navigator.pop(); // pop dialog
-              
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Successfully removed items')),
-              );
             } catch (e) {
-              if (!context.mounted) return;
-              navigator.pop(); // pop loading
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error removing items: $e')),
-              );
+              error = e;
+            } finally {
+              if (nav.mounted) nav.pop(); // pop loading
             }
+
+            if (!context.mounted) return;
+            if (error != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error removing items: $error')),
+              );
+              return;
+            }
+            ref.invalidate(sonarrQueueProvider(widget.instance));
+            widget.onClear();
+            Navigator.pop(context); // pop dialog
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Successfully removed items')),
+            );
           },
           child: const Text('Remove'),
         ),
@@ -2351,33 +2359,41 @@ class _BlocklistBulkDeleteDialog extends ConsumerWidget {
             foregroundColor: Theme.of(context).colorScheme.onError,
           ),
           onPressed: () async {
-            final navigator = Navigator.of(context);
+            final NavigatorState nav =
+                Navigator.of(context, rootNavigator: true);
             showDialog<void>(
               context: context,
               barrierDismissible: false,
-              builder: (ctx) => const Center(child: CircularProgressIndicator(),),
+              builder: (ctx) => const PopScope<Object?>(
+                canPop: false,
+                child: Center(child: CircularProgressIndicator()),
+              ),
             ).ignore();
 
+            Object? error;
             try {
               final api = await ref.read(sonarrApiProvider(instance).future);
               await api.bulkDeleteBlocklist(selectedIds.toList());
-              ref.invalidate(sonarrBlocklistProvider(instance));
-              onClear();
-              
-              if (!context.mounted) return;
-              navigator.pop(); // pop loading
-              navigator.pop(); // pop dialog
-              
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Successfully removed items from blocklist')),
-              );
             } catch (e) {
-              if (!context.mounted) return;
-              navigator.pop(); // pop loading
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error removing items: $e')),
-              );
+              error = e;
+            } finally {
+              if (nav.mounted) nav.pop(); // pop loading
             }
+
+            if (!context.mounted) return;
+            if (error != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error removing items: $error')),
+              );
+              return;
+            }
+            ref.invalidate(sonarrBlocklistProvider(instance));
+            onClear();
+            Navigator.pop(context); // pop dialog
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Successfully removed items from blocklist')),
+            );
           },
           child: const Text('Remove'),
         ),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../sonarr_providers.dart';
+import 'widgets/confirm_delete.dart';
 
 class TagsSettingsScreen extends ConsumerWidget {
   const TagsSettingsScreen({
@@ -65,6 +66,7 @@ class TagsSettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _deleteTag(BuildContext context, WidgetRef ref, int id) async {
+    if (!await confirmDelete(context, 'this tag')) return;
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
       await api.deleteTag(id);

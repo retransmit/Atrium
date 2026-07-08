@@ -453,6 +453,16 @@ final sonarrImportListConfigProvider =
   return api.getImportListConfig();
 });
 
+/// Indexer config provider.
+final sonarrIndexerConfigProvider =
+    FutureProvider.autoDispose.family<Map<String, dynamic>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final SonarrApi api = await ref.watch(sonarrApiProvider(instance).future);
+  return api.getIndexerConfig();
+});
+
 /// Import list schemas provider.
 final sonarrImportListSchemaProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, Instance>((
@@ -650,16 +660,20 @@ final sonarrBackupsProvider = FutureProvider.autoDispose
 });
 
 /// Track selection state for Series
-final sonarrSeriesSelectionProvider =
-    StateProvider.family<Set<int>, Instance>((ref, instance) => <int>{});
+final sonarrSeriesSelectionProvider = StateProvider.autoDispose
+    .family<Set<int>, Instance>((ref, instance) => <int>{});
 
 /// Track selection state for Queue
-final sonarrQueueSelectionProvider =
-    StateProvider.family<Set<int>, Instance>((ref, instance) => <int>{});
+final sonarrQueueSelectionProvider = StateProvider.autoDispose
+    .family<Set<int>, Instance>((ref, instance) => <int>{});
 
 /// Track selection state for Blocklist
-final sonarrBlocklistSelectionProvider =
-    StateProvider.family<Set<int>, Instance>((ref, instance) => <int>{});
+final sonarrBlocklistSelectionProvider = StateProvider.autoDispose
+    .family<Set<int>, Instance>((ref, instance) => <int>{});
+
+/// Track selection state for the Wanted tab episodes.
+final sonarrWantedSelectionProvider = StateProvider.autoDispose
+    .family<Set<int>, Instance>((ref, instance) => <int>{});
 
 /// Parse a title / release name
 final sonarrParseResultProvider = FutureProvider.autoDispose
