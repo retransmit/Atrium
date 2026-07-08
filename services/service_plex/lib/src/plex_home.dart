@@ -413,6 +413,13 @@ class _SessionCard extends StatelessWidget {
     return SizedBox(
       width: 240,
       child: Card(
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        clipBehavior: Clip.antiAlias,
+        color: theme.colorScheme.surfaceContainerLow,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(24)),
+        ),
         child: InkWell(
           onTap: () => pushScreen<void>(
             context,
@@ -595,43 +602,68 @@ class PlexPosterCard extends ConsumerWidget {
     return InkWell(
       onTap: onTap,
       onLongPress: () => _showActions(context, ref),
-      borderRadius: Radii.card,
+      borderRadius: BorderRadius.circular(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Expanded(
-            child: ClipRRect(
-              borderRadius: Radii.card,
-              child: Stack(
-                fit: StackFit.expand,
-                children: <Widget>[
-                  _poster(theme),
-                  if (_watched)
-                    Positioned(
-                      top: 4,
-                      right: 4,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.check,
-                          size: 14,
-                          color: theme.colorScheme.onPrimary,
-                        ),
-                      ),
-                    ),
-                  if (!_watched && progress > 0.02)
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: LinearProgressIndicator(
-                        value: progress.clamp(0, 1),
-                        minHeight: 3,
-                      ),
-                    ),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
                 ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: <Widget>[
+                    _poster(theme),
+                    if (_watched)
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary
+                                .withValues(alpha: 0.85),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: theme.colorScheme.outlineVariant
+                                  .withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.check,
+                            size: 14,
+                            color: theme.colorScheme.onPrimary,
+                          ),
+                        ),
+                      ),
+                    if (!_watched && progress > 0.02)
+                      Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Padding(
+                          padding: const EdgeInsets.all(Insets.sm),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: LinearProgressIndicator(
+                              value: progress.clamp(0, 1),
+                              minHeight: 6,
+                              backgroundColor:
+                                  Colors.black.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),

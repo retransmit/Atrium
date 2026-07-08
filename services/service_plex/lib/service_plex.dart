@@ -11,6 +11,7 @@ library;
 export 'src/models/plex_models.dart';
 export 'src/models/plex_session.dart';
 export 'src/plex_api.dart';
+export 'src/plex_deep_link.dart';
 export 'src/plex_home.dart';
 export 'src/plex_item_detail.dart';
 export 'src/plex_music_screens.dart';
