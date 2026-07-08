@@ -61,7 +61,15 @@ class _PlexItemDetailScreenState extends ConsumerState<PlexItemDetailScreen> {
 
   Future<void> _toggleWatched(PlexApi api, PlexMetadata item) async {
     final bool watched = _watched(item);
-    await api.setWatched(widget.ratingKey, watched: !watched);
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    try {
+      await api.setWatched(widget.ratingKey, watched: !watched);
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not update watched state')),
+      );
+      return;
+    }
     if (!mounted) {
       return;
     }

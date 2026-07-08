@@ -6,12 +6,18 @@ import 'package:url_launcher/url_launcher.dart';
 
 /// Opens the item in the official Plex app when possible, else launches the
 /// Plex app, else shows a not-installed message. Per-item deep linking is
-/// unreliable on Plex, so [webUrl] (an app.plex.tv details URL) is a
-/// best-effort target and the package launch is the fallback.
+/// unreliable on Plex, so [webUrl] (which must be an https `app.plex.tv`
+/// URL; any other host is ignored) is a best-effort target and the package
+/// launch is the fallback.
 Future<void> launchPlexDeepLink(BuildContext context, {String? webUrl}) async {
   if (webUrl != null) {
     final Uri? uri = Uri.tryParse(webUrl);
-    if (uri != null && uri.scheme == 'https' && uri.hasAuthority) {
+    // Host allowlist: only the fixed Plex web host may be launched, so no
+    // caller can hand this an arbitrary https URL.
+    if (uri != null &&
+        uri.scheme == 'https' &&
+        uri.hasAuthority &&
+        uri.host == 'app.plex.tv') {
       try {
         if (await launchUrl(uri, mode: LaunchMode.externalApplication)) {
           return;

@@ -56,6 +56,9 @@ class _PlexHomeState extends ConsumerState<PlexHome> {
               child: _selectedKey == 'home'
                   ? _HomeSections(instance: widget.instance)
                   : _ItemsGrid(
+                      // A fresh State per section, so a genre picked in one
+                      // library never leaks into another.
+                      key: ValueKey<String>(_selectedKey),
                       instance: widget.instance,
                       id: _selectedKey,
                       isSection: true,
@@ -121,6 +124,7 @@ class _ItemsGrid extends ConsumerStatefulWidget {
     required this.instance,
     required this.id,
     required this.isSection,
+    super.key,
   });
 
   final Instance instance;
@@ -203,8 +207,10 @@ class _ItemsGridState extends ConsumerState<_ItemsGrid> {
     );
   }
 
-  /// Horizontal genre filter chips for a section. Renders nothing while the
-  /// genre list is empty, loading, or errored so the grid is never blocked.
+  /// Horizontal genre filter chips for a section. Renders nothing until the
+  /// genre list first loads, and whenever it is empty, so the grid is never
+  /// blocked. Once loaded, `.value` keeps the last-known genres through a
+  /// later refresh error rather than dropping the strip.
   Widget _genreStrip() {
     final List<PlexGenreDir> genres = ref
             .watch(plexGenresProvider((widget.instance, widget.id)))
@@ -333,9 +339,12 @@ class _HomeSections extends ConsumerWidget {
 }
 
 /// "Now Streaming" - active sessions, polled while the hub is visible.
-/// Additive row: empty, loading, and error all render nothing so the hub is
-/// never blocked by the sessions poller. Tapping a card opens the
-/// now-playing controller for that stream.
+/// Additive row: it renders nothing until the poll first returns data, and
+/// whenever the session list is empty, so the hub is never blocked by the
+/// sessions poller. If a later poll errors, `.value` keeps the last-known
+/// sessions on screen rather than dropping the row (no error/retry UI here
+/// by design). Tapping a card opens the now-playing controller for that
+/// stream.
 class _NowStreamingSection extends ConsumerWidget {
   const _NowStreamingSection({required this.instance});
 
@@ -725,7 +734,7 @@ class PlexPosterCard extends ConsumerWidget {
       // Root navigator: a branch-navigator sheet gets swept by GoRouter's
       // shell rebuilds.
       useRootNavigator: true,
-      builder: (BuildContext context) {
+      builder: (BuildContext sheetContext) {
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -734,13 +743,30 @@ class PlexPosterCard extends ConsumerWidget {
                 leading: Icon(watched ? Icons.remove_done : Icons.done_all),
                 title: Text(watched ? 'Mark as unwatched' : 'Mark as watched'),
                 onTap: () async {
-                  Navigator.of(context).pop();
+                  Navigator.of(sheetContext).pop();
                   final PlexApi? api =
                       ref.read(plexApiProvider(instance)).value;
                   if (api == null) {
                     return;
                   }
-                  await api.setWatched(item.ratingKey, watched: !watched);
+                  // The card's context, not the sheet's: the messenger must
+                  // outlive the just-popped sheet, and ref belongs to the
+                  // card's element.
+                  final ScaffoldMessengerState messenger =
+                      ScaffoldMessenger.of(context);
+                  try {
+                    await api.setWatched(item.ratingKey, watched: !watched);
+                  } catch (_) {
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Could not update watched state'),
+                      ),
+                    );
+                    return;
+                  }
+                  if (!context.mounted) {
+                    return;
+                  }
                   ref.invalidate(plexItemsProvider);
                   ref.invalidate(plexOnDeckProvider(instance));
                   ref.invalidate(plexRecentlyAddedProvider(instance));
