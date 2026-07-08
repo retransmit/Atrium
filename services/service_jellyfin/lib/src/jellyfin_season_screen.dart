@@ -40,7 +40,8 @@ class JellyfinSeasonScreen extends ConsumerWidget {
       body: AsyncValueView<List<JellyfinItem>>(
         value: episodesAsync,
         onRetry: () => ref.invalidate(
-            jellyfinEpisodesProvider((instance, seriesId, seasonId)),),
+          jellyfinEpisodesProvider((instance, seriesId, seasonId)),
+        ),
         data: (List<JellyfinItem> episodes) {
           if (episodes.isEmpty) {
             return const EmptyView(

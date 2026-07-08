@@ -127,7 +127,7 @@ class _BazarrProvidersScreenState extends ConsumerState<BazarrProvidersScreen> {
                 child: SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: ExpressiveProgressIndicator(strokeWidth: 2),
                 ),
               ),
             )
@@ -296,7 +296,7 @@ class _BazarrProviderConfigScreenState
                 child: SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: ExpressiveProgressIndicator(strokeWidth: 2),
                 ),
               ),
             )

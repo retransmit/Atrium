@@ -262,7 +262,7 @@ class _RequestOptionsSheetState extends ConsumerState<_RequestOptionsSheet> {
             serversAsync.when(
               loading: () => const Padding(
                 padding: EdgeInsets.all(Insets.lg),
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child: ExpressiveProgressIndicator()),
               ),
               error: (Object e, _) => _fallback(
                 'Advanced options are unavailable. You can still request using '
@@ -326,7 +326,7 @@ class _RequestOptionsSheetState extends ConsumerState<_RequestOptionsSheet> {
         detailsAsync.when(
           loading: () => const Padding(
             padding: EdgeInsets.all(Insets.lg),
-            child: Center(child: CircularProgressIndicator()),
+            child: Center(child: ExpressiveProgressIndicator()),
           ),
           error: (Object e, _) => Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -450,7 +450,7 @@ class _RequestOptionsSheetState extends ConsumerState<_RequestOptionsSheet> {
           ? const SizedBox(
               width: 16,
               height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
+              child: ExpressiveProgressIndicator(strokeWidth: 2),
             )
           : const Icon(Icons.add_to_queue),
       label: Text(label),

@@ -219,7 +219,7 @@ class _DynamicSchemaFormState extends State<DynamicSchemaForm> {
                     child: SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: ExpressiveProgressIndicator(strokeWidth: 2),
                     ),
                   )
                 else

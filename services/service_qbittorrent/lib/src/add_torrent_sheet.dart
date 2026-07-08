@@ -235,7 +235,7 @@ class _AddTorrentSheetState extends ConsumerState<AddTorrentSheet> {
               ? const SizedBox(
                   width: 16,
                   height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: ExpressiveProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.add),
           label: const Text('Add'),

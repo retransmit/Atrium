@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:palette_generator/palette_generator.dart';
 
 import 'emby_client.dart';
 import 'emby_item_detail.dart';
@@ -12,8 +13,11 @@ import 'emby_music_screens.dart';
 import 'emby_providers.dart';
 import 'emby_season_screen.dart';
 import 'emby_session_detail_screen.dart';
+import 'dart:math' as math;
+
 import 'models/emby_item.dart';
 import 'models/emby_session.dart';
+import 'models/emby_auth.dart';
 import 'models/emby_view.dart';
 
 /// Container types - tapping drills into children. Everything else plays.
@@ -45,23 +49,29 @@ class EmbyHome extends ConsumerStatefulWidget {
 class _EmbyHomeState extends ConsumerState<EmbyHome> {
   @override
   Widget build(BuildContext context) {
-    final AsyncValue<List<EmbyView>> views =
-        ref.watch(embyViewsProvider(widget.instance));
+    final AsyncValue<List<EmbyView>> viewsAsync = ref.watch(embyViewsProvider(widget.instance));
+    final int index = ref.watch(embyActiveTabBarIndexProvider(widget.instance));
 
     return AsyncValueView<List<EmbyView>>(
-      value: views,
+      value: viewsAsync,
       onRetry: () => ref.invalidate(embyViewsProvider(widget.instance)),
       data: (List<EmbyView> libraries) {
         if (libraries.isEmpty) {
           return const EmptyView(
             icon: Icons.theaters_outlined,
-            title: 'No libraries',
+            title: 'No Libraries',
             message: 'This Emby server has no libraries to show.',
           );
         }
+        
+        final String libsKey = libraries.map((EmbyView l) => l.id).join(',');
+        final int targetLength = libraries.length + 3;
+        final int initialIndex = (index < targetLength) ? index : 0;
+        
         return DefaultTabController(
-          key: ValueKey<int>(libraries.length),
-          length: libraries.length + 3,
+          key: ValueKey<String>(libsKey),
+          length: targetLength,
+          initialIndex: initialIndex,
           child: _TabObserver(
             instance: widget.instance,
             child: Column(
@@ -69,17 +79,6 @@ class _EmbyHomeState extends ConsumerState<EmbyHome> {
                 TabBar(
                   isScrollable: true,
                   tabAlignment: TabAlignment.start,
-                  dividerColor: Colors.transparent,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  indicator: BoxDecoration(
-                    color: Theme.of(context).colorScheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(50),
-                  ),
-                  labelColor:
-                      Theme.of(context).colorScheme.onSecondaryContainer,
-                  unselectedLabelColor:
-                      Theme.of(context).colorScheme.onSurfaceVariant,
-                  splashBorderRadius: BorderRadius.circular(50),
                   tabs: <Widget>[
                     const Tab(text: 'Home'),
                     for (final EmbyView lib in libraries) Tab(text: lib.name),
@@ -163,8 +162,11 @@ class _TabObserverState extends ConsumerState<_TabObserver> {
 }
 
 class EmbyLibraryGrid extends ConsumerWidget {
-  const EmbyLibraryGrid(
-      {required this.instance, required this.view, super.key,});
+  const EmbyLibraryGrid({
+    required this.instance,
+    required this.view,
+    super.key,
+  });
 
   final Instance instance;
   final EmbyView view;
@@ -222,6 +224,7 @@ class EmbyLibraryGrid extends ConsumerWidget {
                                           ? item.artists.first
                                           : 'Unknown Artist',
                                       albumOverview: item.overview,
+                                      albumGenres: item.genres,
                                       albumImageUrl: client.imageUrl(item),
                                     ),
                                   );
@@ -229,7 +232,9 @@ class EmbyLibraryGrid extends ConsumerWidget {
                                   pushScreen<void>(
                                     context,
                                     EmbyItemDetailScreen(
-                                        instance: instance, itemId: item.id,),
+                                      instance: instance,
+                                      itemId: item.id,
+                                    ),
                                   );
                                 } else if (item.type == 'Season') {
                                   pushScreen<void>(
@@ -246,13 +251,17 @@ class EmbyLibraryGrid extends ConsumerWidget {
                                   pushScreen<void>(
                                     context,
                                     EmbyFolderScreen(
-                                        instance: instance, item: item,),
+                                      instance: instance,
+                                      item: item,
+                                    ),
                                   );
                                 } else {
                                   pushScreen<void>(
                                     context,
                                     EmbyItemDetailScreen(
-                                        instance: instance, itemId: item.id,),
+                                      instance: instance,
+                                      itemId: item.id,
+                                    ),
                                   );
                                 }
                               },
@@ -275,6 +284,7 @@ class EmbyLibraryGrid extends ConsumerWidget {
                                           ? item.artists.first
                                           : 'Unknown Artist',
                                       albumOverview: item.overview,
+                                      albumGenres: item.genres,
                                       albumImageUrl: client.imageUrl(item),
                                     ),
                                   );
@@ -282,7 +292,9 @@ class EmbyLibraryGrid extends ConsumerWidget {
                                   pushScreen<void>(
                                     context,
                                     EmbyItemDetailScreen(
-                                        instance: instance, itemId: item.id,),
+                                      instance: instance,
+                                      itemId: item.id,
+                                    ),
                                   );
                                 } else if (item.type == 'Season') {
                                   pushScreen<void>(
@@ -299,13 +311,17 @@ class EmbyLibraryGrid extends ConsumerWidget {
                                   pushScreen<void>(
                                     context,
                                     EmbyFolderScreen(
-                                        instance: instance, item: item,),
+                                      instance: instance,
+                                      item: item,
+                                    ),
                                   );
                                 } else {
                                   pushScreen<void>(
                                     context,
                                     EmbyItemDetailScreen(
-                                        instance: instance, itemId: item.id,),
+                                      instance: instance,
+                                      itemId: item.id,
+                                    ),
                                   );
                                 }
                               },
@@ -320,8 +336,11 @@ class EmbyLibraryGrid extends ConsumerWidget {
 }
 
 class EmbyItemsGrid extends ConsumerWidget {
-  const EmbyItemsGrid(
-      {required this.instance, required this.libraryId, super.key,});
+  const EmbyItemsGrid({
+    required this.instance,
+    required this.libraryId,
+    super.key,
+  });
 
   final Instance instance;
   final String libraryId;
@@ -395,6 +414,7 @@ class EmbyItemsGrid extends ConsumerWidget {
           albumArtist:
               item.artists.isNotEmpty ? item.artists.first : 'Playlist',
           albumOverview: item.overview,
+          albumGenres: item.genres,
           albumImageUrl: client.imageUrl(item),
         ),
       );
@@ -436,8 +456,11 @@ class EmbyItemsGrid extends ConsumerWidget {
 }
 
 class EmbyFolderScreen extends ConsumerWidget {
-  const EmbyFolderScreen(
-      {required this.instance, required this.item, super.key,});
+  const EmbyFolderScreen({
+    required this.instance,
+    required this.item,
+    super.key,
+  });
 
   final Instance instance;
   final EmbyItem item;
@@ -470,7 +493,8 @@ class EmbyFolderScreen extends ConsumerWidget {
                   await client.markFavorite(currentItem.id, !isFav);
                   if (!context.mounted) return;
                   ref.invalidate(
-                      embyItemDetailsProvider((instance, currentItem.id)),);
+                    embyItemDetailsProvider((instance, currentItem.id)),
+                  );
                   ref.invalidate(embyFavoritesProvider(instance));
                 } catch (_) {
                   // Action failed; leave UI as-is (no revert needed).
@@ -532,7 +556,9 @@ class EmbyPosterCard extends ConsumerWidget {
                         final toggle =
                             ref.read(embyToggleWatchedProvider(instance));
                         await toggle(
-                            item.id, !(item.userData?.played == true),);
+                          item.id,
+                          !(item.userData?.played == true),
+                        );
                       } catch (_) {
                         // Action failed; no revert needed.
                       }
@@ -557,8 +583,7 @@ class EmbyPosterCard extends ConsumerWidget {
                           ref.read(embyClientProvider(instance)).value;
                       if (client != null) {
                         try {
-                          final bool isFav =
-                              item.userData?.isFavorite == true;
+                          final bool isFav = item.userData?.isFavorite == true;
                           await client.markFavorite(item.id, !isFav);
                           if (!context.mounted) return;
                           // Invalidate to refresh UI
@@ -633,7 +658,9 @@ class EmbyPosterCard extends ConsumerWidget {
                         alignment: Alignment.bottomCenter,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 8,),
+                            horizontal: 8,
+                            vertical: 8,
+                          ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(6),
                             child: LinearProgressIndicator(
@@ -788,7 +815,9 @@ class EmbyBannerCard extends ConsumerWidget {
                           final toggle =
                               ref.read(embyToggleWatchedProvider(instance));
                           await toggle(
-                              item.id, !(item.userData?.played == true),);
+                            item.id,
+                            !(item.userData?.played == true),
+                          );
                         } catch (_) {
                           // Action failed; no revert needed.
                         }
@@ -1147,6 +1176,7 @@ class _HorizontalSection extends ConsumerWidget {
                                           ? item.artists.first
                                           : 'Unknown Artist',
                                       albumOverview: item.overview,
+                                      albumGenres: item.genres,
                                       albumImageUrl: client.imageUrl(item),
                                     ),
                                   );
@@ -1154,7 +1184,9 @@ class _HorizontalSection extends ConsumerWidget {
                                   pushScreen<void>(
                                     context,
                                     EmbyItemDetailScreen(
-                                        instance: instance, itemId: item.id,),
+                                      instance: instance,
+                                      itemId: item.id,
+                                    ),
                                   );
                                 } else if (item.type == 'Season') {
                                   pushScreen<void>(
@@ -1261,7 +1293,7 @@ class _ActiveSessionsSection extends ConsumerWidget {
   }
 }
 
-class _SessionCard extends StatelessWidget {
+class _SessionCard extends StatefulWidget {
   const _SessionCard({
     required this.session,
     required this.instance,
@@ -1271,25 +1303,80 @@ class _SessionCard extends StatelessWidget {
   final Instance instance;
 
   @override
+  State<_SessionCard> createState() => _SessionCardState();
+}
+
+class _SessionCardState extends State<_SessionCard> {
+  PaletteGenerator? _palette;
+  String? _lastPosterUrl;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _updateColorScheme();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SessionCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.session.posterUrl != widget.session.posterUrl) {
+      _updateColorScheme();
+    }
+  }
+
+  void _updateColorScheme() {
+    final String? posterUrl = widget.session.posterUrl;
+    if (posterUrl == null || posterUrl == _lastPosterUrl) return;
+    _lastPosterUrl = posterUrl;
+
+    PaletteGenerator.fromImageProvider(
+      CachedNetworkImageProvider(posterUrl),
+    ).then((PaletteGenerator palette) {
+      if (mounted) {
+        setState(() {
+          _palette = palette;
+        });
+      }
+    }).catchError((_) {});
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
+    final ActiveSession session = widget.session;
+    ThemeData theme = Theme.of(context);
+
+    if (_palette != null) {
+      final Color dominant =
+          _palette!.dominantColor?.color ?? theme.colorScheme.surface;
+      final Color vibrant = _palette!.vibrantColor?.color ??
+          _palette!.lightVibrantColor?.color ??
+          dominant;
+      theme = theme.copyWith(
+        colorScheme: theme.colorScheme.copyWith(
+          primary: vibrant,
+        ),
+      );
+    }
+
     final double pct = session.progressPercent / 100.0;
     final bool playing = session.status == 'Playing';
 
-    return Card(
-      margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: InkWell(
+    return Theme(
+      data: theme,
+      child: Card(
+        margin: EdgeInsets.zero,
+        clipBehavior: Clip.antiAlias,
+        elevation: 0,
+        color: theme.colorScheme.surfaceContainerLow,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: InkWell(
         onTap: () => pushScreen<void>(
           context,
           EmbySessionDetailScreen(
             initialSession: session,
-            instance: instance,
+            instance: widget.instance,
           ),
         ),
         child: Stack(
@@ -1309,12 +1396,15 @@ class _SessionCard extends StatelessWidget {
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
                           colors: <Color>[
-                            theme.colorScheme.surfaceContainerLow,
                             theme.colorScheme.surfaceContainerLow
-                                .withValues(alpha: 0.65),
+                                .withValues(alpha: 0.3),
                             theme.colorScheme.surfaceContainerLow
-                                .withValues(alpha: 0.5),
+                                .withValues(alpha: 0.85),
+                            theme.colorScheme.surfaceContainerLow
+                                .withValues(alpha: 0.95),
                           ],
                         ),
                       ),
@@ -1352,15 +1442,19 @@ class _SessionCard extends StatelessWidget {
                           image: session.posterUrl != null
                               ? DecorationImage(
                                   image: CachedNetworkImageProvider(
-                                      session.posterUrl!,),
+                                    session.posterUrl!,
+                                  ),
                                   fit: BoxFit.cover,
                                   onError: (Object _, StackTrace? __) {},
                                 )
                               : null,
                         ),
                         child: session.posterUrl == null
-                            ? Icon(Icons.movie_outlined,
-                                color: theme.colorScheme.outline, size: 32,)
+                            ? Icon(
+                                Icons.movie_outlined,
+                                color: theme.colorScheme.outline,
+                                size: 32,
+                              )
                             : null,
                       ),
                     ),
@@ -1382,6 +1476,13 @@ class _SessionCard extends StatelessWidget {
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
+                              shadows: <Shadow>[
+                                Shadow(
+                                  color: Colors.black.withValues(alpha: 0.8),
+                                  offset: const Offset(0, 2),
+                                  blurRadius: 4,
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -1393,13 +1494,22 @@ class _SessionCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
+                                shadows: <Shadow>[
+                                  Shadow(
+                                    color: Colors.black.withValues(alpha: 0.8),
+                                    offset: const Offset(0, 1),
+                                    blurRadius: 3,
+                                  ),
+                                ],
                               ),
                             ),
 
                           const SizedBox(height: 4),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4,),
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: theme.colorScheme.surfaceContainerHighest
                                   .withValues(alpha: 0.5),
@@ -1480,9 +1590,11 @@ class _SessionCard extends StatelessWidget {
           ],
         ),
       ),
+      ),
     );
   }
 }
+
 Widget _buildEmbyGridOrList(
   BuildContext context,
   List<EmbyItem> list,
@@ -1493,8 +1605,9 @@ Widget _buildEmbyGridOrList(
       list.where((e) => e.type == 'MusicAlbum').toList();
   final List<EmbyItem> playlists =
       list.where((e) => e.type == 'Playlist').toList();
-  final List<EmbyItem> others =
-      list.where((e) => e.type != 'MusicAlbum' && e.type != 'Playlist').toList();
+  final List<EmbyItem> others = list
+      .where((e) => e.type != 'MusicAlbum' && e.type != 'Playlist')
+      .toList();
 
   final bool showSections =
       albums.isNotEmpty && playlists.isNotEmpty && others.isEmpty;
@@ -1505,11 +1618,17 @@ Widget _buildEmbyGridOrList(
       slivers: <Widget>[
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
-              Insets.lg, Insets.lg, Insets.lg, Insets.sm,),
+            Insets.lg,
+            Insets.lg,
+            Insets.lg,
+            Insets.sm,
+          ),
           sliver: SliverToBoxAdapter(
-            child: Text('Albums',
-                style: theme.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold),),
+            child: Text(
+              'Albums',
+              style: theme.textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
           ),
         ),
         SliverPadding(
@@ -1533,11 +1652,17 @@ Widget _buildEmbyGridOrList(
         ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
-              Insets.lg, Insets.xl, Insets.lg, Insets.sm,),
+            Insets.lg,
+            Insets.xl,
+            Insets.lg,
+            Insets.sm,
+          ),
           sliver: SliverToBoxAdapter(
-            child: Text('Playlists',
-                style: theme.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold),),
+            child: Text(
+              'Playlists',
+              style: theme.textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
           ),
         ),
         SliverPadding(

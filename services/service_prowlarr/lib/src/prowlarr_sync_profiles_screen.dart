@@ -249,7 +249,7 @@ class _ProwlarrSyncProfileFormScreenState
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: ExpressiveProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.delete_outline),
               onPressed: _deleting ? null : _delete,
@@ -302,7 +302,7 @@ class _ProwlarrSyncProfileFormScreenState
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: ExpressiveProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.save_outlined),
               label: Text(_isEdit ? 'Save' : 'Add'),

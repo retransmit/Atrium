@@ -8,6 +8,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'emby_client.dart';
 import 'emby_deep_link.dart';
 import 'emby_providers.dart';
+import 'emby_remote_images_screen.dart';
 import 'emby_season_screen.dart';
 import 'models/emby_item.dart';
 
@@ -44,7 +45,9 @@ class EmbyItemDetailScreen extends ConsumerWidget {
                 try {
                   final toggle = ref.read(embyToggleWatchedProvider(instance));
                   await toggle(
-                      itemId, !(itemAsync.value!.userData?.played == true),);
+                    itemId,
+                    !(itemAsync.value!.userData?.played == true),
+                  );
                 } catch (_) {
                   // Action failed; no revert needed.
                 }
@@ -72,6 +75,21 @@ class EmbyItemDetailScreen extends ConsumerWidget {
                 }
               },
             ),
+            if (itemAsync.value!.type != 'Episode')
+              IconButton(
+                icon: const Icon(Icons.wallpaper),
+              tooltip: 'Change Backdrop',
+              onPressed: () {
+                pushScreen<void>(
+                  context,
+                  EmbyRemoteImagesScreen(
+                    instance: instance,
+                    itemId: itemId,
+                    imageType: 'Backdrop',
+                  ),
+                );
+              },
+            ),
           ],
         ],
       ),
@@ -81,6 +99,9 @@ class EmbyItemDetailScreen extends ConsumerWidget {
             ref.invalidate(embyItemDetailsProvider((instance, itemId))),
         data: (EmbyItem item) {
           final String? backdropUrl = client?.backdropImageUrl(item);
+          print('--- ITEM DETAIL BUILD (Type: ${item.type}) ---');
+          print('Item Detail Backdrop URL: $backdropUrl');
+          
           return CustomScrollView(
             slivers: <Widget>[
               SliverToBoxAdapter(
@@ -91,6 +112,7 @@ class EmbyItemDetailScreen extends ConsumerWidget {
                           children: <Widget>[
                             Positioned.fill(
                               child: CachedNetworkImage(
+                                key: ValueKey<String>(backdropUrl),
                                 imageUrl: backdropUrl,
                                 fit: BoxFit.cover,
                               ),
@@ -126,7 +148,11 @@ class EmbyItemDetailScreen extends ConsumerWidget {
                               left: 0,
                               right: 0,
                               bottom: 0,
-                              child: _Header(item: item, client: client),
+                              child: _Header(
+                                instance: instance,
+                                item: item,
+                                client: client,
+                              ),
                             ),
                           ],
                         ),
@@ -135,10 +161,44 @@ class EmbyItemDetailScreen extends ConsumerWidget {
                         bottom: false,
                         child: Padding(
                           padding: const EdgeInsets.only(top: Insets.lg),
-                          child: _Header(item: item, client: client),
+                          child: _Header(
+                            instance: instance,
+                            item: item,
+                            client: client,
+                          ),
                         ),
                       ),
               ),
+              if (item.genres.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                      left: Insets.lg,
+                      right: Insets.lg,
+                      top: Insets.lg,
+                    ),
+                    child: Wrap(
+                      spacing: 6.0,
+                      runSpacing: 6.0,
+                      children: item.genres.map((String g) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.secondaryContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            g,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSecondaryContainer,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
               if (item.overview != null && item.overview!.isNotEmpty)
                 SliverToBoxAdapter(
                   child: Padding(
@@ -171,8 +231,13 @@ class EmbyItemDetailScreen extends ConsumerWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.item, required this.client});
+  const _Header({
+    required this.instance,
+    required this.item,
+    required this.client,
+  });
 
+  final Instance instance;
   final EmbyItem item;
   final EmbyClient? client;
 
@@ -190,26 +255,61 @@ class _Header extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: <Widget>[
-          if (posterUrl != null)
-            ClipRRect(
-              borderRadius: Radii.card,
-              child: CachedNetworkImage(
-                imageUrl: posterUrl,
-                width: 140,
-                height: 210,
-                fit: BoxFit.cover,
-              ),
-            )
-          else
-            Container(
-              width: 140,
-              height: 210,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: Radii.card,
-              ),
-              child: const Icon(Icons.movie, size: 48),
+          InkWell(
+            onTap: item.type == 'Episode'
+                ? null
+                : () {
+                    pushScreen<void>(
+                      context,
+                      EmbyRemoteImagesScreen(
+                        instance: instance,
+                        itemId: item.id,
+                      ),
+                    );
+                  },
+            borderRadius: Radii.card,
+            child: Stack(
+              children: <Widget>[
+                if (posterUrl != null)
+                  ClipRRect(
+                    borderRadius: Radii.card,
+                    child: CachedNetworkImage(
+                      key: ValueKey<String>(posterUrl),
+                      imageUrl: posterUrl,
+                      width: 140,
+                      height: 210,
+                      fit: BoxFit.cover,
+                    ),
+                  )
+                else
+                  Container(
+                    width: 140,
+                    height: 210,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: Radii.card,
+                    ),
+                    child: const Icon(Icons.movie, size: 48),
+                  ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.edit,
+                      size: 16,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
             ),
+          ),
           const SizedBox(width: Insets.lg),
           Expanded(
             child: Column(
@@ -224,8 +324,9 @@ class _Header extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleMedium?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold,),
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 if (item.seriesName != null) const SizedBox(height: 4),
@@ -302,9 +403,11 @@ class _Header extends StatelessWidget {
                         BlendMode.srcIn,
                       ),
                     ),
-                    label: Text(item.type == 'Series' || item.type == 'Movie'
-                        ? 'Watch on Emby'
-                        : 'Play on Emby',),
+                    label: Text(
+                      item.type == 'Series' || item.type == 'Movie'
+                          ? 'Watch Now'
+                          : 'Play Now',
+                    ),
                   ),
                 ),
               ],
@@ -417,7 +520,9 @@ class _SeasonsGrid extends ConsumerWidget {
 
           return Padding(
             padding: const EdgeInsets.symmetric(
-                horizontal: Insets.lg, vertical: Insets.lg,),
+              horizontal: Insets.lg,
+              vertical: Insets.lg,
+            ),
             child: GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),

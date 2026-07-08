@@ -6,6 +6,7 @@ import 'package:dio/io.dart';
 
 import 'models/jellyfin_auth.dart';
 import 'models/jellyfin_item.dart';
+import 'models/jellyfin_remote_image.dart';
 import 'models/jellyfin_session.dart';
 import 'models/jellyfin_view.dart';
 
@@ -24,6 +25,8 @@ class JellyfinClient {
     required this.username,
     required this.password,
     required this.deviceId,
+    this.getLocalOverride,
+    this.setLocalOverride,
   }) : _dio = dio;
 
   final Dio _dio;
@@ -34,6 +37,9 @@ class JellyfinClient {
   /// Stable per-instance device id, so Jellyfin tracks one session per
   /// configured instance rather than spawning a new one each launch.
   final String deviceId;
+
+  final String? Function(String itemId, String imageType)? getLocalOverride;
+  final void Function(String itemId, String imageType, String tag)? setLocalOverride;
 
   String? _token;
   String? _userId;
@@ -49,6 +55,8 @@ class JellyfinClient {
     required String password,
     required String deviceId,
     required bool allowSelfSigned,
+    String? Function(String itemId, String imageType)? getLocalOverride,
+    void Function(String itemId, String imageType, String tag)? setLocalOverride,
   }) {
     final String baseUrlStr = baseUrl.toString();
     final String normalizedBaseUrl =
@@ -73,6 +81,8 @@ class JellyfinClient {
       username: username,
       password: password,
       deviceId: deviceId,
+      getLocalOverride: getLocalOverride,
+      setLocalOverride: setLocalOverride,
     );
   }
 
@@ -121,8 +131,18 @@ class JellyfinClient {
             .toList();
       });
 
+  Future<List<JellyfinVirtualFolder>> getVirtualFolders() => _guarded(() async {
+        final Response<dynamic> resp = await _dio.get<dynamic>('Library/VirtualFolders');
+        final List<dynamic> items = (resp.data as List<dynamic>?) ?? <dynamic>[];
+        return items
+            .map((dynamic e) => JellyfinVirtualFolder.fromJson(e as Map<String, dynamic>))
+            .toList();
+      });
+
   Future<List<JellyfinItem>> getLibraryItems(
-          String parentId, String? collectionType,) =>
+    String parentId,
+    String? collectionType,
+  ) =>
       _guarded(() async {
         String? includeItemTypes;
         switch (collectionType) {
@@ -177,8 +197,10 @@ class JellyfinClient {
         ).items;
       });
 
-  Future<List<JellyfinItem>> getWatchedItems(
-          {int startIndex = 0, int limit = 200,}) =>
+  Future<List<JellyfinItem>> getWatchedItems({
+    int startIndex = 0,
+    int limit = 200,
+  }) =>
       _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
           'Users/$_userId/Items',
@@ -204,8 +226,10 @@ class JellyfinClient {
             .toList();
       });
 
-  Future<List<JellyfinItem>> getUnwatchedItems(
-          {int startIndex = 0, int limit = 200,}) =>
+  Future<List<JellyfinItem>> getUnwatchedItems({
+    int startIndex = 0,
+    int limit = 200,
+  }) =>
       _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
           'Users/$_userId/Items',
@@ -273,6 +297,27 @@ class JellyfinClient {
         );
       });
 
+  Future<void> setVolume(String sessionId, int volume) => _guarded(() async {
+        await _dio.post<dynamic>(
+          'Sessions/$sessionId/Command',
+          data: <String, dynamic>{
+            'Name': 'SetVolume',
+            'Arguments': <String, String>{
+              'Volume': volume.toString(),
+            },
+          },
+        );
+      });
+
+  Future<void> toggleMute(String sessionId) => _guarded(() async {
+        await _dio.post<dynamic>(
+          'Sessions/$sessionId/Command',
+          data: <String, dynamic>{
+            'Name': 'ToggleMute',
+          },
+        );
+      });
+
   Future<List<ActiveSession>> getSessions() => _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>('Sessions');
         final List<dynamic> list = resp.data as List<dynamic>;
@@ -332,9 +377,15 @@ class JellyfinClient {
               timeDuration: formatTime(durSec),
               positionTicks: posTicks,
               durationTicks: durTicks,
+              volumeLevel: playState['VolumeLevel'] as int? ?? 100,
+              isMuted: playState['IsMuted'] as bool? ?? false,
               posterUrl:
                   '$_baseStr/Items/${nowPlaying['SeriesId'] ?? nowPlaying['Id']}/Images/Primary?quality=100${_token == null ? '' : '&api_key=$_token'}',
+              backdropUrl:
+                  '$_baseStr/Items/${nowPlaying['SeriesId'] ?? nowPlaying['Id']}/Images/Backdrop/0?quality=100${_token == null ? '' : '&api_key=$_token'}',
               aspectRatio: computedAspectRatio,
+              itemId: nowPlaying['SeriesId'] as String? ??
+                  nowPlaying['Id'] as String?,
             ),
           );
         }
@@ -463,7 +514,8 @@ class JellyfinClient {
         final List<dynamic> list = resp.data as List<dynamic>;
         return list
             .map(
-                (dynamic e) => JellyfinItem.fromJson(e as Map<String, dynamic>),)
+              (dynamic e) => JellyfinItem.fromJson(e as Map<String, dynamic>),
+            )
             .toList();
       });
 
@@ -472,7 +524,7 @@ class JellyfinClient {
           'Users/$_userId/Items/$itemId',
           queryParameters: <String, dynamic>{
             'Fields':
-                'Overview,People,CommunityRating,OfficialRating,RunTimeTicks',
+                'Overview,People,CommunityRating,OfficialRating,RunTimeTicks,ImageTags,BackdropImageTags',
           },
         );
         return JellyfinItem.fromJson(resp.data as Map<String, dynamic>);
@@ -534,7 +586,8 @@ class JellyfinClient {
           'Users/$_userId/Items',
           queryParameters: <String, dynamic>{
             'ParentId': albumId,
-            'Fields': 'PrimaryImageAspectRatio,ImageTags,Overview,ParentId,ProductionYear',
+            'Fields':
+                'PrimaryImageAspectRatio,ImageTags,Overview,ParentId,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -576,16 +629,21 @@ class JellyfinClient {
     }
 
     if (item.type == 'Audio') {
+      if (item.albumPrimaryImageTag != null && item.albumId != null) {
+        return '$_baseStr/Items/${item.albumId}/Images/Primary'
+            '?quality=100&tag=${item.albumPrimaryImageTag}$key';
+      }
+      if (item.parentPrimaryImageTag != null && item.parentId != null) {
+        return '$_baseStr/Items/${item.parentId}/Images/Primary'
+            '?quality=100&tag=${item.parentPrimaryImageTag}$key';
+      }
+      if (item.imageTags.containsKey('Primary')) {
+        return '$_baseStr/Items/${item.id}/Images/Primary'
+            '?quality=100&tag=${item.imageTags['Primary']}$key';
+      }
       final String targetId = item.albumId ?? item.parentId ?? item.id;
-      final String tagParam = item.albumPrimaryImageTag != null
-          ? '&tag=${item.albumPrimaryImageTag}'
-          : (item.parentPrimaryImageTag != null
-              ? '&tag=${item.parentPrimaryImageTag}'
-              : (item.imageTags.containsKey('Primary')
-                  ? '&tag=${item.imageTags['Primary']}'
-                  : ''));
       return '$_baseStr/Items/$targetId/Images/Primary'
-          '?quality=100$tagParam$key';
+          '?quality=100$key';
     }
 
     if (item.primaryImageItemId != null) {
@@ -651,16 +709,203 @@ class JellyfinClient {
 
     String targetId = item.id;
     String tagParam = '';
+    int targetIndex = 0;
 
-    if (item.imageTags.containsKey('Backdrop')) {
-      tagParam = '&tag=${item.imageTags['Backdrop']}';
-    } else if (item.seriesId != null) {
-      // Fallback to series backdrop for episodes
+    if (item.seriesId != null && item.backdropImageTags.isEmpty && !item.imageTags.containsKey('Backdrop')) {
       targetId = item.seriesId!;
     }
 
-    return '$_baseStr/Items/$targetId/Images/Backdrop/0?quality=100$tagParam$key';
+    final String? overrideTag = getLocalOverride?.call(targetId, 'Backdrop');
+    if (overrideTag != null && overrideTag.isNotEmpty) {
+      final int foundIndex = item.backdropImageTags.indexOf(overrideTag);
+      if (foundIndex != -1) {
+        targetIndex = foundIndex;
+        tagParam = '&tag=$overrideTag';
+      }
+    }
+
+    if (targetIndex == 0) {
+      if (item.backdropImageTags.isNotEmpty) {
+        tagParam = '&tag=${item.backdropImageTags.first}';
+      } else if (item.imageTags.containsKey('Backdrop')) {
+        tagParam = '&tag=${item.imageTags['Backdrop']}';
+      } else if (targetId == item.id) {
+        // If the item has no backdrop tags and we aren't falling back to the series, it doesn't have a backdrop.
+        return null;
+      }
+    }
+
+    return '$_baseStr/Items/$targetId/Images/Backdrop/$targetIndex?quality=100$tagParam$key';
   }
+
+  String untaggedImageUrl(String itemId, String imageType) {
+    final String targetType =
+        imageType == 'Backdrop' ? 'Backdrop/0' : imageType;
+    final String key = _token == null ? '' : '&api_key=$_token';
+    return '$_baseStr/Items/$itemId/Images/$targetType?quality=100$key';
+  }
+
+  Future<List<JellyfinRemoteImage>> getRemoteImages(
+          String itemId, String imageType) =>
+      _guarded(() async {
+        final Response<dynamic> resp = await _dio.get<dynamic>(
+          'Items/$itemId/RemoteImages',
+          queryParameters: <String, dynamic>{
+            'Type': imageType,
+            'IncludeAllLanguages': 'true',
+          },
+        );
+        return JellyfinRemoteImagesResult.fromJson(
+          resp.data as Map<String, dynamic>,
+        ).images;
+      });
+
+  Future<void> setRemoteImage(
+          String itemId, String imageUrl, String imageType) =>
+      _guarded(() async {
+        List<String> oldBackdrops = <String>[];
+        if (imageType == 'Backdrop') {
+          try {
+            final item = await getItemDetails(itemId);
+            oldBackdrops = item.backdropImageTags;
+          } catch (_) {}
+        }
+
+        await _dio.post<dynamic>(
+          'Items/$itemId/RemoteImages/Download',
+          queryParameters: <String, dynamic>{
+            'Type': imageType,
+            'ImageUrl': imageUrl,
+          },
+        );
+
+        if (imageType == 'Backdrop') {
+          try {
+            final newItem = await getItemDetails(itemId);
+            final newBackdrops = newItem.backdropImageTags;
+            
+            int indexToMove = -1;
+            for (int i = 0; i < newBackdrops.length; i++) {
+              if (!oldBackdrops.contains(newBackdrops[i])) {
+                indexToMove = i;
+                break;
+              }
+            }
+
+            if (indexToMove != -1 && indexToMove > 0) {
+              try {
+                await _dio.post<dynamic>(
+                  'Items/$itemId/Images/Backdrop/$indexToMove/Index',
+                  queryParameters: <String, dynamic>{
+                    'newIndex': 0,
+                  },
+                );
+                // Cleared successfully on server, remove any local override.
+                setLocalOverride?.call(itemId, 'Backdrop', '');
+              } catch (e) {
+                print('Failed to move backdrop: $e');
+                if (e is DioException && e.response?.statusCode == 500) {
+                  // Fallback: save the tag locally.
+                  final String localTag = newBackdrops[indexToMove];
+                  setLocalOverride?.call(itemId, 'Backdrop', localTag);
+                } else {
+                  rethrow;
+                }
+              }
+            }
+          } catch (e) {
+            print('Failed to fetch item details for backdrop update: $e');
+            rethrow;
+          }
+        }
+      });
+
+  Future<void> startLibraryScan() => _guarded(() async {
+        await _dio.post<dynamic>('Library/Refresh');
+      });
+
+  Future<({String state, double progress})?> getLibraryScanProgress() =>
+      _guarded(() async {
+        final Response<dynamic> resp =
+            await _dio.get<dynamic>('ScheduledTasks');
+        final List<dynamic> tasks = (resp.data as List<dynamic>?) ?? <dynamic>[];
+        for (final dynamic t in tasks) {
+          final Map<String, dynamic> task = t as Map<String, dynamic>;
+          if (task['Key'] == 'RefreshLibrary') {
+            return (
+              state: (task['State'] as String?) ?? 'Idle',
+              progress: (task['CurrentProgressPercentage'] as num?)?.toDouble() ?? 0.0,
+            );
+          }
+        }
+        return null;
+      });
+
+  Future<List<JellyfinUser>> getUsers() => _guarded(() async {
+        final Response<dynamic> resp = await _dio.get<dynamic>('Users');
+        List<dynamic> users = <dynamic>[];
+        if (resp.data is List) {
+          users = resp.data as List<dynamic>;
+        } else if (resp.data is Map<String, dynamic> && resp.data['Items'] != null) {
+          users = resp.data['Items'] as List<dynamic>;
+        }
+        return users.map((dynamic u) => JellyfinUser.fromJson(u as Map<String, dynamic>)).toList();
+      });
+
+  Future<List<JellyfinUser>> getPublicUsers() async {
+        try {
+          final Response<dynamic> resp = await _dio.get<dynamic>('Users/Public');
+          List<dynamic> users = <dynamic>[];
+          if (resp.data is List) {
+            users = resp.data as List<dynamic>;
+          } else if (resp.data is Map<String, dynamic> && resp.data['Items'] != null) {
+            users = resp.data['Items'] as List<dynamic>;
+          }
+          return users.map((dynamic u) => JellyfinUser.fromJson(u as Map<String, dynamic>)).toList();
+        } catch (e) {
+          return <JellyfinUser>[];
+        }
+      }
+
+  Future<JellyfinUser> getCurrentUser() => _guarded(() async {
+        final Response<dynamic> resp = await _dio.get<dynamic>('Users/Me');
+        return JellyfinUser.fromJson(resp.data as Map<String, dynamic>);
+      });
+
+  Future<JellyfinUser> getUser(String id) => _guarded(() async {
+        final Response<dynamic> resp = await _dio.get<dynamic>('Users/$id');
+        return JellyfinUser.fromJson(resp.data as Map<String, dynamic>);
+      });
+
+  Future<void> createUser(String name) => _guarded(() async {
+        await _dio.post<dynamic>('Users/New', data: <String, dynamic>{'Name': name});
+      });
+
+  Future<void> deleteUser(String id) => _guarded(() async {
+        await _dio.delete<dynamic>('Users/$id');
+      });
+
+  Future<void> updateUserPassword(String id, String currentPw, String newPw) => _guarded(() async {
+        await _dio.post<dynamic>('Users/$id/Password', data: <String, dynamic>{
+          'CurrentPw': currentPw,
+          'NewPw': newPw,
+        });
+      });
+
+  Future<void> updateUserPolicy(String id, JellyfinUserPolicy policy) => _guarded(() async {
+        final Response<dynamic> userResp = await _dio.get<dynamic>('Users/$id');
+        final Map<String, dynamic> rawUser = userResp.data as Map<String, dynamic>;
+        final Map<String, dynamic> rawPolicy = rawUser['Policy'] as Map<String, dynamic>;
+
+        rawPolicy['IsAdministrator'] = policy.isAdministrator;
+        rawPolicy['EnableAllFolders'] = policy.enableAllFolders;
+        rawPolicy['EnabledFolders'] = policy.enabledFolders;
+
+        await _dio.post<dynamic>(
+          'Users/$id/Policy',
+          data: rawPolicy,
+        );
+      });
 
   void close() => _dio.close(force: true);
 

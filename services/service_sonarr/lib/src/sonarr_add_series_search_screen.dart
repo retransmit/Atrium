@@ -441,7 +441,7 @@ class _PosterImage extends ConsumerWidget {
       placeholder: (context, url) => Container(
         color: Theme.of(context).colorScheme.surfaceContainerHigh,
         child: const Center(
-          child: CircularProgressIndicator(),
+          child: ExpressiveProgressIndicator(),
         ),
       ),
       errorWidget: (context, url, error) => Container(

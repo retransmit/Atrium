@@ -23,11 +23,15 @@ abstract class JellyfinItem with _$JellyfinItem {
     @JsonKey(name: 'Name') @Default('') String name,
     @JsonKey(name: 'Type') @Default('') String type,
     @JsonKey(name: 'ProductionYear') int? productionYear,
+    @JsonKey(name: 'Genres') @Default(<String>[]) List<String> genres,
 
     /// Image type → tag. We use the `Primary` tag to build the poster URL.
     @JsonKey(name: 'ImageTags')
     @Default(<String, String>{})
     Map<String, String> imageTags,
+    @JsonKey(name: 'BackdropImageTags')
+    @Default(<String>[])
+    List<String> backdropImageTags,
     @JsonKey(name: 'UserData') JellyfinUserData? userData,
     @JsonKey(name: 'Overview') String? overview,
     @JsonKey(name: 'RunTimeTicks') int? runTimeTicks,

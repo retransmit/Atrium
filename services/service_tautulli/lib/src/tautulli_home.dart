@@ -491,7 +491,7 @@ class _SessionSheetState extends ConsumerState<_SessionSheet> {
                   ? const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: ExpressiveProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.stop_circle_outlined),
               label: const Text('Terminate stream'),

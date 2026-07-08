@@ -1,0 +1,8 @@
+feat(emby, jellyfin): UI fixes, genres, and passwordless login support
+
+- **Library Scan**: Added a media scan library feature accessible via a new Floating Action Button (FAB).
+- **Authentication**: Made the password field optional in `instance_form_screen.dart` to support passwordless logins for Emby and Jellyfin accounts.
+- **Session UI**: Fixed the blending colors bug on the session detail screens by lowering the alpha of the background gradient, restoring proper contrast.
+- **Genres**: Added support for fetching and displaying genre tags for movies, series, and music albums. Tags are styled with the active color scheme and positioned directly above the synopsis.
+- **Models**: Updated `EmbyItem` and `JellyfinItem` data models to include `Genres` arrays. Regenerated the serialization logic via `build_runner`.
+- **General**: Applied code formatting and minor syntax fixes across various other services (Radarr, Sonarr, Prowlarr, etc.).

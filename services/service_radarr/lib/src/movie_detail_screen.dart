@@ -34,7 +34,7 @@ class MovieDetailScreen extends ConsumerWidget {
       body: movie.when(
         data: (RadarrMovie m) => _Body(instance: instance, movie: m),
         loading: () => const _DetailShell(
-          child: Center(child: CircularProgressIndicator()),
+          child: Center(child: ExpressiveProgressIndicator()),
         ),
         error: (Object e, _) => _DetailShell(
           child: Center(
@@ -227,7 +227,7 @@ class _Header extends StatelessWidget {
                                   child: SizedBox(
                                     width: 24,
                                     height: 24,
-                                    child: CircularProgressIndicator(
+                                    child: ExpressiveProgressIndicator(
                                       strokeWidth: 2,
                                     ),
                                   ),
