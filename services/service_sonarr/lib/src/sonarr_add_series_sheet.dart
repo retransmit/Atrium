@@ -160,9 +160,9 @@ class _SonarrAddSeriesSheetState extends ConsumerState<SonarrAddSeriesSheet> {
                             rootFoldersAsync.when(
                               data: (List<Map<String, dynamic>> folders) {
                                 if (folders.isEmpty) {
-                                  return const Text(
+                                  return Text(
                                     'No root folder configured in Sonarr.',
-                                    style: TextStyle(color: Colors.red),
+                                    style: TextStyle(color: cs.error),
                                   );
                                 }
                                 _selectedRootFolder ??=
@@ -206,9 +206,9 @@ class _SonarrAddSeriesSheetState extends ConsumerState<SonarrAddSeriesSheet> {
                             qualityProfilesAsync.when(
                               data: (List<Map<String, dynamic>> profiles) {
                                 if (profiles.isEmpty) {
-                                  return const Text(
+                                  return Text(
                                     'No quality profiles found.',
-                                    style: TextStyle(color: Colors.red),
+                                    style: TextStyle(color: cs.error),
                                   );
                                 }
                                 _selectedQualityProfileId ??=
@@ -445,7 +445,7 @@ class _SonarrAddSeriesSheetState extends ConsumerState<SonarrAddSeriesSheet> {
                     ),
                     onPressed: _submitting ? null : _submit,
                     child: _submitting
-                        ? const CircularProgressIndicator(color: Colors.white)
+                        ? CircularProgressIndicator(color: cs.onPrimary)
                         : const Text(
                             'Add Series',
                             style: TextStyle(
@@ -466,9 +466,9 @@ class _SonarrAddSeriesSheetState extends ConsumerState<SonarrAddSeriesSheet> {
   Future<void> _submit() async {
     if (_selectedRootFolder == null || _selectedQualityProfileId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a root folder and quality profile.'),
-          backgroundColor: Colors.red,
+        SnackBar(
+          content: const Text('Please select a root folder and quality profile.'),
+          backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
       return;
@@ -525,7 +525,7 @@ class _SonarrAddSeriesSheetState extends ConsumerState<SonarrAddSeriesSheet> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to add series: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }

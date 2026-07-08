@@ -95,11 +95,14 @@ class _SonarrReleaseSearchScreenState
       final bool? proceed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange),
-              SizedBox(width: Insets.sm),
-              Text('Rejection Warnings'),
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Theme.of(ctx).colorScheme.secondary,
+              ),
+              const SizedBox(width: Insets.sm),
+              const Text('Rejection Warnings'),
             ],
           ),
           content: Column(
@@ -137,9 +140,9 @@ class _SonarrReleaseSearchScreenState
     }
 
     setState(() => _downloadingMap[guid] = true);
-    final api = await ref.read(sonarrApiProvider(widget.instance).future);
 
     try {
+      final api = await ref.read(sonarrApiProvider(widget.instance).future);
       await api.downloadRelease(release);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -308,7 +311,12 @@ class _SonarrReleaseSearchScreenState
                           ],
                           onChanged: (val) {
                             if (val != null) {
-                              setState(() => _sortBy = val);
+                              setState(() {
+                                _sortBy = val;
+                                // Most seeders first by default; newest /
+                                // smallest first for the other keys.
+                                _sortAscending = val != 'Seeders';
+                              });
                             }
                           },
                         ),
@@ -401,7 +409,8 @@ class _SonarrReleaseSearchScreenState
                     return true;
                   }).toList();
 
-                  // Sort list
+                  // Sort list. Every comparator is ascending so that
+                  // _sortAscending means the same thing for all keys.
                   filtered.sort((a, b) {
                     int result = 0;
                     if (_sortBy == 'Age') {
@@ -413,7 +422,7 @@ class _SonarrReleaseSearchScreenState
                     } else if (_sortBy == 'Seeders') {
                       final aSeeders = a['seeders'] as int? ?? 0;
                       final bSeeders = b['seeders'] as int? ?? 0;
-                      result = bSeeders.compareTo(aSeeders);
+                      result = aSeeders.compareTo(bSeeders);
                     }
                     return _sortAscending ? result : -result;
                   });
@@ -577,30 +586,30 @@ class _SonarrReleaseSearchScreenState
                                   padding: const EdgeInsets.only(top: 4.0),
                                   child: Row(
                                     children: [
-                                      const Icon(
+                                      Icon(
                                         Icons.arrow_upward,
                                         size: 12,
-                                        color: Colors.green,
+                                        color: colors.tertiary,
                                       ),
                                       Text(
                                         ' $seeders',
                                         style: theme.textTheme.labelSmall
                                             ?.copyWith(
-                                          color: Colors.green,
+                                          color: colors.tertiary,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                       const SizedBox(width: Insets.sm),
-                                      const Icon(
+                                      Icon(
                                         Icons.arrow_downward,
                                         size: 12,
-                                        color: Colors.red,
+                                        color: colors.error,
                                       ),
                                       Text(
                                         ' $leechers',
                                         style: theme.textTheme.labelSmall
                                             ?.copyWith(
-                                          color: Colors.red,
+                                          color: colors.error,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -624,7 +633,7 @@ class _SonarrReleaseSearchScreenState
                                         : Icons.warning_amber_rounded,
                                     color: isApproved
                                         ? colors.primary
-                                        : Colors.orange,
+                                        : colors.secondary,
                                   ),
                                   onPressed: () => _download(r),
                                 ),
@@ -640,10 +649,10 @@ class _SonarrReleaseSearchScreenState
                                   if (!isApproved) ...[
                                     Row(
                                       children: [
-                                        const Icon(
+                                        Icon(
                                           Icons.error_outline,
                                           size: 16,
-                                          color: Colors.red,
+                                          color: colors.error,
                                         ),
                                         const SizedBox(width: Insets.xs),
                                         Text(
@@ -674,16 +683,18 @@ class _SonarrReleaseSearchScreenState
                                   ] else
                                     Row(
                                       children: [
-                                        const Icon(
+                                        Icon(
                                           Icons.check_circle_outline,
                                           size: 16,
-                                          color: Colors.green,
+                                          color: colors.tertiary,
                                         ),
                                         const SizedBox(width: Insets.xs),
                                         Text(
                                           'Approved for download.',
                                           style: theme.textTheme.bodySmall
-                                              ?.copyWith(color: Colors.green),
+                                              ?.copyWith(
+                                            color: colors.tertiary,
+                                          ),
                                         ),
                                       ],
                                     ),

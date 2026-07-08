@@ -25,6 +25,10 @@ class DashboardScreen extends ConsumerWidget {
         title: Text(profile == null ? 'Atrium' : profile.name),
       ),
       drawer: ServicesDrawer(instances: instances, profile: profile),
+      // Wide left-edge drag zone so the sidebar opens with a swipe from well
+      // inside the screen, clear of Android's system back-gesture strip - no
+      // need to hit the hamburger.
+      drawerEdgeDragWidth: MediaQuery.sizeOf(context).width * 0.5,
       body: instances.isEmpty
           ? EmptyView(
               icon: Icons.dns_outlined,
@@ -162,7 +166,7 @@ class ServicesDrawer extends ConsumerWidget {
                           label: profile?.name ?? 'Default',
                           onTap: () async {
                             final RenderBox button = pillContext.findRenderObject()! as RenderBox;
-                            final RenderBox overlay = Navigator.of(context).overlay!.context.findRenderObject()! as RenderBox;
+                            final RenderBox overlay = Navigator.of(context, rootNavigator: true).overlay!.context.findRenderObject()! as RenderBox;
                             final RelativeRect position = RelativeRect.fromRect(
                               Rect.fromPoints(
                                 button.localToGlobal(const Offset(0, -100), ancestor: overlay),
@@ -173,6 +177,7 @@ class ServicesDrawer extends ConsumerWidget {
 
                             final String? selected = await showMenu<String>(
                               context: context,
+                              useRootNavigator: true,
                               position: position,
                               items: <PopupMenuEntry<String>>[
                                 for (final Profile p in profiles)
@@ -225,7 +230,24 @@ class ServicesDrawer extends ConsumerWidget {
                               if (selected == 'manage') {
                                 _navTo(pillContext, AtriumRoutes.profilesName);
                               } else {
-                                ref.read(activeProfileIdProvider.notifier).select(selected);
+                                // Capture before the await: switching profiles
+                                // rebuilds the tree under this context.
+                                final GoRouter router = GoRouter.of(pillContext);
+                                final ScaffoldState? scaffold =
+                                    Scaffold.maybeOf(pillContext);
+                                await ref
+                                    .read(activeProfileIdProvider.notifier)
+                                    .select(selected);
+                                // Switch succeeded: close the drawer if still
+                                // open and land on the dashboard so the user
+                                // never sees a NotFound service screen from
+                                // the old profile.
+                                if (scaffold != null &&
+                                    scaffold.mounted &&
+                                    scaffold.isDrawerOpen) {
+                                  scaffold.closeDrawer();
+                                }
+                                router.go(AtriumRoutes.dashboard);
                               }
                             }
                           },

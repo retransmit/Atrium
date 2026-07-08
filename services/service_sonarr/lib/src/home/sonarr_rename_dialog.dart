@@ -24,10 +24,12 @@ class _SonarrRenameDialogState extends ConsumerState<SonarrRenameDialog> {
 
   Future<void> _executeRename(List<int> fileIds) async {
     setState(() => _renaming = true);
-    final api = await ref.read(sonarrApiProvider(widget.instance).future);
 
     try {
+      final api = await ref.read(sonarrApiProvider(widget.instance).future);
       await api.renameFiles(widget.seriesId, fileIds);
+      if (!mounted) return;
+
       ref.invalidate(
         sonarrSeriesByIdProvider((widget.instance, widget.seriesId)),
       );
@@ -35,12 +37,10 @@ class _SonarrRenameDialogState extends ConsumerState<SonarrRenameDialog> {
         sonarrEpisodesProvider((widget.instance, widget.seriesId)),
       );
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Files renamed successfully!')),
-        );
-        Navigator.pop(context);
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Files renamed successfully!')),
+      );
+      Navigator.pop(context);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -70,17 +70,17 @@ class _SonarrRenameDialogState extends ConsumerState<SonarrRenameDialog> {
               Center(child: Text('Error loading rename preview: $err')),
           data: (files) {
             if (files.isEmpty) {
-              return const Center(
+              return Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       Icons.check_circle_outline,
-                      color: Colors.green,
+                      color: colors.tertiary,
                       size: 48,
                     ),
-                    SizedBox(height: Insets.sm),
-                    Text(
+                    const SizedBox(height: Insets.sm),
+                    const Text(
                       'All files are correctly named.',
                       textAlign: TextAlign.center,
                     ),
@@ -123,7 +123,7 @@ class _SonarrRenameDialogState extends ConsumerState<SonarrRenameDialog> {
                       Text(
                         proposed,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: Colors.green,
+                          color: colors.tertiary,
                           fontWeight: FontWeight.w500,
                         ),
                       ),

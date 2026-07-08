@@ -106,233 +106,283 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
       }
     });
 
-    return PopScope<Object?>(
-      canPop: Scaffold.of(context).isDrawerOpen ||
-          (!_searchFocusNode.hasFocus && _searchController.text.isEmpty),
-      onPopInvokedWithResult: (bool didPop, Object? result) {
-        if (didPop) return;
-        if (Scaffold.of(context).isDrawerOpen) return;
-        if (_searchFocusNode.hasFocus) {
-          _searchFocusNode.unfocus();
-          return;
-        }
+    // Keep the local controller in sync when the search query is cleared
+    // externally (SonarrHome unwinds search state on system back).
+    ref.listen<String>(sonarrSearchQueryProvider(widget.instance),
+        (String? previous, String next) {
+      if (next.isEmpty && _searchController.text.isNotEmpty) {
         setState(() {
           _searchController.clear();
         });
-        ref.read(sonarrSearchQueryProvider(widget.instance).notifier).state =
-            '';
+        _searchFocusNode.unfocus();
         _updateSearchActiveState();
-      },
-      child: Scaffold(
-        bottomNavigationBar: isSelecting
-            ? _BulkActionsBar(
-                instance: widget.instance,
-                selectedIds: selection,
-                onClear: () {
-                  ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier).state = {};
-                },
-              )
-            : null,
-        floatingActionButton: !isSelecting && ref.watch(
-                  sonarrActiveTabBarIndexProvider(widget.instance),
-                ) ==
-                0
-            ? FloatingActionButton.extended(
-                shape: const StadiumBorder(),
-                backgroundColor: theme.colorScheme.primaryContainer,
-                foregroundColor: theme.colorScheme.onPrimaryContainer,
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    FadePageRoute<void>(
-                      builder: (BuildContext context) =>
-                          SonarrAddSeriesSearchScreen(instance: widget.instance),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.add),
-                label: const Text('Add Series'),
-              )
-            : null,
-        body: GestureDetector(
-          onTap: () => FocusScope.of(context).unfocus(),
-          behavior: HitTestBehavior.translucent,
-          child: AsyncValueView<List<SonarrSeries>>(
-            value: filtered,
-            onRetry: () =>
-                ref.invalidate(sonarrSeriesProvider(widget.instance)),
-            data: (List<SonarrSeries> list) {
-              return RefreshIndicator(
-                onRefresh: () async {
-                  ref.invalidate(sonarrSeriesProvider(widget.instance));
-                  await ref.read(sonarrSeriesProvider(widget.instance).future);
-                },
-                child: CustomScrollView(
-                  controller: _scrollController,
-                  slivers: <Widget>[
-                    // Built-in Material 3 SliverAppBar with floating & snap animation
-                    SliverAppBar(
-                      floating: true,
-                      snap: true,
-                      scrolledUnderElevation: 0.0,
-                      surfaceTintColor: Colors.transparent,
-                      backgroundColor: theme.colorScheme.surface,
-                      toolbarHeight: 72,
-                      titleSpacing: isSelecting ? 16 : 0,
-                      leadingWidth: 56,
-                      leading: isSelecting
-                          ? IconButton(
-                              icon: const Icon(Icons.close),
-                              onPressed: () {
-                                ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier).state = {};
-                              },
-                            )
-                          : IconButton(
-                              icon: const Icon(Icons.menu),
-                              onPressed: () {
-                                Scaffold.of(context).openDrawer();
-                              },
-                            ),
-                      title: isSelecting
-                          ? Text(
-                              '${selection.length} selected',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            )
-                          : SearchBar(
-                              focusNode: _searchFocusNode,
-                              controller: _searchController,
-                              hintText: 'Search series...',
-                              onTapOutside: (event) {
-                                if (_searchFocusNode.hasFocus) {
-                                  _searchFocusNode.unfocus();
-                                }
-                              },
-                              elevation: const WidgetStatePropertyAll<double>(0),
-                              backgroundColor: WidgetStatePropertyAll<Color>(
-                                theme.colorScheme.surfaceContainerHigh,
-                              ),
-                              trailing: <Widget>[
-                                if (_searchController.text.isNotEmpty)
-                                  IconButton(
-                                    icon: const Icon(Icons.clear),
-                                    onPressed: () {
-                                      setState(() {
-                                        _searchController.clear();
-                                      });
-                                      ref
-                                          .read(
-                                            sonarrSearchQueryProvider(
-                                              widget.instance,
-                                            ).notifier,
-                                          )
-                                          .state = '';
-                                      _updateSearchActiveState();
-                                    },
-                                  ),
-                              ],
-                              onChanged: (String value) {
-                                setState(() {});
-                                ref
-                                    .read(
-                                      sonarrSearchQueryProvider(widget.instance)
-                                          .notifier,
-                                    )
-                                    .state = value;
-                                _updateSearchActiveState();
-                              },
-                            ),
-                      actions: <Widget>[
-                        if (isSelecting) ...<Widget>[
-                          if (list.isNotEmpty)
-                            if (selection.length < list.length)
-                              IconButton(
-                                icon: const Icon(Icons.select_all),
-                                tooltip: 'Select all',
-                                onPressed: () {
-                                  ref
-                                      .read(sonarrSeriesSelectionProvider(widget.instance).notifier)
-                                      .state = list.map((s) => s.id).toSet();
-                                },
-                              )
-                            else
-                              IconButton(
-                                icon: const Icon(Icons.deselect),
-                                tooltip: 'Deselect all',
-                                onPressed: () {
-                                  ref
-                                      .read(sonarrSeriesSelectionProvider(widget.instance).notifier)
-                                      .state = {};
-                                },
-                              ),
-                        ] else ...<Widget>[
-                          IconButton(
-                            icon: Icon(
-                              viewMode == SonarrViewMode.grid
-                                  ? Icons.view_list
-                                  : Icons.grid_view,
-                            ),
-                            tooltip: viewMode == SonarrViewMode.grid
-                                ? 'Switch to list view'
-                                : 'Switch to grid view',
+      }
+    });
+
+    return Scaffold(
+      bottomNavigationBar: isSelecting
+          ? _BulkActionsBar(
+              instance: widget.instance,
+              selectedIds: selection,
+              onClear: () {
+                ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier).state = {};
+              },
+            )
+          : null,
+      floatingActionButton: !isSelecting && ref.watch(
+                sonarrActiveTabBarIndexProvider(widget.instance),
+              ) ==
+              0
+          ? FloatingActionButton.extended(
+              shape: const StadiumBorder(),
+              backgroundColor: theme.colorScheme.primaryContainer,
+              foregroundColor: theme.colorScheme.onPrimaryContainer,
+              onPressed: () {
+                Navigator.of(context, rootNavigator: true).push(
+                  FadePageRoute<void>(
+                    builder: (BuildContext context) =>
+                        SonarrAddSeriesSearchScreen(instance: widget.instance),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add Series'),
+            )
+          : null,
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        behavior: HitTestBehavior.translucent,
+        child: AsyncValueView<List<SonarrSeries>>(
+          value: filtered,
+          onRetry: () =>
+              ref.invalidate(sonarrSeriesProvider(widget.instance)),
+          data: (List<SonarrSeries> list) {
+            return RefreshIndicator(
+              onRefresh: () async {
+                ref.invalidate(sonarrSeriesProvider(widget.instance));
+                await ref.read(sonarrSeriesProvider(widget.instance).future);
+              },
+              child: CustomScrollView(
+                controller: _scrollController,
+                slivers: <Widget>[
+                  // Built-in Material 3 SliverAppBar with floating & snap animation
+                  SliverAppBar(
+                    floating: true,
+                    snap: true,
+                    scrolledUnderElevation: 0.0,
+                    surfaceTintColor: Colors.transparent,
+                    backgroundColor: theme.colorScheme.surface,
+                    toolbarHeight: 72,
+                    titleSpacing: isSelecting ? 16 : 0,
+                    leadingWidth: 56,
+                    leading: isSelecting
+                        ? IconButton(
+                            icon: const Icon(Icons.close),
                             onPressed: () {
-                              ref
-                                      .read(
-                                        sonarrViewModeProvider(widget.instance)
-                                            .notifier,
-                                      )
-                                      .state =
-                                  viewMode == SonarrViewMode.grid
-                                      ? SonarrViewMode.list
-                                      : SonarrViewMode.grid;
+                              ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier).state = {};
+                            },
+                          )
+                        : IconButton(
+                            icon: const Icon(Icons.menu),
+                            onPressed: () {
+                              Scaffold.of(context).openDrawer();
                             },
                           ),
-                        ],
-                        const SizedBox(width: Insets.sm),
-                      ],
-                    ),
-                    if (list.isEmpty)
-                      const SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: EmptyView(
-                          icon: Icons.live_tv_outlined,
-                          title: 'No series found',
-                          message:
-                              'Try adjusting your search query or active filters.',
-                        ),
-                      )
-                    else if (viewMode == SonarrViewMode.grid)
-                      SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(
-                          Insets.md,
-                          Insets.md,
-                          Insets.md,
-                          80.0,
-                        ),
-                        sliver: SliverGrid(
-                          gridDelegate:
-                              const SliverGridDelegateWithMaxCrossAxisExtent(
-                            maxCrossAxisExtent: 140,
-                            childAspectRatio: 0.5,
-                            crossAxisSpacing: Insets.md,
-                            mainAxisSpacing: Insets.md,
+                    title: isSelecting
+                        ? Text(
+                            '${selection.length} selected',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        : SearchBar(
+                            focusNode: _searchFocusNode,
+                            controller: _searchController,
+                            hintText: 'Search series...',
+                            onTapOutside: (event) {
+                              if (_searchFocusNode.hasFocus) {
+                                _searchFocusNode.unfocus();
+                              }
+                            },
+                            elevation: const WidgetStatePropertyAll<double>(0),
+                            backgroundColor: WidgetStatePropertyAll<Color>(
+                              theme.colorScheme.surfaceContainerHigh,
+                            ),
+                            trailing: <Widget>[
+                              if (_searchController.text.isNotEmpty)
+                                IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    setState(() {
+                                      _searchController.clear();
+                                    });
+                                    ref
+                                        .read(
+                                          sonarrSearchQueryProvider(
+                                            widget.instance,
+                                          ).notifier,
+                                        )
+                                        .state = '';
+                                    _updateSearchActiveState();
+                                  },
+                                ),
+                            ],
+                            onChanged: (String value) {
+                              setState(() {});
+                              ref
+                                  .read(
+                                    sonarrSearchQueryProvider(widget.instance)
+                                        .notifier,
+                                  )
+                                  .state = value;
+                              _updateSearchActiveState();
+                            },
                           ),
-                          delegate: SliverChildBuilderDelegate(
-                            (BuildContext context, int index) {
-                              final SonarrSeries s = list[index];
-                              final SonarrImage? poster =
-                                  s.images.firstWhereOrNull(
-                                (SonarrImage i) => i.coverType == 'poster',
-                              );
-                              final isSelected = selection.contains(s.id);
-                              return _SeriesCard(
+                    actions: <Widget>[
+                      if (isSelecting) ...<Widget>[
+                        if (list.isNotEmpty)
+                          if (selection.length < list.length)
+                            IconButton(
+                              icon: const Icon(Icons.select_all),
+                              tooltip: 'Select all',
+                              onPressed: () {
+                                ref
+                                    .read(sonarrSeriesSelectionProvider(widget.instance).notifier)
+                                    .state = list.map((s) => s.id).toSet();
+                              },
+                            )
+                          else
+                            IconButton(
+                              icon: const Icon(Icons.deselect),
+                              tooltip: 'Deselect all',
+                              onPressed: () {
+                                ref
+                                    .read(sonarrSeriesSelectionProvider(widget.instance).notifier)
+                                    .state = {};
+                              },
+                            ),
+                      ] else ...<Widget>[
+                        IconButton(
+                          icon: Icon(
+                            viewMode == SonarrViewMode.grid
+                                ? Icons.view_list
+                                : Icons.grid_view,
+                          ),
+                          tooltip: viewMode == SonarrViewMode.grid
+                              ? 'Switch to list view'
+                              : 'Switch to grid view',
+                          onPressed: () {
+                            ref
+                                    .read(
+                                      sonarrViewModeProvider(widget.instance)
+                                          .notifier,
+                                    )
+                                    .state =
+                                viewMode == SonarrViewMode.grid
+                                    ? SonarrViewMode.list
+                                    : SonarrViewMode.grid;
+                          },
+                        ),
+                      ],
+                      const SizedBox(width: Insets.sm),
+                    ],
+                  ),
+                  if (list.isEmpty)
+                    const SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: EmptyView(
+                        icon: Icons.live_tv_outlined,
+                        title: 'No series found',
+                        message:
+                            'Try adjusting your search query or active filters.',
+                      ),
+                    )
+                  else if (viewMode == SonarrViewMode.grid)
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(
+                        Insets.md,
+                        Insets.md,
+                        Insets.md,
+                        80.0,
+                      ),
+                      sliver: SliverGrid(
+                        gridDelegate:
+                            const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 140,
+                          childAspectRatio: 0.5,
+                          crossAxisSpacing: Insets.md,
+                          mainAxisSpacing: Insets.md,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (BuildContext context, int index) {
+                            final SonarrSeries s = list[index];
+                            final SonarrImage? poster =
+                                s.images.firstWhereOrNull(
+                              (SonarrImage i) => i.coverType == 'poster',
+                            );
+                            final isSelected = selection.contains(s.id);
+                            return _SeriesCard(
+                              series: s,
+                              imageUrl: poster == null
+                                  ? null
+                                  : api?.posterUrl(poster, width: 500),
+                              selected: isSelected,
+                              onLongPress: () {
+                                final notifier = ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier);
+                                if (isSelected) {
+                                  notifier.state = selection.where((id) => id != s.id).toSet();
+                                } else {
+                                  notifier.state = {...selection, s.id};
+                                }
+                              },
+                              onTap: () {
+                                if (isSelecting) {
+                                  final notifier = ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier);
+                                  if (isSelected) {
+                                    notifier.state = selection.where((id) => id != s.id).toSet();
+                                  } else {
+                                    notifier.state = {...selection, s.id};
+                                  }
+                                } else {
+                                  Navigator.of(context, rootNavigator: true)
+                                      .push(
+                                    FadePageRoute<void>(
+                                      builder: (BuildContext context) =>
+                                          SeriesDetailScreen(
+                                        instance: widget.instance,
+                                        series: s,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                            );
+                          },
+                          childCount: list.length,
+                        ),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(
+                        Insets.md,
+                        0.0,
+                        Insets.md,
+                        80.0,
+                      ),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (BuildContext context, int index) {
+                            final SonarrSeries s = list[index];
+                            return Padding(
+                              padding:
+                                  const EdgeInsets.only(bottom: Insets.md),
+                              child: _SeriesBannerCard(
+                                instance: widget.instance,
                                 series: s,
-                                imageUrl: poster == null
-                                    ? null
-                                    : api?.posterUrl(poster, width: 500),
-                                selected: isSelected,
+                                selected: selection.contains(s.id),
                                 onLongPress: () {
+                                  final isSelected = selection.contains(s.id);
                                   final notifier = ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier);
                                   if (isSelected) {
                                     notifier.state = selection.where((id) => id != s.id).toSet();
@@ -341,6 +391,7 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                                   }
                                 },
                                 onTap: () {
+                                  final isSelected = selection.contains(s.id);
                                   if (isSelecting) {
                                     final notifier = ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier);
                                     if (isSelected) {
@@ -349,8 +400,8 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                                       notifier.state = {...selection, s.id};
                                     }
                                   } else {
-                                    Navigator.push(
-                                      context,
+                                    Navigator.of(context, rootNavigator: true)
+                                        .push(
                                       FadePageRoute<void>(
                                         builder: (BuildContext context) =>
                                             SeriesDetailScreen(
@@ -361,74 +412,17 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                                     );
                                   }
                                 },
-                              );
-                            },
-                            childCount: list.length,
-                          ),
-                        ),
-                      )
-                    else
-                      SliverPadding(
-                        padding: const EdgeInsets.fromLTRB(
-                          Insets.md,
-                          0.0,
-                          Insets.md,
-                          80.0,
-                        ),
-                        sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (BuildContext context, int index) {
-                              final SonarrSeries s = list[index];
-                              return Padding(
-                                padding:
-                                    const EdgeInsets.only(bottom: Insets.md),
-                                child: _SeriesBannerCard(
-                                  instance: widget.instance,
-                                  series: s,
-                                  selected: selection.contains(s.id),
-                                  onLongPress: () {
-                                    final isSelected = selection.contains(s.id);
-                                    final notifier = ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier);
-                                    if (isSelected) {
-                                      notifier.state = selection.where((id) => id != s.id).toSet();
-                                    } else {
-                                      notifier.state = {...selection, s.id};
-                                    }
-                                  },
-                                  onTap: () {
-                                    final isSelected = selection.contains(s.id);
-                                    if (isSelecting) {
-                                      final notifier = ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier);
-                                      if (isSelected) {
-                                        notifier.state = selection.where((id) => id != s.id).toSet();
-                                      } else {
-                                        notifier.state = {...selection, s.id};
-                                      }
-                                    } else {
-                                      Navigator.push(
-                                        context,
-                                        FadePageRoute<void>(
-                                          builder: (BuildContext context) =>
-                                              SeriesDetailScreen(
-                                            instance: widget.instance,
-                                            series: s,
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                ),
-                              );
-                            },
-                            childCount: list.length,
-                          ),
+                              ),
+                            );
+                          },
+                          childCount: list.length,
                         ),
                       ),
-                  ],
-                ),
-              );
-            },
-          ),
+                    ),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
@@ -1008,7 +1002,8 @@ class _BulkEditDialogState extends ConsumerState<_BulkEditDialog> {
         ),
         ElevatedButton(
           onPressed: () async {
-            final navigator = Navigator.of(context);
+            final NavigatorState nav =
+                Navigator.of(context, rootNavigator: true);
             final payload = <String, dynamic>{
               'seriesIds': widget.selectedIds.toList(),
               if (_monitored != null) 'monitored': _monitored,
@@ -1020,29 +1015,37 @@ class _BulkEditDialogState extends ConsumerState<_BulkEditDialog> {
             unawaited(showDialog<void>(
               context: context,
               barrierDismissible: false,
-              builder: (ctx) => const Center(child: CircularProgressIndicator(),),
+              builder: (ctx) => const PopScope<Object?>(
+                canPop: false,
+                child: Center(child: CircularProgressIndicator()),
+              ),
             ),);
 
+            Object? error;
             try {
-              final api = await ref.read(sonarrApiProvider(widget.instance).future);
+              final api =
+                  await ref.read(sonarrApiProvider(widget.instance).future);
               await api.bulkUpdateSeries(payload);
-              ref.invalidate(sonarrSeriesProvider(widget.instance));
-              ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier).state = {};
-              
-              if (!context.mounted) return;
-              navigator.pop(); // pop loading
-              navigator.pop(); // pop dialog
-              
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Successfully updated series')),
-              );
             } catch (e) {
-              if (!context.mounted) return;
-              navigator.pop(); // pop loading
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error updating series: $e')),
-              );
+              error = e;
+            } finally {
+              if (nav.mounted) nav.pop(); // pop loading
             }
+
+            if (!context.mounted) return;
+            if (error != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error updating series: $error')),
+              );
+              return;
+            }
+            ref.invalidate(sonarrSeriesProvider(widget.instance));
+            ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier).state = {};
+            Navigator.pop(context); // pop dialog
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Successfully updated series')),
+            );
           },
           child: const Text('Save'),
         ),
@@ -1096,33 +1099,42 @@ class _BulkDeleteDialogState extends ConsumerState<_BulkDeleteDialog> {
             foregroundColor: Theme.of(context).colorScheme.onError,
           ),
           onPressed: () async {
-            final navigator = Navigator.of(context);
+            final NavigatorState nav =
+                Navigator.of(context, rootNavigator: true);
             unawaited(showDialog<void>(
               context: context,
               barrierDismissible: false,
-              builder: (ctx) => const Center(child: CircularProgressIndicator(),),
+              builder: (ctx) => const PopScope<Object?>(
+                canPop: false,
+                child: Center(child: CircularProgressIndicator()),
+              ),
             ),);
 
+            Object? error;
             try {
-              final api = await ref.read(sonarrApiProvider(widget.instance).future);
+              final api =
+                  await ref.read(sonarrApiProvider(widget.instance).future);
               await api.bulkDeleteSeries(widget.selectedIds.toList(), deleteFiles: _deleteFiles);
-              ref.invalidate(sonarrSeriesProvider(widget.instance));
-              ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier).state = {};
-              
-              if (!context.mounted) return;
-              navigator.pop(); // pop loading
-              navigator.pop(); // pop dialog
-              
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Successfully deleted series')),
-              );
             } catch (e) {
-              if (!context.mounted) return;
-              navigator.pop(); // pop loading
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error deleting series: $e')),
-              );
+              error = e;
+            } finally {
+              if (nav.mounted) nav.pop(); // pop loading
             }
+
+            if (!context.mounted) return;
+            if (error != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error deleting series: $error')),
+              );
+              return;
+            }
+            ref.invalidate(sonarrSeriesProvider(widget.instance));
+            ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier).state = {};
+            Navigator.pop(context); // pop dialog
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Successfully deleted series')),
+            );
           },
           child: const Text('Delete'),
         ),

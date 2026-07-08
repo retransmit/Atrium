@@ -433,10 +433,10 @@ class _HealthCard extends StatelessWidget {
     final bool isError = type == 'error';
     final Color bgColor = isError
         ? theme.colorScheme.errorContainer
-        : Colors.amber.withAlpha(30);
+        : theme.colorScheme.secondary.withAlpha(30);
     final Color fgColor = isError
         ? theme.colorScheme.onErrorContainer
-        : Colors.amber.shade800;
+        : theme.colorScheme.secondary;
     final IconData icon =
         isError ? Icons.error_outline : Icons.warning_amber_rounded;
 
@@ -924,10 +924,10 @@ class _UpdateCard extends StatelessWidget {
                   Chip(
                     label: const Text('Latest'),
                     backgroundColor:
-                        Colors.green.withAlpha(30),
+                        theme.colorScheme.tertiary.withAlpha(30),
                     labelStyle:
                         theme.textTheme.labelSmall?.copyWith(
-                      color: Colors.green.shade700,
+                      color: theme.colorScheme.tertiary,
                       fontWeight: FontWeight.bold,
                     ),
                     materialTapTargetSize:
@@ -957,7 +957,7 @@ class _UpdateCard extends StatelessWidget {
                   'New',
                   style: theme.textTheme.labelMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.green.shade700,
+                    color: theme.colorScheme.tertiary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -973,7 +973,7 @@ class _UpdateCard extends StatelessWidget {
                         Text(
                           '• ',
                           style: TextStyle(
-                            color: Colors.green.shade700,
+                            color: theme.colorScheme.tertiary,
                           ),
                         ),
                         Expanded(
@@ -1233,7 +1233,7 @@ class _LogEntryTile extends StatelessWidget {
       case 'fatal':
         levelColor = theme.colorScheme.error;
       case 'warn':
-        levelColor = Colors.amber.shade700;
+        levelColor = theme.colorScheme.secondary;
       case 'debug':
       case 'trace':
         levelColor = theme.colorScheme.onSurfaceVariant;

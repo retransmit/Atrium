@@ -185,9 +185,8 @@ class ServiceDetailScreen extends ConsumerWidget {
 
   Widget _bodyFor(Instance instance) {
     return switch (instance.kind) {
-      ServiceKind.sonarr => const Center(
-          child: Text('Sonarr integration starts here!'),
-        ),
+      // Sonarr never reaches here: build() returns SonarrHome early.
+      ServiceKind.sonarr => const SizedBox.shrink(),
       ServiceKind.radarr => RadarrHome(instance: instance),
       ServiceKind.prowlarr => ProwlarrHome(instance: instance),
       ServiceKind.bazarr => BazarrHome(instance: instance),

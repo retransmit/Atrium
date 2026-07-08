@@ -468,7 +468,7 @@ class _StatsCard extends StatelessWidget {
               minHeight: 8,
               backgroundColor: cs.surfaceContainerHighest,
               valueColor: AlwaysStoppedAnimation<Color>(
-                progress >= 1.0 ? Colors.green : cs.primary,
+                progress >= 1.0 ? cs.tertiary : cs.primary,
               ),
             ),
           ),
@@ -976,7 +976,7 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
                                   minHeight: 4,
                                   backgroundColor: cs.surfaceContainerHighest,
                                   valueColor: AlwaysStoppedAnimation<Color>(
-                                    progress >= 1.0 ? Colors.green : cs.primary,
+                                    progress >= 1.0 ? cs.tertiary : cs.primary,
                                   ),
                                 ),
                               ),
@@ -1063,8 +1063,8 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
   }
 
   Future<void> _toggleSeasonMonitoring(BuildContext context, bool currentMonitored) async {
-    final api = await ref.read(sonarrApiProvider(widget.instance).future);
     try {
+      final api = await ref.read(sonarrApiProvider(widget.instance).future);
       final raw = await api.getSeriesRaw(widget.series.id);
       
       final List<dynamic> seasons = raw['seasons'] as List<dynamic>;
@@ -1077,22 +1077,21 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
       }
       
       await api.updateSeriesRaw(raw);
-      
+
+      if (!context.mounted) return;
       ref.invalidate(sonarrSeriesByIdProvider((widget.instance, widget.series.id)));
       ref.invalidate(sonarrSeriesProvider(widget.instance));
       widget.onRefreshed();
-      
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              !currentMonitored
-                  ? 'Season ${widget.seasonNumber} monitored.'
-                  : 'Season ${widget.seasonNumber} unmonitored.',
-            ),
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            !currentMonitored
+                ? 'Season ${widget.seasonNumber} monitored.'
+                : 'Season ${widget.seasonNumber} unmonitored.',
           ),
-        );
-      }
+        ),
+      );
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1138,7 +1137,6 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
         ),
       );
 
-      final api = await ref.read(sonarrApiProvider(widget.instance).future);
       int deletedCount = 0;
       int failedCount = 0;
 
@@ -1147,15 +1145,26 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
           .map((e) => e.episodeFileId!)
           .toList();
 
-      for (final fileId in fileIds) {
-        try {
-          await api.deleteEpisodeFile(fileId);
-          deletedCount++;
-        } catch (e) {
-          failedCount++;
+      try {
+        final api = await ref.read(sonarrApiProvider(widget.instance).future);
+        for (final fileId in fileIds) {
+          try {
+            await api.deleteEpisodeFile(fileId);
+            deletedCount++;
+          } catch (e) {
+            failedCount++;
+          }
         }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete season files: $e')),
+          );
+        }
+        return;
       }
 
+      if (!context.mounted) return;
       ref.invalidate(sonarrEpisodesProvider((widget.instance, widget.series.id)));
       ref.invalidate(sonarrSeriesByIdProvider((widget.instance, widget.series.id)));
       ref.invalidate(sonarrSeriesProvider(widget.instance));
@@ -1180,8 +1189,8 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
   }
 
   Future<void> _searchSeason(BuildContext context, int seasonNum) async {
-    final api = await ref.read(sonarrApiProvider(widget.instance).future);
     try {
+      final api = await ref.read(sonarrApiProvider(widget.instance).future);
       await api.runCommand(<String, dynamic>{
         'name': 'SeasonSearch',
         'seriesId': widget.series.id,
@@ -1202,14 +1211,12 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
   }
 
   void _openSeasonInteractiveSearch(BuildContext context, int seasonNum) {
-    Navigator.push(
+    pushScreen<void>(
       context,
-      MaterialPageRoute<void>(
-        builder: (_) => SonarrReleaseSearchScreen(
-          instance: widget.instance,
-          series: widget.series,
-          seasonNumber: seasonNum,
-        ),
+      SonarrReleaseSearchScreen(
+        instance: widget.instance,
+        series: widget.series,
+        seasonNumber: seasonNum,
       ),
     );
   }
@@ -1236,7 +1243,7 @@ class _EpisodeRow extends ConsumerWidget {
     final ColorScheme cs = theme.colorScheme;
 
     final Color statusColor =
-        episode.hasFile ? Colors.green : cs.outlineVariant;
+        episode.hasFile ? cs.tertiary : cs.outlineVariant;
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -1252,7 +1259,7 @@ class _EpisodeRow extends ConsumerWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: episode.hasFile
-                  ? Colors.green.withValues(alpha: 0.15)
+                  ? cs.tertiary.withValues(alpha: 0.15)
                   : cs.surfaceContainerHighest,
               border: Border.all(color: statusColor, width: 1.5),
             ),
@@ -1261,7 +1268,7 @@ class _EpisodeRow extends ConsumerWidget {
                 '${episode.episodeNumber}',
                 style: theme.textTheme.labelSmall?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: episode.hasFile ? Colors.green : cs.outline,
+                  color: episode.hasFile ? cs.tertiary : cs.outline,
                 ),
               ),
             ),
@@ -1338,13 +1345,13 @@ class _EpisodeRow extends ConsumerWidget {
                 ),
               ),
               if (episode.hasFile && episode.episodeFileId != null)
-                const PopupMenuItem<String>(
+                PopupMenuItem<String>(
                   value: 'delete_file',
                   child: ListTile(
-                    leading: Icon(Icons.delete_outline, color: Colors.red),
+                    leading: Icon(Icons.delete_outline, color: cs.error),
                     title: Text(
                       'Delete File',
-                      style: TextStyle(color: Colors.red),
+                      style: TextStyle(color: cs.error),
                     ),
                     contentPadding: EdgeInsets.zero,
                     dense: true,
@@ -1362,13 +1369,13 @@ class _EpisodeRow extends ConsumerWidget {
     WidgetRef ref,
     String action,
   ) async {
-    final api = await ref.read(sonarrApiProvider(instance).future);
-
     switch (action) {
       case 'monitor':
         try {
+          final api = await ref.read(sonarrApiProvider(instance).future);
           final updated = episode.copyWith(monitored: !episode.monitored);
           await api.updateEpisode(updated.toJson());
+          if (!context.mounted) return;
           ref.invalidate(sonarrEpisodesProvider((instance, series.id)));
         } catch (e) {
           if (context.mounted) {
@@ -1380,6 +1387,7 @@ class _EpisodeRow extends ConsumerWidget {
 
       case 'auto_search':
         try {
+          final api = await ref.read(sonarrApiProvider(instance).future);
           await api.runCommand(<String, dynamic>{
             'name': 'EpisodeSearch',
             'episodeIds': [episode.id],
@@ -1399,13 +1407,11 @@ class _EpisodeRow extends ConsumerWidget {
 
       case 'manual_search':
         if (context.mounted) {
-          await Navigator.push(
+          await pushScreen<void>(
             context,
-            MaterialPageRoute<void>(
-              builder: (_) => SonarrReleaseSearchScreen(
-                instance: instance,
-                episode: episode,
-              ),
+            SonarrReleaseSearchScreen(
+              instance: instance,
+              episode: episode,
             ),
           );
         }
@@ -1443,15 +1449,14 @@ class _EpisodeRow extends ConsumerWidget {
     );
 
     if (confirm == true && episode.episodeFileId != null) {
-      final api = await ref.read(sonarrApiProvider(instance).future);
       try {
+        final api = await ref.read(sonarrApiProvider(instance).future);
         await api.deleteEpisodeFile(episode.episodeFileId!);
+        if (!context.mounted) return;
         ref.invalidate(sonarrEpisodesProvider((instance, series.id)));
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('File deleted.')),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('File deleted.')),
+        );
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1521,13 +1526,11 @@ class _OverflowMenu extends ConsumerWidget {
   void _handleAction(BuildContext context, WidgetRef ref, String action) {
     switch (action) {
       case 'edit':
-        Navigator.push(
+        pushScreen<void>(
           context,
-          MaterialPageRoute<void>(
-            builder: (_) => SonarrSettingsFormScreen(
-              instance: instance,
-              series: series,
-            ),
+          SonarrSettingsFormScreen(
+            instance: instance,
+            series: series,
           ),
         );
 
@@ -1591,16 +1594,15 @@ class _OverflowMenu extends ConsumerWidget {
     );
 
     if (ok == true) {
-      final api = await ref.read(sonarrApiProvider(instance).future);
       try {
+        final api = await ref.read(sonarrApiProvider(instance).future);
         await api.deleteSeries(series.id, deleteFiles: deleteFiles);
+        if (!context.mounted) return;
         ref.invalidate(sonarrSeriesProvider(instance));
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Series deleted.')),
-          );
-          Navigator.pop(context);
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Series deleted.')),
+        );
+        Navigator.pop(context);
       } catch (e) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

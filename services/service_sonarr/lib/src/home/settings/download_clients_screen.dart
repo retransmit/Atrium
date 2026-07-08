@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../sonarr_providers.dart';
+import 'widgets/confirm_delete.dart';
 import 'widgets/dynamic_schema_form.dart';
 
 class DownloadClientsScreen extends ConsumerStatefulWidget {
@@ -83,6 +84,7 @@ class _DownloadClientsTab extends ConsumerWidget {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
       builder: (context) {
         return Container(
           padding: const EdgeInsets.all(Insets.md),
@@ -189,6 +191,7 @@ class _DownloadClientsTab extends ConsumerWidget {
 
   Future<void> _deleteClient(
       BuildContext context, WidgetRef ref, int id,) async {
+    if (!await confirmDelete(context, 'this download client')) return;
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
       await api.deleteDownloadClient(id);
@@ -425,6 +428,7 @@ class _RemotePathMappingsTab extends ConsumerWidget {
 
   Future<void> _deleteMapping(
       BuildContext context, WidgetRef ref, int id,) async {
+    if (!await confirmDelete(context, 'this path mapping')) return;
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
       await api.deleteRemotePathMapping(id);

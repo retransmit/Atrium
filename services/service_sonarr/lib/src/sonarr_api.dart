@@ -418,6 +418,27 @@ class SonarrApi {
     }
   }
 
+  Future<void> grabQueueItem(int id) async {
+    try {
+      await _dio.post<dynamic>('$_base/queue/grab/$id');
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<void> grabQueueItems(List<int> ids) async {
+    try {
+      await _dio.post<dynamic>(
+        '$_base/queue/grab/bulk',
+        data: <String, dynamic>{
+          'ids': ids,
+        },
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
   Future<List<SonarrHistoryItem>> getHistory({
     int page = 1,
     int pageSize = 20,
@@ -824,6 +845,7 @@ class SonarrApi {
     try {
       await _dio.put<dynamic>(
         '$_base/downloadclient/${client['id']}',
+        queryParameters: <String, dynamic>{'forceSave': true},
         data: client,
       );
     } on DioException catch (e) {
@@ -849,6 +871,7 @@ class SonarrApi {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/indexer',
+        queryParameters: <String, dynamic>{'forceSave': true},
         data: payload,
       );
       return resp.data as Map<String, dynamic>;
@@ -862,6 +885,7 @@ class SonarrApi {
     try {
       await _dio.put<dynamic>(
         '$_base/indexer/${payload['id']}',
+        queryParameters: <String, dynamic>{'forceSave': true},
         data: payload,
       );
     } on DioException catch (e) {
@@ -884,6 +908,16 @@ class SonarrApi {
         '$_base/indexer/test',
         data: payload,
       );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> getIndexerConfig() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/config/indexer');
+      return resp.data as Map<String, dynamic>;
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -952,6 +986,7 @@ class SonarrApi {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/importlist',
+        queryParameters: <String, dynamic>{'forceSave': true},
         data: payload,
       );
       return resp.data as Map<String, dynamic>;
@@ -965,6 +1000,7 @@ class SonarrApi {
     try {
       await _dio.put<dynamic>(
         '$_base/importlist/${payload['id']}',
+        queryParameters: <String, dynamic>{'forceSave': true},
         data: payload,
       );
     } on DioException catch (e) {
@@ -1011,6 +1047,7 @@ class SonarrApi {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/downloadclient',
+        queryParameters: <String, dynamic>{'forceSave': true},
         data: payload,
       );
       return resp.data as Map<String, dynamic>;
@@ -1117,6 +1154,7 @@ class SonarrApi {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/notification',
+        queryParameters: <String, dynamic>{'forceSave': true},
         data: payload,
       );
       return resp.data as Map<String, dynamic>;
@@ -1130,6 +1168,7 @@ class SonarrApi {
     try {
       await _dio.put<dynamic>(
         '$_base/notification/${payload['id']}',
+        queryParameters: <String, dynamic>{'forceSave': true},
         data: payload,
       );
     } on DioException catch (e) {
@@ -1187,6 +1226,7 @@ class SonarrApi {
     try {
       await _dio.put<dynamic>(
         '$_base/metadata/${payload['id']}',
+        queryParameters: <String, dynamic>{'forceSave': true},
         data: payload,
       );
     } on DioException catch (e) {
@@ -1555,11 +1595,10 @@ class SonarrApi {
     try {
       await _dio.delete<dynamic>(
         '$_base/series/editor',
-        queryParameters: <String, dynamic>{
-          'deleteFiles': deleteFiles,
-        },
         data: <String, dynamic>{
           'seriesIds': seriesIds,
+          'deleteFiles': deleteFiles,
+          'addImportListExclusion': false,
         },
       );
     } on DioException catch (e) {

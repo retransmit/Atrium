@@ -158,6 +158,21 @@ class _MediaManagementSettingsScreenState
         (mediaMgmt['episodeTitleRequired'] as String?) ?? 'always';
   }
 
+  /// Builds dropdown items from known [options] (value to label) and appends
+  /// the current server [value] as a raw extra item when it is not among the
+  /// known ones, so the dropdown never hits the missing-value assert.
+  static List<DropdownMenuItem<String>> _dropdownItems(
+    Map<String, String> options,
+    String value,
+  ) {
+    return [
+      for (final entry in options.entries)
+        DropdownMenuItem(value: entry.key, child: Text(entry.value)),
+      if (!options.containsKey(value))
+        DropdownMenuItem(value: value, child: Text(value)),
+    ];
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_rawNamingConfig == null || _rawMediaManagementConfig == null) return;
@@ -326,17 +341,24 @@ class _MediaManagementSettingsScreenState
                                 labelText: 'Colon Replacement Format',
                                 border: OutlineInputBorder(),
                               ),
-                              items: const [
-                                DropdownMenuItem(value: 0, child: Text('Delete')),
-                                DropdownMenuItem(
+                              items: [
+                                const DropdownMenuItem(
+                                    value: 0, child: Text('Delete'),),
+                                const DropdownMenuItem(
                                     value: 1, child: Text('Replace with Space'),),
-                                DropdownMenuItem(
+                                const DropdownMenuItem(
                                     value: 2, child: Text('Replace with Dash'),),
-                                DropdownMenuItem(
+                                const DropdownMenuItem(
                                     value: 3,
                                     child: Text('Replace with Space Dash Space'),),
-                                DropdownMenuItem(
+                                const DropdownMenuItem(
                                     value: 4, child: Text('Smart Replace'),),
+                                if (_colonReplacementFormat < 0 ||
+                                    _colonReplacementFormat > 4)
+                                  DropdownMenuItem(
+                                    value: _colonReplacementFormat,
+                                    child: Text('$_colonReplacementFormat'),
+                                  ),
                               ],
                               onChanged: (val) {
                                 if (val != null) {
@@ -493,16 +515,11 @@ class _MediaManagementSettingsScreenState
                                 labelText: 'Propers and Repacks',
                                 border: OutlineInputBorder(),
                               ),
-                              items: const [
-                                DropdownMenuItem(
-                                    value: 'doNotPrefer',
-                                    child: Text('Do not Prefer'),),
-                                DropdownMenuItem(
-                                    value: 'prefer', child: Text('Prefer'),),
-                                DropdownMenuItem(
-                                    value: 'preferAndUpgrade',
-                                    child: Text('Prefer and Upgrade'),),
-                              ],
+                              items: _dropdownItems(const {
+                                'preferAndUpgrade': 'Prefer and Upgrade',
+                                'doNotUpgrade': 'Do Not Upgrade Automatically',
+                                'doNotPrefer': 'Do Not Prefer',
+                              }, _downloadPropersAndRepacks,),
                               onChanged: (val) {
                                 if (val != null) {
                                   setState(() => _downloadPropersAndRepacks = val);
@@ -516,15 +533,12 @@ class _MediaManagementSettingsScreenState
                                 labelText: 'Episode Title Required',
                                 border: OutlineInputBorder(),
                               ),
-                              items: const [
-                                DropdownMenuItem(
-                                    value: 'always', child: Text('Always'),),
-                                DropdownMenuItem(
-                                    value: 'afterAirDate',
-                                    child: Text('After Air Date'),),
-                                DropdownMenuItem(
-                                    value: 'never', child: Text('Never'),),
-                              ],
+                              items: _dropdownItems(const {
+                                'always': 'Always',
+                                'bulkSeasonReleases':
+                                    'Only for Bulk Season Releases',
+                                'never': 'Never',
+                              }, _episodeTitleRequired,),
                               onChanged: (val) {
                                 if (val != null) {
                                   setState(() => _episodeTitleRequired = val);
@@ -538,14 +552,11 @@ class _MediaManagementSettingsScreenState
                                 labelText: 'File Date',
                                 border: OutlineInputBorder(),
                               ),
-                              items: const [
-                                DropdownMenuItem(
-                                    value: 'none', child: Text('None'),),
-                                DropdownMenuItem(
-                                    value: 'created', child: Text('Created'),),
-                                DropdownMenuItem(
-                                    value: 'airDate', child: Text('Air Date'),),
-                              ],
+                              items: _dropdownItems(const {
+                                'none': 'None',
+                                'localAirDate': 'Local Air Date',
+                                'utcAirDate': 'UTC Air Date',
+                              }, _fileDate,),
                               onChanged: (val) {
                                 if (val != null) {
                                   setState(() => _fileDate = val);
@@ -559,15 +570,11 @@ class _MediaManagementSettingsScreenState
                                 labelText: 'Rescan After Refresh',
                                 border: OutlineInputBorder(),
                               ),
-                              items: const [
-                                DropdownMenuItem(
-                                    value: 'always', child: Text('Always'),),
-                                DropdownMenuItem(
-                                    value: 'afterChange',
-                                    child: Text('After Change'),),
-                                DropdownMenuItem(
-                                    value: 'never', child: Text('Never'),),
-                              ],
+                              items: _dropdownItems(const {
+                                'always': 'Always',
+                                'afterManual': 'After Manual Refresh',
+                                'never': 'Never',
+                              }, _rescanAfterRefresh,),
                               onChanged: (val) {
                                 if (val != null) {
                                   setState(() => _rescanAfterRefresh = val);

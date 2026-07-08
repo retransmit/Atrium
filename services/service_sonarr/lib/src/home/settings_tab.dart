@@ -168,12 +168,7 @@ class SettingsTab extends StatelessWidget {
         borderRadius: Radii.card,
         onTap: onTap ?? () {
           if (screen != null) {
-            Navigator.push(
-              context,
-              MaterialPageRoute<void>(
-                builder: (context) => screen,
-              ),
-            );
+            pushScreen<void>(context, screen);
           }
         },
         child: Padding(

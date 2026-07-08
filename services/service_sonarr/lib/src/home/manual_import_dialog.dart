@@ -81,73 +81,74 @@ class __ManualImportSetupDialogState
     }
 
     // Show loading overlay
+    final NavigatorState nav = Navigator.of(context, rootNavigator: true);
     unawaited(showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) => const Center(
-        child: Card(
-          child: Padding(
-            padding: EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Scanning folder contents...'),
-              ],
+      builder: (BuildContext context) => const PopScope<Object?>(
+        canPop: false,
+        child: Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Scanning folder contents...'),
+                ],
+              ),
             ),
           ),
         ),
       ),
     ),);
 
+    Object? error;
+    List<dynamic> scanResults = const <dynamic>[];
     try {
       final api = await ref.read(sonarrApiProvider(widget.instance).future);
       final bool filterExisting =
           ref.read(sonarrManualImportFilterProvider(widget.instance));
-      final List<dynamic> scanResults = await api.getManualImport(
+      scanResults = await api.getManualImport(
         folder: folder,
         filterExistingFiles: filterExisting,
       );
-
-      if (mounted) {
-        // Pop the loading dialog
-        Navigator.pop(context);
-      }
-
-      if (scanResults.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No importable files found in the folder.'),
-            ),
-          );
-        }
-        return;
-      }
-
-      if (mounted) {
-        // Close setup dialog and open mapping screen
-        Navigator.pop(context);
-        unawaited(Navigator.push<void>(
-          context,
-          MaterialPageRoute<void>(
-            builder: (BuildContext context) => _ManualImportMappingScreen(
-              instance: widget.instance,
-              initialFiles: scanResults,
-              folderPath: folder,
-            ),
-          ),
-        ),);
-      }
     } catch (e) {
-      if (mounted) {
-        Navigator.pop(context); // Pop loading dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Scan failed: $e')),
-        );
-      }
+      error = e;
+    } finally {
+      if (nav.mounted) nav.pop(); // Pop the loading dialog
     }
+
+    if (!mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Scan failed: $error')),
+      );
+      return;
+    }
+
+    if (scanResults.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No importable files found in the folder.'),
+        ),
+      );
+      return;
+    }
+
+    // Close setup dialog and open mapping screen
+    Navigator.pop(context);
+    unawaited(nav.push<void>(
+      MaterialPageRoute<void>(
+        builder: (BuildContext context) => _ManualImportMappingScreen(
+          instance: widget.instance,
+          initialFiles: scanResults,
+          folderPath: folder,
+        ),
+      ),
+    ),);
   }
 
   @override
@@ -560,6 +561,30 @@ class __ManualImportMappingScreenState
     return '${dBytes.toStringAsFixed(1)} ${suffixes[i]}';
   }
 
+  /// Season numbers of the mapped series (including 0 for Specials). The
+  /// series map either comes from the scan payload (season entries are JSON
+  /// maps) or from the series picker (entries are [SonarrSeason] objects).
+  List<int> _seasonNumbersFor(Map<String, dynamic> series) {
+    final dynamic rawSeasons = series['seasons'];
+    final List<int> numbers = <int>[];
+    if (rawSeasons is List<dynamic>) {
+      for (final dynamic s in rawSeasons) {
+        if (s is SonarrSeason) {
+          numbers.add(s.seasonNumber);
+        } else if (s is Map<String, dynamic>) {
+          final dynamic n = s['seasonNumber'];
+          if (n is int) numbers.add(n);
+        }
+      }
+    }
+    numbers.sort();
+    if (numbers.isEmpty) {
+      // Fallback when the series payload carries no season list.
+      return List<int>.generate(20, (int i) => i + 1);
+    }
+    return numbers;
+  }
+
   Future<void> _selectSeriesForFile(int index) async {
     final List<SonarrSeries> seriesList = await ref.read(
       sonarrSeriesProvider(widget.instance).future,
@@ -599,68 +624,71 @@ class __ManualImportMappingScreenState
     final int seasonNumber = f['seasonNumber'] as int? ?? 1;
 
     // Show loading spinner
+    final NavigatorState nav = Navigator.of(context, rootNavigator: true);
     unawaited(showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) => const Center(child: CircularProgressIndicator()),
+      builder: (BuildContext context) => const PopScope<Object?>(
+        canPop: false,
+        child: Center(child: CircularProgressIndicator()),
+      ),
     ),);
 
+    Object? error;
+    List<SonarrEpisode> allEpisodes = const <SonarrEpisode>[];
     try {
-      final List<SonarrEpisode> allEpisodes = await ref.read(
+      allEpisodes = await ref.read(
         sonarrEpisodesProvider((widget.instance, seriesId)).future,
       );
-
-      if (mounted) {
-        Navigator.pop(context); // Pop loading spinner
-      }
-
-      final List<SonarrEpisode> seasonEpisodes = allEpisodes
-          .where((e) => e.seasonNumber == seasonNumber)
-          .toList();
-
-      if (seasonEpisodes.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('No episodes found for Season $seasonNumber.')),
-          );
-        }
-        return;
-      }
-
-      if (!mounted) return;
-
-      final List<dynamic>? currentMapped = f['episodes'] as List<dynamic>?;
-      final Set<int> currentMappedIds = currentMapped
-              ?.cast<Map<String, dynamic>>()
-              .map((e) => e['id'] as int)
-              .toSet() ??
-          <int>{};
-
-      final List<SonarrEpisode>? selected = await showDialog<List<SonarrEpisode>>(
-        context: context,
-        builder: (BuildContext context) => _EpisodePickerDialog(
-          episodes: seasonEpisodes,
-          initialSelectedIds: currentMappedIds,
-        ),
-      );
-
-      if (selected != null) {
-        setState(() {
-          f['episodes'] = selected.map((e) => e.toJson()).toList();
-          f['rejections'] = <dynamic>[]; // Clear rejections
-          final String? path = f['path'] as String?;
-          if (path != null && selected.isNotEmpty) {
-            _selectedPaths.add(path);
-          }
-        });
-      }
     } catch (e) {
-      if (mounted) {
-        Navigator.pop(context); // Pop loading spinner
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load episodes: $e')),
-        );
-      }
+      error = e;
+    } finally {
+      if (nav.mounted) nav.pop(); // Pop the loading spinner
+    }
+
+    if (!mounted) return;
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to load episodes: $error')),
+      );
+      return;
+    }
+
+    final List<SonarrEpisode> seasonEpisodes = allEpisodes
+        .where((e) => e.seasonNumber == seasonNumber)
+        .toList();
+
+    if (seasonEpisodes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No episodes found for Season $seasonNumber.')),
+      );
+      return;
+    }
+
+    final List<dynamic>? currentMapped = f['episodes'] as List<dynamic>?;
+    final Set<int> currentMappedIds = currentMapped
+            ?.cast<Map<String, dynamic>>()
+            .map((e) => e['id'] as int)
+            .toSet() ??
+        <int>{};
+
+    final List<SonarrEpisode>? selected = await showDialog<List<SonarrEpisode>>(
+      context: context,
+      builder: (BuildContext context) => _EpisodePickerDialog(
+        episodes: seasonEpisodes,
+        initialSelectedIds: currentMappedIds,
+      ),
+    );
+
+    if (selected != null && mounted) {
+      setState(() {
+        f['episodes'] = selected.map((e) => e.toJson()).toList();
+        f['rejections'] = <dynamic>[]; // Clear rejections
+        final String? path = f['path'] as String?;
+        if (path != null && selected.isNotEmpty) {
+          _selectedPaths.add(path);
+        }
+      });
     }
   }
 
@@ -959,7 +987,7 @@ class __ManualImportMappingScreenState
                                         final int? nextSeason = await showDialog<int>(
                                           context: context,
                                           builder: (BuildContext context) => _SeasonPickerDialog(
-                                            seasonsCount: 20, // default max helper
+                                            seasonNumbers: _seasonNumbersFor(series),
                                             initialSeason: season ?? 1,
                                           ),
                                         );
@@ -1109,11 +1137,11 @@ class _SeriesPickerDialogState extends State<_SeriesPickerDialog> {
 
 class _SeasonPickerDialog extends StatelessWidget {
   const _SeasonPickerDialog({
-    required this.seasonsCount,
+    required this.seasonNumbers,
     required this.initialSeason,
   });
 
-  final int seasonsCount;
+  final List<int> seasonNumbers;
   final int initialSeason;
 
   @override
@@ -1124,11 +1152,11 @@ class _SeasonPickerDialog extends StatelessWidget {
         width: 150,
         height: 250,
         child: ListView.builder(
-          itemCount: seasonsCount,
+          itemCount: seasonNumbers.length,
           itemBuilder: (BuildContext context, int index) {
-            final int seasonNum = index + 1;
+            final int seasonNum = seasonNumbers[index];
             return ListTile(
-              title: Text('Season $seasonNum'),
+              title: Text(seasonNum == 0 ? 'Specials' : 'Season $seasonNum'),
               selected: seasonNum == initialSeason,
               onTap: () {
                 Navigator.pop(context, seasonNum);
