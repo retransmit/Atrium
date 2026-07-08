@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:m3_expressive/m3_expressive.dart';
-import 'package:core_ui/core_ui.dart';
 
 class ExpressiveProgressIndicator extends StatelessWidget {
   const ExpressiveProgressIndicator({
@@ -47,8 +46,20 @@ class ExpressiveProgressIndicator extends StatelessWidget {
     final effectiveColor = valueColor?.value ?? color;
 
     // Use M3LoadingIndicator as a drop-in replacement for indeterminate loaders.
-    return M3LoadingIndicator(
-      color: effectiveColor,
+    // Wrap in Semantics so screen readers still announce loading, and constrain
+    // to 36x36 (the CircularProgressIndicator default this replaced) so
+    // unconstrained callers like Center(child: ExpressiveProgressIndicator())
+    // don't shift layout. Tight parent constraints still override this box.
+    return Semantics(
+      label: semanticsLabel,
+      value: semanticsValue,
+      child: SizedBox(
+        width: 36,
+        height: 36,
+        child: M3LoadingIndicator(
+          color: effectiveColor,
+        ),
+      ),
     );
   }
 }

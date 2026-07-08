@@ -324,6 +324,11 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
         ];
       case AuthStyle.userPass:
       case AuthStyle.cookieLogin:
+        // Emby/Jellyfin accounts may legitimately have no password; every other
+        // username/password service (e.g. qBittorrent) requires one, where an
+        // empty submission guarantees a failed login.
+        final bool passwordOptional =
+            _kind == ServiceKind.emby || _kind == ServiceKind.jellyfin;
         return <Widget>[
           TextFormField(
             controller: _username,
@@ -339,13 +344,15 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
           const SizedBox(height: Insets.md),
           TextFormField(
             controller: _password,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              labelText: 'Password (Optional)',
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              labelText: passwordOptional ? 'Password (Optional)' : 'Password',
             ),
             obscureText: true,
-            // Allow empty passwords since Emby/Jellyfin users can have no password
-            validator: (String? v) => null,
+            validator: passwordOptional
+                ? (String? v) => null
+                : (String? v) =>
+                    (v == null || v.trim().isEmpty) ? 'Required' : null,
           ),
         ];
       case AuthStyle.none:

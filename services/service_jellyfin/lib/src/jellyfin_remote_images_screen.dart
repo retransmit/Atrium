@@ -50,9 +50,6 @@ class _JellyfinRemoteImagesScreenState
         }
       }
 
-      print('--- STARTING REMOTE IMAGE CHANGE ---');
-      print('Type: ${widget.imageType}');
-      print('Old Tagged URL: $oldTaggedUrl');
 
       await client.setRemoteImage(widget.itemId, imageUrl, widget.imageType);
 
@@ -65,36 +62,40 @@ class _JellyfinRemoteImagesScreenState
         await CachedNetworkImage.evictFromCache(oldTaggedUrl);
       }
 
-      // Give the server time to download and apply the new image
+      // Give the server time to download and apply the new image.
       // We poll until the tag actually changes, or timeout after 5 seconds.
-      int attempts = 0;
-      while (attempts < 10) {
-        await Future<void>.delayed(const Duration(milliseconds: 500));
-        final JellyfinItem updatedItem = await client.getItemDetails(widget.itemId);
-        String? newTaggedUrl;
-        if (widget.imageType == 'Backdrop') {
-          newTaggedUrl = client.backdropImageUrl(updatedItem);
-        } else if (widget.imageType == 'Primary') {
-          newTaggedUrl = client.imageUrl(updatedItem);
-        } else if (widget.imageType == 'Banner') {
-          newTaggedUrl = client.bannerImageUrl(updatedItem);
+      // The write above already succeeded, so a failed poll must not surface
+      // as an error; swallow it and fall through to refreshing the UI.
+      try {
+        int attempts = 0;
+        while (attempts < 10) {
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+          if (!mounted) return;
+          final JellyfinItem updatedItem =
+              await client.getItemDetails(widget.itemId);
+          String? newTaggedUrl;
+          if (widget.imageType == 'Backdrop') {
+            newTaggedUrl = client.backdropImageUrl(updatedItem);
+          } else if (widget.imageType == 'Primary') {
+            newTaggedUrl = client.imageUrl(updatedItem);
+          } else if (widget.imageType == 'Banner') {
+            newTaggedUrl = client.bannerImageUrl(updatedItem);
+          }
+
+          if (newTaggedUrl != oldTaggedUrl) {
+            break; // The tag has successfully changed!
+          }
+          attempts++;
         }
-        
-        if (newTaggedUrl != oldTaggedUrl) {
-          print('Polling attempt $attempts: Success! New Tagged URL: $newTaggedUrl');
-          break; // The tag has successfully changed!
-        } else {
-          print('Polling attempt $attempts: Tag did not change. URL: $newTaggedUrl');
-        }
-        attempts++;
+      } catch (_) {
+        // Polling failed, but the image write already succeeded.
       }
 
-      print('--- INVALIDATING PROVIDERS ---');
       if (!mounted) return;
 
       // Invalidate relevant providers to force refresh of the image
       ref.invalidate(
-          jellyfinItemDetailsProvider((widget.instance, widget.itemId)));
+          jellyfinItemDetailsProvider((widget.instance, widget.itemId)),);
       ref.invalidate(jellyfinItemsProvider);
       ref.invalidate(jellyfinLibraryItemsProvider);
       ref.invalidate(jellyfinFastSessionsProvider(widget.instance));
@@ -127,11 +128,34 @@ class _JellyfinRemoteImagesScreenState
     }
   }
 
+  Future<bool> _confirmReplace(BuildContext context) async {
+    final String label = widget.imageType.toLowerCase();
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: Text('Replace $label?'),
+        content:
+            Text('This replaces the current $label artwork on the server.'),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Replace'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final AsyncValue<List<JellyfinRemoteImage>> imagesAsync = ref.watch(
       jellyfinRemoteImagesProvider(
-          (widget.instance, widget.itemId, widget.imageType)),
+          (widget.instance, widget.itemId, widget.imageType),),
     );
 
     return Scaffold(
@@ -144,7 +168,7 @@ class _JellyfinRemoteImagesScreenState
             value: imagesAsync,
             onRetry: () => ref.invalidate(
               jellyfinRemoteImagesProvider(
-                  (widget.instance, widget.itemId, widget.imageType)),
+                  (widget.instance, widget.itemId, widget.imageType),),
             ),
             data: (List<JellyfinRemoteImage> images) {
               if (images.isEmpty) {
@@ -164,9 +188,27 @@ class _JellyfinRemoteImagesScreenState
                   final JellyfinRemoteImage image = images[index];
                   final String? url = image.url ?? image.thumbnailUrl;
                   if (url == null) return const SizedBox.shrink();
+                  // Only trust server-supplied URLs that are https with an
+                  // authority before rendering or sending them to the server.
+                  final Uri? parsed = Uri.tryParse(url);
+                  if (parsed == null ||
+                      parsed.scheme != 'https' ||
+                      parsed.authority.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
 
                   return InkWell(
-                    onTap: () => _setImage(url),
+                    onTap: () async {
+                      // Primary/Banner writes replace the existing artwork, so
+                      // confirm before committing the change.
+                      if (widget.imageType == 'Primary' ||
+                          widget.imageType == 'Banner') {
+                        final bool confirmed = await _confirmReplace(context);
+                        if (!confirmed) return;
+                        if (!context.mounted) return;
+                      }
+                      await _setImage(url);
+                    },
                     borderRadius: Radii.card,
                     child: ClipRRect(
                       borderRadius: Radii.card,

@@ -13,11 +13,8 @@ import 'emby_music_screens.dart';
 import 'emby_providers.dart';
 import 'emby_season_screen.dart';
 import 'emby_session_detail_screen.dart';
-import 'dart:math' as math;
-
 import 'models/emby_item.dart';
 import 'models/emby_session.dart';
-import 'models/emby_auth.dart';
 import 'models/emby_view.dart';
 
 /// Container types - tapping drills into children. Everything else plays.
@@ -1331,6 +1328,7 @@ class _SessionCardState extends State<_SessionCard> {
 
     PaletteGenerator.fromImageProvider(
       CachedNetworkImageProvider(posterUrl),
+      size: const Size(200, 300),
     ).then((PaletteGenerator palette) {
       if (mounted) {
         setState(() {
@@ -1396,8 +1394,6 @@ class _SessionCardState extends State<_SessionCard> {
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
                           colors: <Color>[
                             theme.colorScheme.surfaceContainerLow
                                 .withValues(alpha: 0.3),

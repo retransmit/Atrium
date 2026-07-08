@@ -157,7 +157,7 @@ class _SearchResults extends ConsumerWidget {
   }
 
   void _openItem(
-      BuildContext context, JellyfinClient client, JellyfinItem item) {
+      BuildContext context, JellyfinClient client, JellyfinItem item,) {
     if (item.type == 'MusicAlbum') {
       pushScreen<void>(
         context,

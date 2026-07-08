@@ -1,10 +1,10 @@
 import 'package:core_models/core_models.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'jellyfin_client.dart';
 import 'jellyfin_providers.dart';
-import 'package:core_ui/core_ui.dart';
 
 class JellyfinSettingsScreen extends ConsumerWidget {
   const JellyfinSettingsScreen({required this.instance, super.key});
@@ -48,6 +48,7 @@ class JellyfinSettingsScreen extends ConsumerWidget {
                     try {
                       final JellyfinClient client = await ref.read(jellyfinClientProvider(instance).future);
                       await client.startLibraryScan();
+                      if (!context.mounted) return;
                       ref.invalidate(jellyfinLibraryScanProvider(instance));
                     } catch (e) {
                       if (context.mounted) {

@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:core_models/core_models.dart';
 import 'package:core_storage/core_storage.dart';
-import 'package:hive_ce/hive.dart';
 import 'package:uuid/uuid.dart';
 
 /// Persists [Profile]s and their [Instance]s, splitting secret material out

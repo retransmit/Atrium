@@ -30,5 +30,3 @@ workspace:
   - services/service_qbittorrent
   - services/service_sabnzbd
   - services/service_glances
-dependencies:
-  material_color_utilities: ^0.13.0

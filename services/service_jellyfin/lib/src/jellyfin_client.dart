@@ -746,7 +746,7 @@ class JellyfinClient {
   }
 
   Future<List<JellyfinRemoteImage>> getRemoteImages(
-          String itemId, String imageType) =>
+          String itemId, String imageType,) =>
       _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
           'Items/$itemId/RemoteImages',
@@ -761,7 +761,7 @@ class JellyfinClient {
       });
 
   Future<void> setRemoteImage(
-          String itemId, String imageUrl, String imageType) =>
+          String itemId, String imageUrl, String imageType,) =>
       _guarded(() async {
         List<String> oldBackdrops = <String>[];
         if (imageType == 'Backdrop') {
@@ -780,42 +780,36 @@ class JellyfinClient {
         );
 
         if (imageType == 'Backdrop') {
-          try {
-            final newItem = await getItemDetails(itemId);
-            final newBackdrops = newItem.backdropImageTags;
-            
-            int indexToMove = -1;
-            for (int i = 0; i < newBackdrops.length; i++) {
-              if (!oldBackdrops.contains(newBackdrops[i])) {
-                indexToMove = i;
-                break;
-              }
-            }
+          final newItem = await getItemDetails(itemId);
+          final newBackdrops = newItem.backdropImageTags;
 
-            if (indexToMove != -1 && indexToMove > 0) {
-              try {
-                await _dio.post<dynamic>(
-                  'Items/$itemId/Images/Backdrop/$indexToMove/Index',
-                  queryParameters: <String, dynamic>{
-                    'newIndex': 0,
-                  },
-                );
-                // Cleared successfully on server, remove any local override.
-                setLocalOverride?.call(itemId, 'Backdrop', '');
-              } catch (e) {
-                print('Failed to move backdrop: $e');
-                if (e is DioException && e.response?.statusCode == 500) {
-                  // Fallback: save the tag locally.
-                  final String localTag = newBackdrops[indexToMove];
-                  setLocalOverride?.call(itemId, 'Backdrop', localTag);
-                } else {
-                  rethrow;
-                }
+          int indexToMove = -1;
+          for (int i = 0; i < newBackdrops.length; i++) {
+            if (!oldBackdrops.contains(newBackdrops[i])) {
+              indexToMove = i;
+              break;
+            }
+          }
+
+          if (indexToMove != -1 && indexToMove > 0) {
+            try {
+              await _dio.post<dynamic>(
+                'Items/$itemId/Images/Backdrop/$indexToMove/Index',
+                queryParameters: <String, dynamic>{
+                  'newIndex': 0,
+                },
+              );
+              // Cleared successfully on server, remove any local override.
+              setLocalOverride?.call(itemId, 'Backdrop', '');
+            } catch (e) {
+              if (e is DioException && e.response?.statusCode == 500) {
+                // Fallback: save the tag locally.
+                final String localTag = newBackdrops[indexToMove];
+                setLocalOverride?.call(itemId, 'Backdrop', localTag);
+              } else {
+                rethrow;
               }
             }
-          } catch (e) {
-            print('Failed to fetch item details for backdrop update: $e');
-            rethrow;
           }
         }
       });
@@ -846,8 +840,11 @@ class JellyfinClient {
         List<dynamic> users = <dynamic>[];
         if (resp.data is List) {
           users = resp.data as List<dynamic>;
-        } else if (resp.data is Map<String, dynamic> && resp.data['Items'] != null) {
-          users = resp.data['Items'] as List<dynamic>;
+        } else if (resp.data is Map<String, dynamic>) {
+          final Map<String, dynamic> map = resp.data as Map<String, dynamic>;
+          if (map['Items'] != null) {
+            users = map['Items'] as List<dynamic>;
+          }
         }
         return users.map((dynamic u) => JellyfinUser.fromJson(u as Map<String, dynamic>)).toList();
       });
@@ -858,8 +855,11 @@ class JellyfinClient {
           List<dynamic> users = <dynamic>[];
           if (resp.data is List) {
             users = resp.data as List<dynamic>;
-          } else if (resp.data is Map<String, dynamic> && resp.data['Items'] != null) {
-            users = resp.data['Items'] as List<dynamic>;
+          } else if (resp.data is Map<String, dynamic>) {
+            final Map<String, dynamic> map = resp.data as Map<String, dynamic>;
+            if (map['Items'] != null) {
+              users = map['Items'] as List<dynamic>;
+            }
           }
           return users.map((dynamic u) => JellyfinUser.fromJson(u as Map<String, dynamic>)).toList();
         } catch (e) {
@@ -875,36 +875,6 @@ class JellyfinClient {
   Future<JellyfinUser> getUser(String id) => _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>('Users/$id');
         return JellyfinUser.fromJson(resp.data as Map<String, dynamic>);
-      });
-
-  Future<void> createUser(String name) => _guarded(() async {
-        await _dio.post<dynamic>('Users/New', data: <String, dynamic>{'Name': name});
-      });
-
-  Future<void> deleteUser(String id) => _guarded(() async {
-        await _dio.delete<dynamic>('Users/$id');
-      });
-
-  Future<void> updateUserPassword(String id, String currentPw, String newPw) => _guarded(() async {
-        await _dio.post<dynamic>('Users/$id/Password', data: <String, dynamic>{
-          'CurrentPw': currentPw,
-          'NewPw': newPw,
-        });
-      });
-
-  Future<void> updateUserPolicy(String id, JellyfinUserPolicy policy) => _guarded(() async {
-        final Response<dynamic> userResp = await _dio.get<dynamic>('Users/$id');
-        final Map<String, dynamic> rawUser = userResp.data as Map<String, dynamic>;
-        final Map<String, dynamic> rawPolicy = rawUser['Policy'] as Map<String, dynamic>;
-
-        rawPolicy['IsAdministrator'] = policy.isAdministrator;
-        rawPolicy['EnableAllFolders'] = policy.enableAllFolders;
-        rawPolicy['EnabledFolders'] = policy.enabledFolders;
-
-        await _dio.post<dynamic>(
-          'Users/$id/Policy',
-          data: rawPolicy,
-        );
       });
 
   void close() => _dio.close(force: true);
