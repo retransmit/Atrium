@@ -965,7 +965,7 @@ class _BulkEditDialogState extends ConsumerState<_BulkEditDialog> {
               ),
               loading: () => const SizedBox(
                 height: 50,
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child: ExpressiveProgressIndicator()),
               ),
               error: (_, __) => const Text('Error loading profiles'),
             ),
@@ -988,7 +988,7 @@ class _BulkEditDialogState extends ConsumerState<_BulkEditDialog> {
               ),
               loading: () => const SizedBox(
                 height: 50,
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child: ExpressiveProgressIndicator()),
               ),
               error: (_, __) => const Text('Error loading folders'),
             ),
@@ -1017,7 +1017,7 @@ class _BulkEditDialogState extends ConsumerState<_BulkEditDialog> {
               barrierDismissible: false,
               builder: (ctx) => const PopScope<Object?>(
                 canPop: false,
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child: ExpressiveProgressIndicator()),
               ),
             ),);
 
@@ -1106,7 +1106,7 @@ class _BulkDeleteDialogState extends ConsumerState<_BulkDeleteDialog> {
               barrierDismissible: false,
               builder: (ctx) => const PopScope<Object?>(
                 canPop: false,
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child: ExpressiveProgressIndicator()),
               ),
             ),);
 

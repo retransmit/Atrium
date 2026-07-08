@@ -269,7 +269,7 @@ class _MediaManagementSettingsScreenState
               child: SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: ExpressiveProgressIndicator(strokeWidth: 2),
               ),
             )
           else
@@ -280,11 +280,11 @@ class _MediaManagementSettingsScreenState
         ],
       ),
       body: namingAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: ExpressiveProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (naming) {
           return mediaMgmtAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => const Center(child: ExpressiveProgressIndicator()),
             error: (err, stack) => Center(child: Text('Error: $err')),
             data: (mediaMgmt) {
               _initializeValues(naming, mediaMgmt);

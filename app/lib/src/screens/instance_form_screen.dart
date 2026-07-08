@@ -341,11 +341,11 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
             controller: _password,
             decoration: const InputDecoration(
               border: OutlineInputBorder(),
-              labelText: 'Password',
+              labelText: 'Password (Optional)',
             ),
             obscureText: true,
-            validator: (String? v) =>
-                (v == null || v.isEmpty) ? 'Required' : null,
+            // Allow empty passwords since Emby/Jellyfin users can have no password
+            validator: (String? v) => null,
           ),
         ];
       case AuthStyle.none:

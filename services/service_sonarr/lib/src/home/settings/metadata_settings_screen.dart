@@ -98,7 +98,7 @@ class MetadataSettingsScreen extends ConsumerWidget {
         title: const Text('Metadata Consumers'),
       ),
       body: metadataListAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: ExpressiveProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (configs) {
           if (configs.isEmpty) {

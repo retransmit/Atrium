@@ -327,7 +327,7 @@ class _QueueView extends ConsumerWidget {
           ),
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: ExpressiveProgressIndicator()),
       error: (Object error, StackTrace? stackTrace) {
         return Center(
           child: Padding(
@@ -964,7 +964,7 @@ class _HistoryView extends ConsumerWidget {
           );
         }
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: ExpressiveProgressIndicator()),
       error: (Object error, StackTrace? stackTrace) {
         return Center(
           child: Padding(
@@ -1375,7 +1375,7 @@ class _BlocklistView extends ConsumerWidget {
           );
         }
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: ExpressiveProgressIndicator()),
       error: (Object error, StackTrace? stackTrace) {
         return Center(
           child: Padding(
@@ -2205,7 +2205,7 @@ class _QueueBulkGrabDialog extends ConsumerWidget {
               barrierDismissible: false,
               builder: (ctx) => const PopScope<Object?>(
                 canPop: false,
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child: ExpressiveProgressIndicator()),
               ),
             ).ignore();
 
@@ -2295,7 +2295,7 @@ class _QueueBulkDeleteDialogState extends ConsumerState<_QueueBulkDeleteDialog> 
               barrierDismissible: false,
               builder: (ctx) => const PopScope<Object?>(
                 canPop: false,
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child: ExpressiveProgressIndicator()),
               ),
             ).ignore();
 
@@ -2366,7 +2366,7 @@ class _BlocklistBulkDeleteDialog extends ConsumerWidget {
               barrierDismissible: false,
               builder: (ctx) => const PopScope<Object?>(
                 canPop: false,
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child: ExpressiveProgressIndicator()),
               ),
             ).ignore();
 

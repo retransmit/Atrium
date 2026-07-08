@@ -1320,7 +1320,7 @@ class _Loading extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const Padding(
         padding: EdgeInsets.all(Insets.md),
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: ExpressiveProgressIndicator()),
       );
 }
 
@@ -2358,7 +2358,7 @@ class _HostSettingsFormState extends ConsumerState<_HostSettingsForm> {
                 ? const SizedBox(
                     width: 16,
                     height: 16,
-                    child: CircularProgressIndicator(
+                    child: ExpressiveProgressIndicator(
                       strokeWidth: 2,
                       color: Colors.white,
                     ),
@@ -2523,7 +2523,7 @@ class _NamingSettingsFormState extends ConsumerState<_NamingSettingsForm> {
                 ? const SizedBox(
                     width: 16,
                     height: 16,
-                    child: CircularProgressIndicator(
+                    child: ExpressiveProgressIndicator(
                       strokeWidth: 2,
                       color: Colors.white,
                     ),
@@ -2707,7 +2707,7 @@ class _MediaManagementSettingsFormState
                 ? const SizedBox(
                     width: 16,
                     height: 16,
-                    child: CircularProgressIndicator(
+                    child: ExpressiveProgressIndicator(
                       strokeWidth: 2,
                       color: Colors.white,
                     ),
@@ -2859,7 +2859,7 @@ class _UiSettingsFormState extends ConsumerState<_UiSettingsForm> {
                 ? const SizedBox(
                     width: 16,
                     height: 16,
-                    child: CircularProgressIndicator(
+                    child: ExpressiveProgressIndicator(
                       strokeWidth: 2,
                       color: Colors.white,
                     ),
@@ -3392,7 +3392,7 @@ class _QualityDefinitionRowState extends ConsumerState<_QualityDefinitionRow> {
                         const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: ExpressiveProgressIndicator(strokeWidth: 2),
                         )
                       else if (_hasChanges)
                         IconButton(

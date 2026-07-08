@@ -65,7 +65,7 @@ class GlancesHome extends ConsumerWidget {
           ],
         ),
       ),
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: ExpressiveProgressIndicator()),
       error: (Object e, StackTrace st) => Center(
         child: Padding(
           padding: Insets.page,
@@ -557,7 +557,7 @@ class _GaugeCard extends StatelessWidget {
                     duration: const Duration(milliseconds: 600),
                     curve: Curves.easeOutCubic,
                     builder: (BuildContext context, double value, Widget? child) {
-                      return CircularProgressIndicator(
+                      return ExpressiveProgressIndicator(
                         value: value,
                         strokeWidth: 8,
                         strokeCap: StrokeCap.round,

@@ -4,6 +4,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:palette_generator/palette_generator.dart';
 
 import 'jellyfin_client.dart';
 import 'jellyfin_item_detail.dart';
@@ -11,8 +12,11 @@ import 'jellyfin_music_screens.dart';
 import 'jellyfin_providers.dart';
 import 'jellyfin_season_screen.dart';
 import 'jellyfin_session_detail_screen.dart';
+import 'dart:math' as math;
+
 import 'models/jellyfin_item.dart';
 import 'models/jellyfin_session.dart';
+import 'models/jellyfin_auth.dart';
 import 'models/jellyfin_view.dart';
 
 /// Container types - tapping drills into children. Everything else plays.
@@ -44,23 +48,29 @@ class JellyfinHome extends ConsumerStatefulWidget {
 class _JellyfinHomeState extends ConsumerState<JellyfinHome> {
   @override
   Widget build(BuildContext context) {
-    final AsyncValue<List<JellyfinView>> views =
-        ref.watch(jellyfinViewsProvider(widget.instance));
+    final AsyncValue<List<JellyfinView>> viewsAsync = ref.watch(jellyfinViewsProvider(widget.instance));
+    final int index = ref.watch(jellyfinActiveTabBarIndexProvider(widget.instance));
 
     return AsyncValueView<List<JellyfinView>>(
-      value: views,
+      value: viewsAsync,
       onRetry: () => ref.invalidate(jellyfinViewsProvider(widget.instance)),
       data: (List<JellyfinView> libraries) {
         if (libraries.isEmpty) {
           return const EmptyView(
             icon: Icons.theaters_outlined,
-            title: 'No libraries',
+            title: 'No Libraries',
             message: 'This Jellyfin server has no libraries to show.',
           );
         }
+        
+        final String libsKey = libraries.map((JellyfinView l) => l.id).join(',');
+        final int targetLength = libraries.length + 3;
+        final int initialIndex = (index < targetLength) ? index : 0;
+        
         return DefaultTabController(
-          key: ValueKey<int>(libraries.length),
-          length: libraries.length + 3,
+          key: ValueKey<String>(libsKey),
+          length: targetLength,
+          initialIndex: initialIndex,
           child: _TabObserver(
             instance: widget.instance,
             child: Column(
@@ -70,7 +80,8 @@ class _JellyfinHomeState extends ConsumerState<JellyfinHome> {
                   tabAlignment: TabAlignment.start,
                   tabs: <Widget>[
                     const Tab(text: 'Home'),
-                    for (final JellyfinView lib in libraries) Tab(text: lib.name),
+                    for (final JellyfinView lib in libraries)
+                      Tab(text: lib.name),
                     const Tab(text: 'Watched'),
                     const Tab(text: 'Unwatched'),
                   ],
@@ -141,8 +152,9 @@ class _TabObserverState extends ConsumerState<_TabObserver> {
 
   void _onTabChanged() {
     if (_controller != null && !_controller!.indexIsChanging) {
-      ref.read(jellyfinActiveTabBarIndexProvider(widget.instance).notifier).state =
-          _controller!.index;
+      ref
+          .read(jellyfinActiveTabBarIndexProvider(widget.instance).notifier)
+          .state = _controller!.index;
     }
   }
 
@@ -151,8 +163,11 @@ class _TabObserverState extends ConsumerState<_TabObserver> {
 }
 
 class JellyfinLibraryGrid extends ConsumerWidget {
-  const JellyfinLibraryGrid(
-      {required this.instance, required this.view, super.key,});
+  const JellyfinLibraryGrid({
+    required this.instance,
+    required this.view,
+    super.key,
+  });
 
   final Instance instance;
   final JellyfinView view;
@@ -161,7 +176,8 @@ class JellyfinLibraryGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<JellyfinItem>> items =
         ref.watch(jellyfinLibraryItemsProvider((instance, view)));
-    final JellyfinClient? client = ref.watch(jellyfinClientProvider(instance)).value;
+    final JellyfinClient? client =
+        ref.watch(jellyfinClientProvider(instance)).value;
 
     return RefreshIndicator(
       onRefresh: () async =>
@@ -208,6 +224,7 @@ class JellyfinLibraryGrid extends ConsumerWidget {
                                           ? item.artists.first
                                           : 'Unknown Artist',
                                       albumOverview: item.overview,
+                                      albumGenres: item.genres,
                                       albumImageUrl: client.imageUrl(item),
                                     ),
                                   );
@@ -215,16 +232,17 @@ class JellyfinLibraryGrid extends ConsumerWidget {
                                   pushScreen<void>(
                                     context,
                                     JellyfinItemDetailScreen(
-                                        instance: instance, itemId: item.id,),
+                                      instance: instance,
+                                      itemId: item.id,
+                                    ),
                                   );
                                 } else if (item.type == 'Season') {
                                   pushScreen<void>(
                                     context,
                                     JellyfinSeasonScreen(
                                       instance: instance,
-                                      seriesId: item.seriesId ??
-                                          item.parentId ??
-                                          '',
+                                      seriesId:
+                                          item.seriesId ?? item.parentId ?? '',
                                       seasonId: item.id,
                                       seasonName: item.name,
                                       seasonImageUrl: client.imageUrl(item),
@@ -235,13 +253,17 @@ class JellyfinLibraryGrid extends ConsumerWidget {
                                   pushScreen<void>(
                                     context,
                                     JellyfinFolderScreen(
-                                        instance: instance, item: item,),
+                                      instance: instance,
+                                      item: item,
+                                    ),
                                   );
                                 } else {
                                   pushScreen<void>(
                                     context,
                                     JellyfinItemDetailScreen(
-                                        instance: instance, itemId: item.id,),
+                                      instance: instance,
+                                      itemId: item.id,
+                                    ),
                                   );
                                 }
                               },
@@ -264,6 +286,7 @@ class JellyfinLibraryGrid extends ConsumerWidget {
                                           ? item.artists.first
                                           : 'Unknown Artist',
                                       albumOverview: item.overview,
+                                      albumGenres: item.genres,
                                       albumImageUrl: client.imageUrl(item),
                                     ),
                                   );
@@ -271,16 +294,17 @@ class JellyfinLibraryGrid extends ConsumerWidget {
                                   pushScreen<void>(
                                     context,
                                     JellyfinItemDetailScreen(
-                                        instance: instance, itemId: item.id,),
+                                      instance: instance,
+                                      itemId: item.id,
+                                    ),
                                   );
                                 } else if (item.type == 'Season') {
                                   pushScreen<void>(
                                     context,
                                     JellyfinSeasonScreen(
                                       instance: instance,
-                                      seriesId: item.seriesId ??
-                                          item.parentId ??
-                                          '',
+                                      seriesId:
+                                          item.seriesId ?? item.parentId ?? '',
                                       seasonId: item.id,
                                       seasonName: item.name,
                                       seasonImageUrl: client.imageUrl(item),
@@ -291,13 +315,17 @@ class JellyfinLibraryGrid extends ConsumerWidget {
                                   pushScreen<void>(
                                     context,
                                     JellyfinFolderScreen(
-                                        instance: instance, item: item,),
+                                      instance: instance,
+                                      item: item,
+                                    ),
                                   );
                                 } else {
                                   pushScreen<void>(
                                     context,
                                     JellyfinItemDetailScreen(
-                                        instance: instance, itemId: item.id,),
+                                      instance: instance,
+                                      itemId: item.id,
+                                    ),
                                   );
                                 }
                               },
@@ -312,8 +340,11 @@ class JellyfinLibraryGrid extends ConsumerWidget {
 }
 
 class JellyfinItemsGrid extends ConsumerWidget {
-  const JellyfinItemsGrid(
-      {required this.instance, required this.libraryId, super.key,});
+  const JellyfinItemsGrid({
+    required this.instance,
+    required this.libraryId,
+    super.key,
+  });
 
   final Instance instance;
   final String libraryId;
@@ -322,14 +353,16 @@ class JellyfinItemsGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<JellyfinItem>> items =
         ref.watch(jellyfinItemsProvider((instance, libraryId)));
-    final JellyfinClient? client = ref.watch(jellyfinClientProvider(instance)).value;
+    final JellyfinClient? client =
+        ref.watch(jellyfinClientProvider(instance)).value;
 
     return RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(jellyfinItemsProvider((instance, libraryId))),
       child: AsyncValueView<List<JellyfinItem>>(
         value: items,
-        onRetry: () => ref.invalidate(jellyfinItemsProvider((instance, libraryId))),
+        onRetry: () =>
+            ref.invalidate(jellyfinItemsProvider((instance, libraryId))),
         data: (List<JellyfinItem> list) {
           if (list.isEmpty) {
             return const EmptyView(
@@ -377,7 +410,10 @@ class JellyfinItemsGrid extends ConsumerWidget {
   }
 
   void _openItem(
-      BuildContext context, JellyfinClient client, JellyfinItem item,) {
+    BuildContext context,
+    JellyfinClient client,
+    JellyfinItem item,
+  ) {
     if (item.type == 'MusicAlbum' || item.type == 'Playlist') {
       pushScreen<void>(
         context,
@@ -388,6 +424,7 @@ class JellyfinItemsGrid extends ConsumerWidget {
           albumArtist:
               item.artists.isNotEmpty ? item.artists.first : 'Playlist',
           albumOverview: item.overview,
+          albumGenres: item.genres,
           albumImageUrl: client.imageUrl(item),
         ),
       );
@@ -430,15 +467,19 @@ class JellyfinItemsGrid extends ConsumerWidget {
 }
 
 class JellyfinFolderScreen extends ConsumerWidget {
-  const JellyfinFolderScreen(
-      {required this.instance, required this.item, super.key,});
+  const JellyfinFolderScreen({
+    required this.instance,
+    required this.item,
+    super.key,
+  });
 
   final Instance instance;
   final JellyfinItem item;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final JellyfinClient? client = ref.watch(jellyfinClientProvider(instance)).value;
+    final JellyfinClient? client =
+        ref.watch(jellyfinClientProvider(instance)).value;
     final AsyncValue<JellyfinItem> itemAsync =
         ref.watch(jellyfinItemDetailsProvider((instance, item.id)));
 
@@ -462,7 +503,8 @@ class JellyfinFolderScreen extends ConsumerWidget {
                 final bool isFav = currentItem.userData?.isFavorite == true;
                 await client.markFavorite(currentItem.id, !isFav);
                 ref.invalidate(
-                    jellyfinItemDetailsProvider((instance, currentItem.id)),);
+                  jellyfinItemDetailsProvider((instance, currentItem.id)),
+                );
                 ref.invalidate(jellyfinFavoritesProvider(instance));
               },
             ),
@@ -611,7 +653,9 @@ class JellyfinPosterCard extends ConsumerWidget {
                         alignment: Alignment.bottomCenter,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 8,),
+                            horizontal: 8,
+                            vertical: 8,
+                          ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(6),
                             child: LinearProgressIndicator(
@@ -1044,7 +1088,8 @@ class _HorizontalSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<JellyfinItem>> items = ref.watch(provider);
-    final JellyfinClient? client = ref.watch(jellyfinClientProvider(instance)).value;
+    final JellyfinClient? client =
+        ref.watch(jellyfinClientProvider(instance)).value;
 
     return AsyncValueView<List<JellyfinItem>>(
       value: items,
@@ -1121,14 +1166,17 @@ class _HorizontalSection extends ConsumerWidget {
                                   pushScreen<void>(
                                     context,
                                     JellyfinItemDetailScreen(
-                                        instance: instance, itemId: item.id,),
+                                      instance: instance,
+                                      itemId: item.id,
+                                    ),
                                   );
                                 } else if (item.type == 'Season') {
                                   pushScreen<void>(
                                     context,
                                     JellyfinSeasonScreen(
                                       instance: instance,
-                                      seriesId: item.seriesId ?? item.parentId ?? '',
+                                      seriesId:
+                                          item.seriesId ?? item.parentId ?? '',
                                       seasonId: item.id,
                                       seasonName: item.name,
                                       seasonImageUrl: client.imageUrl(item),
@@ -1229,7 +1277,7 @@ class _ActiveSessionsSection extends ConsumerWidget {
   }
 }
 
-class _SessionCard extends StatelessWidget {
+class _SessionCard extends StatefulWidget {
   const _SessionCard({
     required this.session,
     required this.instance,
@@ -1239,25 +1287,80 @@ class _SessionCard extends StatelessWidget {
   final Instance instance;
 
   @override
+  State<_SessionCard> createState() => _SessionCardState();
+}
+
+class _SessionCardState extends State<_SessionCard> {
+  PaletteGenerator? _palette;
+  String? _lastPosterUrl;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _updateColorScheme();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SessionCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.session.posterUrl != widget.session.posterUrl) {
+      _updateColorScheme();
+    }
+  }
+
+  void _updateColorScheme() {
+    final String? posterUrl = widget.session.posterUrl;
+    if (posterUrl == null || posterUrl == _lastPosterUrl) return;
+    _lastPosterUrl = posterUrl;
+
+    PaletteGenerator.fromImageProvider(
+      CachedNetworkImageProvider(posterUrl),
+    ).then((PaletteGenerator palette) {
+      if (mounted) {
+        setState(() {
+          _palette = palette;
+        });
+      }
+    }).catchError((_) {});
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
+    final ActiveSession session = widget.session;
+    ThemeData theme = Theme.of(context);
+
+    if (_palette != null) {
+      final Color dominant =
+          _palette!.dominantColor?.color ?? theme.colorScheme.surface;
+      final Color vibrant = _palette!.vibrantColor?.color ??
+          _palette!.lightVibrantColor?.color ??
+          dominant;
+      theme = theme.copyWith(
+        colorScheme: theme.colorScheme.copyWith(
+          primary: vibrant,
+        ),
+      );
+    }
+
     final double pct = session.progressPercent / 100.0;
     final bool playing = session.status == 'Playing';
 
-    return Card(
-      margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
-      elevation: 0,
-      color: theme.colorScheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: InkWell(
+    return Theme(
+      data: theme,
+      child: Card(
+        margin: EdgeInsets.zero,
+        clipBehavior: Clip.antiAlias,
+        elevation: 0,
+        color: theme.colorScheme.surfaceContainerLow,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: InkWell(
         onTap: () => pushScreen<void>(
           context,
           JellyfinSessionDetailScreen(
             initialSession: session,
-            instance: instance,
+            instance: widget.instance,
           ),
         ),
         child: Stack(
@@ -1277,12 +1380,15 @@ class _SessionCard extends StatelessWidget {
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
                           colors: <Color>[
-                            theme.colorScheme.surfaceContainerLow,
                             theme.colorScheme.surfaceContainerLow
-                                .withValues(alpha: 0.65),
+                                .withValues(alpha: 0.3),
                             theme.colorScheme.surfaceContainerLow
-                                .withValues(alpha: 0.5),
+                                .withValues(alpha: 0.85),
+                            theme.colorScheme.surfaceContainerLow
+                                .withValues(alpha: 0.95),
                           ],
                         ),
                       ),
@@ -1325,8 +1431,11 @@ class _SessionCard extends StatelessWidget {
                               : null,
                         ),
                         child: session.posterUrl == null
-                            ? Icon(Icons.movie_outlined,
-                                color: theme.colorScheme.outline, size: 32,)
+                            ? Icon(
+                                Icons.movie_outlined,
+                                color: theme.colorScheme.outline,
+                                size: 32,
+                              )
                             : null,
                       ),
                     ),
@@ -1348,6 +1457,13 @@ class _SessionCard extends StatelessWidget {
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                               fontSize: 18,
+                              shadows: <Shadow>[
+                                Shadow(
+                                  color: Colors.black.withValues(alpha: 0.8),
+                                  offset: const Offset(0, 2),
+                                  blurRadius: 4,
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -1359,13 +1475,22 @@ class _SessionCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: theme.colorScheme.onSurfaceVariant,
+                                shadows: <Shadow>[
+                                  Shadow(
+                                    color: Colors.black.withValues(alpha: 0.8),
+                                    offset: const Offset(0, 1),
+                                    blurRadius: 3,
+                                  ),
+                                ],
                               ),
                             ),
 
                           const SizedBox(height: 4),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4,),
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: theme.colorScheme.surfaceContainerHighest
                                   .withValues(alpha: 0.5),
@@ -1446,9 +1571,11 @@ class _SessionCard extends StatelessWidget {
           ],
         ),
       ),
+      ),
     );
   }
 }
+
 Widget _buildJellyfinGridOrList(
   BuildContext context,
   List<JellyfinItem> list,
@@ -1459,8 +1586,9 @@ Widget _buildJellyfinGridOrList(
       list.where((e) => e.type == 'MusicAlbum').toList();
   final List<JellyfinItem> playlists =
       list.where((e) => e.type == 'Playlist').toList();
-  final List<JellyfinItem> others =
-      list.where((e) => e.type != 'MusicAlbum' && e.type != 'Playlist').toList();
+  final List<JellyfinItem> others = list
+      .where((e) => e.type != 'MusicAlbum' && e.type != 'Playlist')
+      .toList();
 
   final bool showSections =
       albums.isNotEmpty && playlists.isNotEmpty && others.isEmpty;
@@ -1471,11 +1599,17 @@ Widget _buildJellyfinGridOrList(
       slivers: <Widget>[
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
-              Insets.lg, Insets.lg, Insets.lg, Insets.sm,),
+            Insets.lg,
+            Insets.lg,
+            Insets.lg,
+            Insets.sm,
+          ),
           sliver: SliverToBoxAdapter(
-            child: Text('Albums',
-                style: theme.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold),),
+            child: Text(
+              'Albums',
+              style: theme.textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
           ),
         ),
         SliverPadding(
@@ -1499,11 +1633,17 @@ Widget _buildJellyfinGridOrList(
         ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(
-              Insets.lg, Insets.xl, Insets.lg, Insets.sm,),
+            Insets.lg,
+            Insets.xl,
+            Insets.lg,
+            Insets.sm,
+          ),
           sliver: SliverToBoxAdapter(
-            child: Text('Playlists',
-                style: theme.textTheme.titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold),),
+            child: Text(
+              'Playlists',
+              style: theme.textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
           ),
         ),
         SliverPadding(

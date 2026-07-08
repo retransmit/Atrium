@@ -139,7 +139,7 @@ class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const CircularProgressIndicator(),
+            const ExpressiveProgressIndicator(),
             const SizedBox(height: Insets.lg),
             Text(
               'Searching your indexers...\nSlow trackers can take a while.',

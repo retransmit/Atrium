@@ -489,7 +489,7 @@ class _ServerTab extends ConsumerWidget {
               ),
               loading: () => const Padding(
                 padding: EdgeInsets.all(Insets.md),
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(child: ExpressiveProgressIndicator()),
               ),
               error: (Object e, _) => Text(
                 'Could not load stats',

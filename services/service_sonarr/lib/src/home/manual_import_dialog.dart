@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/sonarr_episode.dart';
 import '../models/sonarr_series.dart';
 import '../sonarr_providers.dart';
+import 'package:core_ui/core_ui.dart';
 
 /// Starts the Sonarr Manual Import user flow.
 void showManualImportFlow(
@@ -94,7 +95,7 @@ class __ManualImportSetupDialogState
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  CircularProgressIndicator(),
+                  ExpressiveProgressIndicator(),
                   SizedBox(height: 16),
                   Text('Scanning folder contents...'),
                 ],
@@ -429,7 +430,7 @@ class __DirectoryBrowserDialogState
             // Directories List
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(child: ExpressiveProgressIndicator())
                   : _error != null
                       ? Center(
                           child: Column(
@@ -630,7 +631,7 @@ class __ManualImportMappingScreenState
       barrierDismissible: false,
       builder: (BuildContext context) => const PopScope<Object?>(
         canPop: false,
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: ExpressiveProgressIndicator()),
       ),
     ),);
 
@@ -834,7 +835,7 @@ class __ManualImportMappingScreenState
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
-                        CircularProgressIndicator(),
+                        ExpressiveProgressIndicator(),
                         SizedBox(height: 16),
                         Text('Sending manual import instruction...'),
                       ],

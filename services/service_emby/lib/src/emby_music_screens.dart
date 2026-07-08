@@ -17,6 +17,7 @@ class EmbyAlbumScreen extends ConsumerWidget {
     required this.albumName,
     required this.albumArtist,
     this.albumOverview,
+    this.albumGenres,
     this.albumImageUrl,
     super.key,
   });
@@ -26,6 +27,7 @@ class EmbyAlbumScreen extends ConsumerWidget {
   final String albumName;
   final String albumArtist;
   final String? albumOverview;
+  final List<String>? albumGenres;
   final String? albumImageUrl;
 
   @override
@@ -100,6 +102,37 @@ class EmbyAlbumScreen extends ConsumerWidget {
                   ),
           ),
 
+          if (albumGenres != null && albumGenres!.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(
+                  left: Insets.lg,
+                  right: Insets.lg,
+                  top: Insets.lg,
+                ),
+                child: Wrap(
+                  spacing: 6.0,
+                  runSpacing: 6.0,
+                  children: albumGenres!.map((String g) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        g,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSecondaryContainer,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+
           if (albumOverview != null && albumOverview!.isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
@@ -115,8 +148,11 @@ class EmbyAlbumScreen extends ConsumerWidget {
           SliverToBoxAdapter(
             child: AsyncValueView<AlbumScreenData>(
               value: dataAsync,
-              onRetry: () => ref.invalidate(embyAlbumDataFutureProvider(
-                  (instance, albumId, albumArtist),),),
+              onRetry: () => ref.invalidate(
+                embyAlbumDataFutureProvider(
+                  (instance, albumId, albumArtist),
+                ),
+              ),
               data: (AlbumScreenData data) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,7 +160,9 @@ class EmbyAlbumScreen extends ConsumerWidget {
                     // Bottom Section: Tracklist
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: Insets.lg, vertical: Insets.sm,),
+                        horizontal: Insets.lg,
+                        vertical: Insets.sm,
+                      ),
                       child: Text(
                         'Tracks - ${data.tracks.length}',
                         style: Theme.of(context)
@@ -151,11 +189,14 @@ class EmbyAlbumScreen extends ConsumerWidget {
                               '$minutes:${seconds.toString().padLeft(2, '0')}';
                         }
 
-                        final String? imageUrl = client?.imageUrl(song) ?? albumImageUrl;
+                        final String? imageUrl =
+                            client?.imageUrl(song) ?? albumImageUrl;
 
                         return ListTile(
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: Insets.lg, vertical: Insets.xs,),
+                            horizontal: Insets.lg,
+                            vertical: Insets.xs,
+                          ),
                           onTap: () {
                             if (client != null) {
                               launchEmbyDeepLink(context, client, song.id);
@@ -217,8 +258,11 @@ class EmbyAlbumScreen extends ConsumerWidget {
                                 ),
                             ],
                           ),
-                          title: Text(song.name,
-                              maxLines: 1, overflow: TextOverflow.ellipsis,),
+                          title: Text(
+                            song.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           subtitle: Text(
                             song.artists.isNotEmpty
                                 ? '${song.artists.join(', ')} • $duration'
