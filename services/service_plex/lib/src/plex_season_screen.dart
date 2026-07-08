@@ -254,7 +254,18 @@ class _EpisodeTile extends ConsumerWidget {
         onPressed: api == null
             ? null
             : () async {
-                await api!.setWatched(episode.ratingKey, watched: !watched);
+                final ScaffoldMessengerState messenger =
+                    ScaffoldMessenger.of(context);
+                try {
+                  await api!.setWatched(episode.ratingKey, watched: !watched);
+                } catch (_) {
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('Could not update watched state'),
+                    ),
+                  );
+                  return;
+                }
                 if (!context.mounted) {
                   return;
                 }

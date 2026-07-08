@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:collection/collection.dart';
 import 'package:core_models/core_models.dart';
+import 'package:core_networking/core_networking.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -101,8 +102,8 @@ class _PlexSessionDetailScreenState
   }
 
   /// Confirms, then asks the server to end the stream. Termination is a Plex
-  /// Pass feature server-side, so a refusal degrades to an explanatory
-  /// snackbar rather than an error state.
+  /// Pass feature server-side, so an auth refusal (401/403) degrades to an
+  /// explanatory snackbar; any other failure gets a generic error message.
   Future<void> _confirmTerminate(PlexSession session) async {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     final NavigatorState navigator = Navigator.of(context);
@@ -140,10 +141,16 @@ class _PlexSessionDetailScreenState
       }
       ref.invalidate(plexSessionsProvider(widget.instance));
       navigator.pop();
-    } catch (_) {
+    } catch (e) {
+      // Only a 401/403 means the server refused the Plex Pass feature;
+      // anything else (timeout, DNS, bad session id) is a plain failure.
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Terminating a stream requires Plex Pass'),
+        SnackBar(
+          content: Text(
+            e is NetworkAuthException
+                ? 'Terminating a stream requires Plex Pass'
+                : 'Could not stop the stream',
+          ),
         ),
       );
     }
@@ -164,7 +171,11 @@ class _PlexSessionDetailScreenState
     final AsyncValue<List<PlexSession>> sessionsAsync =
         ref.watch(plexSessionsProvider(widget.instance));
     final PlexSession session = sessionsAsync.value?.firstWhereOrNull(
-          (PlexSession s) => s.sessionId == widget.initialSession.sessionId,
+          // An empty id must never match: sessions without a session block
+          // all share '' and would re-bind this screen to the wrong stream.
+          (PlexSession s) =>
+              s.sessionId.isNotEmpty &&
+              s.sessionId == widget.initialSession.sessionId,
         ) ??
         widget.initialSession;
 
