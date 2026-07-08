@@ -236,7 +236,7 @@ class _DownloadClientsTab extends ConsumerWidget {
         child: const Icon(Icons.add),
       ),
       body: clientsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: ExpressiveProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (clients) {
           if (clients.isEmpty) {
@@ -458,7 +458,7 @@ class _RemotePathMappingsTab extends ConsumerWidget {
         child: const Icon(Icons.add),
       ),
       body: mappingsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: ExpressiveProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (mappings) {
           if (mappings.isEmpty) {
@@ -580,7 +580,7 @@ class _DownloadClientOptionsTabState
         ref.watch(sonarrDownloadClientConfigProvider(widget.instance));
 
     return configAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: ExpressiveProgressIndicator()),
       error: (err, stack) => Center(child: Text('Error: $err')),
       data: (config) {
         _initializeValues(config);
@@ -635,7 +635,7 @@ class _DownloadClientOptionsTabState
                         child: ElevatedButton(
                           onPressed: _saving ? null : _save,
                           child: _saving
-                              ? const CircularProgressIndicator()
+                              ? const ExpressiveProgressIndicator()
                               : const Text('Save Options'),
                         ),
                       ),

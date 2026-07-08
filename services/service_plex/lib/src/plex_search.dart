@@ -56,7 +56,7 @@ class _SearchResults extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final PlexApi? api = ref.watch(plexApiProvider(instance)).value;
     if (api == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: ExpressiveProgressIndicator());
     }
     if (query.trim().isEmpty) {
       return const Center(child: Text('Search for movies or shows.'));
@@ -69,7 +69,7 @@ class _SearchResults extends ConsumerWidget {
         AsyncSnapshot<List<PlexMetadata>> snapshot,
       ) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: ExpressiveProgressIndicator());
         }
         if (snapshot.hasError) {
           return ErrorView(

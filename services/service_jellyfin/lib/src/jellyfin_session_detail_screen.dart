@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:collection/collection.dart';
@@ -5,6 +6,7 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:palette_generator/palette_generator.dart';
 
 import 'jellyfin_client.dart';
 import 'jellyfin_providers.dart';
@@ -29,6 +31,25 @@ class _JellyfinSessionDetailScreenState
     extends ConsumerState<JellyfinSessionDetailScreen> {
   bool _isDragging = false;
   double _dragPct = 0.0;
+  bool _isVolumeDragging = false;
+  double _volumeDragPct = 0.0;
+  PaletteGenerator? _palette;
+  String? _lastPosterUrl;
+
+  void _updateColorScheme(String? posterUrl, Brightness brightness) {
+    if (posterUrl == null || posterUrl == _lastPosterUrl) return;
+    _lastPosterUrl = posterUrl;
+
+    PaletteGenerator.fromImageProvider(
+      CachedNetworkImageProvider(posterUrl),
+    ).then((PaletteGenerator palette) {
+      if (mounted) {
+        setState(() {
+          _palette = palette;
+        });
+      }
+    }).catchError((_) {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,12 +59,55 @@ class _JellyfinSessionDetailScreenState
             (ActiveSession s) => s.id == widget.initialSession.id,) ??
         widget.initialSession;
 
-    final ThemeData theme = Theme.of(context);
+    final JellyfinClient? client =
+        ref.read(jellyfinClientProvider(widget.instance)).value;
+
+    final String? backdropUrl = session.backdropUrl;
+    final String? posterUrl = session.posterUrl;
+
+    ThemeData theme = Theme.of(context);
+    _updateColorScheme(posterUrl, theme.brightness);
+    if (_palette != null) {
+      final Color dominant =
+          _palette!.dominantColor?.color ?? theme.colorScheme.surface;
+      final Color vibrant = _palette!.vibrantColor?.color ??
+          _palette!.lightVibrantColor?.color ??
+          dominant;
+      final Color muted =
+          _palette!.mutedColor?.color ?? theme.colorScheme.surfaceContainerHighest;
+      final Color darkMuted = _palette!.darkMutedColor?.color ?? dominant;
+      final Color titleText = _palette!.dominantColor?.titleTextColor ??
+          theme.colorScheme.onSurface;
+      final Color bodyText = _palette!.dominantColor?.bodyTextColor ??
+          theme.colorScheme.onSurfaceVariant;
+
+      theme = theme.copyWith(
+        scaffoldBackgroundColor: darkMuted,
+        colorScheme: theme.colorScheme.copyWith(
+          primary: vibrant,
+          onPrimary: _palette!.vibrantColor?.titleTextColor ??
+              theme.colorScheme.onPrimary,
+          secondaryContainer: vibrant.withValues(alpha: 0.25),
+          onSecondaryContainer: vibrant,
+          errorContainer: vibrant,
+          onErrorContainer: _palette!.vibrantColor?.titleTextColor ??
+              theme.colorScheme.onPrimary,
+          surface: dominant,
+          onSurface: titleText,
+          onSurfaceVariant: bodyText,
+          surfaceContainer: muted,
+          surfaceContainerHighest: muted,
+        ),
+      );
+    }
+
     final double pct =
         _isDragging ? _dragPct : (session.progressPercent / 100.0);
     final bool playing = session.status == 'Playing';
 
-    return Scaffold(
+    return Theme(
+      data: theme,
+      child: Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -66,6 +130,7 @@ class _JellyfinSessionDetailScreenState
               session.device,
               style: theme.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
               ),
             ),
           ],
@@ -92,9 +157,9 @@ class _JellyfinSessionDetailScreenState
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: <Color>[
-                    theme.colorScheme.surface.withValues(alpha: 0.35),
-                    theme.colorScheme.surface.withValues(alpha: 0.35),
-                    theme.colorScheme.surface,
+                    Colors.black.withValues(alpha: 0.5),
+                    theme.colorScheme.surface.withValues(alpha: 0.8),
+                    Colors.black.withValues(alpha: 0.95),
                   ],
                 ),
               ),
@@ -105,45 +170,160 @@ class _JellyfinSessionDetailScreenState
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: Insets.xl),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  const Spacer(),
-
-                  // Artwork
-                  ConstrainedBox(
-                    constraints:
-                        const BoxConstraints(maxHeight: 380, maxWidth: 380),
-                    child: AspectRatio(
-                      aspectRatio: session.aspectRatio != null &&
-                              session.aspectRatio! > 0.0
-                          ? session.aspectRatio!
-                          : (2 / 3),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          borderRadius: Radii.card,
-                          boxShadow: <BoxShadow>[
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.4),
-                              blurRadius: 20,
-                              offset: const Offset(0, 10),
-                            ),
-                          ],
-                          image: session.posterUrl != null
-                              ? DecorationImage(
-                                  image: CachedNetworkImageProvider(
-                                      session.posterUrl!,),
-                                  fit: BoxFit.cover,
-                                )
-                              : null,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: <Widget>[
+                  // Volume Control
+                  Row(
+                    children: <Widget>[
+                      IconButton(
+                        icon: Icon(
+                          session.isMuted || session.volumeLevel == 0
+                              ? Icons.volume_off
+                              : Icons.volume_up,
+                          color: theme.colorScheme.primary,
                         ),
-                        child: session.posterUrl == null
-                            ? Icon(Icons.movie_outlined,
-                                color: theme.colorScheme.outline, size: 80,)
-                            : null,
+                        onPressed: () async {
+                          final ScaffoldMessengerState messenger =
+                              ScaffoldMessenger.of(context);
+                          try {
+                            final JellyfinClient client = await ref.read(
+                                jellyfinClientProvider(widget.instance).future);
+                            await client.toggleMute(session.id);
+                            if (mounted) {
+                              ref.invalidate(
+                                  jellyfinFastSessionsProvider(widget.instance));
+                            }
+                          } catch (_) {
+                            messenger.showSnackBar(
+                              const SnackBar(content: Text('Action failed')),
+                            );
+                          }
+                        },
                       ),
-                    ),
+                      Expanded(
+                        child: SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            trackHeight: 16,
+                            thumbShape: const ExpressiveSliderThumbShape(),
+                            trackShape: const ExpressiveSliderTrackShape(),
+                            overlayShape: const RoundSliderOverlayShape(
+                                overlayRadius: 24),
+                            activeTrackColor: theme.colorScheme.primary,
+                            inactiveTrackColor: Colors.white.withValues(alpha: 0.2),
+                            thumbColor: theme.colorScheme.primary,
+                          ),
+                          child: Slider(
+                            value: _isVolumeDragging
+                                ? _volumeDragPct
+                                : (session.volumeLevel / 100.0)
+                                    .clamp(0.0, 1.0),
+                            onChangeStart: (double val) {
+                              setState(() {
+                                _isVolumeDragging = true;
+                                _volumeDragPct = val;
+                              });
+                            },
+                            onChanged: (double val) {
+                              setState(() {
+                                _volumeDragPct = val;
+                              });
+                            },
+                            onChangeEnd: (double val) async {
+                              setState(() {
+                                _isVolumeDragging = false;
+                              });
+                              final int targetVol = (val * 100).round();
+                              final ScaffoldMessengerState messenger =
+                                  ScaffoldMessenger.of(context);
+                              try {
+                                final JellyfinClient client = await ref.read(
+                                    jellyfinClientProvider(widget.instance).future);
+                                await client.setVolume(session.id, targetVol);
+                                if (mounted) {
+                                  ref.invalidate(jellyfinFastSessionsProvider(
+                                      widget.instance));
+                                }
+                              } catch (_) {
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                      content: Text('Action failed')),
+                                );
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: Insets.md),
+                    ],
                   ),
+
+                            const Spacer(),
+
+                            // Artwork with animated music bars
+                            Flexible(
+                              flex: 10,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: <Widget>[
+                                  // Left animated music bars
+                                  AnimatedMusicBars(
+                                    color: theme.colorScheme.primary,
+                                    barCount: 4,
+                                    barWidth: 5,
+                                    height: 60,
+                                    isPlaying: playing,
+                                  ),
+                                  const SizedBox(width: Insets.sm),
+                                  // Album art
+                                  Flexible(
+                                    child: ConstrainedBox(
+                                      constraints:
+                                          const BoxConstraints(maxHeight: 420, maxWidth: 420),
+                                      child: AspectRatio(
+                                        aspectRatio: session.aspectRatio != null &&
+                                                session.aspectRatio! > 0.0
+                                            ? session.aspectRatio!
+                                            : (2 / 3),
+                                        child: Container(
+                                          decoration: BoxDecoration(
+                                            color: theme.colorScheme.surfaceContainerHighest,
+                                            borderRadius: Radii.card,
+                                            boxShadow: <BoxShadow>[
+                                              BoxShadow(
+                                                color: Colors.black.withValues(alpha: 0.4),
+                                                blurRadius: 20,
+                                                offset: const Offset(0, 10),
+                                              ),
+                                            ],
+                                            image: session.posterUrl != null
+                                                ? DecorationImage(
+                                                    image: CachedNetworkImageProvider(
+                                                        session.posterUrl!,),
+                                                    fit: BoxFit.cover,
+                                                  )
+                                                : null,
+                                          ),
+                                          child: session.posterUrl == null
+                                              ? Icon(Icons.movie_outlined,
+                                                  color: theme.colorScheme.outline, size: 80,)
+                                              : null,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: Insets.sm),
+                                  // Right animated music bars
+                                  AnimatedMusicBars(
+                                    color: theme.colorScheme.primary,
+                                    barCount: 4,
+                                    barWidth: 5,
+                                    height: 60,
+                                    isPlaying: playing,
+                                  ),
+                                ],
+                              ),
+                            ),
 
                   const SizedBox(height: Insets.lg),
 
@@ -188,12 +368,14 @@ class _JellyfinSessionDetailScreenState
                     children: <Widget>[
                       SliderTheme(
                         data: SliderThemeData(
-                          trackHeight: 8,
+                          trackHeight: 16,
                           activeTrackColor: theme.colorScheme.primary,
                           inactiveTrackColor:
                               theme.colorScheme.surfaceContainerHighest,
                           thumbColor: theme.colorScheme.primary,
-                          trackShape: const RoundedRectSliderTrackShape(),
+                          thumbShape: const ExpressiveSliderThumbShape(),
+                          trackShape: const ExpressiveSliderTrackShape(),
+                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 24),
                         ),
                         child: Slider(
                           value: pct.clamp(0.0, 1.0),
@@ -211,22 +393,21 @@ class _JellyfinSessionDetailScreenState
                             if (session.durationTicks > 0) {
                               final int targetTicks =
                                   (session.durationTicks * newValue).round();
+                              final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
                               try {
                                 final JellyfinClient client = await ref.read(
                                     jellyfinClientProvider(widget.instance)
                                         .future,);
                                 await client.seekSession(
                                     session.id, targetTicks,);
-                                if (!context.mounted) return;
-                                ref.invalidate(jellyfinFastSessionsProvider(
-                                    widget.instance,),);
+                                if (!mounted) return;
+                                ref.invalidate(
+                                    jellyfinFastSessionsProvider(widget.instance),);
                               } catch (_) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content: Text('Action failed'),),
-                                  );
-                                }
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                      content: Text('Action failed'),),
+                                );
                               }
                             }
                           },
@@ -260,7 +441,7 @@ class _JellyfinSessionDetailScreenState
 
                   const SizedBox(height: Insets.md),
 
-                  // Playback Controls
+                  // Row 1: 10s back, Play/Pause, 10s forward
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: <Widget>[
@@ -269,35 +450,30 @@ class _JellyfinSessionDetailScreenState
                         height: 80,
                         child: FilledButton.tonal(
                           style: FilledButton.styleFrom(
+                            backgroundColor: Colors.white.withValues(alpha: 0.15),
+                            foregroundColor: theme.colorScheme.primary,
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(24),),
                             padding: EdgeInsets.zero,
                           ),
                           onPressed: () async {
+                            final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
                             try {
                               final JellyfinClient client = await ref.read(
-                                  jellyfinClientProvider(widget.instance)
-                                      .future,);
-                              // If more than 5 seconds have elapsed (50 million ticks),
-                              // restart the track instead of skipping to previous.
-                              if (session.positionTicks > 50000000) {
-                                await client.seekSession(session.id, 0);
-                              } else {
-                                await client.previousTrack(session.id);
-                              }
-                              if (!context.mounted) return;
-                              ref.invalidate(jellyfinFastSessionsProvider(
-                                  widget.instance,),);
+                                  jellyfinClientProvider(widget.instance).future,);
+                              final int targetTicks = session.positionTicks - 10000000;
+                              await client.seekSession(session.id, targetTicks < 0 ? 0 : targetTicks);
+                              if (!mounted) return;
+                              ref.invalidate(
+                                  jellyfinFastSessionsProvider(widget.instance),);
                             } catch (_) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text('Action failed'),),
-                                );
-                              }
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                    content: Text('Action failed'),),
+                              );
                             }
                           },
-                          child: const Icon(Icons.skip_previous, size: 32),
+                          child: const Icon(Icons.replay_10, size: 32),
                         ),
                       ),
                       const SizedBox(width: Insets.lg),
@@ -306,26 +482,26 @@ class _JellyfinSessionDetailScreenState
                         height: 80,
                         child: FilledButton(
                           style: FilledButton.styleFrom(
+                            backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.85),
+                            foregroundColor: theme.colorScheme.onPrimary,
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(32),),
                             padding: EdgeInsets.zero,
                           ),
                           onPressed: () async {
+                            final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
                             try {
                               final JellyfinClient client = await ref.read(
-                                  jellyfinClientProvider(widget.instance)
-                                      .future,);
+                                  jellyfinClientProvider(widget.instance).future,);
                               await client.playPauseSession(session.id);
-                              if (!context.mounted) return;
-                              ref.invalidate(jellyfinFastSessionsProvider(
-                                  widget.instance,),);
+                              if (!mounted) return;
+                              ref.invalidate(
+                                  jellyfinFastSessionsProvider(widget.instance),);
                             } catch (_) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text('Action failed'),),
-                                );
-                              }
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                    content: Text('Action failed'),),
+                              );
                             }
                           },
                           child: Icon(playing ? Icons.pause : Icons.play_arrow,
@@ -338,26 +514,136 @@ class _JellyfinSessionDetailScreenState
                         height: 80,
                         child: FilledButton.tonal(
                           style: FilledButton.styleFrom(
+                            backgroundColor: Colors.white.withValues(alpha: 0.15),
+                            foregroundColor: theme.colorScheme.primary,
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(24),),
                             padding: EdgeInsets.zero,
                           ),
                           onPressed: () async {
+                            final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
                             try {
                               final JellyfinClient client = await ref.read(
-                                  jellyfinClientProvider(widget.instance)
-                                      .future,);
-                              await client.nextTrack(session.id);
-                              if (!context.mounted) return;
-                              ref.invalidate(jellyfinFastSessionsProvider(
-                                  widget.instance,),);
-                            } catch (_) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text('Action failed'),),
-                                );
+                                  jellyfinClientProvider(widget.instance).future,);
+                              final int targetTicks = session.positionTicks + 10000000;
+                              if (targetTicks < session.durationTicks) {
+                                await client.seekSession(session.id, targetTicks);
                               }
+                              if (!mounted) return;
+                              ref.invalidate(
+                                  jellyfinFastSessionsProvider(widget.instance),);
+                            } catch (_) {
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                    content: Text('Action failed'),),
+                              );
+                            }
+                          },
+                          child: const Icon(Icons.forward_10, size: 32),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: Insets.md),
+
+                  // Row 2: Skip Previous, Stop, Skip Next
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      SizedBox(
+                        width: 80,
+                        height: 80,
+                        child: FilledButton.tonal(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.white.withValues(alpha: 0.15),
+                            foregroundColor: theme.colorScheme.primary,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),),
+                            padding: EdgeInsets.zero,
+                          ),
+                          onPressed: () async {
+                            final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+                            try {
+                              final JellyfinClient client = await ref.read(
+                                  jellyfinClientProvider(widget.instance).future,);
+                              if (session.positionTicks > 50000000) {
+                                await client.seekSession(session.id, 0);
+                              } else {
+                                await client.previousTrack(session.id);
+                              }
+                              if (!mounted) return;
+                              ref.invalidate(
+                                  jellyfinFastSessionsProvider(widget.instance),);
+                            } catch (_) {
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                    content: Text('Action failed'),),
+                              );
+                            }
+                          },
+                          child: const Icon(Icons.skip_previous, size: 32),
+                        ),
+                      ),
+                      const SizedBox(width: Insets.lg),
+                      SizedBox(
+                        width: 120,
+                        height: 80,
+                        child: FilledButton.tonal(
+                          style: FilledButton.styleFrom(
+                            foregroundColor: theme.colorScheme.errorContainer,
+                            backgroundColor: Colors.white.withValues(alpha: 0.2),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(32),),
+                            padding: EdgeInsets.zero,
+                          ),
+                          onPressed: () async {
+                            final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+                            final NavigatorState navigator = Navigator.of(context);
+                            try {
+                              final JellyfinClient client = await ref.read(
+                                  jellyfinClientProvider(widget.instance).future,);
+                              await client.stopSession(session.id);
+                              if (!mounted) return;
+                              ref.invalidate(
+                                  jellyfinFastSessionsProvider(widget.instance),);
+                              navigator.pop();
+                            } catch (_) {
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                    content: Text('Action failed'),),
+                              );
+                            }
+                          },
+                          child: const Icon(Icons.stop, size: 28),
+                        ),
+                      ),
+                      const SizedBox(width: Insets.lg),
+                      SizedBox(
+                        width: 80,
+                        height: 80,
+                        child: FilledButton.tonal(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.white.withValues(alpha: 0.15),
+                            foregroundColor: theme.colorScheme.primary,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),),
+                            padding: EdgeInsets.zero,
+                          ),
+                          onPressed: () async {
+                            final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+                            try {
+                              final JellyfinClient client = await ref.read(
+                                  jellyfinClientProvider(widget.instance).future,);
+                              await client.nextTrack(session.id);
+                              if (!mounted) return;
+                              ref.invalidate(
+                                  jellyfinFastSessionsProvider(widget.instance),);
+                            } catch (_) {
+                              messenger.showSnackBar(
+                                const SnackBar(
+                                    content: Text('Action failed'),),
+                              );
                             }
                           },
                           child: const Icon(Icons.skip_next, size: 32),
@@ -366,46 +652,8 @@ class _JellyfinSessionDetailScreenState
                     ],
                   ),
 
-                  const SizedBox(height: Insets.lg),
-
-                  // Stop Button Row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      SizedBox(
-                        width: 140,
-                        height: 56,
-                        child: FilledButton.tonal(
-                          style: FilledButton.styleFrom(
-                            foregroundColor: theme.colorScheme.onErrorContainer,
-                            backgroundColor: theme.colorScheme.errorContainer,
-                          ),
-                          onPressed: () async {
-                            try {
-                              final JellyfinClient client = await ref.read(
-                                  jellyfinClientProvider(widget.instance)
-                                      .future,);
-                              await client.stopSession(session.id);
-                              if (!context.mounted) return;
-                              ref.invalidate(jellyfinFastSessionsProvider(
-                                  widget.instance,),);
-                              Navigator.of(context).pop();
-                            } catch (_) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text('Action failed'),),
-                                );
-                              }
-                            }
-                          },
-                          child: const Icon(Icons.stop, size: 28),
-                        ),
-                      ),
-                    ],
-                  ),
-
                   const Spacer(),
+                  const SizedBox(height: Insets.lg),
 
                   // Footer
                   Row(
@@ -470,11 +718,12 @@ class _JellyfinSessionDetailScreenState
                     ],
                   ),
                   const SizedBox(height: Insets.xl),
-                ],
-              ),
+              ],
             ),
           ),
+        ),
         ],
+      ),
       ),
     );
   }
@@ -577,6 +826,126 @@ class _AutoScrollTextState extends State<AutoScrollText> {
         widget.text,
         style: widget.style,
         maxLines: 1,
+      ),
+    );
+  }
+}
+
+/// Animated equalizer-style music bars that bounce while playing.
+class AnimatedMusicBars extends StatefulWidget {
+  const AnimatedMusicBars({
+    super.key,
+    required this.color,
+    this.barCount = 4,
+    this.barWidth = 5,
+    this.height = 60,
+    this.isPlaying = true,
+  });
+
+  final Color color;
+  final int barCount;
+  final double barWidth;
+  final double height;
+  final bool isPlaying;
+
+  @override
+  State<AnimatedMusicBars> createState() => _AnimatedMusicBarsState();
+}
+
+class _AnimatedMusicBarsState extends State<AnimatedMusicBars>
+    with TickerProviderStateMixin {
+  late List<AnimationController> _controllers;
+  late List<Animation<double>> _animations;
+  final Random _random = Random();
+
+  @override
+  void initState() {
+    super.initState();
+    _initAnimations();
+  }
+
+  void _initAnimations() {
+    _controllers = List<AnimationController>.generate(
+      widget.barCount,
+      (int i) {
+        final int durationMs = 400 + _random.nextInt(400);
+        return AnimationController(
+          vsync: this,
+          duration: Duration(milliseconds: durationMs),
+        );
+      },
+    );
+
+    _animations = _controllers.map((AnimationController controller) {
+      return Tween<double>(begin: 0.2, end: 1.0).animate(
+        CurvedAnimation(parent: controller, curve: Curves.easeInOut),
+      );
+    }).toList();
+
+    if (widget.isPlaying) {
+      _startAnimations();
+    }
+  }
+
+  void _startAnimations() {
+    for (int i = 0; i < _controllers.length; i++) {
+      Future<void>.delayed(Duration(milliseconds: _random.nextInt(300)), () {
+        if (mounted && widget.isPlaying) {
+          _controllers[i].repeat(reverse: true);
+        }
+      });
+    }
+  }
+
+  void _stopAnimations() {
+    for (final AnimationController controller in _controllers) {
+      controller.animateTo(0.3, duration: const Duration(milliseconds: 300));
+    }
+  }
+
+  @override
+  void didUpdateWidget(AnimatedMusicBars oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isPlaying != oldWidget.isPlaying) {
+      if (widget.isPlaying) {
+        _startAnimations();
+      } else {
+        _stopAnimations();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final AnimationController controller in _controllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: (widget.barWidth + 3) * widget.barCount,
+      height: widget.height,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: List<Widget>.generate(widget.barCount, (int i) {
+          return AnimatedBuilder(
+            animation: _animations[i],
+            builder: (BuildContext context, Widget? child) {
+              return Container(
+                width: widget.barWidth,
+                height: widget.height * _animations[i].value,
+                decoration: BoxDecoration(
+                  color: widget.color,
+                  borderRadius: BorderRadius.circular(widget.barWidth / 2),
+                ),
+              );
+            },
+          );
+        }),
       ),
     );
   }

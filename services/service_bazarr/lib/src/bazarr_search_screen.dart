@@ -208,7 +208,7 @@ class _ResultCardState extends ConsumerState<_ResultCard> {
             ? const SizedBox(
                 width: 24,
                 height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: ExpressiveProgressIndicator(strokeWidth: 2),
               )
             : IconButton(
                 tooltip: 'Download',

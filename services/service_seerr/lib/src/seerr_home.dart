@@ -132,7 +132,7 @@ class _RequestTile extends ConsumerWidget {
       },
       loading: () => const SizedBox(
         height: 180,
-        child: Center(child: CircularProgressIndicator()),
+        child: Center(child: ExpressiveProgressIndicator()),
       ),
       error: (_, __) => ListTile(
         title: Text('Request #${request.id}'),
@@ -215,7 +215,7 @@ class _RequestActionsMenuState extends ConsumerState<_RequestActionsMenu> {
         child: SizedBox(
           width: 16,
           height: 16,
-          child: CircularProgressIndicator(strokeWidth: 2),
+          child: ExpressiveProgressIndicator(strokeWidth: 2),
         ),
       );
     }

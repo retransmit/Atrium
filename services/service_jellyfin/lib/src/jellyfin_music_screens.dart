@@ -16,6 +16,7 @@ class JellyfinAlbumScreen extends ConsumerWidget {
     required this.albumName,
     required this.albumArtist,
     this.albumOverview,
+    this.albumGenres,
     this.albumImageUrl,
     super.key,
   });
@@ -25,12 +26,14 @@ class JellyfinAlbumScreen extends ConsumerWidget {
   final String albumName;
   final String albumArtist;
   final String? albumOverview;
+  final List<String>? albumGenres;
   final String? albumImageUrl;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<AlbumScreenData> dataAsync = ref.watch(
-        jellyfinAlbumDataFutureProvider((instance, albumId, albumArtist)),);
+      jellyfinAlbumDataFutureProvider((instance, albumId, albumArtist)),
+    );
     final JellyfinClient? client =
         ref.watch(jellyfinClientProvider(instance)).value;
 
@@ -92,6 +95,37 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                   ),
           ),
 
+          if (albumGenres != null && albumGenres!.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(
+                  left: Insets.lg,
+                  right: Insets.lg,
+                  top: Insets.lg,
+                ),
+                child: Wrap(
+                  spacing: 6.0,
+                  runSpacing: 6.0,
+                  children: albumGenres!.map((String g) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        g,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSecondaryContainer,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+
           if (albumOverview != null && albumOverview!.isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
@@ -107,8 +141,11 @@ class JellyfinAlbumScreen extends ConsumerWidget {
           SliverToBoxAdapter(
             child: AsyncValueView<AlbumScreenData>(
               value: dataAsync,
-              onRetry: () => ref.invalidate(jellyfinAlbumDataFutureProvider(
-                  (instance, albumId, albumArtist),),),
+              onRetry: () => ref.invalidate(
+                jellyfinAlbumDataFutureProvider(
+                  (instance, albumId, albumArtist),
+                ),
+              ),
               data: (AlbumScreenData data) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,7 +153,9 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                     // Bottom Section: Tracklist
                     Padding(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: Insets.lg, vertical: Insets.sm,),
+                        horizontal: Insets.lg,
+                        vertical: Insets.sm,
+                      ),
                       child: Text(
                         'Tracks - ${data.tracks.length}',
                         style: Theme.of(context)
@@ -143,11 +182,14 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                               '$minutes:${seconds.toString().padLeft(2, '0')}';
                         }
 
-                        final String? imageUrl = client?.imageUrl(song) ?? albumImageUrl;
+                        final String? imageUrl =
+                            client?.imageUrl(song) ?? albumImageUrl;
 
                         return ListTile(
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: Insets.lg, vertical: Insets.xs,),
+                            horizontal: Insets.lg,
+                            vertical: Insets.xs,
+                          ),
                           onTap: () {
                             if (client != null) {
                               launchJellyfinDeepLink(context, client, song.id);
@@ -209,8 +251,11 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                                 ),
                             ],
                           ),
-                          title: Text(song.name,
-                              maxLines: 1, overflow: TextOverflow.ellipsis,),
+                          title: Text(
+                            song.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           subtitle: Text(
                             song.artists.isNotEmpty
                                 ? '${song.artists.join(', ')} • $duration'
@@ -297,8 +342,8 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(
-                    height: Insets
-                        .xs,), // Add a small padding at the bottom so it aligns perfectly with the poster's bottom edge
+                  height: Insets.xs,
+                ), // Add a small padding at the bottom so it aligns perfectly with the poster's bottom edge
               ],
             ),
           ),

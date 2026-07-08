@@ -12,6 +12,7 @@ Future<void> initAtriumHive() async {
   }
   await Hive.initFlutter(_hiveSubdirectory);
   // TypeAdapter registrations go here as models grow.
+  await Hive.openBox<String>(AtriumBoxes.imageOverrides);
   _initialized = true;
 }
 
@@ -37,4 +38,7 @@ abstract final class AtriumBoxes {
 
   /// Per-instance health snapshot, refreshed on app foreground.
   static const String healthCache = 'atrium.health_cache';
+
+  /// Local overrides for item images (e.g., when the server denies writing to a read-only filesystem).
+  static const String imageOverrides = 'atrium.image_overrides';
 }

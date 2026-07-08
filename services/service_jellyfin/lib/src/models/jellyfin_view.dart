@@ -17,3 +17,16 @@ abstract class JellyfinView with _$JellyfinView {
   factory JellyfinView.fromJson(Map<String, dynamic> json) =>
       _$JellyfinViewFromJson(json);
 }
+
+/// A global virtual folder from `GET /Library/VirtualFolders`.
+@freezed
+abstract class JellyfinVirtualFolder with _$JellyfinVirtualFolder {
+  const factory JellyfinVirtualFolder({
+    @JsonKey(name: 'ItemId') required String itemId,
+    @JsonKey(name: 'Name') @Default('') String name,
+    @JsonKey(name: 'CollectionType') String? collectionType,
+  }) = _JellyfinVirtualFolder;
+
+  factory JellyfinVirtualFolder.fromJson(Map<String, dynamic> json) =>
+      _$JellyfinVirtualFolderFromJson(json);
+}

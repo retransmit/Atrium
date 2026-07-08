@@ -114,7 +114,7 @@ class _UiSettingsScreenState extends ConsumerState<UiSettingsScreen> {
               child: SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: ExpressiveProgressIndicator(strokeWidth: 2),
               ),
             )
           else
@@ -125,7 +125,7 @@ class _UiSettingsScreenState extends ConsumerState<UiSettingsScreen> {
         ],
       ),
       body: uiConfigAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: ExpressiveProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (config) {
           _initializeValues(config);

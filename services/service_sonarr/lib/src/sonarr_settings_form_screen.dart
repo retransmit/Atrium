@@ -137,7 +137,7 @@ class _SonarrSettingsFormScreenState
                   child: SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: ExpressiveProgressIndicator(strokeWidth: 2),
                   ),
                 )
               else if (rawSeries != null)
@@ -154,7 +154,7 @@ class _SonarrSettingsFormScreenState
                   ),
                 )
               : rawSeries == null
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(child: ExpressiveProgressIndicator())
                   : Form(
                       key: _formKey,
                       child: ListView(
@@ -239,7 +239,7 @@ class _SonarrSettingsFormScreenState
                           // Quality Profile dropdown
                           profilesAsync.when(
                             loading: () => const Center(
-                              child: CircularProgressIndicator(),
+                              child: ExpressiveProgressIndicator(),
                             ),
                             error: (err, stack) =>
                                 Text('Error loading profiles: $err'),
@@ -333,7 +333,7 @@ class _SonarrSettingsFormScreenState
                           // Tags multi-selector section
                           tagsAsync.when(
                             loading: () => const Center(
-                              child: CircularProgressIndicator(),
+                              child: ExpressiveProgressIndicator(),
                             ),
                             error: (err, stack) =>
                                 Text('Error loading tags: $err'),

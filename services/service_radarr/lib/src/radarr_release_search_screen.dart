@@ -252,7 +252,7 @@ class _RadarrReleaseSearchScreenState
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: <Widget>[
-                        const CircularProgressIndicator(),
+                        const ExpressiveProgressIndicator(),
                         const SizedBox(height: Insets.lg),
                         Text(
                           'Querying Indexers...',
@@ -534,7 +534,7 @@ class _ReleaseTileState extends ConsumerState<_ReleaseTile> {
                           child: SizedBox(
                             width: 24,
                             height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: ExpressiveProgressIndicator(strokeWidth: 2),
                           ),
                         )
                       else

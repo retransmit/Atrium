@@ -491,7 +491,7 @@ class _RadarrSettingsFormScreenState
                           ? const SizedBox(
                               width: 16,
                               height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              child: ExpressiveProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.science_outlined),
                       label: const Text('Test'),
@@ -505,7 +505,7 @@ class _RadarrSettingsFormScreenState
                           ? const SizedBox(
                               width: 16,
                               height: 16,
-                              child: CircularProgressIndicator(
+                              child: ExpressiveProgressIndicator(
                                 strokeWidth: 2,
                                 color: Colors.white,
                               ),
