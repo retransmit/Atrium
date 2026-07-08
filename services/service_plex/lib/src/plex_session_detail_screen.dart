@@ -10,6 +10,7 @@ import 'package:palette_generator/palette_generator.dart';
 
 import 'models/plex_session.dart';
 import 'plex_api.dart';
+import 'plex_deep_link.dart';
 import 'plex_providers.dart';
 
 /// Full-screen now-playing controller for one Plex stream.
@@ -234,6 +235,11 @@ class _PlexSessionDetailScreenState
           ),
           centerTitle: true,
           actions: <Widget>[
+            IconButton(
+              tooltip: 'Open in Plex',
+              icon: const Icon(Icons.open_in_new, color: Colors.white),
+              onPressed: () => launchPlexDeepLink(context),
+            ),
             IconButton(
               tooltip: 'Stop stream',
               icon: const Icon(Icons.stop_circle_outlined, color: Colors.white),

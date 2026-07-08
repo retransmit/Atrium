@@ -55,5 +55,6 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="jellyfin" />
         </intent>
+        <package android:name="com.plexapp.android" />
     </queries>
 </manifest>

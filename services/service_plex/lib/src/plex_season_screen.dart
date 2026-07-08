@@ -86,8 +86,14 @@ class _SeasonCard extends StatelessWidget {
     final double? progress =
         leafCount > 0 ? (viewed / leafCount).clamp(0, 1).toDouble() : null;
 
-    return Card.filled(
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
+      color: theme.colorScheme.surfaceContainerLow,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(24)),
+      ),
       child: InkWell(
         onTap: () => pushScreen<void>(
           context,
@@ -124,10 +130,10 @@ class _SeasonCard extends StatelessWidget {
                       ),
                       const SizedBox(height: Insets.sm),
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(2),
+                        borderRadius: BorderRadius.circular(6),
                         child: LinearProgressIndicator(
                           value: progress,
-                          minHeight: 4,
+                          minHeight: 6,
                         ),
                       ),
                     ],

@@ -87,14 +87,26 @@ class _AlbumCard extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     return InkWell(
       onTap: onTap,
-      borderRadius: Radii.card,
+      borderRadius: BorderRadius.circular(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Expanded(
-            child: ClipRRect(
-              borderRadius: Radii.card,
-              child: SizedBox.expand(child: _cover(theme)),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: SizedBox.expand(child: _cover(theme)),
+              ),
             ),
           ),
           const SizedBox(height: Insets.xs),
@@ -102,7 +114,9 @@ class _AlbumCard extends StatelessWidget {
             album.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.labelMedium,
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
           if (album.year != null)
             Text(
