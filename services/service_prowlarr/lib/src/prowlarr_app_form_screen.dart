@@ -215,7 +215,7 @@ class _ProwlarrAppFormScreenState extends ConsumerState<ProwlarrAppFormScreen> {
                 message: _loadError!,
                 onRetry: _loadRaw,
               )
-            : const Center(child: CircularProgressIndicator()),
+            : const Center(child: ExpressiveProgressIndicator()),
       );
     }
     if (_selected == null) {
@@ -255,7 +255,7 @@ class _ProwlarrAppFormScreenState extends ConsumerState<ProwlarrAppFormScreen> {
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      child: ExpressiveProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.delete_outline),
               onPressed: _deleting ? null : _delete,
@@ -329,7 +329,7 @@ class _ProwlarrAppFormScreenState extends ConsumerState<ProwlarrAppFormScreen> {
                         ? const SizedBox(
                             width: 16,
                             height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: ExpressiveProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.science_outlined),
                     label: const Text('Test'),
@@ -343,7 +343,7 @@ class _ProwlarrAppFormScreenState extends ConsumerState<ProwlarrAppFormScreen> {
                         ? const SizedBox(
                             width: 16,
                             height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: ExpressiveProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.save_outlined),
                     label: Text(_isEdit ? 'Save' : 'Add'),

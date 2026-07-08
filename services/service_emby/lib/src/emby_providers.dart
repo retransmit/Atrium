@@ -2,11 +2,14 @@ import 'dart:async';
 
 import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
+import 'package:core_storage/core_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import 'emby_client.dart';
+import 'models/emby_auth.dart';
 import 'models/emby_item.dart';
+import 'models/emby_remote_image.dart';
 import 'models/emby_session.dart';
 import 'models/emby_view.dart';
 
@@ -25,12 +28,21 @@ final embyClientProvider = FutureProvider.family<EmbyClient, Instance>((
       ),
     _ => ('', ''),
   };
+  final Box<String> overridesBox = Hive.box<String>(AtriumBoxes.imageOverrides);
   final EmbyClient client = EmbyClient.create(
     baseUrl: baseUrl,
     username: username,
     password: password,
     deviceId: instance.id,
     allowSelfSigned: instance.allowSelfSignedCerts,
+    getLocalOverride: (String itemId, String type) => overridesBox.get('${instance.id}_${itemId}_$type'),
+    setLocalOverride: (String itemId, String type, String tag) {
+      if (tag.isEmpty) {
+        overridesBox.delete('${instance.id}_${itemId}_$type');
+      } else {
+        overridesBox.put('${instance.id}_${itemId}_$type', tag);
+      }
+    },
   );
   ref.onDispose(client.close);
   return client;
@@ -41,10 +53,26 @@ final embyViewsProvider = FutureProvider.family<List<EmbyView>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
-  final EmbyClient client =
-      await ref.watch(embyClientProvider(instance).future);
+  final EmbyClient client = await ref.read(embyClientProvider(instance).future);
   return client.getViews();
 });
+
+final embyVirtualFoldersProvider = FutureProvider.family<List<EmbyVirtualFolder>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final EmbyClient client = await ref.read(embyClientProvider(instance).future);
+  return client.getVirtualFolders();
+});
+
+final embySelectableMediaFoldersProvider = FutureProvider.family<List<EmbyVirtualFolder>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final EmbyClient client = await ref.read(embyClientProvider(instance).future);
+  return client.getSelectableMediaFolders();
+});
+
 
 /// Flattened items within a root library, using recursive fetch based on CollectionType.
 final embyLibraryItemsProvider =
@@ -140,6 +168,49 @@ final embyFastSessionsProvider =
       // Ignore polling errors, let the UI keep the last known good state
     }
   }
+});
+
+final embyLibraryScanProvider =
+    StreamProvider.autoDispose.family<({String state, double progress})?, Instance>((
+  Ref ref,
+  Instance instance,
+) async* {
+  bool disposed = false;
+  ref.onDispose(() => disposed = true);
+
+  final EmbyClient client =
+      await ref.watch(embyClientProvider(instance).future);
+
+  // Initial fetch
+  yield await client.getLibraryScanProgress();
+
+  // Poll every 2 seconds
+  while (!disposed) {
+    await Future<void>.delayed(const Duration(seconds: 2));
+    if (disposed) break;
+
+    try {
+      yield await client.getLibraryScanProgress();
+    } catch (_) {
+      // Ignore polling errors
+    }
+  }
+});
+
+final embyUsersProvider = FutureProvider.autoDispose.family<List<EmbyUser>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final EmbyClient client = await ref.watch(embyClientProvider(instance).future);
+  return client.getUsers();
+});
+
+final embyCurrentUserProvider = FutureProvider.autoDispose.family<EmbyUser, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final EmbyClient client = await ref.watch(embyClientProvider(instance).future);
+  return client.getCurrentUser();
 });
 
 final embyNextUpProvider = FutureProvider.family<List<EmbyItem>, Instance>((
@@ -282,5 +353,17 @@ final embyArtistBioProvider =
       await ref.watch(embyClientProvider(instance).future);
   return client.getArtistBio(artistName);
 });
+
+final embyRemoteImagesProvider =
+    FutureProvider.family<List<EmbyRemoteImage>, (Instance, String, String)>((
+  Ref ref,
+  (Instance, String, String) key,
+) async {
+  final (Instance instance, String itemId, String imageType) = key;
+  final EmbyClient client =
+      await ref.watch(embyClientProvider(instance).future);
+  return client.getRemoteImages(itemId, imageType);
+});
+
 final embyActiveTabBarIndexProvider =
     StateProvider.family<int, Instance>((Ref ref, Instance instance) => 0);

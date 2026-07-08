@@ -97,7 +97,7 @@ class _HealthSection extends ConsumerWidget {
       child: health.when(
         loading: () => const Padding(
           padding: EdgeInsets.symmetric(vertical: Insets.md),
-          child: Center(child: CircularProgressIndicator()),
+          child: Center(child: ExpressiveProgressIndicator()),
         ),
         error: (Object e, _) => _StatusRow(
           icon: Icons.error_outline,
@@ -261,7 +261,7 @@ class _TaskTileState extends ConsumerState<_TaskTile> {
             ? const SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: ExpressiveProgressIndicator(strokeWidth: 2),
               )
             : IconButton(
                 tooltip: 'Run now',

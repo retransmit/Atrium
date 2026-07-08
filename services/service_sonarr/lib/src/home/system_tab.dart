@@ -250,7 +250,7 @@ class _StatusTab extends ConsumerWidget {
           // ── About / Status ──
           statusAsync.when(
             loading: () =>
-                const Center(child: CircularProgressIndicator()),
+                const Center(child: ExpressiveProgressIndicator()),
             error: (Object err, _) => _sectionError('Status', err),
             data: (Map<String, dynamic> s) {
               final String version =
@@ -675,7 +675,7 @@ class _TasksTab extends ConsumerWidget {
       },
       child: tasksAsync.when(
         loading: () =>
-            const Center(child: CircularProgressIndicator()),
+            const Center(child: ExpressiveProgressIndicator()),
         error: (Object err, _) =>
             Center(child: Text('Error: $err')),
         data: (List<Map<String, dynamic>> tasks) {
@@ -827,7 +827,7 @@ class _UpdatesTab extends ConsumerWidget {
       },
       child: updatesAsync.when(
         loading: () =>
-            const Center(child: CircularProgressIndicator()),
+            const Center(child: ExpressiveProgressIndicator()),
         error: (Object err, _) =>
             Center(child: Text('Error: $err')),
         data: (List<Map<String, dynamic>> updates) {
@@ -1123,7 +1123,7 @@ class _LogsTabState extends ConsumerState<_LogsTab> {
         Expanded(
           child: logsAsync.when(
             loading: () =>
-                const Center(child: CircularProgressIndicator()),
+                const Center(child: ExpressiveProgressIndicator()),
             error: (Object err, _) =>
                 Center(child: Text('Error: $err')),
             data: (Map<String, dynamic> data) {
@@ -1410,7 +1410,7 @@ class _BackupsTab extends ConsumerWidget {
       },
       child: backupsAsync.when(
         loading: () =>
-            const Center(child: CircularProgressIndicator()),
+            const Center(child: ExpressiveProgressIndicator()),
         error: (Object err, _) =>
             Center(child: Text('Error: $err')),
         data: (List<Map<String, dynamic>> backups) {

@@ -65,7 +65,7 @@ class _SonarrRenameDialogState extends ConsumerState<SonarrRenameDialog> {
         width: double.maxFinite,
         height: 350,
         child: previewAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const Center(child: ExpressiveProgressIndicator()),
           error: (err, stack) =>
               Center(child: Text('Error loading rename preview: $err')),
           data: (files) {
@@ -156,7 +156,7 @@ class _SonarrRenameDialogState extends ConsumerState<SonarrRenameDialog> {
                       ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: ExpressiveProgressIndicator(strokeWidth: 2),
                         )
                       : const Text('Rename'),
                 ),

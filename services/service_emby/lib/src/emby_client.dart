@@ -7,6 +7,7 @@ import 'package:dio/io.dart';
 
 import 'models/emby_auth.dart';
 import 'models/emby_item.dart';
+import 'models/emby_remote_image.dart';
 import 'models/emby_session.dart';
 import 'models/emby_view.dart';
 
@@ -25,6 +26,8 @@ class EmbyClient {
     required this.username,
     required this.password,
     required this.deviceId,
+    this.getLocalOverride,
+    this.setLocalOverride,
   }) : _dio = dio;
 
   final Dio _dio;
@@ -32,6 +35,8 @@ class EmbyClient {
   final String username;
   final String password;
   final String deviceId;
+  final String? Function(String itemId, String imageType)? getLocalOverride;
+  final void Function(String itemId, String imageType, String tag)? setLocalOverride;
 
   String? _token;
   String? _userId;
@@ -47,6 +52,8 @@ class EmbyClient {
     required String password,
     required String deviceId,
     required bool allowSelfSigned,
+    String? Function(String itemId, String imageType)? getLocalOverride,
+    void Function(String itemId, String imageType, String tag)? setLocalOverride,
   }) {
     final String baseUrlStr = baseUrl.toString();
     final String normalizedBaseUrl =
@@ -67,6 +74,9 @@ class EmbyClient {
     }
     dio.interceptors.add(
       InterceptorsWrapper(
+        onRequest: (RequestOptions options, RequestInterceptorHandler handler) {
+          handler.next(options);
+        },
         onResponse:
             (Response<dynamic> response, ResponseInterceptorHandler handler) {
           if (response.data == null) {
@@ -102,6 +112,8 @@ class EmbyClient {
       username: username,
       password: password,
       deviceId: deviceId,
+      getLocalOverride: getLocalOverride,
+      setLocalOverride: setLocalOverride,
     );
   }
 
@@ -147,8 +159,43 @@ class EmbyClient {
             .toList();
       });
 
+  Future<List<EmbyVirtualFolder>> getSelectableMediaFolders() => _guarded(() async {
+        final Response<dynamic> resp = await _dio.get<dynamic>('Library/SelectableMediaFolders');
+        final List<dynamic> items = (resp.data as List<dynamic>?) ?? <dynamic>[];
+        return items.map((dynamic e) {
+          final map = e as Map<String, dynamic>;
+          final List<dynamic>? subFoldersList = map['SubFolders'] as List<dynamic>?;
+          final List<String> subFolderIds = subFoldersList
+                  ?.map((dynamic s) {
+                    final subMap = s as Map<String, dynamic>;
+                    final idStr = subMap['Id']?.toString() ?? subMap['Guid']?.toString() ?? '';
+                    return idStr;
+                  })
+                  .where((String id) => id.isNotEmpty)
+                  .toList() ??
+              <String>[];
+              
+          return EmbyVirtualFolder(
+            name: map['Name'] as String? ?? '',
+            itemId: map['Guid'] as String? ?? map['Id'] as String? ?? '',
+            collectionType: map['CollectionType'] as String?,
+            subFolderIds: subFolderIds,
+          );
+        }).toList();
+      });
+
+  Future<List<EmbyVirtualFolder>> getVirtualFolders() => _guarded(() async {
+        final Response<dynamic> resp = await _dio.get<dynamic>('Library/VirtualFolders');
+        final List<dynamic> items = (resp.data as List<dynamic>?) ?? <dynamic>[];
+        return items
+            .map((dynamic e) => EmbyVirtualFolder.fromJson(e as Map<String, dynamic>))
+            .toList();
+      });
+
   Future<List<EmbyItem>> getLibraryItems(
-          String parentId, String? collectionType,) =>
+    String parentId,
+    String? collectionType,
+  ) =>
       _guarded(() async {
         String? includeItemTypes;
         switch (collectionType) {
@@ -192,7 +239,8 @@ class EmbyClient {
             'ParentId': parentId,
             'SortBy': 'SortName',
             'SortOrder': 'Ascending',
-            'Fields': 'PrimaryImageAspectRatio,ImageTags,ParentId,ProductionYear',
+            'Fields':
+                'PrimaryImageAspectRatio,ImageTags,ParentId,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
             'Limit': 200,
@@ -202,8 +250,10 @@ class EmbyClient {
             .items;
       });
 
-  Future<List<EmbyItem>> getWatchedItems(
-          {int startIndex = 0, int limit = 200,}) =>
+  Future<List<EmbyItem>> getWatchedItems({
+    int startIndex = 0,
+    int limit = 200,
+  }) =>
       _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
           'Users/$_userId/Items',
@@ -213,7 +263,8 @@ class EmbyClient {
             'IncludeItemTypes': 'Series,Movie',
             'SortBy': 'SortName',
             'SortOrder': 'Ascending',
-            'Fields': 'PrimaryImageAspectRatio,ImageTags,ParentId,ProductionYear',
+            'Fields':
+                'PrimaryImageAspectRatio,ImageTags,ParentId,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
             'StartIndex': startIndex,
@@ -224,8 +275,10 @@ class EmbyClient {
             .items;
       });
 
-  Future<List<EmbyItem>> getUnwatchedItems(
-          {int startIndex = 0, int limit = 200,}) =>
+  Future<List<EmbyItem>> getUnwatchedItems({
+    int startIndex = 0,
+    int limit = 200,
+  }) =>
       _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
           'Users/$_userId/Items',
@@ -235,7 +288,8 @@ class EmbyClient {
             'IncludeItemTypes': 'Series,Movie',
             'SortBy': 'SortName',
             'SortOrder': 'Ascending',
-            'Fields': 'PrimaryImageAspectRatio,ImageTags,ParentId,ProductionYear',
+            'Fields':
+                'PrimaryImageAspectRatio,ImageTags,ParentId,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
             'StartIndex': startIndex,
@@ -260,7 +314,8 @@ class EmbyClient {
           queryParameters: <String, dynamic>{
             'Limit': 24,
             'MediaTypes': 'Video',
-            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ParentId,ProductionYear',
+            'Fields':
+                'PrimaryImageAspectRatio,Overview,ImageTags,ParentId,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -300,6 +355,27 @@ class EmbyClient {
           'Sessions/$sessionId/Playing/Seek',
           queryParameters: <String, dynamic>{
             'SeekPositionTicks': positionTicks,
+          },
+        );
+      });
+
+  Future<void> setVolume(String sessionId, int volume) => _guarded(() async {
+        await _dio.post<dynamic>(
+          'Sessions/$sessionId/Command',
+          data: <String, dynamic>{
+            'Name': 'SetVolume',
+            'Arguments': <String, String>{
+              'Volume': volume.toString(),
+            },
+          },
+        );
+      });
+
+  Future<void> toggleMute(String sessionId) => _guarded(() async {
+        await _dio.post<dynamic>(
+          'Sessions/$sessionId/Command',
+          data: <String, dynamic>{
+            'Name': 'ToggleMute',
           },
         );
       });
@@ -366,9 +442,15 @@ class EmbyClient {
               timeDuration: formatTime(durSec),
               positionTicks: posTicks,
               durationTicks: durTicks,
+              volumeLevel: playState['VolumeLevel'] as int? ?? 100,
+              isMuted: playState['IsMuted'] as bool? ?? false,
               posterUrl:
                   '$_baseStr/Items/${nowPlaying['SeriesId'] ?? nowPlaying['Id']}/Images/Primary?quality=100${_token == null ? '' : '&api_key=$_token'}',
+              backdropUrl:
+                  '$_baseStr/Items/${nowPlaying['SeriesId'] ?? nowPlaying['Id']}/Images/Backdrop/0?quality=100${_token == null ? '' : '&api_key=$_token'}',
               aspectRatio: computedAspectRatio,
+              itemId: nowPlaying['SeriesId'] as String? ??
+                  nowPlaying['Id'] as String?,
             ),
           );
         }
@@ -381,7 +463,8 @@ class EmbyClient {
           queryParameters: <String, dynamic>{
             'UserId': _userId,
             'Limit': 24,
-            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ParentId,ProductionYear',
+            'Fields':
+                'PrimaryImageAspectRatio,Overview,ImageTags,ParentId,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -399,7 +482,8 @@ class EmbyClient {
             'Limit': 50,
             'Recursive': true,
             'IncludeItemTypes': 'Series,Movie,Episode',
-            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ParentId,ProductionYear',
+            'Fields':
+                'PrimaryImageAspectRatio,Overview,ImageTags,ParentId,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -416,7 +500,8 @@ class EmbyClient {
             'Filters': 'IsFavorite',
             'Recursive': true,
             'Limit': 24,
-            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ParentId,ProductionYear',
+            'Fields':
+                'PrimaryImageAspectRatio,Overview,ImageTags,ParentId,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -443,7 +528,8 @@ class EmbyClient {
           'Users/$_userId/Items/Latest',
           queryParameters: <String, dynamic>{
             'Limit': 20,
-            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ParentId,ProductionYear',
+            'Fields':
+                'PrimaryImageAspectRatio,Overview,ImageTags,ParentId,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -460,7 +546,7 @@ class EmbyClient {
           'Users/$_userId/Items/$itemId',
           queryParameters: <String, dynamic>{
             'Fields':
-                'Overview,People,CommunityRating,OfficialRating,RunTimeTicks,ProductionYear',
+                'Overview,People,CommunityRating,OfficialRating,RunTimeTicks,ProductionYear,ImageTags,BackdropImageTags',
           },
         );
         return EmbyItem.fromJson(resp.data as Map<String, dynamic>);
@@ -472,7 +558,8 @@ class EmbyClient {
           queryParameters: <String, dynamic>{
             'ParentId': seriesId,
             'IncludeItemTypes': 'Season',
-            'Fields': 'PrimaryImageAspectRatio,Overview,ImageTags,ProductionYear',
+            'Fields':
+                'PrimaryImageAspectRatio,Overview,ImageTags,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -504,7 +591,8 @@ class EmbyClient {
           'Users/$_userId/Items',
           queryParameters: <String, dynamic>{
             'ParentId': albumId,
-            'Fields': 'PrimaryImageAspectRatio,ImageTags,Overview,ParentId,ProductionYear',
+            'Fields':
+                'PrimaryImageAspectRatio,ImageTags,Overview,ParentId,ProductionYear',
             'ImageTypeLimit': 1,
             'EnableImageTypes': 'Primary',
           },
@@ -546,16 +634,21 @@ class EmbyClient {
     }
 
     if (item.type == 'Audio') {
+      if (item.albumPrimaryImageTag != null && item.albumId != null) {
+        return '$_baseStr/Items/${item.albumId}/Images/Primary'
+            '?quality=100&tag=${item.albumPrimaryImageTag}$key';
+      }
+      if (item.parentPrimaryImageTag != null && item.parentId != null) {
+        return '$_baseStr/Items/${item.parentId}/Images/Primary'
+            '?quality=100&tag=${item.parentPrimaryImageTag}$key';
+      }
+      if (item.imageTags.containsKey('Primary')) {
+        return '$_baseStr/Items/${item.id}/Images/Primary'
+            '?quality=100&tag=${item.imageTags['Primary']}$key';
+      }
       final String targetId = item.albumId ?? item.parentId ?? item.id;
-      final String tagParam = item.albumPrimaryImageTag != null
-          ? '&tag=${item.albumPrimaryImageTag}'
-          : (item.parentPrimaryImageTag != null
-              ? '&tag=${item.parentPrimaryImageTag}'
-              : (item.imageTags.containsKey('Primary')
-                  ? '&tag=${item.imageTags['Primary']}'
-                  : ''));
       return '$_baseStr/Items/$targetId/Images/Primary'
-          '?quality=100$tagParam$key';
+          '?quality=100$key';
     }
 
     if (item.primaryImageItemId != null) {
@@ -621,18 +714,286 @@ class EmbyClient {
 
     String targetId = item.id;
     String tagParam = '';
+    int targetIndex = 0;
 
-    if (item.imageTags.containsKey('Backdrop')) {
-      tagParam = '&tag=${item.imageTags['Backdrop']}';
-    } else if (item.seriesId != null) {
-      // Fallback to series backdrop for episodes
+    if (item.seriesId != null && item.backdropImageTags.isEmpty && !item.imageTags.containsKey('Backdrop')) {
       targetId = item.seriesId!;
     }
 
-    return '$_baseStr/Items/$targetId/Images/Backdrop/0?quality=100$tagParam$key';
+    final String? overrideTag = getLocalOverride?.call(targetId, 'Backdrop');
+    if (overrideTag != null && overrideTag.isNotEmpty) {
+      final int foundIndex = item.backdropImageTags.indexOf(overrideTag);
+      if (foundIndex != -1) {
+        targetIndex = foundIndex;
+        tagParam = '&tag=$overrideTag';
+      }
+    }
+
+    if (targetIndex == 0) {
+      if (item.backdropImageTags.isNotEmpty) {
+        tagParam = '&tag=${item.backdropImageTags.first}';
+      } else if (item.imageTags.containsKey('Backdrop')) {
+        tagParam = '&tag=${item.imageTags['Backdrop']}';
+      } else if (targetId == item.id) {
+        // If the item has no backdrop tags and we aren't falling back to the series, it doesn't have a backdrop.
+        return null;
+      }
+    }
+
+    return '$_baseStr/Items/$targetId/Images/Backdrop/$targetIndex?quality=100$tagParam$key';
   }
 
+  String untaggedImageUrl(String itemId, String imageType) {
+    final String targetType =
+        imageType == 'Backdrop' ? 'Backdrop/0' : imageType;
+    final String key = _token == null ? '' : '&api_key=$_token';
+    return '$_baseStr/Items/$itemId/Images/$targetType?quality=100$key';
+  }
+
+  Future<List<EmbyRemoteImage>> getRemoteImages(
+          String itemId, String imageType) =>
+      _guarded(() async {
+        final Response<dynamic> resp = await _dio.get<dynamic>(
+          'Items/$itemId/RemoteImages',
+          queryParameters: <String, dynamic>{
+            'Type': imageType,
+            'IncludeAllLanguages': 'true',
+          },
+        );
+        return EmbyRemoteImagesResult.fromJson(
+          resp.data as Map<String, dynamic>,
+        ).images;
+      });
+
+  Future<void> setRemoteImage(
+          String itemId, String imageUrl, String imageType) =>
+      _guarded(() async {
+        List<String> oldBackdrops = <String>[];
+        if (imageType == 'Backdrop') {
+          try {
+            final item = await getItemDetails(itemId);
+            oldBackdrops = item.backdropImageTags;
+          } catch (_) {}
+        }
+
+        await _dio.post<dynamic>(
+          'Items/$itemId/RemoteImages/Download',
+          queryParameters: <String, dynamic>{
+            'Type': imageType,
+            'ImageUrl': imageUrl,
+          },
+        );
+
+        if (imageType == 'Backdrop') {
+          try {
+            final newItem = await getItemDetails(itemId);
+            final newBackdrops = newItem.backdropImageTags;
+            
+            int indexToMove = -1;
+            for (int i = 0; i < newBackdrops.length; i++) {
+              if (!oldBackdrops.contains(newBackdrops[i])) {
+                indexToMove = i;
+                break;
+              }
+            }
+
+            if (indexToMove != -1 && indexToMove > 0) {
+              try {
+                await _dio.post<dynamic>(
+                  'Items/$itemId/Images/Backdrop/$indexToMove/Index',
+                  queryParameters: <String, dynamic>{
+                    'newIndex': 0,
+                  },
+                );
+                // Cleared successfully on server, remove any local override.
+                setLocalOverride?.call(itemId, 'Backdrop', '');
+              } catch (e) {
+                print('Failed to move backdrop: $e');
+                if (e is DioException && e.response?.statusCode == 500) {
+                  // Fallback: save the tag locally.
+                  final String localTag = newBackdrops[indexToMove];
+                  setLocalOverride?.call(itemId, 'Backdrop', localTag);
+                } else {
+                  rethrow;
+                }
+              }
+            }
+          } catch (e) {
+            print('Failed to fetch item details for backdrop update: $e');
+            rethrow;
+          }
+        }
+      });
+
+  /// Fetches available remote images and commands Emby to download the first one available.
+  Future<void> downloadFirstAvailableRemoteImage(
+          String itemId, String imageType) =>
+      _guarded(() async {
+        // Step 1: Fetch Available Images
+        final Response<dynamic> getResp = await _dio.get<dynamic>(
+          'Items/$itemId/RemoteImages',
+          queryParameters: <String, dynamic>{
+            'Type': imageType,
+            'IncludeAllLanguages': 'true',
+          },
+        );
+
+        if (getResp.statusCode != null && getResp.statusCode! >= 400) {
+          throw Exception('Failed to fetch remote images. Status code: ${getResp.statusCode}');
+        }
+
+        final EmbyRemoteImagesResult result = EmbyRemoteImagesResult.fromJson(
+          getResp.data as Map<String, dynamic>,
+        );
+
+        // Explicitly check if the GET request returns an empty Images array before attempting the POST request
+        if (result.images.isEmpty) {
+          throw Exception('No remote images found for item $itemId.');
+        }
+
+        final String? imageUrl = result.images.first.url ?? result.images.first.thumbnailUrl;
+        if (imageUrl == null) {
+          throw Exception('First available image has no valid URL.');
+        }
+
+        // Step 2: Command Emby to Download the Image
+        final Response<dynamic> postResp = await _dio.post<dynamic>(
+          'Items/$itemId/RemoteImages/Download',
+          // The queryParameters argument below is where the URL query parameter formatting
+          // is happening. Dio automatically URL-encodes these and appends them to the URL,
+          // guaranteeing no body is sent.
+          queryParameters: <String, dynamic>{
+            'Type': imageType,
+            'ImageUrl': imageUrl,
+          },
+        );
+
+        if (postResp.statusCode != null && postResp.statusCode! >= 400) {
+          throw Exception('Failed to download remote image. Status code: ${postResp.statusCode}');
+        }
+      });
+
+  Future<void> startLibraryScan() => _guarded(() async {
+        await _dio.post<dynamic>('Library/Refresh');
+      });
+
+  Future<({String state, double progress})?> getLibraryScanProgress() =>
+      _guarded(() async {
+        final Response<dynamic> resp =
+            await _dio.get<dynamic>('ScheduledTasks');
+        final List<dynamic> tasks = (resp.data as List<dynamic>?) ?? <dynamic>[];
+        for (final dynamic t in tasks) {
+          final Map<String, dynamic> task = t as Map<String, dynamic>;
+          if (task['Key'] == 'RefreshLibrary') {
+            return (
+              state: (task['State'] as String?) ?? 'Idle',
+              progress: (task['CurrentProgressPercentage'] as num?)?.toDouble() ?? 0.0,
+            );
+          }
+        }
+        return null;
+      });
+
+  Future<List<EmbyUser>> getUsers() => _guarded(() async {
+        final Response<dynamic> resp = await _dio.get<dynamic>('Users');
+        List<dynamic> users = <dynamic>[];
+        if (resp.data is List) {
+          users = resp.data as List<dynamic>;
+        } else if (resp.data is Map<String, dynamic> && resp.data['Items'] != null) {
+          users = resp.data['Items'] as List<dynamic>;
+        }
+        return users.map((dynamic u) => EmbyUser.fromJson(u as Map<String, dynamic>)).toList();
+      });
+
+  Future<List<EmbyUser>> getPublicUsers() async {
+        try {
+          final Response<dynamic> resp = await _dio.get<dynamic>('Users/Public');
+          List<dynamic> users = <dynamic>[];
+          if (resp.data is List) {
+            users = resp.data as List<dynamic>;
+          } else if (resp.data is Map<String, dynamic> && resp.data['Items'] != null) {
+            users = resp.data['Items'] as List<dynamic>;
+          }
+          return users.map((dynamic u) => EmbyUser.fromJson(u as Map<String, dynamic>)).toList();
+        } catch (e) {
+          return <EmbyUser>[];
+        }
+      }
+
+  Future<EmbyUser> getCurrentUser() => _guarded(() async {
+        final Response<dynamic> resp = await _dio.get<dynamic>('Users/$_userId');
+        return EmbyUser.fromJson(resp.data as Map<String, dynamic>);
+      });
+
+  Future<EmbyUser> getUser(String id) => _guarded(() async {
+        final Response<dynamic> resp = await _dio.get<dynamic>('Users/$id');
+        return EmbyUser.fromJson(resp.data as Map<String, dynamic>);
+      });
+
+  Future<void> createUser(String name) => _guarded(() async {
+        await _dio.post<dynamic>('Users/New', data: <String, dynamic>{'Name': name});
+      });
+
+  Future<void> deleteUser(String id) => _guarded(() async {
+        await _dio.delete<dynamic>('Users/$id');
+      });
+
+  Future<void> updateUserPassword(String id, String currentPw, String newPw) => _guarded(() async {
+        await _dio.post<dynamic>('Users/$id/Password', data: <String, dynamic>{
+          'CurrentPw': currentPw,
+          'NewPw': newPw,
+        });
+      });
+
+  Future<void> restrictUserLibraryAccess(String userId, List<String> allowedFolderIds) => _guarded(() async {
+        // Fallback to GET /Users/$userId if GET /Users/$userId/Policy throws 404.
+        Map<String, dynamic> rawPolicy;
+        try {
+          final Response<dynamic> policyResp = await _dio.get<dynamic>('Users/$userId/Policy');
+          rawPolicy = policyResp.data as Map<String, dynamic>;
+        } on DioException catch (e) {
+          if (e.response?.statusCode == 404) {
+            final Response<dynamic> userResp = await _dio.get<dynamic>('Users/$userId');
+            final Map<String, dynamic> rawUser = userResp.data as Map<String, dynamic>;
+            rawPolicy = rawUser['Policy'] as Map<String, dynamic>;
+          } else {
+            rethrow;
+          }
+        }
+
+        rawPolicy['EnableAllFolders'] = false;
+        rawPolicy['EnabledFolders'] = allowedFolderIds;
+
+        await _dio.post<dynamic>(
+          'Users/$userId/Policy',
+          data: rawPolicy,
+          options: Options(
+            headers: <String, dynamic>{
+              'Content-Type': 'application/json',
+              // X-Emby-Token is automatically injected by Dio interceptor
+            },
+          ),
+        );
+      });
+
+  Future<void> updateUserPolicy(String id, EmbyUserPolicy policy) => _guarded(() async {
+        final Response<dynamic> userResp = await _dio.get<dynamic>('Users/$id');
+        final Map<String, dynamic> rawUser = userResp.data as Map<String, dynamic>;
+        final Map<String, dynamic> rawPolicy = rawUser['Policy'] as Map<String, dynamic>;
+
+        rawPolicy['IsAdministrator'] = policy.isAdministrator;
+        rawPolicy['EnableAllFolders'] = policy.enableAllFolders;
+        rawPolicy['EnabledFolders'] = policy.enabledFolders;
+
+        await _dio.post<dynamic>(
+          'Users/$id/Policy',
+          data: rawPolicy,
+        );
+      });
+
   void close() => _dio.close(force: true);
+
+  String get adminToken => _token ?? '';
 
   Future<T> _guarded<T>(Future<T> Function() call) async {
     if (!_loggedIn) {

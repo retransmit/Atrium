@@ -1,10 +1,13 @@
 import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
+import 'package:core_storage/core_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import 'jellyfin_client.dart';
+import 'models/jellyfin_auth.dart';
 import 'models/jellyfin_item.dart';
+import 'models/jellyfin_remote_image.dart';
 import 'models/jellyfin_session.dart';
 import 'models/jellyfin_view.dart';
 
@@ -26,26 +29,41 @@ final jellyfinClientProvider = FutureProvider.family<JellyfinClient, Instance>((
       ),
     _ => ('', ''),
   };
+  final Box<String> overridesBox = Hive.box<String>(AtriumBoxes.imageOverrides);
   final JellyfinClient client = JellyfinClient.create(
     baseUrl: baseUrl,
     username: username,
     password: password,
     deviceId: instance.id,
     allowSelfSigned: instance.allowSelfSignedCerts,
+    getLocalOverride: (String itemId, String type) => overridesBox.get('${instance.id}_${itemId}_$type'),
+    setLocalOverride: (String itemId, String type, String tag) {
+      if (tag.isEmpty) {
+        overridesBox.delete('${instance.id}_${itemId}_$type');
+      } else {
+        overridesBox.put('${instance.id}_${itemId}_$type', tag);
+      }
+    },
   );
   ref.onDispose(client.close);
   return client;
 });
 
 /// Libraries for an instance.
-final jellyfinViewsProvider =
-    FutureProvider.family<List<JellyfinView>, Instance>((
+final jellyfinViewsProvider = FutureProvider.family<List<JellyfinView>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
-  final JellyfinClient client =
-      await ref.watch(jellyfinClientProvider(instance).future);
+  final JellyfinClient client = await ref.read(jellyfinClientProvider(instance).future);
   return client.getViews();
+});
+
+final jellyfinVirtualFoldersProvider = FutureProvider.family<List<JellyfinVirtualFolder>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final JellyfinClient client = await ref.read(jellyfinClientProvider(instance).future);
+  return client.getVirtualFolders();
 });
 
 /// Flattened items within a root library, using recursive fetch based on CollectionType.
@@ -155,6 +173,49 @@ final jellyfinEpisodesProvider =
   return client.getEpisodes(seriesId, seasonId);
 });
 
+final jellyfinLibraryScanProvider =
+    StreamProvider.autoDispose.family<({String state, double progress})?, Instance>((
+  Ref ref,
+  Instance instance,
+) async* {
+  bool disposed = false;
+  ref.onDispose(() => disposed = true);
+
+  final JellyfinClient client =
+      await ref.watch(jellyfinClientProvider(instance).future);
+
+  // Initial fetch
+  yield await client.getLibraryScanProgress();
+
+  // Poll every 2 seconds
+  while (!disposed) {
+    await Future<void>.delayed(const Duration(seconds: 2));
+    if (disposed) break;
+
+    try {
+      yield await client.getLibraryScanProgress();
+    } catch (_) {
+      // Ignore polling errors
+    }
+  }
+});
+
+final jellyfinUsersProvider = FutureProvider.autoDispose.family<List<JellyfinUser>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final JellyfinClient client = await ref.watch(jellyfinClientProvider(instance).future);
+  return client.getUsers();
+});
+
+final jellyfinCurrentUserProvider = FutureProvider.autoDispose.family<JellyfinUser, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final JellyfinClient client = await ref.watch(jellyfinClientProvider(instance).future);
+  return client.getCurrentUser();
+});
+
 final jellyfinSessionsProvider =
     StreamProvider.autoDispose.family<List<ActiveSession>, Instance>((
   Ref ref,
@@ -253,7 +314,8 @@ enum JellyfinViewMode { grid, list }
 
 final jellyfinViewModeProvider =
     StateProvider.family<JellyfinViewMode, Instance>(
-        (Ref ref, Instance instance) => JellyfinViewMode.grid,);
+  (Ref ref, Instance instance) => JellyfinViewMode.grid,
+);
 
 final jellyfinActiveTabBarIndexProvider =
     StateProvider.family<int, Instance>((Ref ref, Instance instance) => 0);
@@ -278,4 +340,15 @@ final jellyfinFastSessionsProvider =
     if (disposed) break;
     yield await client.getSessions();
   }
+});
+
+final jellyfinRemoteImagesProvider = FutureProvider.family<
+    List<JellyfinRemoteImage>, (Instance, String, String)>((
+  Ref ref,
+  (Instance, String, String) key,
+) async {
+  final (Instance instance, String itemId, String imageType) = key;
+  final JellyfinClient client =
+      await ref.watch(jellyfinClientProvider(instance).future);
+  return client.getRemoteImages(itemId, imageType);
 });

@@ -158,6 +158,7 @@ class ServiceDetailScreen extends ConsumerWidget {
             ),
           if (instance.kind == ServiceKind.qbittorrent)
             QbittorrentAppBarActions(instance: instance),
+
           Consumer(
             builder: (BuildContext context, WidgetRef ref, Widget? child) {
               if (instance.kind == ServiceKind.qbittorrent) {
@@ -180,6 +181,17 @@ class ServiceDetailScreen extends ConsumerWidget {
         ],
       ),
       body: _bodyFor(instance),
+      floatingActionButton: (instance.kind == ServiceKind.emby || instance.kind == ServiceKind.jellyfin)
+          ? FloatingActionButton(
+              onPressed: () => pushScreen<void>(
+                context,
+                instance.kind == ServiceKind.emby
+                    ? EmbySettingsScreen(instance: instance)
+                    : JellyfinSettingsScreen(instance: instance),
+              ),
+              child: const Icon(Icons.settings),
+            )
+          : null,
     );
   }
 

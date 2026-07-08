@@ -205,7 +205,7 @@ class _SeriesDetailBody extends ConsumerWidget {
                     const Center(
                       child: Padding(
                         padding: EdgeInsets.symmetric(vertical: Insets.xl),
-                        child: CircularProgressIndicator(),
+                        child: ExpressiveProgressIndicator(),
                       ),
                     ),
                   ],
@@ -332,7 +332,7 @@ class _HeroInfoCard extends StatelessWidget {
                                 width: 24,
                                 height: 24,
                                 child:
-                                    CircularProgressIndicator(strokeWidth: 2),
+                                    ExpressiveProgressIndicator(strokeWidth: 2),
                               ),
                             ),
                           ),

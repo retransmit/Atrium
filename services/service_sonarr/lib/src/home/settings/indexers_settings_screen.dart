@@ -221,7 +221,7 @@ class _IndexersTab extends ConsumerWidget {
         child: const Icon(Icons.add),
       ),
       body: indexersAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: ExpressiveProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (indexers) {
           if (indexers.isEmpty) {
@@ -470,7 +470,7 @@ class _ImportListsTab extends ConsumerWidget {
         child: const Icon(Icons.add),
       ),
       body: listsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: ExpressiveProgressIndicator()),
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (lists) {
           if (lists.isEmpty) {
@@ -618,7 +618,7 @@ class _IndexerOptionsTabState extends ConsumerState<_IndexerOptionsTab> {
     final configAsync = ref.watch(sonarrIndexerConfigProvider(widget.instance));
 
     return configAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(child: ExpressiveProgressIndicator()),
       error: (err, stack) => Center(child: Text('Error: $err')),
       data: (config) {
         _initialize(config);
@@ -692,7 +692,7 @@ class _IndexerOptionsTabState extends ConsumerState<_IndexerOptionsTab> {
                         child: ElevatedButton(
                           onPressed: _saving ? null : _save,
                           child: _saving
-                              ? const CircularProgressIndicator()
+                              ? const ExpressiveProgressIndicator()
                               : const Text('Save Options'),
                         ),
                       ),

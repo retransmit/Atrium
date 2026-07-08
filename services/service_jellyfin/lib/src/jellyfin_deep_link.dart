@@ -7,7 +7,10 @@ import 'jellyfin_client.dart';
 
 /// Launches the Jellyfin app for a given item.
 Future<void> launchJellyfinDeepLink(
-    BuildContext context, JellyfinClient client, String itemId,) async {
+  BuildContext context,
+  JellyfinClient client,
+  String itemId,
+) async {
   if (Platform.isAndroid) {
     try {
       const MethodChannel channel = MethodChannel('app.atrium/launcher');

@@ -30,9 +30,11 @@ class EmbySearchDelegate extends SearchDelegate<void> {
           final EmbyViewMode viewMode =
               ref.watch(embyViewModeProvider(instance));
           return IconButton(
-            icon: Icon(viewMode == EmbyViewMode.grid
-                ? Icons.view_headline
-                : Icons.grid_view,),
+            icon: Icon(
+              viewMode == EmbyViewMode.grid
+                  ? Icons.view_headline
+                  : Icons.grid_view,
+            ),
             tooltip: viewMode == EmbyViewMode.grid
                 ? 'Switch to List View'
                 : 'Switch to Grid View',
@@ -86,7 +88,7 @@ class _SearchResults extends ConsumerWidget {
     final EmbyClient? client = ref.watch(embyClientProvider(instance)).value;
 
     if (client == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: ExpressiveProgressIndicator());
     }
 
     if (query.trim().isEmpty) {
@@ -97,7 +99,7 @@ class _SearchResults extends ConsumerWidget {
       future: client.searchItems(query.trim()),
       builder: (BuildContext context, AsyncSnapshot<List<EmbyItem>> snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: ExpressiveProgressIndicator());
         }
         if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
@@ -162,6 +164,7 @@ class _SearchResults extends ConsumerWidget {
           albumArtist:
               item.artists.isNotEmpty ? item.artists.first : 'Unknown Artist',
           albumOverview: item.overview,
+          albumGenres: item.genres,
           albumImageUrl: client.imageUrl(item),
         ),
       );
