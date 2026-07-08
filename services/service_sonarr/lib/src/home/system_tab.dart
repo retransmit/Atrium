@@ -460,8 +460,18 @@ class _HealthCard extends StatelessWidget {
         trailing: wikiUrl != null
             ? IconButton(
                 icon: Icon(Icons.open_in_new, color: fgColor, size: 18),
-                onPressed: () =>
-                    launchUrl(Uri.parse(wikiUrl)),
+                // The wiki url comes from the server's health payload -
+                // untrusted data. Only launch well-formed https links, and
+                // hand them to the browser rather than arbitrary intents.
+                onPressed: () async {
+                  final Uri? uri = Uri.tryParse(wikiUrl);
+                  if (uri == null ||
+                      uri.scheme != 'https' ||
+                      !uri.hasAuthority) {
+                    return;
+                  }
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                },
                 tooltip: 'Open wiki',
               )
             : null,
