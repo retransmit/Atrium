@@ -195,6 +195,11 @@ void main() {
             PlexLibrary(key: '1', title: 'Movies', type: 'movie'),
           ],
         ),
+        // No active streams: the Now Streaming row renders nothing (and the
+        // real sessions poller must not run in tests).
+        plexSessionsProvider(instance).overrideWith(
+          (Ref ref) async => const <PlexSession>[],
+        ),
         // The Home tab is the default view, so it renders the on-deck and
         // recently-added rows rather than a library grid.
         plexOnDeckProvider(instance).overrideWith(
