@@ -6,7 +6,7 @@ part 'sonarr_series.g.dart';
 @freezed
 abstract class SonarrSeries with _$SonarrSeries {
   const factory SonarrSeries({
-    required int id,
+    @Default(0) int id,
     required String title,
     String? sortTitle,
     String? status,
@@ -17,6 +17,15 @@ abstract class SonarrSeries with _$SonarrSeries {
     @Default(<SonarrImage>[]) List<SonarrImage> images,
     @Default(<SonarrSeason>[]) List<SonarrSeason> seasons,
     SonarrSeriesStatistics? statistics,
+    String? seriesType,
+    int? runtime,
+    String? certification,
+    @Default(<String>[]) List<String> genres,
+    String? path,
+    String? nextAiring,
+    String? previousAiring,
+    int? tvdbId,
+    String? titleSlug,
   }) = _SonarrSeries;
 
   factory SonarrSeries.fromJson(Map<String, dynamic> json) =>
@@ -38,7 +47,7 @@ abstract class SonarrImage with _$SonarrImage {
 @freezed
 abstract class SonarrSeason with _$SonarrSeason {
   const factory SonarrSeason({
-    required int seasonNumber,
+    @Default(0) int seasonNumber,
     @Default(false) bool monitored,
     SonarrSeasonStatistics? statistics,
   }) = _SonarrSeason;
