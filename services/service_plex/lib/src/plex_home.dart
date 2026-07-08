@@ -6,9 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 
 import 'models/plex_models.dart';
+import 'models/plex_session.dart';
 import 'plex_api.dart';
 import 'plex_item_detail.dart';
 import 'plex_providers.dart';
+import 'plex_session_detail_screen.dart';
 
 /// Plex item types that open the detail screen; everything else is a container
 /// we drill into. Plex types are reliable and lowercase, so an allowlist is
@@ -204,7 +206,8 @@ class _FolderScreen extends StatelessWidget {
   }
 }
 
-/// Hub view: Continue Watching (on deck) then Recently Added.
+/// Hub view: Now Streaming (active sessions), Continue Watching (on deck),
+/// then Recently Added.
 class _HomeSections extends ConsumerWidget {
   const _HomeSections({required this.instance});
 
@@ -214,12 +217,14 @@ class _HomeSections extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return RefreshIndicator(
       onRefresh: () async {
+        ref.invalidate(plexSessionsProvider(instance));
         ref.invalidate(plexOnDeckProvider(instance));
         ref.invalidate(plexRecentlyAddedProvider(instance));
       },
       child: ListView(
         padding: const EdgeInsets.symmetric(vertical: Insets.md),
         children: <Widget>[
+          _NowStreamingSection(instance: instance),
           _PlexSection(
             instance: instance,
             title: 'Continue Watching',
@@ -232,6 +237,165 @@ class _HomeSections extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// "Now Streaming" - active sessions, polled while the hub is visible.
+/// Additive row: empty, loading, and error all render nothing so the hub is
+/// never blocked by the sessions poller. Tapping a card opens the
+/// now-playing controller for that stream.
+class _NowStreamingSection extends ConsumerWidget {
+  const _NowStreamingSection({required this.instance});
+
+  final Instance instance;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final List<PlexSession> sessions =
+        ref.watch(plexSessionsProvider(instance)).value ?? const <PlexSession>[];
+    final PlexApi? api = ref.watch(plexApiProvider(instance)).value;
+    if (sessions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Insets.lg,
+            vertical: Insets.sm,
+          ),
+          child: Text(
+            'Now Streaming',
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.bold),
+          ),
+        ),
+        SizedBox(
+          height: 92,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
+            itemCount: sessions.length,
+            separatorBuilder: (_, __) => const SizedBox(width: Insets.md),
+            itemBuilder: (BuildContext context, int index) {
+              final PlexSession session = sessions[index];
+              return _SessionCard(
+                instance: instance,
+                session: session,
+                imageUrl: api?.imageUrl(session.thumb),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: Insets.lg),
+      ],
+    );
+  }
+}
+
+/// Compact card for one active stream: poster, title, player, live progress.
+class _SessionCard extends StatelessWidget {
+  const _SessionCard({
+    required this.instance,
+    required this.session,
+    required this.imageUrl,
+  });
+
+  final Instance instance;
+  final PlexSession session;
+  final String? imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final String title = session.grandparentTitle ?? session.title;
+    final List<String> subtitleParts = <String>[
+      if (session.player != null && session.player!.title.isNotEmpty)
+        session.player!.title,
+      if (session.user != null && session.user!.title.isNotEmpty)
+        session.user!.title,
+    ];
+    return SizedBox(
+      width: 240,
+      child: Card(
+        child: InkWell(
+          onTap: () => pushScreen<void>(
+            context,
+            PlexSessionDetailScreen(instance: instance, initialSession: session),
+          ),
+          child: Row(
+            children: <Widget>[
+              SizedBox(
+                width: 56,
+                height: double.infinity,
+                child: _poster(theme),
+              ),
+              const SizedBox(width: Insets.md),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelLarge
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    if (subtitleParts.isNotEmpty) ...<Widget>[
+                      const SizedBox(height: Insets.xs),
+                      Text(
+                        subtitleParts.join(' · '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelSmall
+                            ?.copyWith(color: theme.colorScheme.outline),
+                      ),
+                    ],
+                    const SizedBox(height: Insets.sm),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: LinearProgressIndicator(
+                        value: session.progress,
+                        minHeight: 4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: Insets.md),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _poster(ThemeData theme) {
+    final Widget fallback = Container(
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Icon(
+        session.player?.state == 'paused'
+            ? Icons.pause_circle_outline
+            : Icons.play_circle_outline,
+        color: theme.colorScheme.outline,
+      ),
+    );
+    if (imageUrl == null) {
+      return fallback;
+    }
+    return CachedNetworkImage(
+      imageUrl: imageUrl!,
+      fit: BoxFit.cover,
+      memCacheWidth: 120,
+      placeholder: (BuildContext context, String url) =>
+          Container(color: theme.colorScheme.surfaceContainerHighest),
+      errorWidget: (BuildContext context, String url, Object error) => fallback,
     );
   }
 }

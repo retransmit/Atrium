@@ -14,3 +14,4 @@ export 'src/plex_home.dart';
 export 'src/plex_item_detail.dart';
 export 'src/plex_providers.dart';
 export 'src/plex_search.dart';
+export 'src/plex_session_detail_screen.dart';
