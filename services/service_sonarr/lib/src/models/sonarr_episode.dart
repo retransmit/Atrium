@@ -1,4 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'sonarr_series.dart';
 
 part 'sonarr_episode.freezed.dart';
 part 'sonarr_episode.g.dart';
@@ -18,6 +19,9 @@ abstract class SonarrEpisode with _$SonarrEpisode {
     String? airDateUtc,
     int? runtime,
     int? absoluteEpisodeNumber,
+    int? episodeFileId,
+    SonarrSeries? series,
+    Map<String, dynamic>? episodeFile,
   }) = _SonarrEpisode;
 
   factory SonarrEpisode.fromJson(Map<String, dynamic> json) =>
