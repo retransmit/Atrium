@@ -1,0 +1,268 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:core_models/core_models.dart';
+import 'package:core_ui/core_ui.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'models/plex_models.dart';
+import 'plex_api.dart';
+import 'plex_item_detail.dart';
+import 'plex_providers.dart';
+
+/// Seasons of a show, each drilling into its episode list. Browse/manage
+/// only: episodes carry a watched toggle, playback stays with the official
+/// Plex app.
+class PlexSeasonScreen extends ConsumerWidget {
+  const PlexSeasonScreen({
+    required this.instance,
+    required this.show,
+    super.key,
+  });
+
+  final Instance instance;
+  final PlexMetadata show;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<List<PlexMetadata>> seasons =
+        ref.watch(plexChildrenProvider((instance, show.ratingKey)));
+    final PlexApi? api = ref.watch(plexApiProvider(instance)).value;
+
+    return Scaffold(
+      appBar: AppBar(title: Text(show.title)),
+      body: RefreshIndicator(
+        onRefresh: () async =>
+            ref.invalidate(plexChildrenProvider((instance, show.ratingKey))),
+        child: AsyncValueView<List<PlexMetadata>>(
+          value: seasons,
+          onRetry: () =>
+              ref.invalidate(plexChildrenProvider((instance, show.ratingKey))),
+          data: (List<PlexMetadata> list) {
+            if (list.isEmpty) {
+              return const EmptyView(
+                icon: Icons.tv_outlined,
+                title: 'No seasons',
+                message: 'This show has no seasons yet.',
+              );
+            }
+            return ListView.separated(
+              padding: Insets.page,
+              itemCount: list.length,
+              separatorBuilder: (_, __) => const SizedBox(height: Insets.md),
+              itemBuilder: (BuildContext context, int index) {
+                final PlexMetadata season = list[index];
+                return _SeasonCard(
+                  instance: instance,
+                  season: season,
+                  imageUrl: api?.imageUrl(season.thumb),
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// Tonal card for one season: poster, title, and watched progress from
+/// `viewedLeafCount / leafCount`. Tapping opens the episode list.
+class _SeasonCard extends StatelessWidget {
+  const _SeasonCard({
+    required this.instance,
+    required this.season,
+    required this.imageUrl,
+  });
+
+  final Instance instance;
+  final PlexMetadata season;
+  final String? imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final int leafCount = season.leafCount ?? 0;
+    final int viewed = season.viewedLeafCount ?? 0;
+    final double? progress =
+        leafCount > 0 ? (viewed / leafCount).clamp(0, 1).toDouble() : null;
+
+    return Card.filled(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => pushScreen<void>(
+          context,
+          _PlexEpisodeList(instance: instance, season: season),
+        ),
+        child: SizedBox(
+          height: 96,
+          child: Row(
+            children: <Widget>[
+              SizedBox(
+                width: 64,
+                height: double.infinity,
+                child: _poster(theme),
+              ),
+              const SizedBox(width: Insets.lg),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      season.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    if (leafCount > 0) ...<Widget>[
+                      const SizedBox(height: Insets.xs),
+                      Text(
+                        '$viewed of $leafCount watched',
+                        style: theme.textTheme.labelSmall
+                            ?.copyWith(color: theme.colorScheme.outline),
+                      ),
+                      const SizedBox(height: Insets.sm),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(2),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 4,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: Insets.md),
+              Icon(Icons.chevron_right, color: theme.colorScheme.outline),
+              const SizedBox(width: Insets.md),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _poster(ThemeData theme) {
+    final Widget fallback = Container(
+      color: theme.colorScheme.surfaceContainerHighest,
+      child: Icon(Icons.tv_outlined, color: theme.colorScheme.outline),
+    );
+    if (imageUrl == null) {
+      return fallback;
+    }
+    return CachedNetworkImage(
+      imageUrl: imageUrl!,
+      fit: BoxFit.cover,
+      memCacheWidth: 128,
+      placeholder: (BuildContext context, String url) =>
+          Container(color: theme.colorScheme.surfaceContainerHighest),
+      errorWidget: (BuildContext context, String url, Object error) => fallback,
+    );
+  }
+}
+
+/// Episodes of one season. Each row shows the SxEx label, watched state, and
+/// a trailing toggle that scrobbles/unscrobbles the episode on the server.
+/// Tapping a row opens the episode detail screen.
+class _PlexEpisodeList extends ConsumerWidget {
+  const _PlexEpisodeList({required this.instance, required this.season});
+
+  final Instance instance;
+  final PlexMetadata season;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<List<PlexMetadata>> episodes =
+        ref.watch(plexChildrenProvider((instance, season.ratingKey)));
+    final PlexApi? api = ref.watch(plexApiProvider(instance)).value;
+
+    return Scaffold(
+      appBar: AppBar(title: Text(season.title)),
+      body: RefreshIndicator(
+        onRefresh: () async => ref
+            .invalidate(plexChildrenProvider((instance, season.ratingKey))),
+        child: AsyncValueView<List<PlexMetadata>>(
+          value: episodes,
+          onRetry: () => ref
+              .invalidate(plexChildrenProvider((instance, season.ratingKey))),
+          data: (List<PlexMetadata> list) {
+            if (list.isEmpty) {
+              return const EmptyView(
+                icon: Icons.tv_outlined,
+                title: 'No episodes',
+                message: 'This season has no episodes yet.',
+              );
+            }
+            return ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: Insets.sm),
+              itemCount: list.length,
+              itemBuilder: (BuildContext context, int index) {
+                final PlexMetadata episode = list[index];
+                return _EpisodeTile(
+                  instance: instance,
+                  episode: episode,
+                  api: api,
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _EpisodeTile extends ConsumerWidget {
+  const _EpisodeTile({
+    required this.instance,
+    required this.episode,
+    required this.api,
+  });
+
+  final Instance instance;
+  final PlexMetadata episode;
+  final PlexApi? api;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
+    final bool watched = episode.viewCount > 0;
+    final String label =
+        (episode.parentIndex != null && episode.index != null)
+            ? 'S${episode.parentIndex}E${episode.index} - ${episode.title}'
+            : episode.title;
+    final int minutes =
+        episode.duration != null ? episode.duration! ~/ 60000 : 0;
+
+    return ListTile(
+      title: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis),
+      subtitle: minutes > 0 ? Text('$minutes min') : null,
+      trailing: IconButton(
+        tooltip: watched ? 'Mark as unwatched' : 'Mark as watched',
+        icon: Icon(
+          watched ? Icons.check_circle : Icons.check_circle_outline,
+          color: watched ? theme.colorScheme.primary : null,
+        ),
+        onPressed: api == null
+            ? null
+            : () async {
+                await api!.setWatched(episode.ratingKey, watched: !watched);
+                if (!context.mounted) {
+                  return;
+                }
+                // Whole-family invalidation refreshes both this episode list
+                // and the season progress behind it; on deck moves too.
+                ref.invalidate(plexChildrenProvider);
+                ref.invalidate(plexOnDeckProvider(instance));
+                ref.invalidate(plexItemsProvider);
+              },
+      ),
+      onTap: () => pushScreen<void>(
+        context,
+        PlexItemDetailScreen(instance: instance, ratingKey: episode.ratingKey),
+      ),
+    );
+  }
+}

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models/plex_models.dart';
 import 'plex_api.dart';
 import 'plex_providers.dart';
+import 'plex_season_screen.dart';
 
 /// Detail screen for a Plex movie or episode: poster header, synopsis, genres,
 /// and a Cast strip, with a watched/unwatched toggle in the app bar. (Plex has
@@ -70,6 +71,28 @@ class PlexItemDetailScreen extends ConsumerWidget {
           return CustomScrollView(
             slivers: <Widget>[
               SliverToBoxAdapter(child: _Header(item: item, api: api)),
+              if (item.type == 'show')
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      Insets.lg,
+                      Insets.lg,
+                      Insets.lg,
+                      0,
+                    ),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: FilledButton.tonalIcon(
+                        onPressed: () => pushScreen<void>(
+                          context,
+                          PlexSeasonScreen(instance: instance, show: item),
+                        ),
+                        icon: const Icon(Icons.video_library_outlined),
+                        label: const Text('View seasons'),
+                      ),
+                    ),
+                  ),
+                ),
               if (item.summary != null && item.summary!.isNotEmpty)
                 SliverToBoxAdapter(
                   child: Padding(
@@ -230,6 +253,10 @@ class _Header extends StatelessWidget {
   }
 }
 
+/// Non-interactive genre chips. Detail metadata carries only genre display
+/// tags, not the section key + genre directory key that
+/// `plexGenreItemsProvider` needs, so these stay display-only rather than
+/// guessing at a section. Genre browsing lives on the library grid instead.
 class _GenreChips extends StatelessWidget {
   const _GenreChips({required this.genres});
 
