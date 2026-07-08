@@ -11,7 +11,8 @@ sealed class NetworkException implements Exception {
     return switch (e.type) {
       DioExceptionType.connectionTimeout ||
       DioExceptionType.sendTimeout ||
-      DioExceptionType.receiveTimeout =>
+      DioExceptionType.receiveTimeout ||
+      DioExceptionType.transformTimeout =>
         const NetworkTimeoutException('Server took too long to respond.'),
       DioExceptionType.connectionError =>
         NetworkUnreachableException(e.message ?? 'Could not reach the server.'),
