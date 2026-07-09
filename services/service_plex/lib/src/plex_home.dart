@@ -19,10 +19,11 @@ import 'plex_session_detail_screen.dart';
 /// safe here (unlike Jellyfin/Emby, which use a container denylist).
 const Set<String> plexPlayableTypes = <String>{'movie', 'episode', 'clip'};
 
-/// Plex's per-instance UI: a Home tab (Continue Watching + Recently Added)
-/// plus a chip per library backed by a poster grid with genre filter chips.
-/// Tapping a movie/episode opens its detail screen; a show opens its seasons,
-/// an artist its albums, and other containers drill into their children.
+/// Plex's per-instance UI: a Home tab (featured hero, Now Streaming,
+/// Continue Watching, Recently Added, then one row per library) plus a chip
+/// per library backed by a poster grid with genre filter chips. Tapping a
+/// movie/episode opens its detail screen; a show opens its seasons, an artist
+/// its albums, and other containers drill into their children.
 class PlexHome extends ConsumerStatefulWidget {
   const PlexHome({required this.instance, super.key});
 
@@ -54,7 +55,11 @@ class _PlexHomeState extends ConsumerState<PlexHome> {
             ),
             Expanded(
               child: _selectedKey == 'home'
-                  ? _HomeSections(instance: widget.instance)
+                  ? _HomeSections(
+                      instance: widget.instance,
+                      onSelectLibrary: (String key) =>
+                          setState(() => _selectedKey = key),
+                    )
                   : _ItemsGrid(
                       // A fresh State per section, so a genre picked in one
                       // library never leaks into another.
@@ -303,24 +308,42 @@ class _FolderScreen extends StatelessWidget {
   }
 }
 
-/// Hub view: Now Streaming (active sessions), Continue Watching (on deck),
-/// then Recently Added.
+/// Hub view: featured hero, Now Streaming (active sessions), Continue
+/// Watching (on deck), Recently Added, then one horizontal row per library.
+/// A library row's "See all" jumps to that library's full grid via
+/// [onSelectLibrary], the same switch a library chip performs.
 class _HomeSections extends ConsumerWidget {
-  const _HomeSections({required this.instance});
+  const _HomeSections({
+    required this.instance,
+    required this.onSelectLibrary,
+  });
 
   final Instance instance;
+  final ValueChanged<String> onSelectLibrary;
+
+  /// Library rows stop early; the full list lives in the grid behind
+  /// "See all".
+  static const int _libraryRowCap = 20;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Already loaded by the parent's AsyncValueView, so `.value` is the data.
+    final List<PlexLibrary> libraries =
+        ref.watch(plexLibrariesProvider(instance)).value ??
+            const <PlexLibrary>[];
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(plexSessionsProvider(instance));
         ref.invalidate(plexOnDeckProvider(instance));
         ref.invalidate(plexRecentlyAddedProvider(instance));
+        for (final PlexLibrary lib in libraries) {
+          ref.invalidate(plexItemsProvider((instance, lib.key)));
+        }
       },
       child: ListView(
         padding: const EdgeInsets.symmetric(vertical: Insets.md),
         children: <Widget>[
+          _FeaturedHero(instance: instance),
           _NowStreamingSection(instance: instance),
           _PlexSection(
             instance: instance,
@@ -332,9 +355,139 @@ class _HomeSections extends ConsumerWidget {
             title: 'Recently Added',
             provider: plexRecentlyAddedProvider(instance),
           ),
+          for (final PlexLibrary lib in libraries)
+            _PlexSection(
+              instance: instance,
+              title: lib.title,
+              provider: plexItemsProvider((instance, lib.key)),
+              maxItems: _libraryRowCap,
+              onSeeAll: () => onSelectLibrary(lib.key),
+            ),
         ],
       ),
     );
+  }
+}
+
+/// Spotlight banner at the top of the hub: the first on-deck item, else the
+/// first recently-added one. Backdrop art under a bottom-up scrim with the
+/// title, a meta line, and a Resume/Details action overlaid bottom-left.
+/// Renders nothing while the sources load and when both are empty.
+class _FeaturedHero extends ConsumerWidget {
+  const _FeaturedHero({required this.instance});
+
+  final Instance instance;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final List<PlexMetadata> onDeck =
+        ref.watch(plexOnDeckProvider(instance)).value ?? const <PlexMetadata>[];
+    final List<PlexMetadata> recent =
+        ref.watch(plexRecentlyAddedProvider(instance)).value ??
+            const <PlexMetadata>[];
+    final PlexMetadata? item = onDeck.isNotEmpty
+        ? onDeck.first
+        : (recent.isNotEmpty ? recent.first : null);
+    if (item == null) {
+      return const SizedBox.shrink();
+    }
+
+    final ThemeData theme = Theme.of(context);
+    final PlexApi? api = ref.watch(plexApiProvider(instance)).value;
+    final String? backdropUrl = api?.imageUrl(item.art ?? item.thumb);
+    final bool resume = item.viewOffset != null && item.viewOffset! > 0;
+    final String meta = _metaLine(item);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Insets.lg, 0, Insets.lg, Insets.lg),
+      child: SizedBox(
+        height: 230,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Stack(
+            fit: StackFit.expand,
+            children: <Widget>[
+              if (backdropUrl != null)
+                Image(
+                  image: CachedNetworkImageProvider(backdropUrl),
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                  ),
+                )
+              else
+                Container(color: theme.colorScheme.surfaceContainerHighest),
+              // Bottom-up scrim so the white overlay stays legible over any
+              // art (and over the plain fallback container).
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.45),
+                      Colors.black.withValues(alpha: 0.85),
+                    ],
+                  ),
+                ),
+              ),
+              Align(
+                alignment: Alignment.bottomLeft,
+                child: Padding(
+                  padding: const EdgeInsets.all(Insets.lg),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        item.grandparentTitle ?? item.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (meta.isNotEmpty) ...<Widget>[
+                        const SizedBox(height: Insets.xs),
+                        Text(
+                          meta,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelMedium
+                              ?.copyWith(color: Colors.white70),
+                        ),
+                      ],
+                      const SizedBox(height: Insets.md),
+                      FilledButton.icon(
+                        onPressed: () => openPlexItem(context, instance, item),
+                        icon: const Icon(Icons.play_arrow),
+                        label: Text(resume ? 'Resume' : 'Details'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Year, capitalized type, and SxEy for an episode, dot-separated.
+  String _metaLine(PlexMetadata item) {
+    final List<String> parts = <String>[
+      if (item.year != null) '${item.year}',
+      if (item.type.isNotEmpty)
+        '${item.type[0].toUpperCase()}${item.type.substring(1)}',
+      if (item.type == 'episode' &&
+          item.parentIndex != null &&
+          item.index != null)
+        'S${item.parentIndex}E${item.index}',
+    ];
+    return parts.join(' · ');
   }
 }
 
@@ -354,7 +507,6 @@ class _NowStreamingSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final List<PlexSession> sessions =
         ref.watch(plexSessionsProvider(instance)).value ?? const <PlexSession>[];
-    final PlexApi? api = ref.watch(plexApiProvider(instance)).value;
     if (sessions.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -375,18 +527,16 @@ class _NowStreamingSection extends ConsumerWidget {
           ),
         ),
         SizedBox(
-          height: 92,
+          height: 180,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
             itemCount: sessions.length,
             separatorBuilder: (_, __) => const SizedBox(width: Insets.md),
             itemBuilder: (BuildContext context, int index) {
-              final PlexSession session = sessions[index];
               return _SessionCard(
                 instance: instance,
-                session: session,
-                imageUrl: api?.imageUrl(session.thumb),
+                session: sessions[index],
               );
             },
           ),
@@ -397,128 +547,157 @@ class _NowStreamingSection extends ConsumerWidget {
   }
 }
 
-/// Compact card for one active stream: poster, title, player, live progress.
-class _SessionCard extends StatelessWidget {
+/// Backdrop card for one active stream: session art under a bottom-heavy
+/// scrim, the watching user top-left, the title bottom-left, and a live
+/// progress bar hugging the bottom edge. White/white70 only over the image.
+/// Tap opens the now-playing controller for that stream.
+class _SessionCard extends ConsumerWidget {
   const _SessionCard({
     required this.instance,
     required this.session,
-    required this.imageUrl,
   });
 
   final Instance instance;
   final PlexSession session;
-  final String? imageUrl;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
+    final PlexApi? api = ref.watch(plexApiProvider(instance)).value;
+    final String? backdropUrl = api?.imageUrl(session.art ?? session.thumb);
+    final String? avatarUrl = api?.imageUrl(session.user?.thumb);
     final String title = session.grandparentTitle ?? session.title;
-    final List<String> subtitleParts = <String>[
-      if (session.player != null && session.player!.title.isNotEmpty)
-        session.player!.title,
-      if (session.user != null && session.user!.title.isNotEmpty)
-        session.user!.title,
-    ];
+    final String userTitle = session.user?.title ?? '';
+
     return SizedBox(
-      width: 240,
+      width: 320,
       child: Card(
         elevation: 0,
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
         color: theme.colorScheme.surfaceContainerLow,
         shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(24)),
+          borderRadius: BorderRadius.all(Radius.circular(16)),
         ),
         child: InkWell(
           onTap: () => pushScreen<void>(
             context,
             PlexSessionDetailScreen(instance: instance, initialSession: session),
           ),
-          child: Row(
+          child: Stack(
+            fit: StackFit.expand,
             children: <Widget>[
-              SizedBox(
-                width: 56,
-                height: double.infinity,
-                child: _poster(theme),
+              if (backdropUrl != null)
+                Image(
+                  image: CachedNetworkImageProvider(backdropUrl),
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
+              // Bottom-heavy scrim: keeps the white overlay legible over any
+              // backdrop (and over the plain card when there is no art).
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[
+                      Colors.black.withValues(alpha: 0.25),
+                      Colors.black.withValues(alpha: 0.45),
+                      Colors.black.withValues(alpha: 0.85),
+                    ],
+                  ),
+                ),
               ),
-              const SizedBox(width: Insets.md),
-              Expanded(
+              Padding(
+                padding: const EdgeInsets.all(Insets.md),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
+                    if (userTitle.isNotEmpty)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          CircleAvatar(
+                            radius: 10,
+                            backgroundColor:
+                                Colors.black.withValues(alpha: 0.4),
+                            foregroundImage: avatarUrl == null
+                                ? null
+                                : CachedNetworkImageProvider(avatarUrl),
+                            onForegroundImageError:
+                                avatarUrl == null ? null : (_, __) {},
+                            child: const Icon(
+                              Icons.person,
+                              size: 12,
+                              color: Colors.white70,
+                            ),
+                          ),
+                          const SizedBox(width: Insets.xs),
+                          Text(
+                            userTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.labelSmall
+                                ?.copyWith(color: Colors.white70),
+                          ),
+                        ],
+                      ),
+                    const Spacer(),
                     Text(
                       title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.labelLarge
-                          ?.copyWith(fontWeight: FontWeight.w600),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                    if (subtitleParts.isNotEmpty) ...<Widget>[
-                      const SizedBox(height: Insets.xs),
+                    if (session.grandparentTitle != null &&
+                        session.title.isNotEmpty)
                       Text(
-                        subtitleParts.join(' · '),
+                        session.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.labelSmall
-                            ?.copyWith(color: theme.colorScheme.outline),
+                            ?.copyWith(color: Colors.white70),
                       ),
-                    ],
-                    const SizedBox(height: Insets.sm),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
-                      child: LinearProgressIndicator(
-                        value: session.progress,
-                        minHeight: 4,
-                      ),
-                    ),
                   ],
                 ),
               ),
-              const SizedBox(width: Insets.md),
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: LinearProgressIndicator(
+                  value: session.progress,
+                  minHeight: 4,
+                  backgroundColor: Colors.white.withValues(alpha: 0.25),
+                ),
+              ),
             ],
           ),
         ),
       ),
     );
   }
-
-  Widget _poster(ThemeData theme) {
-    final Widget fallback = Container(
-      color: theme.colorScheme.surfaceContainerHighest,
-      child: Icon(
-        session.player?.state == 'paused'
-            ? Icons.pause_circle_outline
-            : Icons.play_circle_outline,
-        color: theme.colorScheme.outline,
-      ),
-    );
-    if (imageUrl == null) {
-      return fallback;
-    }
-    return CachedNetworkImage(
-      imageUrl: imageUrl!,
-      fit: BoxFit.cover,
-      memCacheWidth: 120,
-      placeholder: (BuildContext context, String url) =>
-          Container(color: theme.colorScheme.surfaceContainerHighest),
-      errorWidget: (BuildContext context, String url, Object error) => fallback,
-    );
-  }
 }
 
 /// One horizontal poster row on the hub view. Renders nothing when empty so a
-/// server with no on-deck items doesn't show a stray header.
+/// server with no on-deck items doesn't show a stray header. [onSeeAll], when
+/// set, renders a trailing "See all" action in the header, and [maxItems]
+/// caps how many posters the row shows.
 class _PlexSection extends ConsumerWidget {
   const _PlexSection({
     required this.instance,
     required this.title,
     required this.provider,
+    this.onSeeAll,
+    this.maxItems,
   });
 
   final Instance instance;
   final String title;
   final ProviderListenable<AsyncValue<List<PlexMetadata>>> provider;
+  final VoidCallback? onSeeAll;
+  final int? maxItems;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -530,6 +709,10 @@ class _PlexSection extends ConsumerWidget {
         if (list.isEmpty) {
           return const SizedBox.shrink();
         }
+        final List<PlexMetadata> row =
+            (maxItems != null && list.length > maxItems!)
+                ? list.sublist(0, maxItems!)
+                : list;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
@@ -538,12 +721,29 @@ class _PlexSection extends ConsumerWidget {
                 horizontal: Insets.lg,
                 vertical: Insets.sm,
               ),
-              child: Text(
-                title,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  if (onSeeAll != null)
+                    TextButton(
+                      onPressed: onSeeAll,
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: const Text('See all'),
+                    ),
+                ],
               ),
             ),
             SizedBox(
@@ -551,10 +751,10 @@ class _PlexSection extends ConsumerWidget {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
-                itemCount: list.length,
+                itemCount: row.length,
                 separatorBuilder: (_, __) => const SizedBox(width: Insets.md),
                 itemBuilder: (BuildContext context, int index) {
-                  final PlexMetadata item = list[index];
+                  final PlexMetadata item = row[index];
                   return SizedBox(
                     width: 120,
                     child: PlexPosterCard(
