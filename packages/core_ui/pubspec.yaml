@@ -15,7 +15,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_riverpod: ^3.3.2
-  m3_expressive: 1.0.0
+  m3_expressive: ^1.0.0
   meta: ^1.16.0
 
 dev_dependencies:

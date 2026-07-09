@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models/prowlarr_history.dart';
 import 'models/prowlarr_indexer.dart';
 import 'prowlarr_providers.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// History tab: recent indexer queries, grabs and auth events, newest first.
 /// A server-side event-type filter keeps RSS syncs (which flood the feed) from
@@ -67,7 +68,7 @@ class _ProwlarrHistoryTabState extends ConsumerState<ProwlarrHistoryTab> {
           ),
         ),
         Expanded(
-          child: RefreshIndicator(
+          child: M3RefreshIndicator(
             onRefresh: () async =>
                 ref.invalidate(prowlarrHistoryProvider(args)),
             child: AsyncValueView<ProwlarrHistoryPage>(
@@ -84,7 +85,8 @@ class _ProwlarrHistoryTabState extends ConsumerState<ProwlarrHistoryTab> {
                 return ListView.separated(
                   padding: Insets.page,
                   itemCount: page.records.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: Insets.sm),
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(height: Insets.sm),
                   itemBuilder: (BuildContext context, int index) {
                     final ProwlarrHistoryRecord r = page.records[index];
                     return _HistoryTile(

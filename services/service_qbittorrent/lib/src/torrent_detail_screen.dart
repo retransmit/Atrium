@@ -9,6 +9,7 @@ import 'models/qbit_torrent.dart';
 import 'qbittorrent_client.dart';
 import 'qbittorrent_home.dart' show fmtBytes, friendlyState;
 import 'qbittorrent_providers.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// Detail view for a single torrent: Overview / Files / Trackers / Peers tabs.
 ///
@@ -45,7 +46,8 @@ class TorrentDetailScreen extends ConsumerWidget {
               borderRadius: BorderRadius.circular(50),
             ),
             labelColor: Theme.of(context).colorScheme.onSecondaryContainer,
-            unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
+            unselectedLabelColor:
+                Theme.of(context).colorScheme.onSurfaceVariant,
             splashBorderRadius: BorderRadius.circular(50),
             tabs: const <Widget>[
               Tab(text: 'Overview'),
@@ -146,7 +148,7 @@ class _OverviewTab extends ConsumerWidget {
     final Color accent = _accent(torrent.state, cs);
     final double progress = torrent.progress.clamp(0, 1).toDouble();
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(qbitPropertiesProvider((instance, torrent.hash))),
       child: AsyncValueView<QbitTorrentProperties>(
@@ -243,7 +245,8 @@ class _OverviewTab extends ConsumerWidget {
                         ),
                         const Spacer(),
                         if (progress < 1.0) ...<Widget>[
-                          Icon(Icons.schedule, size: 14, color: cs.onSurfaceVariant),
+                          Icon(Icons.schedule,
+                              size: 14, color: cs.onSurfaceVariant),
                           const SizedBox(width: 2),
                           Text(
                             _fmtEta(torrent.eta),
@@ -278,7 +281,8 @@ class _OverviewTab extends ConsumerWidget {
                   ('Save path', p.savePath),
                   ('Added', date(p.additionDate)),
                   ('Completed', date(p.completionDate)),
-                  if (torrent.category.isNotEmpty) ('Category', torrent.category),
+                  if (torrent.category.isNotEmpty)
+                    ('Category', torrent.category),
                   if (p.comment.isNotEmpty) ('Comment', p.comment),
                 ],
               ),
@@ -350,8 +354,8 @@ class _SectionCard extends StatelessWidget {
         children: <Widget>[
           Text(
             title,
-            style:
-                theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            style: theme.textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: Insets.sm),
           for (final (String label, String value) in rows)
@@ -438,7 +442,8 @@ List<_FileNode> _buildFileTree(List<QbitFile> files) {
       if (part.isEmpty) continue;
 
       final bool isFile = i == parts.length - 1;
-      current = current.children.putIfAbsent(part, () => _BuilderNode(part, i, isFile));
+      current = current.children
+          .putIfAbsent(part, () => _BuilderNode(part, i, isFile));
 
       current.size += f.size;
       current.downloaded += f.size * f.progress;
@@ -476,7 +481,7 @@ class _FilesTab extends ConsumerWidget {
     final AsyncValue<List<QbitFile>> files =
         ref.watch(qbitFilesProvider((instance, hash)));
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(qbitFilesProvider((instance, hash))),
       child: AsyncValueView<List<QbitFile>>(
@@ -591,7 +596,7 @@ class _TrackersTab extends ConsumerWidget {
     final AsyncValue<List<QbitTracker>> trackers =
         ref.watch(qbitTrackersProvider((instance, hash)));
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(qbitTrackersProvider((instance, hash))),
       child: AsyncValueView<List<QbitTracker>>(
@@ -599,9 +604,8 @@ class _TrackersTab extends ConsumerWidget {
         onRetry: () => ref.invalidate(qbitTrackersProvider((instance, hash))),
         data: (List<QbitTracker> list) {
           // Hide qBittorrent's synthetic DHT/PeX/LSD pseudo-trackers.
-          final List<QbitTracker> real = list
-              .where((QbitTracker t) => !t.url.startsWith('** '))
-              .toList();
+          final List<QbitTracker> real =
+              list.where((QbitTracker t) => !t.url.startsWith('** ')).toList();
           if (real.isEmpty) {
             return const EmptyView(
               icon: Icons.dns_outlined,
@@ -619,7 +623,11 @@ class _TrackersTab extends ConsumerWidget {
                 2 => (cs.tertiary, Icons.check_circle, 'Working'),
                 3 => (cs.primary, Icons.sync, 'Updating'),
                 4 => (cs.error, Icons.error_outline, 'Not working'),
-                1 => (cs.outline, Icons.radio_button_unchecked, 'Not contacted'),
+                1 => (
+                    cs.outline,
+                    Icons.radio_button_unchecked,
+                    'Not contacted'
+                  ),
                 0 => (cs.outline, Icons.block, 'Disabled'),
                 _ => (cs.outline, Icons.help_outline, 'Unknown'),
               };
@@ -701,7 +709,7 @@ class _PeersTab extends ConsumerWidget {
     final AsyncValue<List<QbitPeer>> peers =
         ref.watch(qbitPeersProvider((instance, hash)));
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(qbitPeersProvider((instance, hash))),
       child: AsyncValueView<List<QbitPeer>>(

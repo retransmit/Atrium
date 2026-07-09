@@ -19,6 +19,7 @@ import 'movie_detail_screen.dart';
 import 'radarr_api.dart';
 import 'radarr_providers.dart';
 import 'radarr_settings_form_screen.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// Radarr's per-instance UI: a tabbed Movies / Queue view. Mirrors `SonarrHome`.
 class RadarrHome extends StatelessWidget {
@@ -70,30 +71,35 @@ class RadarrHome extends StatelessWidget {
 enum _SortField { title, year, size }
 
 _SortField _sortFieldOf(RadarrSortOption o) => switch (o) {
-  RadarrSortOption.titleAsc || RadarrSortOption.titleDesc => _SortField.title,
-  RadarrSortOption.yearAsc || RadarrSortOption.yearDesc => _SortField.year,
-  RadarrSortOption.sizeAsc || RadarrSortOption.sizeDesc => _SortField.size,
-};
+      RadarrSortOption.titleAsc ||
+      RadarrSortOption.titleDesc =>
+        _SortField.title,
+      RadarrSortOption.yearAsc || RadarrSortOption.yearDesc => _SortField.year,
+      RadarrSortOption.sizeAsc || RadarrSortOption.sizeDesc => _SortField.size,
+    };
 
 bool _sortIsAsc(RadarrSortOption o) => switch (o) {
-  RadarrSortOption.titleAsc ||
-  RadarrSortOption.yearAsc ||
-  RadarrSortOption.sizeAsc =>
-    true,
-  _ => false,
-};
+      RadarrSortOption.titleAsc ||
+      RadarrSortOption.yearAsc ||
+      RadarrSortOption.sizeAsc =>
+        true,
+      _ => false,
+    };
 
 RadarrSortOption _composeSort(_SortField field, bool asc) => switch (field) {
-  _SortField.title => asc ? RadarrSortOption.titleAsc : RadarrSortOption.titleDesc,
-  _SortField.year => asc ? RadarrSortOption.yearAsc : RadarrSortOption.yearDesc,
-  _SortField.size => asc ? RadarrSortOption.sizeAsc : RadarrSortOption.sizeDesc,
-};
+      _SortField.title =>
+        asc ? RadarrSortOption.titleAsc : RadarrSortOption.titleDesc,
+      _SortField.year =>
+        asc ? RadarrSortOption.yearAsc : RadarrSortOption.yearDesc,
+      _SortField.size =>
+        asc ? RadarrSortOption.sizeAsc : RadarrSortOption.sizeDesc,
+    };
 
 String _sortFieldLabel(_SortField f) => switch (f) {
-  _SortField.title => 'Title',
-  _SortField.year => 'Year',
-  _SortField.size => 'Size',
-};
+      _SortField.title => 'Title',
+      _SortField.year => 'Year',
+      _SortField.size => 'Size',
+    };
 
 class _MoviesTab extends ConsumerWidget {
   const _MoviesTab({required this.instance});
@@ -123,7 +129,7 @@ class _MoviesTab extends ConsumerWidget {
             _FilterChipsRow(instance: instance),
             const SizedBox(height: Insets.xs),
             Expanded(
-              child: RefreshIndicator(
+              child: M3RefreshIndicator(
                 onRefresh: () async {
                   ref.invalidate(radarrMoviesProvider(instance));
                   await ref.read(radarrMoviesProvider(instance).future);
@@ -136,12 +142,14 @@ class _MoviesTab extends ConsumerWidget {
                       return const EmptyView(
                         icon: Icons.movie_outlined,
                         title: 'No movies found',
-                        message: 'Try adjusting your search query or active filters.',
+                        message:
+                            'Try adjusting your search query or active filters.',
                       );
                     }
                     return GridView.builder(
                       padding: Insets.page,
-                      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      gridDelegate:
+                          const SliverGridDelegateWithMaxCrossAxisExtent(
                         maxCrossAxisExtent: 140,
                         childAspectRatio: 0.52,
                         crossAxisSpacing: Insets.md,
@@ -157,7 +165,8 @@ class _MoviesTab extends ConsumerWidget {
                           name: 'RadarrMovieGridItem',
                           child: _MovieCard(
                             movie: m,
-                            imageUrl: poster == null ? null : api?.posterUrl(poster),
+                            imageUrl:
+                                poster == null ? null : api?.posterUrl(poster),
                             onTap: () =>
                                 Navigator.of(context, rootNavigator: true).push(
                               MaterialPageRoute<void>(
@@ -167,7 +176,8 @@ class _MoviesTab extends ConsumerWidget {
                                 ),
                               ),
                             ),
-                            onLongPress: () => _showQuickActions(context, ref, m),
+                            onLongPress: () =>
+                                _showQuickActions(context, ref, m),
                           ),
                         );
                       },
@@ -353,7 +363,8 @@ class _FilterChipsRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
-    final RadarrSortOption sortOption = ref.watch(radarrSortOptionProvider(instance));
+    final RadarrSortOption sortOption =
+        ref.watch(radarrSortOptionProvider(instance));
     final RadarrStatusFilter statusFilter =
         ref.watch(radarrStatusFilterProvider(instance));
     final RadarrMonitoredFilter monitoredFilter =
@@ -362,16 +373,16 @@ class _FilterChipsRow extends ConsumerWidget {
     final bool asc = _sortIsAsc(sortOption);
 
     String statusLabel(RadarrStatusFilter f) => switch (f) {
-      RadarrStatusFilter.all => 'All',
-      RadarrStatusFilter.downloaded => 'Downloaded',
-      RadarrStatusFilter.missing => 'Missing',
-    };
+          RadarrStatusFilter.all => 'All',
+          RadarrStatusFilter.downloaded => 'Downloaded',
+          RadarrStatusFilter.missing => 'Missing',
+        };
 
     String monitoredLabel(RadarrMonitoredFilter f) => switch (f) {
-      RadarrMonitoredFilter.all => 'All',
-      RadarrMonitoredFilter.monitored => 'Monitored',
-      RadarrMonitoredFilter.unmonitored => 'Unmonitored',
-    };
+          RadarrMonitoredFilter.all => 'All',
+          RadarrMonitoredFilter.monitored => 'Monitored',
+          RadarrMonitoredFilter.unmonitored => 'Unmonitored',
+        };
 
     void unfocusSoon() {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -495,7 +506,8 @@ class _FilterChipsRow extends ConsumerWidget {
               },
             ),
             menuChildren: <Widget>[
-              for (final RadarrMonitoredFilter f in RadarrMonitoredFilter.values)
+              for (final RadarrMonitoredFilter f
+                  in RadarrMonitoredFilter.values)
                 MenuItemButton(
                   leadingIcon: Icon(
                     f == monitoredFilter ? Icons.check : Icons.bookmark_border,
@@ -664,7 +676,7 @@ class _QueueTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<RadarrQueuePage> queue =
         ref.watch(radarrQueueProvider(instance));
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async => ref.invalidate(radarrQueueProvider(instance)),
       child: AsyncValueView<RadarrQueuePage>(
         value: queue,
@@ -742,7 +754,7 @@ class _HistoryTabState extends ConsumerState<_HistoryTab> {
     final ThemeData theme = Theme.of(context);
     final AsyncValue<RadarrHistoryPage> history =
         ref.watch(radarrHistoryProvider((widget.instance, _page)));
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(radarrHistoryProvider((widget.instance, _page))),
       child: AsyncValueView<RadarrHistoryPage>(
@@ -795,9 +807,8 @@ class _HistoryTabState extends ConsumerState<_HistoryTab> {
                   page: _page,
                   totalPages: totalPages,
                   onPrev: _page > 1 ? () => setState(() => _page--) : null,
-                  onNext: _page < totalPages
-                      ? () => setState(() => _page++)
-                      : null,
+                  onNext:
+                      _page < totalPages ? () => setState(() => _page++) : null,
                 ),
             ],
           );
@@ -840,22 +851,22 @@ class _PaginationBar extends StatelessWidget {
 }
 
 String _eventLabel(String e) => switch (e) {
-  'grabbed' => 'Grabbed',
-  'downloadFolderImported' => 'Imported',
-  'downloadFailed' => 'Download failed',
-  'movieFileDeleted' => 'File deleted',
-  'movieFileRenamed' => 'Renamed',
-  _ => e,
-};
+      'grabbed' => 'Grabbed',
+      'downloadFolderImported' => 'Imported',
+      'downloadFailed' => 'Download failed',
+      'movieFileDeleted' => 'File deleted',
+      'movieFileRenamed' => 'Renamed',
+      _ => e,
+    };
 
 IconData _eventIcon(String e) => switch (e) {
-  'grabbed' => Icons.download,
-  'downloadFolderImported' => Icons.check_circle_outline,
-  'downloadFailed' => Icons.error_outline,
-  'movieFileDeleted' => Icons.delete_outline,
-  'movieFileRenamed' => Icons.drive_file_rename_outline,
-  _ => Icons.history,
-};
+      'grabbed' => Icons.download,
+      'downloadFolderImported' => Icons.check_circle_outline,
+      'downloadFailed' => Icons.error_outline,
+      'movieFileDeleted' => Icons.delete_outline,
+      'movieFileRenamed' => Icons.drive_file_rename_outline,
+      _ => Icons.history,
+    };
 
 String _fmtDate(DateTime d) =>
     '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')} '
@@ -921,7 +932,7 @@ class _WantedListState extends ConsumerState<_WantedList> {
         ? ref.watch(radarrWantedCutoffProvider((widget.instance, _page)))
         : ref.watch(radarrWantedMissingProvider((widget.instance, _page)));
     final RadarrApi? api = ref.watch(radarrApiProvider(widget.instance)).value;
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async => _invalidate(),
       child: AsyncValueView<RadarrWantedPage>(
         value: wanted,
@@ -956,9 +967,8 @@ class _WantedListState extends ConsumerState<_WantedList> {
                   page: _page,
                   totalPages: totalPages,
                   onPrev: _page > 1 ? () => setState(() => _page--) : null,
-                  onNext: _page < totalPages
-                      ? () => setState(() => _page++)
-                      : null,
+                  onNext:
+                      _page < totalPages ? () => setState(() => _page++) : null,
                 ),
             ],
           );
@@ -982,8 +992,8 @@ class _MovieRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final RadarrImage? poster =
-        movie.images.firstWhereOrNull((RadarrImage i) => i.coverType == 'poster');
+    final RadarrImage? poster = movie.images
+        .firstWhereOrNull((RadarrImage i) => i.coverType == 'poster');
     final String? url = poster == null ? null : api?.posterUrl(poster);
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -1015,7 +1025,8 @@ class _MovieRow extends StatelessWidget {
       subtitle: movie.year != null ? Text('${movie.year}') : null,
       onTap: () => Navigator.of(context, rootNavigator: true).push(
         MaterialPageRoute<void>(
-          builder: (_) => MovieDetailScreen(instance: instance, movieId: movie.id),
+          builder: (_) =>
+              MovieDetailScreen(instance: instance, movieId: movie.id),
         ),
       ),
     );
@@ -1040,7 +1051,7 @@ class _BlocklistTabState extends ConsumerState<_BlocklistTab> {
   Widget build(BuildContext context) {
     final AsyncValue<RadarrBlocklistPage> blocklist =
         ref.watch(radarrBlocklistProvider((widget.instance, _page)));
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(radarrBlocklistProvider((widget.instance, _page))),
       child: AsyncValueView<RadarrBlocklistPage>(
@@ -1101,9 +1112,8 @@ class _BlocklistTabState extends ConsumerState<_BlocklistTab> {
                   page: _page,
                   totalPages: totalPages,
                   onPrev: _page > 1 ? () => setState(() => _page--) : null,
-                  onNext: _page < totalPages
-                      ? () => setState(() => _page++)
-                      : null,
+                  onNext:
+                      _page < totalPages ? () => setState(() => _page++) : null,
                 ),
             ],
           );
@@ -1123,7 +1133,7 @@ class _SystemTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(radarrHealthProvider(instance));
         ref.invalidate(radarrSystemStatusProvider(instance));
@@ -1233,7 +1243,8 @@ class _SystemTab extends ConsumerWidget {
                           contentPadding: EdgeInsets.zero,
                           title: Text(t.name),
                           subtitle: t.nextExecution != null
-                              ? Text('Next: ${_fmtDate(t.nextExecution!.toLocal())}')
+                              ? Text(
+                                  'Next: ${_fmtDate(t.nextExecution!.toLocal())}')
                               : null,
                           trailing: IconButton(
                             icon: const Icon(Icons.play_arrow),
@@ -1276,10 +1287,11 @@ class _SystemTab extends ConsumerWidget {
                                 trailing: IconButton(
                                   icon: const Icon(Icons.delete_outline),
                                   onPressed: () async {
-                                    final RadarrApi api = await ref
-                                        .read(radarrApiProvider(instance).future);
+                                    final RadarrApi api = await ref.read(
+                                        radarrApiProvider(instance).future);
                                     await api.deleteBackup(b.id);
-                                    ref.invalidate(radarrBackupsProvider(instance));
+                                    ref.invalidate(
+                                        radarrBackupsProvider(instance));
                                   },
                                 ),
                               ),
@@ -1383,7 +1395,7 @@ class _SettingsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(radarrIndexersRawProvider(instance));
         ref.invalidate(radarrDownloadClientsRawProvider(instance));
@@ -1589,7 +1601,8 @@ class _IndexerSettingsPanel extends ConsumerWidget {
                             ref.invalidate(radarrIndexersProvider(instance));
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Indexer deleted')),
+                                const SnackBar(
+                                    content: Text('Indexer deleted')),
                               );
                             }
                           },
@@ -1877,8 +1890,8 @@ class _NotificationSettingsPanel extends ConsumerWidget {
                           onPressed: () async {
                             final RadarrApi api = await ref
                                 .read(radarrApiProvider(instance).future);
-                            await api
-                                .deleteNotification(_rawInt(notification, 'id'));
+                            await api.deleteNotification(
+                                _rawInt(notification, 'id'));
                             ref.invalidate(
                               radarrNotificationsRawProvider(instance),
                             );
@@ -1948,7 +1961,8 @@ class _ImportListSettingsPanel extends ConsumerWidget {
           AsyncValueView<List<Map<String, dynamic>>>(
             value: lists,
             data: (List<Map<String, dynamic>> list) {
-              if (list.isEmpty) return const Text('No import lists configured.');
+              if (list.isEmpty)
+                return const Text('No import lists configured.');
               return Column(
                 children: list.map((Map<String, dynamic> importList) {
                   return ListTile(
@@ -2206,8 +2220,8 @@ class _HostSettingsFormState extends ConsumerState<_HostSettingsForm> {
   @override
   void initState() {
     super.initState();
-    _portController =
-        TextEditingController(text: _rawInt(widget.config, 'port', 7878).toString());
+    _portController = TextEditingController(
+        text: _rawInt(widget.config, 'port', 7878).toString());
     _branchController =
         TextEditingController(text: _rawStr(widget.config, 'branch', 'master'));
     _backupIntervalController = TextEditingController(
@@ -3034,7 +3048,8 @@ class _DelayProfileSettingsPanel extends ConsumerWidget {
                         contentPadding: EdgeInsets.zero,
                         title: const Text('Preferred Protocol'),
                         trailing: DropdownButton<String>(
-                          value: _rawStr(profile, 'preferredProtocol', 'usenet'),
+                          value:
+                              _rawStr(profile, 'preferredProtocol', 'usenet'),
                           items: <String>['usenet', 'torrent']
                               .map((String protocol) {
                             return DropdownMenuItem<String>(
@@ -3208,8 +3223,9 @@ class _QualityDefinitionRowState extends ConsumerState<_QualityDefinitionRow> {
     return rawMax == null || (rawMax as num).toDouble() == 0.0;
   }
 
-  double get _origMax =>
-      _origUnlimited ? 0.0 : ((widget.definition['maxSize'] as num?) ?? 0).toDouble();
+  double get _origMax => _origUnlimited
+      ? 0.0
+      : ((widget.definition['maxSize'] as num?) ?? 0).toDouble();
 
   String get _definitionName {
     final String? title = widget.definition['title'] as String?;
@@ -3291,7 +3307,9 @@ class _QualityDefinitionRowState extends ConsumerState<_QualityDefinitionRow> {
     final double? maxVal =
         _isUnlimited ? 0.0 : double.tryParse(_maxController.text);
 
-    if (minVal == null || prefVal == null || (!_isUnlimited && maxVal == null)) {
+    if (minVal == null ||
+        prefVal == null ||
+        (!_isUnlimited && maxVal == null)) {
       return true;
     }
 
@@ -3310,7 +3328,8 @@ class _QualityDefinitionRowState extends ConsumerState<_QualityDefinitionRow> {
 
     final double minVal = double.parse(_minController.text);
     final double prefVal = double.parse(_preferredController.text);
-    final double maxVal = _isUnlimited ? 0.0 : double.parse(_maxController.text);
+    final double maxVal =
+        _isUnlimited ? 0.0 : double.parse(_maxController.text);
 
     final Map<String, dynamic> newRaw =
         Map<String, dynamic>.of(widget.definition)
@@ -3333,8 +3352,7 @@ class _QualityDefinitionRowState extends ConsumerState<_QualityDefinitionRow> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content:
-                Text('Failed to save quality definition: ${e.toString()}'),
+            content: Text('Failed to save quality definition: ${e.toString()}'),
           ),
         );
       }
@@ -3822,7 +3840,8 @@ class _AutoTaggingSettingsPanel extends ConsumerWidget {
                         ref.invalidate(
                           radarrAutoTaggingRulesRawProvider(instance),
                         );
-                        ref.invalidate(radarrAutoTaggingRulesProvider(instance));
+                        ref.invalidate(
+                            radarrAutoTaggingRulesProvider(instance));
                       },
                     ),
                   );
@@ -4032,8 +4051,8 @@ class _QualityProfileSettingsPanel extends ConsumerWidget {
               cutoffId = _getItemId(allowedQualities.first);
               payload['cutoff'] = cutoffId;
             } else if (allowedQualities.isNotEmpty &&
-                !allowedQualities
-                    .any((Map<String, dynamic> q) => _getItemId(q) == cutoffId)) {
+                !allowedQualities.any(
+                    (Map<String, dynamic> q) => _getItemId(q) == cutoffId)) {
               cutoffId = _getItemId(allowedQualities.first);
               payload['cutoff'] = cutoffId;
             }
@@ -4041,7 +4060,9 @@ class _QualityProfileSettingsPanel extends ConsumerWidget {
             return AlertDialog(
               title: Text(
                 profile != null
-                    ? (readOnly ? 'View Quality Profile' : 'Edit Quality Profile')
+                    ? (readOnly
+                        ? 'View Quality Profile'
+                        : 'Edit Quality Profile')
                     : 'Add Quality Profile',
               ),
               content: SizedBox(
@@ -4095,7 +4116,8 @@ class _QualityProfileSettingsPanel extends ConsumerWidget {
                       ),
                     ],
                     const SizedBox(height: Insets.md),
-                    Text('Allowed Qualities', style: theme.textTheme.titleSmall),
+                    Text('Allowed Qualities',
+                        style: theme.textTheme.titleSmall),
                     const SizedBox(height: Insets.xs),
                     ...itemsList.map(
                       (dynamic item) => _buildQualityItemTile(

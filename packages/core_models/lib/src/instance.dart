@@ -26,8 +26,7 @@ abstract class Instance with _$Instance {
     required String name,
 
     /// What service this instance speaks to.
-    @JsonKey(fromJson: _serviceKindFromJson)
-    required ServiceKind kind,
+    @JsonKey(fromJson: _serviceKindFromJson) required ServiceKind kind,
 
     /// URL reachable from the home LAN (e.g., `http://192.168.1.10:8989`).
     /// May be empty if the user only has remote access.

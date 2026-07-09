@@ -8,6 +8,7 @@ import 'seerr_genre_screen.dart';
 import 'seerr_item_detail.dart';
 import 'seerr_providers.dart';
 import 'seerr_status_badge.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 class SeerrDiscoverScreen extends ConsumerWidget {
   const SeerrDiscoverScreen({required this.instance, super.key});
@@ -16,7 +17,7 @@ class SeerrDiscoverScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(seerrTrendingProvider(instance));
         ref.invalidate(seerrUpcomingMoviesProvider(instance));
@@ -37,7 +38,6 @@ class SeerrDiscoverScreen extends ConsumerWidget {
             provider: seerrTvGenresProvider(instance),
             instance: instance,
           ),
-
           _DiscoverSection(
             title: 'Trending',
             provider: seerrTrendingProvider(instance),
@@ -60,7 +60,8 @@ class SeerrDiscoverScreen extends ConsumerWidget {
 }
 
 class _DiscoverSection extends ConsumerWidget {
-  const _DiscoverSection({required this.title, required this.provider, required this.instance});
+  const _DiscoverSection(
+      {required this.title, required this.provider, required this.instance});
 
   final String title;
   final FutureProvider<List<SeerrDiscoverResult>> provider;
@@ -77,7 +78,10 @@ class _DiscoverSection extends ConsumerWidget {
           padding: Insets.pageH,
           child: Text(
             title,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge
+                ?.copyWith(fontWeight: FontWeight.bold),
           ),
         ),
         const SizedBox(height: Insets.sm),
@@ -104,8 +108,9 @@ class _DiscoverSection extends ConsumerWidget {
                       children: <Widget>[
                         Expanded(
                           child: Material(
-                            color:
-                                Theme.of(context).colorScheme.surfaceContainerHigh,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHigh,
                             borderRadius: BorderRadius.circular(16),
                             clipBehavior: Clip.antiAlias,
                             child: InkWell(
@@ -139,8 +144,8 @@ class _DiscoverSection extends ConsumerWidget {
                                     Positioned(
                                       bottom: 6,
                                       left: 6,
-                                      child:
-                                          _RatingBadge(value: item.voteAverage!),
+                                      child: _RatingBadge(
+                                          value: item.voteAverage!),
                                     ),
                                 ],
                               ),
@@ -254,7 +259,10 @@ class _GenreSection extends ConsumerWidget {
           padding: Insets.pageH,
           child: Text(
             title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            style: Theme.of(context)
+                .textTheme
+                .titleMedium
+                ?.copyWith(fontWeight: FontWeight.bold),
           ),
         ),
         const SizedBox(height: Insets.xs),
@@ -275,7 +283,9 @@ class _GenreSection extends ConsumerWidget {
                     padding: const EdgeInsets.only(right: Insets.sm),
                     child: ActionChip(
                       avatar: Icon(
-                        isMovie ? Icons.movie_filter_outlined : Icons.live_tv_outlined,
+                        isMovie
+                            ? Icons.movie_filter_outlined
+                            : Icons.live_tv_outlined,
                         size: 16,
                       ),
                       label: Text(genre.name),

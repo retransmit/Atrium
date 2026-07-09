@@ -8,6 +8,7 @@ import 'models/radarr_movie.dart';
 import 'models/radarr_release.dart';
 import 'radarr_api.dart';
 import 'radarr_providers.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 class RadarrReleaseSearchScreen extends ConsumerStatefulWidget {
   const RadarrReleaseSearchScreen({
@@ -237,14 +238,16 @@ class _RadarrReleaseSearchScreenState
             ),
           ),
           Expanded(
-            child: RefreshIndicator(
+            child: M3RefreshIndicator(
               onRefresh: () async {
-                ref.invalidate(radarrReleasesProvider((widget.instance, widget.movie.id)));
+                ref.invalidate(
+                    radarrReleasesProvider((widget.instance, widget.movie.id)));
               },
               child: AsyncValueView<List<RadarrRelease>>(
                 value: releasesValue,
                 onRetry: () {
-                  ref.invalidate(radarrReleasesProvider((widget.instance, widget.movie.id)));
+                  ref.invalidate(radarrReleasesProvider(
+                      (widget.instance, widget.movie.id)));
                 },
                 loading: Center(
                   child: Padding(
@@ -286,11 +289,13 @@ class _RadarrReleaseSearchScreenState
                   Iterable<RadarrRelease> filtered = list;
                   if (_searchQuery.isNotEmpty) {
                     final String query = _searchQuery.toLowerCase();
-                    filtered = filtered.where((RadarrRelease r) =>
-                        r.title.toLowerCase().contains(query) ||
-                        (r.indexer != null &&
-                            r.indexer!.toLowerCase().contains(query)) ||
-                        r.releaseGroup.toLowerCase().contains(query),);
+                    filtered = filtered.where(
+                      (RadarrRelease r) =>
+                          r.title.toLowerCase().contains(query) ||
+                          (r.indexer != null &&
+                              r.indexer!.toLowerCase().contains(query)) ||
+                          r.releaseGroup.toLowerCase().contains(query),
+                    );
                   }
 
                   // Apply protocol filter locally
@@ -303,8 +308,7 @@ class _RadarrReleaseSearchScreenState
 
                   // Apply status filter locally
                   if (_approvedOnly) {
-                    filtered =
-                        filtered.where((RadarrRelease r) => r.approved);
+                    filtered = filtered.where((RadarrRelease r) => r.approved);
                   }
 
                   final List<RadarrRelease> sortedList = filtered.toList();
@@ -376,7 +380,8 @@ class _RadarrReleaseSearchScreenState
                         movie: widget.movie,
                         release: release,
                         onGrabbed: () {
-                          ref.invalidate(radarrMovieByIdProvider((widget.instance, widget.movie.id)));
+                          ref.invalidate(radarrMovieByIdProvider(
+                              (widget.instance, widget.movie.id)));
                           ref.invalidate(radarrMoviesProvider(widget.instance));
                           Navigator.pop(context);
                         },
@@ -568,21 +573,26 @@ class _ReleaseTileState extends ConsumerState<_ReleaseTile> {
                           }
 
                           if (linkToCopy != null && linkToCopy.isNotEmpty) {
-                            await Clipboard.setData(ClipboardData(text: linkToCopy));
+                            await Clipboard.setData(
+                                ClipboardData(text: linkToCopy));
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Copied $label to clipboard!')),
+                                SnackBar(
+                                    content:
+                                        Text('Copied $label to clipboard!')),
                               );
                             }
                           } else {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Link is not available.')),
+                                const SnackBar(
+                                    content: Text('Link is not available.')),
                               );
                             }
                           }
                         },
-                        itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                        itemBuilder: (BuildContext context) =>
+                            <PopupMenuEntry<String>>[
                           if (r.isTorrent && r.isMagnet)
                             const PopupMenuItem<String>(
                               value: 'magnet',
@@ -594,14 +604,17 @@ class _ReleaseTileState extends ConsumerState<_ReleaseTile> {
                                 ],
                               ),
                             ),
-                          if (r.downloadUrl != null && r.downloadUrl!.isNotEmpty)
+                          if (r.downloadUrl != null &&
+                              r.downloadUrl!.isNotEmpty)
                             PopupMenuItem<String>(
                               value: 'download',
                               child: Row(
                                 children: <Widget>[
                                   const Icon(Icons.download, size: 18),
                                   const SizedBox(width: 8),
-                                  Text(r.isTorrent ? 'Copy Torrent Link' : 'Copy NZB Link'),
+                                  Text(r.isTorrent
+                                      ? 'Copy Torrent Link'
+                                      : 'Copy NZB Link'),
                                 ],
                               ),
                             ),
@@ -656,7 +669,8 @@ class _ReleaseTileState extends ConsumerState<_ReleaseTile> {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+                        color: colors.surfaceContainerHighest
+                            .withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -673,7 +687,8 @@ class _ReleaseTileState extends ConsumerState<_ReleaseTile> {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+                      color:
+                          colors.surfaceContainerHighest.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
@@ -691,7 +706,8 @@ class _ReleaseTileState extends ConsumerState<_ReleaseTile> {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+                      color:
+                          colors.surfaceContainerHighest.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(

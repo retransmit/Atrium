@@ -40,7 +40,8 @@ class TagsSettingsScreen extends ConsumerWidget {
                 if (label.isEmpty) return;
 
                 try {
-                  final api = await ref.read(sonarrApiProvider(instance).future);
+                  final api =
+                      await ref.read(sonarrApiProvider(instance).future);
                   await api.createTag(label);
                   ref.invalidate(sonarrTagsProvider(instance));
                   if (context.mounted) {

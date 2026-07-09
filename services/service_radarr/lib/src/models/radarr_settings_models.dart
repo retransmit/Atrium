@@ -131,8 +131,7 @@ abstract class RadarrMediaManagementConfig with _$RadarrMediaManagementConfig {
 }
 
 /// Treats a non-empty recycle-bin path string as "enabled".
-bool _recycleBinFromJson(dynamic value) =>
-    value is String && value.isNotEmpty;
+bool _recycleBinFromJson(dynamic value) => value is String && value.isNotEmpty;
 
 /// UI configuration from `GET /api/v3/config/ui`.
 @freezed
@@ -222,12 +221,8 @@ abstract class RadarrReleaseProfile with _$RadarrReleaseProfile {
     required int id,
     @Default('') String name,
     @Default(false) bool enabled,
-    @JsonKey(name: 'required')
-    @Default(<String>[])
-    List<String> requiredTerms,
-    @JsonKey(name: 'ignored')
-    @Default(<String>[])
-    List<String> ignoredTerms,
+    @JsonKey(name: 'required') @Default(<String>[]) List<String> requiredTerms,
+    @JsonKey(name: 'ignored') @Default(<String>[]) List<String> ignoredTerms,
     @JsonKey(name: 'preferred')
     @Default(<Map<String, dynamic>>[])
     List<Map<String, dynamic>> preferredTerms,

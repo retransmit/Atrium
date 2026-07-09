@@ -11,6 +11,7 @@ import 'models/radarr_movie.dart';
 import 'radarr_api.dart';
 import 'radarr_providers.dart';
 import 'radarr_release_search_screen.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// Detail view for one Radarr movie: a backdrop hero header, a frosted info
 /// card (poster, status, rating), actions (monitor toggle, search), and the
@@ -40,7 +41,8 @@ class MovieDetailScreen extends ConsumerWidget {
           child: Center(
             child: Padding(
               padding: const EdgeInsets.all(Insets.lg),
-              child: Text('Could not load movie.\n$e', textAlign: TextAlign.center),
+              child: Text('Could not load movie.\n$e',
+                  textAlign: TextAlign.center),
             ),
           ),
         ),
@@ -92,7 +94,7 @@ class _Body extends ConsumerWidget {
         .firstWhereOrNull((RadarrImage i) => i.coverType == 'fanart');
     final String? fanartUrl = fanart == null ? null : api?.posterUrl(fanart);
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async => _refresh(ref),
       child: CustomScrollView(
         slivers: <Widget>[
@@ -116,7 +118,8 @@ class _Body extends ConsumerWidget {
                 movie.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
+                style:
+                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 18),
               ),
               background: _Backdrop(fanartUrl: fanartUrl),
             ),
@@ -222,7 +225,8 @@ class _Header extends StatelessWidget {
                               memCacheWidth: 500,
                               placeholder: (BuildContext context, String url) =>
                                   Container(
-                                color: theme.colorScheme.surfaceContainerHighest,
+                                color:
+                                    theme.colorScheme.surfaceContainerHighest,
                                 child: const Center(
                                   child: SizedBox(
                                     width: 24,
@@ -234,7 +238,8 @@ class _Header extends StatelessWidget {
                                 ),
                               ),
                               errorWidget: (_, __, ___) => Container(
-                                color: theme.colorScheme.surfaceContainerHighest,
+                                color:
+                                    theme.colorScheme.surfaceContainerHighest,
                                 child: Icon(
                                   Icons.movie_outlined,
                                   color: theme.colorScheme.outline,
@@ -254,7 +259,8 @@ class _Header extends StatelessWidget {
                       spacing: Insets.xs,
                       runSpacing: 4,
                       children: <Widget>[
-                        if (movie.year != null) _InfoChip(label: '${movie.year}'),
+                        if (movie.year != null)
+                          _InfoChip(label: '${movie.year}'),
                         if (movie.runtime != null && movie.runtime! > 0)
                           _InfoChip(label: '${movie.runtime} min'),
                         if (movie.studio != null && movie.studio!.isNotEmpty)
@@ -446,8 +452,8 @@ class _ActionsRow extends ConsumerWidget {
           child: movie.monitored
               ? FilledButton.tonalIcon(
                   style: FilledButton.styleFrom(
-                    backgroundColor:
-                        theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
+                    backgroundColor: theme.colorScheme.primaryContainer
+                        .withValues(alpha: 0.8),
                     foregroundColor: theme.colorScheme.onPrimaryContainer,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(

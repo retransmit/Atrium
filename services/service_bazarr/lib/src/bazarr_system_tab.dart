@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'bazarr_api.dart';
 import 'bazarr_providers.dart';
 import 'models/bazarr_models.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// The System tab: status, health, subtitle-provider status (with reset),
 /// scheduled tasks (run now), backups (create / delete), and recent logs
@@ -18,7 +19,7 @@ class BazarrSystemTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(bazarrSystemStatusProvider(instance));
         ref.invalidate(bazarrSystemHealthProvider(instance));

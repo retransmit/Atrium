@@ -30,11 +30,15 @@ class SeerrItemDetailScreen extends ConsumerWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final SeerrDiscoverResult full = ref
-            .watch(seerrMediaDetailsProvider((
-              instance: instance,
-              mediaType: item.mediaType,
-              tmdbId: item.id,
-            ),),)
+            .watch(
+              seerrMediaDetailsProvider(
+                (
+                  instance: instance,
+                  mediaType: item.mediaType,
+                  tmdbId: item.id,
+                ),
+              ),
+            )
             .value ??
         item;
 
@@ -206,7 +210,8 @@ class _RequestOptionsSheetState extends ConsumerState<_RequestOptionsSheet> {
 
   String get _mediaType => widget.item.mediaType;
 
-  Future<void> _submit({int? serverId, int? profileId, String? rootFolder}) async {
+  Future<void> _submit(
+      {int? serverId, int? profileId, String? rootFolder}) async {
     setState(() {
       _submitting = true;
       _error = null;
@@ -310,10 +315,12 @@ class _RequestOptionsSheetState extends ConsumerState<_RequestOptionsSheet> {
               border: OutlineInputBorder(),
             ),
             items: servers
-                .map((SeerrServer s) => DropdownMenuItem<int>(
-                      value: s.id,
-                      child: Text(s.name.isEmpty ? 'Server ${s.id}' : s.name),
-                    ),)
+                .map(
+                  (SeerrServer s) => DropdownMenuItem<int>(
+                    value: s.id,
+                    child: Text(s.name.isEmpty ? 'Server ${s.id}' : s.name),
+                  ),
+                )
                 .toList(),
             onChanged: (int? v) => setState(() {
               _serverId = v;
@@ -385,10 +392,12 @@ class _RequestOptionsSheetState extends ConsumerState<_RequestOptionsSheet> {
               border: OutlineInputBorder(),
             ),
             items: profiles
-                .map((SeerrProfile p) => DropdownMenuItem<int>(
-                      value: p.id,
-                      child: Text(p.name),
-                    ),)
+                .map(
+                  (SeerrProfile p) => DropdownMenuItem<int>(
+                    value: p.id,
+                    child: Text(p.name),
+                  ),
+                )
                 .toList(),
             onChanged: (int? v) => setState(() => _profileId = v),
           ),
@@ -403,10 +412,12 @@ class _RequestOptionsSheetState extends ConsumerState<_RequestOptionsSheet> {
               border: OutlineInputBorder(),
             ),
             items: roots
-                .map((SeerrRootFolder r) => DropdownMenuItem<String>(
-                      value: r.path,
-                      child: Text(r.path, overflow: TextOverflow.ellipsis),
-                    ),)
+                .map(
+                  (SeerrRootFolder r) => DropdownMenuItem<String>(
+                    value: r.path,
+                    child: Text(r.path, overflow: TextOverflow.ellipsis),
+                  ),
+                )
                 .toList(),
             onChanged: (String? v) => setState(() => _rootFolder = v),
           ),
@@ -457,4 +468,3 @@ class _RequestOptionsSheetState extends ConsumerState<_RequestOptionsSheet> {
     );
   }
 }
-

@@ -21,7 +21,8 @@ class RadarrSettingsFormScreen extends ConsumerStatefulWidget {
   });
 
   final Instance instance;
-  final String category; // 'downloadclient', 'indexer', 'notification', 'importlist'
+  final String
+      category; // 'downloadclient', 'indexer', 'notification', 'importlist'
   final Map<String, dynamic>? itemRaw;
 
   @override
@@ -282,7 +283,8 @@ class _RadarrSettingsFormScreenState
                           ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     subtitle: info.isNotEmpty
-                        ? Text(info, maxLines: 1, overflow: TextOverflow.ellipsis)
+                        ? Text(info,
+                            maxLines: 1, overflow: TextOverflow.ellipsis)
                         : null,
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _onTemplateSelected(template),
@@ -298,7 +300,8 @@ class _RadarrSettingsFormScreenState
     // Otherwise render the form for the selected template.
     final implementationName =
         (_selectedTemplate!['implementationName'] as String?) ?? '';
-    final title = _isEdit ? 'Edit $implementationName' : 'Add $implementationName';
+    final title =
+        _isEdit ? 'Edit $implementationName' : 'Add $implementationName';
 
     final visibleFields = _fields.where((f) {
       if (!_showAdvanced && f['advanced'] == true) return false;
@@ -362,7 +365,8 @@ class _RadarrSettingsFormScreenState
                         title: Text(label),
                         subtitle: help != null ? Text(help) : null,
                         value: (field['value'] as bool?) ?? false,
-                        onChanged: (val) => setState(() => field['value'] = val),
+                        onChanged: (val) =>
+                            setState(() => field['value'] = val),
                       ),
                     );
 
@@ -396,7 +400,8 @@ class _RadarrSettingsFormScreenState
                             ),
                           );
                         }).toList(),
-                        onChanged: (val) => setState(() => field['value'] = val),
+                        onChanged: (val) =>
+                            setState(() => field['value'] = val),
                       ),
                     );
 
@@ -439,9 +444,7 @@ class _RadarrSettingsFormScreenState
                           border: const OutlineInputBorder(),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              obscure
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
+                              obscure ? Icons.visibility_off : Icons.visibility,
                             ),
                             onPressed: () => setState(
                               () => _obscurePasswords[name] = !obscure,
@@ -449,10 +452,9 @@ class _RadarrSettingsFormScreenState
                           ),
                         ),
                         onChanged: (val) => field['value'] = val,
-                        validator: (val) =>
-                            (val == null || val.trim().isEmpty)
-                                ? 'Required'
-                                : null,
+                        validator: (val) => (val == null || val.trim().isEmpty)
+                            ? 'Required'
+                            : null,
                       ),
                     );
 
@@ -491,7 +493,8 @@ class _RadarrSettingsFormScreenState
                           ? const SizedBox(
                               width: 16,
                               height: 16,
-                              child: ExpressiveProgressIndicator(strokeWidth: 2),
+                              child:
+                                  ExpressiveProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.science_outlined),
                       label: const Text('Test'),

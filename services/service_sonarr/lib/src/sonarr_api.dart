@@ -117,12 +117,14 @@ class SonarrApi {
     required String monitorType,
   }) async {
     try {
-      final List<Map<String, dynamic>> seriesList = seriesIds.map(
-        (id) => <String, dynamic>{
-          'id': id,
-          'monitored': monitorType != 'none',
-        },
-      ).toList();
+      final List<Map<String, dynamic>> seriesList = seriesIds
+          .map(
+            (id) => <String, dynamic>{
+              'id': id,
+              'monitored': monitorType != 'none',
+            },
+          )
+          .toList();
 
       await _dio.post<dynamic>(
         '$_base/seasonpass',
@@ -290,7 +292,8 @@ class SonarrApi {
   }
 
   Future<Map<String, dynamic>> createQualityProfile(
-      Map<String, dynamic> payload,) async {
+    Map<String, dynamic> payload,
+  ) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/qualityprofile',
@@ -302,7 +305,8 @@ class SonarrApi {
     }
   }
 
-  Future<void> updateQualityProfile(Map<String, dynamic> payload,
+  Future<void> updateQualityProfile(
+    Map<String, dynamic> payload,
   ) async {
     try {
       await _dio.put<dynamic>(
@@ -390,7 +394,8 @@ class SonarrApi {
       if (records is List<dynamic>) {
         return records
             .map(
-              (dynamic e) => SonarrQueueItem.fromJson(e as Map<String, dynamic>),
+              (dynamic e) =>
+                  SonarrQueueItem.fromJson(e as Map<String, dynamic>),
             )
             .toList();
       }
@@ -640,7 +645,8 @@ class SonarrApi {
         queryParameters: <String, dynamic>{
           'path': path,
           'includeFiles': includeFiles,
-          'allowFoldersWithoutTrailingSlashes': allowFoldersWithoutTrailingSlashes,
+          'allowFoldersWithoutTrailingSlashes':
+              allowFoldersWithoutTrailingSlashes,
         },
       );
       final dynamic data = resp.data;
@@ -830,6 +836,7 @@ class SonarrApi {
       throw NetworkException.fromDio(e);
     }
   }
+
   Future<void> updateDownloadClientConfig(Map<String, dynamic> config) async {
     try {
       await _dio.put<dynamic>(
@@ -852,6 +859,7 @@ class SonarrApi {
       throw NetworkException.fromDio(e);
     }
   }
+
   // --- Indexers CRUD ---
   Future<List<Map<String, dynamic>>> getIndexerSchema() async {
     try {
@@ -866,7 +874,7 @@ class SonarrApi {
   }
 
   Future<Map<String, dynamic>> createIndexer(
-      Map<String, dynamic> payload,
+    Map<String, dynamic> payload,
   ) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
@@ -880,7 +888,8 @@ class SonarrApi {
     }
   }
 
-  Future<void> updateIndexer(Map<String, dynamic> payload,
+  Future<void> updateIndexer(
+    Map<String, dynamic> payload,
   ) async {
     try {
       await _dio.put<dynamic>(
@@ -901,7 +910,8 @@ class SonarrApi {
     }
   }
 
-  Future<void> testIndexer(Map<String, dynamic> payload,
+  Future<void> testIndexer(
+    Map<String, dynamic> payload,
   ) async {
     try {
       await _dio.post<dynamic>(
@@ -981,7 +991,7 @@ class SonarrApi {
   }
 
   Future<Map<String, dynamic>> createImportList(
-      Map<String, dynamic> payload,
+    Map<String, dynamic> payload,
   ) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
@@ -995,7 +1005,8 @@ class SonarrApi {
     }
   }
 
-  Future<void> updateImportList(Map<String, dynamic> payload,
+  Future<void> updateImportList(
+    Map<String, dynamic> payload,
   ) async {
     try {
       await _dio.put<dynamic>(
@@ -1016,7 +1027,8 @@ class SonarrApi {
     }
   }
 
-  Future<void> testImportList(Map<String, dynamic> payload,
+  Future<void> testImportList(
+    Map<String, dynamic> payload,
   ) async {
     try {
       await _dio.post<dynamic>(
@@ -1042,7 +1054,7 @@ class SonarrApi {
   }
 
   Future<Map<String, dynamic>> createDownloadClient(
-      Map<String, dynamic> payload,
+    Map<String, dynamic> payload,
   ) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
@@ -1064,7 +1076,8 @@ class SonarrApi {
     }
   }
 
-  Future<void> testDownloadClient(Map<String, dynamic> payload,
+  Future<void> testDownloadClient(
+    Map<String, dynamic> payload,
   ) async {
     try {
       await _dio.post<dynamic>(
@@ -1090,7 +1103,7 @@ class SonarrApi {
   }
 
   Future<Map<String, dynamic>> createRemotePathMapping(
-      Map<String, dynamic> payload,
+    Map<String, dynamic> payload,
   ) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
@@ -1103,7 +1116,8 @@ class SonarrApi {
     }
   }
 
-  Future<void> updateRemotePathMapping(Map<String, dynamic> payload,
+  Future<void> updateRemotePathMapping(
+    Map<String, dynamic> payload,
   ) async {
     try {
       await _dio.put<dynamic>(
@@ -1149,7 +1163,7 @@ class SonarrApi {
   }
 
   Future<Map<String, dynamic>> createNotification(
-      Map<String, dynamic> payload,
+    Map<String, dynamic> payload,
   ) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
@@ -1163,7 +1177,8 @@ class SonarrApi {
     }
   }
 
-  Future<void> updateNotification(Map<String, dynamic> payload,
+  Future<void> updateNotification(
+    Map<String, dynamic> payload,
   ) async {
     try {
       await _dio.put<dynamic>(
@@ -1184,7 +1199,8 @@ class SonarrApi {
     }
   }
 
-  Future<void> testNotification(Map<String, dynamic> payload,
+  Future<void> testNotification(
+    Map<String, dynamic> payload,
   ) async {
     try {
       await _dio.post<dynamic>(
@@ -1199,8 +1215,7 @@ class SonarrApi {
   // --- Metadata Consumers ---
   Future<List<Map<String, dynamic>>> getMetadataConfigs() async {
     try {
-      final Response<dynamic> resp =
-          await _dio.get<dynamic>('$_base/metadata');
+      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/metadata');
       return (resp.data as List<dynamic>)
           .map((dynamic e) => e as Map<String, dynamic>)
           .toList();
@@ -1221,7 +1236,8 @@ class SonarrApi {
     }
   }
 
-  Future<void> updateMetadataConfig(Map<String, dynamic> payload,
+  Future<void> updateMetadataConfig(
+    Map<String, dynamic> payload,
   ) async {
     try {
       await _dio.put<dynamic>(
@@ -1248,7 +1264,7 @@ class SonarrApi {
   }
 
   Future<Map<String, dynamic>> createDelayProfile(
-      Map<String, dynamic> payload,
+    Map<String, dynamic> payload,
   ) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
@@ -1261,7 +1277,8 @@ class SonarrApi {
     }
   }
 
-  Future<void> updateDelayProfile(Map<String, dynamic> payload,
+  Future<void> updateDelayProfile(
+    Map<String, dynamic> payload,
   ) async {
     try {
       await _dio.put<dynamic>(
@@ -1295,7 +1312,7 @@ class SonarrApi {
   }
 
   Future<Map<String, dynamic>> createReleaseProfile(
-      Map<String, dynamic> payload,
+    Map<String, dynamic> payload,
   ) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
@@ -1308,7 +1325,8 @@ class SonarrApi {
     }
   }
 
-  Future<void> updateReleaseProfile(Map<String, dynamic> payload,
+  Future<void> updateReleaseProfile(
+    Map<String, dynamic> payload,
   ) async {
     try {
       await _dio.put<dynamic>(
@@ -1354,7 +1372,7 @@ class SonarrApi {
   }
 
   Future<Map<String, dynamic>> createCustomFormat(
-      Map<String, dynamic> payload,
+    Map<String, dynamic> payload,
   ) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
@@ -1367,7 +1385,8 @@ class SonarrApi {
     }
   }
 
-  Future<void> updateCustomFormat(Map<String, dynamic> payload,
+  Future<void> updateCustomFormat(
+    Map<String, dynamic> payload,
   ) async {
     try {
       await _dio.put<dynamic>(
@@ -1422,8 +1441,7 @@ class SonarrApi {
 
   Future<List<Map<String, dynamic>>> getHealth() async {
     try {
-      final Response<dynamic> resp =
-          await _dio.get<dynamic>('$_base/health');
+      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/health');
       return (resp.data as List<dynamic>)
           .map((dynamic e) => e as Map<String, dynamic>)
           .toList();
@@ -1458,8 +1476,7 @@ class SonarrApi {
 
   Future<List<Map<String, dynamic>>> getUpdates() async {
     try {
-      final Response<dynamic> resp =
-          await _dio.get<dynamic>('$_base/update');
+      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/update');
       return (resp.data as List<dynamic>)
           .map((dynamic e) => e as Map<String, dynamic>)
           .toList();
@@ -1497,8 +1514,7 @@ class SonarrApi {
 
   Future<List<Map<String, dynamic>>> getLogFiles() async {
     try {
-      final Response<dynamic> resp =
-          await _dio.get<dynamic>('$_base/log/file');
+      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/log/file');
       return (resp.data as List<dynamic>)
           .map((dynamic e) => e as Map<String, dynamic>)
           .toList();

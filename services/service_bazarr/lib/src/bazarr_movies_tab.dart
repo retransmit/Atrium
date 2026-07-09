@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'bazarr_movie_detail_screen.dart';
 import 'bazarr_providers.dart';
 import 'models/bazarr_models.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// The Movies tab: all Radarr-backed movies with their subtitle status. Tapping
 /// a row opens the movie subtitle view.
@@ -18,7 +19,7 @@ class BazarrMoviesTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<BazarrMovie>> movies =
         ref.watch(bazarrMoviesProvider(instance));
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async => ref.invalidate(bazarrMoviesProvider(instance)),
       child: AsyncValueView<List<BazarrMovie>>(
         value: movies,

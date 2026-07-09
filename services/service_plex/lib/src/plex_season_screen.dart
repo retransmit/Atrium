@@ -8,6 +8,7 @@ import 'models/plex_models.dart';
 import 'plex_api.dart';
 import 'plex_item_detail.dart';
 import 'plex_providers.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// Season and episode browsing for a Plex show. Browse/manage only: episodes
 /// carry a watched toggle; playback stays with the official Plex app. Seasons
@@ -123,7 +124,8 @@ class PlexSeasonCard extends StatelessWidget {
 /// a trailing toggle that scrobbles/unscrobbles the episode on the server.
 /// Tapping a row opens the episode detail screen.
 class PlexEpisodeList extends ConsumerWidget {
-  const PlexEpisodeList({required this.instance, required this.season, super.key});
+  const PlexEpisodeList(
+      {required this.instance, required this.season, super.key});
 
   final Instance instance;
   final PlexMetadata season;
@@ -136,9 +138,9 @@ class PlexEpisodeList extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text(season.title)),
-      body: RefreshIndicator(
-        onRefresh: () async => ref
-            .invalidate(plexChildrenProvider((instance, season.ratingKey))),
+      body: M3RefreshIndicator(
+        onRefresh: () async =>
+            ref.invalidate(plexChildrenProvider((instance, season.ratingKey))),
         child: AsyncValueView<List<PlexMetadata>>(
           value: episodes,
           onRetry: () => ref
@@ -185,10 +187,9 @@ class _EpisodeTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
     final bool watched = episode.viewCount > 0;
-    final String label =
-        (episode.parentIndex != null && episode.index != null)
-            ? 'S${episode.parentIndex}E${episode.index} - ${episode.title}'
-            : episode.title;
+    final String label = (episode.parentIndex != null && episode.index != null)
+        ? 'S${episode.parentIndex}E${episode.index} - ${episode.title}'
+        : episode.title;
     final int minutes =
         episode.duration != null ? episode.duration! ~/ 60000 : 0;
 

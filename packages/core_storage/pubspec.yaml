@@ -16,6 +16,7 @@ dependencies:
   hive_ce: ^2.10.1
   hive_ce_flutter: ^2.0.0
   local_auth: ^3.0.1
+  m3_expressive: ^1.0.0
   meta: ^1.16.0
   path_provider: ^2.1.5
 

@@ -14,13 +14,15 @@ class SeerrStatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final _BadgeStyle? style = switch (status) {
-      5 => const _BadgeStyle(Color(0xFF22C55E), Icons.check_circle, 'Available'),
+      5 =>
+        const _BadgeStyle(Color(0xFF22C55E), Icons.check_circle, 'Available'),
       4 => const _BadgeStyle(
           Color(0xFF14B8A6),
           Icons.check_circle_outline,
           'Partial',
         ),
-      3 => const _BadgeStyle(Color(0xFF3B82F6), Icons.downloading, 'Processing'),
+      3 =>
+        const _BadgeStyle(Color(0xFF3B82F6), Icons.downloading, 'Processing'),
       2 => const _BadgeStyle(Color(0xFFF59E0B), Icons.hourglass_top, 'Pending'),
       _ => null,
     };

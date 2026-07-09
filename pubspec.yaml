@@ -30,3 +30,5 @@ workspace:
   - services/service_qbittorrent
   - services/service_sabnzbd
   - services/service_glances
+dependencies:
+  m3_expressive: ^1.0.0

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'bazarr_providers.dart';
 import 'models/bazarr_models.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// The History tab: a unified, newest-first log of subtitle downloads,
 /// upgrades, and deletions across episodes and movies.
@@ -17,7 +18,7 @@ class BazarrHistoryTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<BazarrHistoryItem>> history =
         ref.watch(bazarrHistoryProvider(instance));
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async => ref.invalidate(bazarrHistoryProvider(instance)),
       child: AsyncValueView<List<BazarrHistoryItem>>(
         value: history,

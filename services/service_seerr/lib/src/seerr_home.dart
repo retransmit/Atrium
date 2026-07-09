@@ -8,6 +8,7 @@ import 'seerr_discover_screen.dart';
 import 'seerr_item_detail.dart';
 import 'seerr_media_card.dart';
 import 'seerr_providers.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// Seerr's per-instance UI: the recent request list. Pending requests get
 /// approve / decline actions - the key thing you want to do from a phone.
@@ -52,7 +53,7 @@ class _SeerrRequestsTab extends ConsumerWidget {
     final AsyncValue<List<SeerrRequest>> requests =
         ref.watch(seerrRequestsProvider(instance));
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(seerrRequestsProvider(instance));
         ref.invalidate(seerrRequestCountsProvider(instance));
@@ -104,11 +105,15 @@ class _RequestTile extends ConsumerWidget {
       );
     }
 
-    final detailsAsync = ref.watch(seerrMediaDetailsProvider((
-      instance: instance,
-      mediaType: mediaType,
-      tmdbId: tmdbId,
-    ),),);
+    final detailsAsync = ref.watch(
+      seerrMediaDetailsProvider(
+        (
+          instance: instance,
+          mediaType: mediaType,
+          tmdbId: tmdbId,
+        ),
+      ),
+    );
 
     return detailsAsync.when(
       data: (item) {
@@ -158,12 +163,13 @@ class _RequestTile extends ConsumerWidget {
 
 class _RequestActionsMenu extends ConsumerStatefulWidget {
   const _RequestActionsMenu({required this.instance, required this.request});
-  
+
   final Instance instance;
   final SeerrRequest request;
 
   @override
-  ConsumerState<_RequestActionsMenu> createState() => _RequestActionsMenuState();
+  ConsumerState<_RequestActionsMenu> createState() =>
+      _RequestActionsMenuState();
 }
 
 class _RequestActionsMenuState extends ConsumerState<_RequestActionsMenu> {

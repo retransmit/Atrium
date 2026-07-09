@@ -88,16 +88,16 @@ class SeerrMediaCard extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (requestedBy != null && requestedBy!.isNotEmpty)
-                            ...<Widget>[
-                              const SizedBox(height: 4),
-                              Text(
-                                'Requested by $requestedBy',
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  color: theme.colorScheme.outline,
-                                ),
+                          if (requestedBy != null &&
+                              requestedBy!.isNotEmpty) ...<Widget>[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Requested by $requestedBy',
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: theme.colorScheme.outline,
                               ),
-                            ],
+                            ),
+                          ],
                           const SizedBox(height: Insets.sm),
                           Wrap(
                             spacing: Insets.sm,
@@ -105,7 +105,8 @@ class SeerrMediaCard extends StatelessWidget {
                             children: <Widget>[
                               if (item.year != null)
                                 SeerrInfoPill(label: item.year!),
-                              SeerrInfoPill(label: item.isMovie ? 'Movie' : 'TV'),
+                              SeerrInfoPill(
+                                  label: item.isMovie ? 'Movie' : 'TV'),
                               if (item.status != null &&
                                   item.status!.isNotEmpty)
                                 SeerrInfoPill(label: item.status!),
@@ -127,8 +128,11 @@ class SeerrMediaCard extends StatelessWidget {
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: <Widget>[
-                                const Icon(Icons.star,
-                                    color: Colors.amber, size: 18,),
+                                const Icon(
+                                  Icons.star,
+                                  color: Colors.amber,
+                                  size: 18,
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   item.voteAverage!.toStringAsFixed(1),
@@ -145,8 +149,7 @@ class SeerrMediaCard extends StatelessWidget {
               ),
             ),
           ),
-          if (trailing != null)
-            Positioned(top: 0, right: 0, child: trailing!),
+          if (trailing != null) Positioned(top: 0, right: 0, child: trailing!),
         ],
       ),
     );

@@ -46,7 +46,7 @@ class _MediaManagementSettingsScreenState
   bool _autoUnmonitorPreviouslyDownloadedEpisodes = false;
   bool _skipFreeSpaceCheckWhenImporting = false;
   bool _setPermissionsLinux = false;
-  
+
   late final TextEditingController _recycleBinController;
   late final TextEditingController _recycleBinCleanupDaysController;
   late final TextEditingController _chmodFolderController;
@@ -136,9 +136,10 @@ class _MediaManagementSettingsScreenState
     _enableMediaInfo = mediaMgmt['enableMediaInfo'] as bool? ?? false;
     _minimumFreeSpaceController.text =
         (mediaMgmt['minimumFreeSpaceWhenImporting'] as int? ?? 0).toString();
-    
+
     _autoUnmonitorPreviouslyDownloadedEpisodes =
-        mediaMgmt['autoUnmonitorPreviouslyDownloadedEpisodes'] as bool? ?? false;
+        mediaMgmt['autoUnmonitorPreviouslyDownloadedEpisodes'] as bool? ??
+            false;
     _skipFreeSpaceCheckWhenImporting =
         mediaMgmt['skipFreeSpaceCheckWhenImporting'] as bool? ?? false;
     _setPermissionsLinux = mediaMgmt['setPermissionsLinux'] as bool? ?? false;
@@ -150,7 +151,8 @@ class _MediaManagementSettingsScreenState
     _chownGroupController.text = (mediaMgmt['chownGroup'] as String?) ?? '';
 
     _downloadPropersAndRepacks =
-        (mediaMgmt['downloadPropersAndRepacks'] as String?) ?? 'preferAndUpgrade';
+        (mediaMgmt['downloadPropersAndRepacks'] as String?) ??
+            'preferAndUpgrade';
     _fileDate = (mediaMgmt['fileDate'] as String?) ?? 'none';
     _rescanAfterRefresh =
         (mediaMgmt['rescanAfterRefresh'] as String?) ?? 'always';
@@ -209,20 +211,21 @@ class _MediaManagementSettingsScreenState
       mediaMgmtPayload['enableMediaInfo'] = _enableMediaInfo;
       mediaMgmtPayload['minimumFreeSpaceWhenImporting'] =
           int.tryParse(_minimumFreeSpaceController.text.trim()) ?? 0;
-      
+
       mediaMgmtPayload['autoUnmonitorPreviouslyDownloadedEpisodes'] =
           _autoUnmonitorPreviouslyDownloadedEpisodes;
       mediaMgmtPayload['skipFreeSpaceCheckWhenImporting'] =
           _skipFreeSpaceCheckWhenImporting;
       mediaMgmtPayload['setPermissionsLinux'] = _setPermissionsLinux;
-      
+
       mediaMgmtPayload['recycleBin'] = _recycleBinController.text.trim();
       mediaMgmtPayload['recycleBinCleanupDays'] =
           int.tryParse(_recycleBinCleanupDaysController.text.trim()) ?? 7;
       mediaMgmtPayload['chmodFolder'] = _chmodFolderController.text.trim();
       mediaMgmtPayload['chownGroup'] = _chownGroupController.text.trim();
 
-      mediaMgmtPayload['downloadPropersAndRepacks'] = _downloadPropersAndRepacks;
+      mediaMgmtPayload['downloadPropersAndRepacks'] =
+          _downloadPropersAndRepacks;
       mediaMgmtPayload['fileDate'] = _fileDate;
       mediaMgmtPayload['rescanAfterRefresh'] = _rescanAfterRefresh;
       mediaMgmtPayload['episodeTitleRequired'] = _episodeTitleRequired;
@@ -300,7 +303,8 @@ class _MediaManagementSettingsScreenState
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         side: BorderSide(
-                            color: theme.colorScheme.outlineVariant,),
+                          color: theme.colorScheme.outlineVariant,
+                        ),
                         borderRadius: Radii.card,
                       ),
                       child: Padding(
@@ -320,7 +324,8 @@ class _MediaManagementSettingsScreenState
                               contentPadding: EdgeInsets.zero,
                               title: const Text('Rename Episodes'),
                               subtitle: const Text(
-                                  'Change episode file names based on naming format',),
+                                'Change episode file names based on naming format',
+                              ),
                               value: _renameEpisodes,
                               onChanged: (val) =>
                                   setState(() => _renameEpisodes = val),
@@ -329,10 +334,12 @@ class _MediaManagementSettingsScreenState
                               contentPadding: EdgeInsets.zero,
                               title: const Text('Replace Illegal Characters'),
                               subtitle: const Text(
-                                  'Sanitize standard OS invalid filename characters',),
+                                'Sanitize standard OS invalid filename characters',
+                              ),
                               value: _replaceIllegalCharacters,
-                              onChanged: (val) => setState(() =>
-                                  _replaceIllegalCharacters = val,),
+                              onChanged: (val) => setState(
+                                () => _replaceIllegalCharacters = val,
+                              ),
                             ),
                             const SizedBox(height: Insets.sm),
                             DropdownButtonFormField<int>(
@@ -343,16 +350,25 @@ class _MediaManagementSettingsScreenState
                               ),
                               items: [
                                 const DropdownMenuItem(
-                                    value: 0, child: Text('Delete'),),
+                                  value: 0,
+                                  child: Text('Delete'),
+                                ),
                                 const DropdownMenuItem(
-                                    value: 1, child: Text('Replace with Space'),),
+                                  value: 1,
+                                  child: Text('Replace with Space'),
+                                ),
                                 const DropdownMenuItem(
-                                    value: 2, child: Text('Replace with Dash'),),
+                                  value: 2,
+                                  child: Text('Replace with Dash'),
+                                ),
                                 const DropdownMenuItem(
-                                    value: 3,
-                                    child: Text('Replace with Space Dash Space'),),
+                                  value: 3,
+                                  child: Text('Replace with Space Dash Space'),
+                                ),
                                 const DropdownMenuItem(
-                                    value: 4, child: Text('Smart Replace'),),
+                                  value: 4,
+                                  child: Text('Smart Replace'),
+                                ),
                                 if (_colonReplacementFormat < 0 ||
                                     _colonReplacementFormat > 4)
                                   DropdownMenuItem(
@@ -429,7 +445,8 @@ class _MediaManagementSettingsScreenState
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         side: BorderSide(
-                            color: theme.colorScheme.outlineVariant,),
+                          color: theme.colorScheme.outlineVariant,
+                        ),
                         borderRadius: Radii.card,
                       ),
                       child: Padding(
@@ -449,25 +466,29 @@ class _MediaManagementSettingsScreenState
                               contentPadding: EdgeInsets.zero,
                               title: const Text('Create Empty Series Folders'),
                               subtitle: const Text(
-                                  'Create directories automatically on disk scanner activity',),
+                                'Create directories automatically on disk scanner activity',
+                              ),
                               value: _createEmptySeriesFolders,
-                              onChanged: (val) =>
-                                  setState(() => _createEmptySeriesFolders = val),
+                              onChanged: (val) => setState(
+                                  () => _createEmptySeriesFolders = val),
                             ),
                             SwitchListTile(
                               contentPadding: EdgeInsets.zero,
                               title: const Text('Delete Empty Folders'),
                               subtitle: const Text(
-                                  'Remove folders that have no media assets remaining',),
+                                'Remove folders that have no media assets remaining',
+                              ),
                               value: _deleteEmptyFolders,
                               onChanged: (val) =>
                                   setState(() => _deleteEmptyFolders = val),
                             ),
                             SwitchListTile(
                               contentPadding: EdgeInsets.zero,
-                              title: const Text('Use Hardlinks instead of Copy'),
+                              title:
+                                  const Text('Use Hardlinks instead of Copy'),
                               subtitle: const Text(
-                                  'Highly recommended for same-pool storage seeding setups',),
+                                'Highly recommended for same-pool storage seeding setups',
+                              ),
                               value: _copyUsingHardlinks,
                               onChanged: (val) =>
                                   setState(() => _copyUsingHardlinks = val),
@@ -475,20 +496,27 @@ class _MediaManagementSettingsScreenState
                             SwitchListTile(
                               contentPadding: EdgeInsets.zero,
                               title: const Text(
-                                  'Auto Unmonitor Previously Downloaded',),
+                                'Auto Unmonitor Previously Downloaded',
+                              ),
                               subtitle: const Text(
-                                  'Unmonitor episodes once they have been deleted from disk',),
+                                'Unmonitor episodes once they have been deleted from disk',
+                              ),
                               value: _autoUnmonitorPreviouslyDownloadedEpisodes,
-                              onChanged: (val) => setState(() =>
-                                  _autoUnmonitorPreviouslyDownloadedEpisodes = val,),
+                              onChanged: (val) => setState(
+                                () =>
+                                    _autoUnmonitorPreviouslyDownloadedEpisodes =
+                                        val,
+                              ),
                             ),
                             SwitchListTile(
                               contentPadding: EdgeInsets.zero,
                               title: const Text(
-                                  'Skip Free Space Check When Importing',),
+                                'Skip Free Space Check When Importing',
+                              ),
                               value: _skipFreeSpaceCheckWhenImporting,
-                              onChanged: (val) => setState(() =>
-                                  _skipFreeSpaceCheckWhenImporting = val,),
+                              onChanged: (val) => setState(
+                                () => _skipFreeSpaceCheckWhenImporting = val,
+                              ),
                             ),
                             const SizedBox(height: Insets.sm),
                             TextFormField(
@@ -515,14 +543,19 @@ class _MediaManagementSettingsScreenState
                                 labelText: 'Propers and Repacks',
                                 border: OutlineInputBorder(),
                               ),
-                              items: _dropdownItems(const {
-                                'preferAndUpgrade': 'Prefer and Upgrade',
-                                'doNotUpgrade': 'Do Not Upgrade Automatically',
-                                'doNotPrefer': 'Do Not Prefer',
-                              }, _downloadPropersAndRepacks,),
+                              items: _dropdownItems(
+                                const {
+                                  'preferAndUpgrade': 'Prefer and Upgrade',
+                                  'doNotUpgrade':
+                                      'Do Not Upgrade Automatically',
+                                  'doNotPrefer': 'Do Not Prefer',
+                                },
+                                _downloadPropersAndRepacks,
+                              ),
                               onChanged: (val) {
                                 if (val != null) {
-                                  setState(() => _downloadPropersAndRepacks = val);
+                                  setState(
+                                      () => _downloadPropersAndRepacks = val);
                                 }
                               },
                             ),
@@ -533,12 +566,15 @@ class _MediaManagementSettingsScreenState
                                 labelText: 'Episode Title Required',
                                 border: OutlineInputBorder(),
                               ),
-                              items: _dropdownItems(const {
-                                'always': 'Always',
-                                'bulkSeasonReleases':
-                                    'Only for Bulk Season Releases',
-                                'never': 'Never',
-                              }, _episodeTitleRequired,),
+                              items: _dropdownItems(
+                                const {
+                                  'always': 'Always',
+                                  'bulkSeasonReleases':
+                                      'Only for Bulk Season Releases',
+                                  'never': 'Never',
+                                },
+                                _episodeTitleRequired,
+                              ),
                               onChanged: (val) {
                                 if (val != null) {
                                   setState(() => _episodeTitleRequired = val);
@@ -552,11 +588,14 @@ class _MediaManagementSettingsScreenState
                                 labelText: 'File Date',
                                 border: OutlineInputBorder(),
                               ),
-                              items: _dropdownItems(const {
-                                'none': 'None',
-                                'localAirDate': 'Local Air Date',
-                                'utcAirDate': 'UTC Air Date',
-                              }, _fileDate,),
+                              items: _dropdownItems(
+                                const {
+                                  'none': 'None',
+                                  'localAirDate': 'Local Air Date',
+                                  'utcAirDate': 'UTC Air Date',
+                                },
+                                _fileDate,
+                              ),
                               onChanged: (val) {
                                 if (val != null) {
                                   setState(() => _fileDate = val);
@@ -570,11 +609,14 @@ class _MediaManagementSettingsScreenState
                                 labelText: 'Rescan After Refresh',
                                 border: OutlineInputBorder(),
                               ),
-                              items: _dropdownItems(const {
-                                'always': 'Always',
-                                'afterManual': 'After Manual Refresh',
-                                'never': 'Never',
-                              }, _rescanAfterRefresh,),
+                              items: _dropdownItems(
+                                const {
+                                  'always': 'Always',
+                                  'afterManual': 'After Manual Refresh',
+                                  'never': 'Never',
+                                },
+                                _rescanAfterRefresh,
+                              ),
                               onChanged: (val) {
                                 if (val != null) {
                                   setState(() => _rescanAfterRefresh = val);
@@ -592,7 +634,8 @@ class _MediaManagementSettingsScreenState
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         side: BorderSide(
-                            color: theme.colorScheme.outlineVariant,),
+                          color: theme.colorScheme.outlineVariant,
+                        ),
                         borderRadius: Radii.card,
                       ),
                       child: Padding(
@@ -612,7 +655,8 @@ class _MediaManagementSettingsScreenState
                               contentPadding: EdgeInsets.zero,
                               title: const Text('Import Extra Files'),
                               subtitle: const Text(
-                                  'Move subtitles, NFO, or metadata with video files',),
+                                'Move subtitles, NFO, or metadata with video files',
+                              ),
                               value: _importExtraFiles,
                               onChanged: (val) =>
                                   setState(() => _importExtraFiles = val),
@@ -634,7 +678,8 @@ class _MediaManagementSettingsScreenState
                               contentPadding: EdgeInsets.zero,
                               title: const Text('Enable Media Info'),
                               subtitle: const Text(
-                                  'Extract audio channels, video codec, and subtitle info',),
+                                'Extract audio channels, video codec, and subtitle info',
+                              ),
                               value: _enableMediaInfo,
                               onChanged: (val) =>
                                   setState(() => _enableMediaInfo = val),
@@ -650,7 +695,8 @@ class _MediaManagementSettingsScreenState
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         side: BorderSide(
-                            color: theme.colorScheme.outlineVariant,),
+                          color: theme.colorScheme.outlineVariant,
+                        ),
                         borderRadius: Radii.card,
                       ),
                       child: Padding(
@@ -704,7 +750,8 @@ class _MediaManagementSettingsScreenState
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         side: BorderSide(
-                            color: theme.colorScheme.outlineVariant,),
+                          color: theme.colorScheme.outlineVariant,
+                        ),
                         borderRadius: Radii.card,
                       ),
                       child: Padding(

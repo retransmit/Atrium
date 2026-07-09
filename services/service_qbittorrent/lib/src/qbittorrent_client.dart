@@ -45,7 +45,8 @@ class QbittorrentClient {
     required bool allowSelfSigned,
   }) {
     final String baseUrlStr = baseUrl.toString();
-    final String normalizedBaseUrl = baseUrlStr.endsWith('/') ? baseUrlStr : '$baseUrlStr/';
+    final String normalizedBaseUrl =
+        baseUrlStr.endsWith('/') ? baseUrlStr : '$baseUrlStr/';
     final CookieJar cookies = CookieJar();
     final Dio dio = Dio(
       BaseOptions(
@@ -141,15 +142,20 @@ class QbittorrentClient {
         return QbitTransferInfo.fromJson(resp.data as Map<String, dynamic>);
       });
 
-  Future<void> pause(List<String> hashes) => _torrentCommand(hashes.join('|'), stop: true);
+  Future<void> pause(List<String> hashes) =>
+      _torrentCommand(hashes.join('|'), stop: true);
 
-  Future<void> resume(List<String> hashes) => _torrentCommand(hashes.join('|'), stop: false);
+  Future<void> resume(List<String> hashes) =>
+      _torrentCommand(hashes.join('|'), stop: false);
 
   Future<void> delete(List<String> hashes, {required bool deleteFiles}) =>
       _guarded(() async {
         await _dio.post<dynamic>(
           'api/v2/torrents/delete',
-          data: <String, dynamic>{'hashes': hashes.join('|'), 'deleteFiles': deleteFiles},
+          data: <String, dynamic>{
+            'hashes': hashes.join('|'),
+            'deleteFiles': deleteFiles
+          },
           options: Options(contentType: Headers.formUrlEncodedContentType),
         );
       });
@@ -257,7 +263,7 @@ class QbittorrentClient {
           final String ipPort = entry.key;
           final Map<String, dynamic> peerData =
               entry.value as Map<String, dynamic>;
-          
+
           String ip = ipPort;
           int port = 0;
           if (ipPort.contains(':')) {
@@ -305,10 +311,14 @@ class QbittorrentClient {
       });
 
   /// Moves a torrent into [category] (empty string clears it).
-  Future<void> setCategory(List<String> hashes, String category) => _guarded(() async {
+  Future<void> setCategory(List<String> hashes, String category) =>
+      _guarded(() async {
         await _dio.post<dynamic>(
           'api/v2/torrents/setCategory',
-          data: <String, dynamic>{'hashes': hashes.join('|'), 'category': category},
+          data: <String, dynamic>{
+            'hashes': hashes.join('|'),
+            'category': category
+          },
           options: Options(contentType: Headers.formUrlEncodedContentType),
         );
       });
@@ -343,7 +353,8 @@ class QbittorrentClient {
         );
       });
 
-  Future<void> setForceStart(List<String> hashes, {required bool value}) => _guarded(() async {
+  Future<void> setForceStart(List<String> hashes, {required bool value}) =>
+      _guarded(() async {
         await _dio.post<dynamic>(
           'api/v2/torrents/setForceStart',
           data: <String, dynamic>{'hashes': hashes.join('|'), 'value': value},
@@ -359,10 +370,14 @@ class QbittorrentClient {
         );
       });
 
-  Future<void> setLocation(List<String> hashes, String location) => _guarded(() async {
+  Future<void> setLocation(List<String> hashes, String location) =>
+      _guarded(() async {
         await _dio.post<dynamic>(
           'api/v2/torrents/setLocation',
-          data: <String, dynamic>{'hashes': hashes.join('|'), 'location': location},
+          data: <String, dynamic>{
+            'hashes': hashes.join('|'),
+            'location': location
+          },
           options: Options(contentType: Headers.formUrlEncodedContentType),
         );
       });
@@ -388,12 +403,10 @@ class QbittorrentClient {
   /// (pause→stop, resume→start) just like the per-torrent ones, so we try the
   /// new path first and fall back on 404.
   Future<void> setAllPaused({required bool paused}) => _guarded(() async {
-        final String primary = paused
-            ? 'api/v2/torrents/stop'
-            : 'api/v2/torrents/start';
-        final String fallback = paused
-            ? 'api/v2/torrents/pause'
-            : 'api/v2/torrents/resume';
+        final String primary =
+            paused ? 'api/v2/torrents/stop' : 'api/v2/torrents/start';
+        final String fallback =
+            paused ? 'api/v2/torrents/pause' : 'api/v2/torrents/resume';
         try {
           await _dio.post<dynamic>(
             primary,

@@ -74,7 +74,8 @@ class _ProwlarrIndexerFormScreenState
     try {
       final ProwlarrApi api =
           await ref.read(prowlarrApiProvider(widget.instance).future);
-      final Map<String, dynamic> raw = await api.getIndexerRaw(widget.indexerId!);
+      final Map<String, dynamic> raw =
+          await api.getIndexerRaw(widget.indexerId!);
       if (!mounted) {
         return;
       }
@@ -93,7 +94,8 @@ class _ProwlarrIndexerFormScreenState
         (source['implementationName'] as String?) ??
         '';
     _fields = ((source['fields'] as List<dynamic>?) ?? <dynamic>[])
-        .map((dynamic f) => Map<String, dynamic>.from(f as Map<dynamic, dynamic>))
+        .map((dynamic f) =>
+            Map<String, dynamic>.from(f as Map<dynamic, dynamic>))
         .toList();
     _enabled = (source['enable'] as bool?) ?? true;
     _priority = (source['priority'] as num?)?.toInt() ?? 25;
@@ -551,9 +553,8 @@ class _IndexerStatsSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
-    final ProwlarrIndexerStat? stat = ref
-        .watch(prowlarrStatsByIdProvider(instance))
-        .value?[indexerId];
+    final ProwlarrIndexerStat? stat =
+        ref.watch(prowlarrStatsByIdProvider(instance)).value?[indexerId];
     if (stat == null) {
       return const SizedBox.shrink();
     }

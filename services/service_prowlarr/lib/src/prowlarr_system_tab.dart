@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models/prowlarr_system.dart';
 import 'prowlarr_api.dart';
 import 'prowlarr_providers.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// System tab: health, scheduled tasks (run now), backups (create / delete),
 /// and a status summary.
@@ -17,7 +18,7 @@ class ProwlarrSystemTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref
           ..invalidate(prowlarrHealthProvider(instance))

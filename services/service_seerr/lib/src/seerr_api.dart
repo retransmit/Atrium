@@ -70,7 +70,8 @@ class SeerrApi {
 
   Future<SeerrCounts> getRequestCounts() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/request/count');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/request/count');
       return SeerrCounts.fromJson(resp.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -92,7 +93,8 @@ class SeerrApi {
         'is4k': is4k,
         if (serverId != null) 'serverId': serverId,
         if (profileId != null) 'profileId': profileId,
-        if (rootFolder != null && rootFolder.isNotEmpty) 'rootFolder': rootFolder,
+        if (rootFolder != null && rootFolder.isNotEmpty)
+          'rootFolder': rootFolder,
       };
       if (mediaType.toLowerCase() == 'tv') {
         data['seasons'] = 'all';
@@ -165,9 +167,11 @@ class SeerrApi {
 
   // --- Seerr / Discover Endpoints ---
 
-  Future<SeerrDiscoverResult> getMediaDetails(String mediaType, int tmdbId) async {
+  Future<SeerrDiscoverResult> getMediaDetails(
+      String mediaType, int tmdbId) async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/$mediaType/$tmdbId');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/$mediaType/$tmdbId');
       final Map<String, dynamic> data = resp.data as Map<String, dynamic>;
       // The endpoints return full details but include mediaInfo. mediaType is not always set by default.
       data['mediaType'] ??= mediaType;
@@ -182,7 +186,8 @@ class SeerrApi {
       final Response<dynamic> resp = await _dio.get<dynamic>(
         '$_base/search?query=${Uri.encodeComponent(query)}',
       );
-      return SeerrDiscoverPage.fromJson(resp.data as Map<String, dynamic>).results;
+      return SeerrDiscoverPage.fromJson(resp.data as Map<String, dynamic>)
+          .results;
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -190,8 +195,10 @@ class SeerrApi {
 
   Future<List<SeerrDiscoverResult>> discoverMovies() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/discover/movies');
-      return SeerrDiscoverPage.fromJson(resp.data as Map<String, dynamic>).results;
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/discover/movies');
+      return SeerrDiscoverPage.fromJson(resp.data as Map<String, dynamic>)
+          .results;
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -199,9 +206,12 @@ class SeerrApi {
 
   Future<List<SeerrGenre>> getMovieGenres() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/genres/movie');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/genres/movie');
       final List<dynamic> list = resp.data as List<dynamic>;
-      return list.map((dynamic e) => SeerrGenre.fromJson(e as Map<String, dynamic>)).toList();
+      return list
+          .map((dynamic e) => SeerrGenre.fromJson(e as Map<String, dynamic>))
+          .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -209,8 +219,10 @@ class SeerrApi {
 
   Future<List<SeerrDiscoverResult>> getMoviesByGenre(int genreId) async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/discover/movies/genre/$genreId');
-      return SeerrDiscoverPage.fromJson(resp.data as Map<String, dynamic>).results;
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/discover/movies/genre/$genreId');
+      return SeerrDiscoverPage.fromJson(resp.data as Map<String, dynamic>)
+          .results;
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -218,8 +230,10 @@ class SeerrApi {
 
   Future<List<SeerrDiscoverResult>> getUpcomingMovies() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/discover/movies/upcoming');
-      return SeerrDiscoverPage.fromJson(resp.data as Map<String, dynamic>).results;
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/discover/movies/upcoming');
+      return SeerrDiscoverPage.fromJson(resp.data as Map<String, dynamic>)
+          .results;
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -227,8 +241,10 @@ class SeerrApi {
 
   Future<List<SeerrDiscoverResult>> discoverTvShows() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/discover/tv');
-      return SeerrDiscoverPage.fromJson(resp.data as Map<String, dynamic>).results;
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/discover/tv');
+      return SeerrDiscoverPage.fromJson(resp.data as Map<String, dynamic>)
+          .results;
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -236,9 +252,12 @@ class SeerrApi {
 
   Future<List<SeerrGenre>> getTvGenres() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/genres/tv');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/genres/tv');
       final List<dynamic> list = resp.data as List<dynamic>;
-      return list.map((dynamic e) => SeerrGenre.fromJson(e as Map<String, dynamic>)).toList();
+      return list
+          .map((dynamic e) => SeerrGenre.fromJson(e as Map<String, dynamic>))
+          .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -246,8 +265,10 @@ class SeerrApi {
 
   Future<List<SeerrDiscoverResult>> getTvShowsByGenre(int genreId) async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/discover/tv/genre/$genreId');
-      return SeerrDiscoverPage.fromJson(resp.data as Map<String, dynamic>).results;
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/discover/tv/genre/$genreId');
+      return SeerrDiscoverPage.fromJson(resp.data as Map<String, dynamic>)
+          .results;
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -255,8 +276,10 @@ class SeerrApi {
 
   Future<List<SeerrDiscoverResult>> getUpcomingTvShows() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/discover/tv/upcoming');
-      return SeerrDiscoverPage.fromJson(resp.data as Map<String, dynamic>).results;
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/discover/tv/upcoming');
+      return SeerrDiscoverPage.fromJson(resp.data as Map<String, dynamic>)
+          .results;
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -264,8 +287,10 @@ class SeerrApi {
 
   Future<List<SeerrDiscoverResult>> getTrending() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/discover/trending');
-      return SeerrDiscoverPage.fromJson(resp.data as Map<String, dynamic>).results;
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/discover/trending');
+      return SeerrDiscoverPage.fromJson(resp.data as Map<String, dynamic>)
+          .results;
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }

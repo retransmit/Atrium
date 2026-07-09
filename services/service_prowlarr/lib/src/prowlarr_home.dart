@@ -11,6 +11,7 @@ import 'prowlarr_providers.dart';
 import 'prowlarr_search_screen.dart';
 import 'prowlarr_settings_tab.dart';
 import 'prowlarr_system_tab.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// Prowlarr's per-instance UI: a tabbed Indexers / History / Settings / System
 /// view mirroring Prowlarr's own navigation. The Indexers tab lists indexers
@@ -77,8 +78,7 @@ class _ProwlarrHomeState extends State<ProwlarrHome>
           ),
         ],
       ),
-      floatingActionButton:
-          _tab.index == 0 ? _indexerFabs(context) : null,
+      floatingActionButton: _tab.index == 0 ? _indexerFabs(context) : null,
     );
   }
 
@@ -138,7 +138,7 @@ class _IndexersTab extends ConsumerWidget {
         ref.watch(prowlarrStatsByIdProvider(instance)).value ??
             const <int, ProwlarrIndexerStat>{};
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(prowlarrIndexersProvider(instance));
         ref.invalidate(prowlarrStatsByIdProvider(instance));

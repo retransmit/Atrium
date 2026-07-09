@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models/plex_models.dart';
 import 'plex_api.dart';
 import 'plex_providers.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// Albums of an artist as a cover grid; tapping an album opens its track
 /// list. Browse only: Atrium is a controller, music plays in the Plex app.
@@ -28,7 +29,7 @@ class PlexArtistScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text(artist.title)),
-      body: RefreshIndicator(
+      body: M3RefreshIndicator(
         onRefresh: () async =>
             ref.invalidate(plexChildrenProvider((instance, artist.ratingKey))),
         child: AsyncValueView<List<PlexMetadata>>(
@@ -167,13 +168,13 @@ class PlexAlbumScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text(album.title)),
-      body: RefreshIndicator(
+      body: M3RefreshIndicator(
         onRefresh: () async =>
             ref.invalidate(plexChildrenProvider((instance, album.ratingKey))),
         child: AsyncValueView<List<PlexMetadata>>(
           value: tracks,
-          onRetry: () => ref
-              .invalidate(plexChildrenProvider((instance, album.ratingKey))),
+          onRetry: () =>
+              ref.invalidate(plexChildrenProvider((instance, album.ratingKey))),
           data: (List<PlexMetadata> list) {
             if (list.isEmpty) {
               return const EmptyView(

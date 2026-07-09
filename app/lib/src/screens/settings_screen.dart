@@ -49,13 +49,17 @@ class SettingsScreen extends ConsumerWidget {
           const Divider(),
           const _SectionHeader('Font'),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Insets.lg, vertical: Insets.xs),
+            padding: const EdgeInsets.symmetric(
+                horizontal: Insets.lg, vertical: Insets.xs),
             child: DropdownMenu<String?>(
               initialSelection: prefs.fontFamily,
               expandedInsets: EdgeInsets.zero,
               inputDecorationTheme: InputDecorationTheme(
                 filled: true,
-                fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                fillColor: Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest
+                    .withValues(alpha: 0.3),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(

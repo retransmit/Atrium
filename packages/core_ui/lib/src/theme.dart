@@ -14,9 +14,11 @@ abstract final class AtriumTheme {
   static const Color seed = Color(0xFF6750A4);
 
   static ThemeData light(ColorScheme? dynamicScheme, {String? fontFamily}) =>
-      _build(dynamicScheme ?? ColorScheme.fromSeed(seedColor: seed), fontFamily);
+      _build(
+          dynamicScheme ?? ColorScheme.fromSeed(seedColor: seed), fontFamily);
 
-  static ThemeData dark(ColorScheme? dynamicScheme, {String? fontFamily}) => _build(
+  static ThemeData dark(ColorScheme? dynamicScheme, {String? fontFamily}) =>
+      _build(
         dynamicScheme ??
             ColorScheme.fromSeed(
               seedColor: seed,

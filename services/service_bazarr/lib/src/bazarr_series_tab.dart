@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'bazarr_providers.dart';
 import 'bazarr_series_detail_screen.dart';
 import 'models/bazarr_models.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// The Series tab: all Sonarr-backed series with their subtitle status. Tapping
 /// a row opens the per-episode subtitle view.
@@ -18,7 +19,7 @@ class BazarrSeriesTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<BazarrSeries>> series =
         ref.watch(bazarrSeriesProvider(instance));
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async => ref.invalidate(bazarrSeriesProvider(instance)),
       child: AsyncValueView<List<BazarrSeries>>(
         value: series,

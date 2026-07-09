@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'bazarr_providers.dart';
 import 'models/bazarr_models.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// The Wanted tab: a badges header (wanted episodes / movies / provider count)
 /// above a unified list of items still missing subtitles.
@@ -18,7 +19,7 @@ class BazarrWantedTab extends ConsumerWidget {
     final AsyncValue<List<BazarrWantedRow>> wanted =
         ref.watch(bazarrWantedProvider(instance));
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(bazarrBadgesProvider(instance));
         ref.invalidate(bazarrWantedProvider(instance));

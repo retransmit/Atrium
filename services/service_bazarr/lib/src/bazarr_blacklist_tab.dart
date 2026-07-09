@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'bazarr_api.dart';
 import 'bazarr_providers.dart';
 import 'models/bazarr_models.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// The Blacklist tab: subtitles that have been blacklisted (so Bazarr never
 /// re-downloads them), across episodes and movies, each removable.
@@ -19,7 +20,7 @@ class BazarrBlacklistTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<BazarrBlacklistItem>> blacklist =
         ref.watch(bazarrBlacklistProvider(instance));
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async => ref.invalidate(bazarrBlacklistProvider(instance)),
       child: AsyncValueView<List<BazarrBlacklistItem>>(
         value: blacklist,

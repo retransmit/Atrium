@@ -158,7 +158,6 @@ class ServiceDetailScreen extends ConsumerWidget {
             ),
           if (instance.kind == ServiceKind.qbittorrent)
             QbittorrentAppBarActions(instance: instance),
-
           if (instance.kind == ServiceKind.emby ||
               instance.kind == ServiceKind.jellyfin)
             IconButton(
@@ -171,7 +170,6 @@ class ServiceDetailScreen extends ConsumerWidget {
                     : JellyfinSettingsScreen(instance: instance),
               ),
             ),
-
           Consumer(
             builder: (BuildContext context, WidgetRef ref, Widget? child) {
               if (instance.kind == ServiceKind.qbittorrent) {

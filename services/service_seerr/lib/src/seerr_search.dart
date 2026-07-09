@@ -71,7 +71,8 @@ class _SearchResults extends ConsumerWidget {
 
     return AsyncValueView<List<SeerrDiscoverResult>>(
       value: results,
-      onRetry: () => ref.invalidate(seerrSearchProvider((instance: instance, query: query.trim()))),
+      onRetry: () => ref.invalidate(
+          seerrSearchProvider((instance: instance, query: query.trim()))),
       data: (List<SeerrDiscoverResult> list) {
         if (list.isEmpty) {
           return const EmptyView(
@@ -145,14 +146,18 @@ class _SeerrSearchPosterCard extends StatelessWidget {
             item.displayTitle,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(fontWeight: FontWeight.bold),
           ),
           if (item.displayDate != null)
             Text(
               item.displayDate!,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
         ],
       ),

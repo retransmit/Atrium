@@ -4,7 +4,8 @@ import 'package:service_plex/service_plex.dart';
 void main() {
   group('PlexSession parsing', () {
     test('direct play, controllable player', () {
-      final PlexSessionsResponse r = PlexSessionsResponse.fromJson(<String, dynamic>{
+      final PlexSessionsResponse r =
+          PlexSessionsResponse.fromJson(<String, dynamic>{
         'MediaContainer': <String, dynamic>{
           'Metadata': <dynamic>[
             <String, dynamic>{
@@ -13,7 +14,10 @@ void main() {
               'thumb': '/library/metadata/10/thumb/1',
               'viewOffset': 600000,
               'duration': 6000000,
-              'User': <String, dynamic>{'title': 'alice', 'thumb': 'http://x/y.png'},
+              'User': <String, dynamic>{
+                'title': 'alice',
+                'thumb': 'http://x/y.png'
+              },
               'Player': <String, dynamic>{
                 'title': 'Living Room',
                 'product': 'Plex for Apple TV',
@@ -22,7 +26,11 @@ void main() {
                 'local': true,
                 'protocolCapabilities': 'timeline,playback,navigation',
               },
-              'Session': <String, dynamic>{'id': 'sess-1', 'bandwidth': 4200, 'location': 'lan'},
+              'Session': <String, dynamic>{
+                'id': 'sess-1',
+                'bandwidth': 4200,
+                'location': 'lan'
+              },
             },
           ],
         },
@@ -40,7 +48,8 @@ void main() {
     });
 
     test('transcode, non-controllable player, missing nested nodes', () {
-      final PlexSessionsResponse r = PlexSessionsResponse.fromJson(<String, dynamic>{
+      final PlexSessionsResponse r =
+          PlexSessionsResponse.fromJson(<String, dynamic>{
         'MediaContainer': <String, dynamic>{
           'Metadata': <dynamic>[
             <String, dynamic>{
@@ -71,8 +80,8 @@ void main() {
     });
 
     test('empty container -> empty list', () {
-      final PlexSessionsResponse r =
-          PlexSessionsResponse.fromJson(<String, dynamic>{'MediaContainer': <String, dynamic>{}});
+      final PlexSessionsResponse r = PlexSessionsResponse.fromJson(
+          <String, dynamic>{'MediaContainer': <String, dynamic>{}});
       expect(r.mediaContainer!.metadata, isEmpty);
     });
   });

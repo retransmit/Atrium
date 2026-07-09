@@ -467,7 +467,8 @@ class _SonarrAddSeriesSheetState extends ConsumerState<SonarrAddSeriesSheet> {
     if (_selectedRootFolder == null || _selectedQualityProfileId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Please select a root folder and quality profile.'),
+          content:
+              const Text('Please select a root folder and quality profile.'),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'prowlarr_api.dart';
 import 'prowlarr_form_fields.dart';
 import 'prowlarr_providers.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// Settings ▸ Sync Profiles: Prowlarr's `/appprofile` list. These control which
 /// search modes (RSS / automatic / interactive) and minimum seeders apply when
@@ -32,7 +33,7 @@ class ProwlarrSyncProfilesScreen extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: const Text('Add'),
       ),
-      body: RefreshIndicator(
+      body: M3RefreshIndicator(
         onRefresh: () async => ref.invalidate(prowlarrProvidersProvider(_args)),
         child: AsyncValueView<List<Map<String, dynamic>>>(
           value: profiles,

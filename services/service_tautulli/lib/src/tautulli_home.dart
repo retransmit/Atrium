@@ -12,6 +12,7 @@ import 'models/tautulli_activity.dart';
 import 'models/tautulli_models.dart';
 import 'tautulli_api.dart';
 import 'tautulli_providers.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// Tautulli's per-instance UI: Activity (live streams w/ detail + terminate),
 /// History, Stats, and Users tabs - all poster-rich via Tautulli's image proxy.
@@ -66,7 +67,7 @@ class _ActivityTab extends ConsumerWidget {
         ref.watch(tautulliActivityProvider(instance));
     final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).value;
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async => ref.invalidate(tautulliActivityProvider(instance)),
       child: AsyncValueView<TautulliActivity>(
         value: activity,
@@ -426,14 +427,16 @@ class _SessionSheetState extends ConsumerState<_SessionSheet> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                _Poster(url: api?.imageUrl(s.posterThumb), width: 64, height: 96),
+                _Poster(
+                    url: api?.imageUrl(s.posterThumb), width: 64, height: 96),
                 const SizedBox(width: Insets.md),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(s.fullTitle, style: theme.textTheme.titleMedium),
-                      if (s.episodeLabel.isNotEmpty || s.year.isNotEmpty) ...<Widget>[
+                      if (s.episodeLabel.isNotEmpty ||
+                          s.year.isNotEmpty) ...<Widget>[
                         const SizedBox(height: Insets.xs),
                         Text(
                           <String>[
@@ -604,7 +607,7 @@ class _HistoryTab extends ConsumerWidget {
     final AsyncValue<TautulliHistoryPage> history =
         ref.watch(tautulliHistoryProvider(instance));
     final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).value;
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async => ref.invalidate(tautulliHistoryProvider(instance)),
       child: AsyncValueView<TautulliHistoryPage>(
         value: history,
@@ -620,8 +623,7 @@ class _HistoryTab extends ConsumerWidget {
           return ListView.separated(
             padding: Insets.page,
             itemCount: page.records.length + 1,
-            separatorBuilder: (_, __) =>
-                const Divider(height: 1, indent: 56),
+            separatorBuilder: (_, __) => const Divider(height: 1, indent: 56),
             itemBuilder: (BuildContext context, int index) {
               if (index == 0) {
                 return Padding(
@@ -744,16 +746,15 @@ class _StatsTab extends ConsumerWidget {
     final AsyncValue<List<TautulliHomeStat>> stats =
         ref.watch(tautulliHomeStatsProvider(instance));
     final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).value;
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(tautulliHomeStatsProvider(instance)),
       child: AsyncValueView<List<TautulliHomeStat>>(
         value: stats,
         onRetry: () => ref.invalidate(tautulliHomeStatsProvider(instance)),
         data: (List<TautulliHomeStat> all) {
-          final List<TautulliHomeStat> sections = all
-              .where((TautulliHomeStat s) => s.rows.isNotEmpty)
-              .toList();
+          final List<TautulliHomeStat> sections =
+              all.where((TautulliHomeStat s) => s.rows.isNotEmpty).toList();
           if (sections.isEmpty) {
             return const EmptyView(
               icon: Icons.bar_chart,
@@ -804,8 +805,11 @@ class _StatSection extends StatelessWidget {
           children: <Widget>[
             Row(
               children: <Widget>[
-                Icon(_statIcon(stat.statId),
-                    size: 18, color: theme.colorScheme.primary,),
+                Icon(
+                  _statIcon(stat.statId),
+                  size: 18,
+                  color: theme.colorScheme.primary,
+                ),
                 const SizedBox(width: Insets.sm),
                 Text(
                   stat.title,
@@ -925,8 +929,11 @@ class _StatLeading extends StatelessWidget {
       return CircleAvatar(
         radius: 17,
         backgroundColor: theme.colorScheme.surfaceContainerHighest,
-        child: Icon(Icons.devices_outlined,
-            size: 18, color: theme.colorScheme.onSurfaceVariant,),
+        child: Icon(
+          Icons.devices_outlined,
+          size: 18,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
       );
     }
     return _Poster(url: api?.imageUrl(row.posterThumb), width: 34, height: 51);
@@ -946,7 +953,7 @@ class _UsersTab extends ConsumerWidget {
     final AsyncValue<List<TautulliUser>> users =
         ref.watch(tautulliUsersProvider(instance));
     final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).value;
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async => ref.invalidate(tautulliUsersProvider(instance)),
       child: AsyncValueView<List<TautulliUser>>(
         value: users,
@@ -1011,7 +1018,8 @@ class _UserTile extends StatelessWidget {
                   <String>[
                     '${user.plays} plays',
                     if (user.duration > 0) fmtSeconds(user.duration),
-                    if (user.lastSeen > 0) 'seen ${relativeEpoch(user.lastSeen)}',
+                    if (user.lastSeen > 0)
+                      'seen ${relativeEpoch(user.lastSeen)}',
                   ].join(' • '),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

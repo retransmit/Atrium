@@ -28,56 +28,55 @@ const Duration radarrLibraryPollInterval = Duration(seconds: 60);
 ///
 /// Deliberately NOT autoDispose: the underlying Dio is shared and cheap to
 /// keep; disposing it per-screen would re-run the LAN/WAN probe needlessly.
-final radarrApiProvider =
-    FutureProvider.family<RadarrApi, Instance>((
-      Ref ref,
-      Instance instance,
-    ) async {
-      final dio = await ref.watch(instanceDioProvider(instance).future);
-      final String? apiKey = switch (instance.auth) {
-        InstanceAuthApiKey(:final String apiKey) => apiKey,
-        _ => null,
-      };
-      return RadarrApi(dio, apiKey: apiKey);
-    });
+final radarrApiProvider = FutureProvider.family<RadarrApi, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final dio = await ref.watch(instanceDioProvider(instance).future);
+  final String? apiKey = switch (instance.auth) {
+    InstanceAuthApiKey(:final String apiKey) => apiKey,
+    _ => null,
+  };
+  return RadarrApi(dio, apiKey: apiKey);
+});
 
 /// All movies for an instance, sorted by title. Polls slowly while watched.
 final radarrMoviesProvider =
     FutureProvider.autoDispose.family<List<RadarrMovie>, Instance>((
-      Ref ref,
-      Instance instance,
-    ) async {
-      ref.pollEvery(radarrLibraryPollInterval);
-      final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
-      final List<RadarrMovie> movies = await api.getMovies();
-      movies.sort(
-        (RadarrMovie a, RadarrMovie b) =>
-            a.title.toLowerCase().compareTo(b.title.toLowerCase()),
-      );
-      return movies;
-    });
+  Ref ref,
+  Instance instance,
+) async {
+  ref.pollEvery(radarrLibraryPollInterval);
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  final List<RadarrMovie> movies = await api.getMovies();
+  movies.sort(
+    (RadarrMovie a, RadarrMovie b) =>
+        a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+  );
+  return movies;
+});
 
 /// One movie by id. Used by the detail screen; refreshed on demand.
 final radarrMovieByIdProvider =
     FutureProvider.autoDispose.family<RadarrMovie, (Instance, int)>((
-      Ref ref,
-      (Instance, int) key,
-    ) async {
-      final (Instance instance, int id) = key;
-      final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
-      return api.getMovieById(id);
-    });
+  Ref ref,
+  (Instance, int) key,
+) async {
+  final (Instance instance, int id) = key;
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getMovieById(id);
+});
 
 /// The download queue for an instance. Polls fast while watched.
 final radarrQueueProvider =
     FutureProvider.autoDispose.family<RadarrQueuePage, Instance>((
-      Ref ref,
-      Instance instance,
-    ) async {
-      ref.pollEvery(radarrQueuePollInterval);
-      final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
-      return api.getQueue();
-    });
+  Ref ref,
+  Instance instance,
+) async {
+  ref.pollEvery(radarrQueuePollInterval);
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getQueue();
+});
 
 /// The calendar entries for an instance for a given month.
 final radarrCalendarProvider =
@@ -87,16 +86,17 @@ final radarrCalendarProvider =
 ) async {
   final (Instance instance, DateTime month) = key;
   final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
-  
+
   // Calculate local month boundaries
   final DateTime start = DateTime(month.year, month.month);
-  final DateTime end = DateTime(month.year, month.month + 1).subtract(const Duration(seconds: 1));
-  
+  final DateTime end = DateTime(month.year, month.month + 1)
+      .subtract(const Duration(seconds: 1));
+
   final List<RadarrMovie> movies = await api.getCalendar(
     start: start,
     end: end,
   );
-  
+
   return movies;
 });
 
@@ -410,8 +410,8 @@ final radarrReleaseProfilesProvider =
 });
 
 /// Fetches import list exclusions.
-final radarrImportListExclusionsProvider =
-    FutureProvider.autoDispose.family<List<RadarrImportListExclusion>, Instance>((
+final radarrImportListExclusionsProvider = FutureProvider.autoDispose
+    .family<List<RadarrImportListExclusion>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -567,7 +567,14 @@ final radarrUiConfigRawProvider =
 });
 
 /// Sort options for the Radarr movie list.
-enum RadarrSortOption { titleAsc, titleDesc, yearAsc, yearDesc, sizeAsc, sizeDesc }
+enum RadarrSortOption {
+  titleAsc,
+  titleDesc,
+  yearAsc,
+  yearDesc,
+  sizeAsc,
+  sizeDesc
+}
 
 /// Filter by download status (uses hasFile).
 enum RadarrStatusFilter { all, downloaded, missing }
@@ -598,8 +605,8 @@ final radarrMonitoredFilterProvider =
 );
 
 /// Filters, searches, and sorts the movie list per user preferences.
-final radarrFilteredMoviesProvider =
-    Provider.autoDispose.family<AsyncValue<List<RadarrMovie>>, Instance>(
+final radarrFilteredMoviesProvider = Provider.autoDispose
+    .family<AsyncValue<List<RadarrMovie>>, Instance>(
         (Ref ref, Instance instance) {
   final AsyncValue<List<RadarrMovie>> moviesVal =
       ref.watch(radarrMoviesProvider(instance));
@@ -651,4 +658,3 @@ final radarrFilteredMoviesProvider =
     return filtered;
   });
 });
-

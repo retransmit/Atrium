@@ -78,18 +78,18 @@ class EmbyItemDetailScreen extends ConsumerWidget {
             if (itemAsync.value!.type != 'Episode')
               IconButton(
                 icon: const Icon(Icons.wallpaper),
-              tooltip: 'Change Backdrop',
-              onPressed: () {
-                pushScreen<void>(
-                  context,
-                  EmbyRemoteImagesScreen(
-                    instance: instance,
-                    itemId: itemId,
-                    imageType: 'Backdrop',
-                  ),
-                );
-              },
-            ),
+                tooltip: 'Change Backdrop',
+                onPressed: () {
+                  pushScreen<void>(
+                    context,
+                    EmbyRemoteImagesScreen(
+                      instance: instance,
+                      itemId: itemId,
+                      imageType: 'Backdrop',
+                    ),
+                  );
+                },
+              ),
           ],
         ],
       ),
@@ -99,7 +99,7 @@ class EmbyItemDetailScreen extends ConsumerWidget {
             ref.invalidate(embyItemDetailsProvider((instance, itemId))),
         data: (EmbyItem item) {
           final String? backdropUrl = client?.backdropImageUrl(item);
-          
+
           return CustomScrollView(
             slivers: <Widget>[
               SliverToBoxAdapter(
@@ -180,17 +180,23 @@ class EmbyItemDetailScreen extends ConsumerWidget {
                       runSpacing: 6.0,
                       children: item.genres.map((String g) {
                         return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.secondaryContainer,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .secondaryContainer,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             g,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSecondaryContainer,
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSecondaryContainer,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                           ),
                         );
                       }).toList(),
@@ -202,6 +208,20 @@ class EmbyItemDetailScreen extends ConsumerWidget {
                   child: Padding(
                     padding: const EdgeInsets.all(Insets.lg),
                     child: _ExpandableOverview(text: item.overview!),
+                  ),
+                ),
+              if (_InfoSection.canShow(item))
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left: Insets.lg,
+                      right: Insets.lg,
+                      bottom: Insets.lg,
+                      top: (item.overview != null && item.overview!.isNotEmpty)
+                          ? 0
+                          : Insets.lg,
+                    ),
+                    child: _InfoSection(item: item),
                   ),
                 ),
               if (item.people.isNotEmpty)
@@ -602,28 +622,155 @@ class _ExpandableOverviewState extends State<_ExpandableOverview> {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    return Column(
+    final ColorScheme cs = theme.colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(Insets.lg),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(Radii.lg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            'Overview',
+            style: theme.textTheme.titleSmall
+                ?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: Insets.sm),
+          AnimatedCrossFade(
+            firstChild: Text(
+              widget.text,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: cs.onSurfaceVariant,
+                height: 1.5,
+              ),
+            ),
+            secondChild: Text(
+              widget.text,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: cs.onSurfaceVariant,
+                height: 1.5,
+              ),
+            ),
+            crossFadeState: _expanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 250),
+          ),
+          if (widget.text.length > 150) ...<Widget>[
+            const SizedBox(height: Insets.xs),
+            GestureDetector(
+              onTap: () => setState(() => _expanded = !_expanded),
+              child: Text(
+                _expanded ? 'Show less' : 'Show more',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: cs.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoSection extends StatelessWidget {
+  const _InfoSection({required this.item});
+
+  final EmbyItem item;
+
+  static bool canShow(EmbyItem item) {
+    return (item.seriesName != null && item.seriesName!.isNotEmpty) ||
+        (item.parentIndexNumber != null && item.indexNumber != null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(Insets.lg),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(Radii.lg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          if (item.seriesName != null && item.seriesName!.isNotEmpty) ...<Widget>[
+            _InfoRow(
+              icon: Icons.tv,
+              label: 'Series',
+              value: item.seriesName!,
+            ),
+          ],
+          if (item.parentIndexNumber != null && item.indexNumber != null) ...<Widget>[
+            if (item.seriesName != null && item.seriesName!.isNotEmpty)
+              const SizedBox(height: Insets.sm),
+            _InfoRow(
+              icon: Icons.tag,
+              label: 'Episode',
+              value: 'Season ${item.parentIndexNumber} Episode ${item.indexNumber}',
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Text(
-          widget.text,
-          style: theme.textTheme.bodyLarge,
-          maxLines: _expanded ? null : 3,
-          overflow: _expanded ? null : TextOverflow.ellipsis,
-        ),
-        const SizedBox(height: Insets.sm),
-        FilledButton.tonalIcon(
-          onPressed: () => setState(() => _expanded = !_expanded),
-          icon: Icon(
-            _expanded ? Icons.expand_less : Icons.expand_more,
-            size: 18,
-          ),
-          label: Text(
-            _expanded ? 'Read Less' : 'Read More',
-            style: const TextStyle(fontWeight: FontWeight.bold),
+        Icon(icon, size: 20, color: cs.primary),
+        const SizedBox(width: Insets.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                label,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurface,
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
 }
+

@@ -346,8 +346,7 @@ class _SonarrSettingsFormScreenState
                                 children: [
                                   Text(
                                     'Tags',
-                                    style: theme.textTheme.titleSmall
-                                        ?.copyWith(
+                                    style: theme.textTheme.titleSmall?.copyWith(
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),

@@ -9,6 +9,7 @@ import '../models/sonarr_history_item.dart';
 import '../models/sonarr_queue_item.dart';
 import '../models/sonarr_series.dart';
 import '../sonarr_providers.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 class ActivityTab extends ConsumerStatefulWidget {
   const ActivityTab({
@@ -40,8 +41,11 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
-        ref.read(sonarrQueueSelectionProvider(widget.instance).notifier).state = {};
-        ref.read(sonarrBlocklistSelectionProvider(widget.instance).notifier).state = {};
+        ref.read(sonarrQueueSelectionProvider(widget.instance).notifier).state =
+            {};
+        ref
+            .read(sonarrBlocklistSelectionProvider(widget.instance).notifier)
+            .state = {};
         setState(() {});
       }
     });
@@ -88,8 +92,10 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final grouped = ref.watch(sonarrActivityGroupedProvider(widget.instance));
-    final queueSelection = ref.watch(sonarrQueueSelectionProvider(widget.instance));
-    final blocklistSelection = ref.watch(sonarrBlocklistSelectionProvider(widget.instance));
+    final queueSelection =
+        ref.watch(sonarrQueueSelectionProvider(widget.instance));
+    final blocklistSelection =
+        ref.watch(sonarrBlocklistSelectionProvider(widget.instance));
     final activeSelection = _tabController.index == 0
         ? queueSelection
         : _tabController.index == 2
@@ -118,13 +124,20 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
               selectedIds: activeSelection,
               isQueue: _tabController.index == 0,
               onClear: () {
-                ref.read(sonarrQueueSelectionProvider(widget.instance).notifier).state = {};
-                ref.read(sonarrBlocklistSelectionProvider(widget.instance).notifier).state = {};
+                ref
+                    .read(
+                        sonarrQueueSelectionProvider(widget.instance).notifier)
+                    .state = {};
+                ref
+                    .read(sonarrBlocklistSelectionProvider(widget.instance)
+                        .notifier)
+                    .state = {};
               },
             )
           : null,
       body: NestedScrollView(
-        headerSliverBuilder: (BuildContext innerContext, bool innerBoxIsScrolled) {
+        headerSliverBuilder:
+            (BuildContext innerContext, bool innerBoxIsScrolled) {
           return <Widget>[
             SliverAppBar(
               floating: true,
@@ -140,8 +153,15 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
                   ? IconButton(
                       icon: const Icon(Icons.close),
                       onPressed: () {
-                        ref.read(sonarrQueueSelectionProvider(widget.instance).notifier).state = {};
-                        ref.read(sonarrBlocklistSelectionProvider(widget.instance).notifier).state = {};
+                        ref
+                            .read(sonarrQueueSelectionProvider(widget.instance)
+                                .notifier)
+                            .state = {};
+                        ref
+                            .read(sonarrBlocklistSelectionProvider(
+                                    widget.instance)
+                                .notifier)
+                            .state = {};
                       },
                     )
                   : IconButton(
@@ -159,55 +179,59 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
                       ),
                     )
                   : SearchBar(
-                focusNode: _searchFocusNode,
-                controller: _searchController,
-                hintText: 'Search activity...',
-                onTapOutside: (event) {
-                  if (_searchFocusNode.hasFocus) {
-                    _searchFocusNode.unfocus();
-                  }
-                },
-                elevation: const WidgetStatePropertyAll<double>(0),
-                backgroundColor: WidgetStatePropertyAll<Color>(
-                  theme.colorScheme.surfaceContainerHigh,
-                ),
-                trailing: <Widget>[
-                  if (_searchController.text.isNotEmpty)
-                    IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        setState(() {
-                          _searchController.clear();
-                        });
+                      focusNode: _searchFocusNode,
+                      controller: _searchController,
+                      hintText: 'Search activity...',
+                      onTapOutside: (event) {
+                        if (_searchFocusNode.hasFocus) {
+                          _searchFocusNode.unfocus();
+                        }
+                      },
+                      elevation: const WidgetStatePropertyAll<double>(0),
+                      backgroundColor: WidgetStatePropertyAll<Color>(
+                        theme.colorScheme.surfaceContainerHigh,
+                      ),
+                      trailing: <Widget>[
+                        if (_searchController.text.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              setState(() {
+                                _searchController.clear();
+                              });
+                              ref
+                                  .read(
+                                    sonarrActivitySearchQueryProvider(
+                                      widget.instance,
+                                    ).notifier,
+                                  )
+                                  .state = '';
+                              _updateSearchActiveState();
+                            },
+                          ),
+                      ],
+                      onChanged: (String value) {
+                        setState(() {});
                         ref
                             .read(
-                              sonarrActivitySearchQueryProvider(
-                                widget.instance,
-                              ).notifier,
+                              sonarrActivitySearchQueryProvider(widget.instance)
+                                  .notifier,
                             )
-                            .state = '';
+                            .state = value;
                         _updateSearchActiveState();
                       },
                     ),
-                ],
-                onChanged: (String value) {
-                  setState(() {});
-                  ref
-                      .read(
-                        sonarrActivitySearchQueryProvider(widget.instance)
-                            .notifier,
-                      )
-                      .state = value;
-                  _updateSearchActiveState();
-                },
-              ),
               actions: <Widget>[
                 if (!isSelecting) ...[
                   IconButton(
                     icon: Icon(
-                      grouped ? Icons.format_list_bulleted : Icons.group_work_outlined,
+                      grouped
+                          ? Icons.format_list_bulleted
+                          : Icons.group_work_outlined,
                     ),
-                    tooltip: grouped ? 'Switch to plain list' : 'Switch to grouped view',
+                    tooltip: grouped
+                        ? 'Switch to plain list'
+                        : 'Switch to grouped view',
                     onPressed: () {
                       ref
                           .read(
@@ -262,14 +286,17 @@ class _QueueView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final queueAsync = ref.watch(sonarrQueueProvider(instance));
-    final searchQuery = ref.watch(sonarrActivitySearchQueryProvider(instance)).toLowerCase();
+    final searchQuery =
+        ref.watch(sonarrActivitySearchQueryProvider(instance)).toLowerCase();
 
     return queueAsync.when(
       data: (List<SonarrQueueItem> items) {
         final filteredItems = items.where((item) {
           if (searchQuery.isEmpty) return true;
-          final titleMatch = item.title?.toLowerCase().contains(searchQuery) ?? false;
-          final seriesMatch = item.series?.title.toLowerCase().contains(searchQuery) ?? false;
+          final titleMatch =
+              item.title?.toLowerCase().contains(searchQuery) ?? false;
+          final seriesMatch =
+              item.series?.title.toLowerCase().contains(searchQuery) ?? false;
           return titleMatch || seriesMatch;
         }).toList();
 
@@ -302,7 +329,9 @@ class _QueueView extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  searchQuery.isEmpty ? 'Queue is empty' : 'No items match search',
+                  searchQuery.isEmpty
+                      ? 'Queue is empty'
+                      : 'No items match search',
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -312,7 +341,7 @@ class _QueueView extends ConsumerWidget {
           );
         }
 
-        return RefreshIndicator(
+        return M3RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(sonarrQueueProvider(instance));
             await ref.read(sonarrQueueProvider(instance).future);
@@ -350,7 +379,8 @@ class _QueueView extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 FilledButton.tonal(
-                  onPressed: () => ref.invalidate(sonarrQueueProvider(instance)),
+                  onPressed: () =>
+                      ref.invalidate(sonarrQueueProvider(instance)),
                   child: const Text('Retry'),
                 ),
               ],
@@ -382,9 +412,11 @@ class _QueueItemCard extends ConsumerWidget {
     final isSelected = groupIds.every(selection.contains);
 
     void toggleSelection() {
-      final notifier = ref.read(sonarrQueueSelectionProvider(instance).notifier);
+      final notifier =
+          ref.read(sonarrQueueSelectionProvider(instance).notifier);
       if (isSelected) {
-        notifier.state = selection.where((id) => !groupIds.contains(id)).toSet();
+        notifier.state =
+            selection.where((id) => !groupIds.contains(id)).toSet();
       } else {
         notifier.state = {...selection, ...groupIds};
       }
@@ -398,23 +430,29 @@ class _QueueItemCard extends ConsumerWidget {
       totalSizeLeft += i.sizeleft ?? 0.0;
     }
 
-    final bool allSizesIdentical = group.every((i) => i.size == item.size && i.sizeleft == item.sizeleft);
-    final double displaySize = allSizesIdentical ? (item.size ?? 0.0) : totalSize;
-    final double displaySizeLeft = allSizesIdentical ? (item.sizeleft ?? 0.0) : totalSizeLeft;
-    final double progress = displaySize > 0 ? (displaySize - displaySizeLeft) / displaySize : 0.0;
+    final bool allSizesIdentical =
+        group.every((i) => i.size == item.size && i.sizeleft == item.sizeleft);
+    final double displaySize =
+        allSizesIdentical ? (item.size ?? 0.0) : totalSize;
+    final double displaySizeLeft =
+        allSizesIdentical ? (item.sizeleft ?? 0.0) : totalSizeLeft;
+    final double progress =
+        displaySize > 0 ? (displaySize - displaySizeLeft) / displaySize : 0.0;
 
     // Construct episodes display list (e.g. S01E01, S01E02)
     final List<String> episodeTexts = [];
     for (final i in group) {
       if (i.episode != null) {
-        final String seasonStr = i.seasonNumber != null ? 'S${i.seasonNumber.toString().padLeft(2, '0')}' : '';
-        final String epStr = 'E${i.episode!.episodeNumber.toString().padLeft(2, '0')}';
+        final String seasonStr = i.seasonNumber != null
+            ? 'S${i.seasonNumber.toString().padLeft(2, '0')}'
+            : '';
+        final String epStr =
+            'E${i.episode!.episodeNumber.toString().padLeft(2, '0')}';
         episodeTexts.add('$seasonStr$epStr');
       }
     }
-    final String episodesDisplay = episodeTexts.isNotEmpty
-        ? 'Episodes: ${episodeTexts.join(', ')}'
-        : '';
+    final String episodesDisplay =
+        episodeTexts.isNotEmpty ? 'Episodes: ${episodeTexts.join(', ')}' : '';
 
     String? posterUrl;
     if (item.series?.images != null && api != null) {
@@ -460,30 +498,33 @@ class _QueueItemCard extends ConsumerWidget {
                     fit: StackFit.expand,
                     children: [
                       posterUrl != null
-                        ? CachedNetworkImage(
-                            imageUrl: posterUrl,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(
-                              color: theme.colorScheme.surfaceContainerHighest,
-                            ),
-                            errorWidget: (context, url, err) => Container(
+                          ? CachedNetworkImage(
+                              imageUrl: posterUrl,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => Container(
+                                color:
+                                    theme.colorScheme.surfaceContainerHighest,
+                              ),
+                              errorWidget: (context, url, err) => Container(
+                                color:
+                                    theme.colorScheme.surfaceContainerHighest,
+                                child: Icon(
+                                  Icons.live_tv,
+                                  color: theme.colorScheme.outline,
+                                ),
+                              ),
+                            )
+                          : Container(
                               color: theme.colorScheme.surfaceContainerHighest,
                               child: Icon(
                                 Icons.live_tv,
                                 color: theme.colorScheme.outline,
                               ),
                             ),
-                          )
-                        : Container(
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            child: Icon(
-                              Icons.live_tv,
-                              color: theme.colorScheme.outline,
-                            ),
-                          ),
                       if (isSelected)
                         Container(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                          color:
+                              theme.colorScheme.primary.withValues(alpha: 0.25),
                           child: Center(
                             child: Container(
                               padding: const EdgeInsets.all(4),
@@ -548,7 +589,8 @@ class _QueueItemCard extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(4),
                             child: LinearProgressIndicator(
                               value: progress,
-                              backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                              backgroundColor:
+                                  theme.colorScheme.surfaceContainerHighest,
                               color: item.status == 'warning'
                                   ? theme.colorScheme.error
                                   : theme.colorScheme.primary,
@@ -575,7 +617,8 @@ class _QueueItemCard extends ConsumerWidget {
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
-                        if (item.timeleft != null && item.timeleft != '00:00:00')
+                        if (item.timeleft != null &&
+                            item.timeleft != '00:00:00')
                           Text(
                             'ETA: ${item.timeleft}',
                             style: theme.textTheme.bodySmall?.copyWith(
@@ -664,20 +707,21 @@ class _QueueItemCard extends ConsumerWidget {
     final List<String> episodeTexts = [];
     for (final i in group) {
       if (i.episode != null) {
-        final String seasonStr = i.seasonNumber != null ? 'S${i.seasonNumber}' : '';
+        final String seasonStr =
+            i.seasonNumber != null ? 'S${i.seasonNumber}' : '';
         final String epStr = 'E${i.episode!.episodeNumber}';
         episodeTexts.add('$seasonStr$epStr');
       }
     }
-    final String episodesDisplay = episodeTexts.isNotEmpty
-        ? episodeTexts.join(', ')
-        : 'None';
+    final String episodesDisplay =
+        episodeTexts.isNotEmpty ? episodeTexts.join(', ') : 'None';
 
     showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
           title: Text(
             'Queue Item Details',
             style: theme.textTheme.titleLarge?.copyWith(
@@ -690,15 +734,24 @@ class _QueueItemCard extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 _DetailRow(label: 'Title', value: item.title ?? 'No title'),
-                _DetailRow(label: 'Series', value: item.series?.title ?? 'Unknown Series'),
+                _DetailRow(
+                    label: 'Series',
+                    value: item.series?.title ?? 'Unknown Series'),
                 _DetailRow(label: 'Episodes', value: episodesDisplay),
                 _DetailRow(label: 'Status', value: item.status ?? 'Unknown'),
-                _DetailRow(label: 'Tracked State', value: item.trackedDownloadState ?? 'None'),
-                _DetailRow(label: 'Download Client', value: item.downloadClient ?? 'Unknown'),
-                _DetailRow(label: 'Download ID', value: item.downloadId ?? 'Unknown'),
+                _DetailRow(
+                    label: 'Tracked State',
+                    value: item.trackedDownloadState ?? 'None'),
+                _DetailRow(
+                    label: 'Download Client',
+                    value: item.downloadClient ?? 'Unknown'),
+                _DetailRow(
+                    label: 'Download ID', value: item.downloadId ?? 'Unknown'),
                 _DetailRow(label: 'Indexer', value: item.indexer ?? 'Unknown'),
-                _DetailRow(label: 'Output Path', value: item.outputPath ?? 'Unknown'),
-                if (item.errorMessage != null && item.errorMessage!.isNotEmpty) ...[
+                _DetailRow(
+                    label: 'Output Path', value: item.outputPath ?? 'Unknown'),
+                if (item.errorMessage != null &&
+                    item.errorMessage!.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Text(
                     'Error Message:',
@@ -712,9 +765,11 @@ class _QueueItemCard extends ConsumerWidget {
                     width: double.maxFinite,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
+                      color: theme.colorScheme.errorContainer
+                          .withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: theme.colorScheme.errorContainer),
+                      border:
+                          Border.all(color: theme.colorScheme.errorContainer),
                     ),
                     child: Text(
                       item.errorMessage!,
@@ -753,7 +808,8 @@ class _QueueItemCard extends ConsumerWidget {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(28)),
               title: Text(
                 'Remove from Queue',
                 style: theme.textTheme.titleLarge?.copyWith(
@@ -784,7 +840,8 @@ class _QueueItemCard extends ConsumerWidget {
                   ),
                   CheckboxListTile(
                     title: const Text('Blocklist this release'),
-                    subtitle: const Text('Prevents Sonarr from grabbing this file again'),
+                    subtitle: const Text(
+                        'Prevents Sonarr from grabbing this file again'),
                     value: blocklist,
                     controlAffinity: ListTileControlAffinity.leading,
                     contentPadding: EdgeInsets.zero,
@@ -809,7 +866,8 @@ class _QueueItemCard extends ConsumerWidget {
                   onPressed: () async {
                     Navigator.of(context).pop();
                     try {
-                      final api = await ref.read(sonarrApiProvider(instance).future);
+                      final api =
+                          await ref.read(sonarrApiProvider(instance).future);
                       // Delete all items in the grouped torrent.
                       for (final i in group) {
                         await api.deleteQueueItem(
@@ -858,16 +916,20 @@ class _HistoryView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final historyAsync = ref.watch(sonarrHistoryProvider(instance));
-    final searchQuery = ref.watch(sonarrActivitySearchQueryProvider(instance)).toLowerCase();
+    final searchQuery =
+        ref.watch(sonarrActivitySearchQueryProvider(instance)).toLowerCase();
     final grouped = ref.watch(sonarrActivityGroupedProvider(instance));
 
     return historyAsync.when(
       data: (List<SonarrHistoryItem> items) {
         final filteredItems = items.where((item) {
           if (searchQuery.isEmpty) return true;
-          final titleMatch = item.sourceTitle?.toLowerCase().contains(searchQuery) ?? false;
-          final seriesMatch = item.series?.title.toLowerCase().contains(searchQuery) ?? false;
-          final episodeMatch = item.episode?.title.toLowerCase().contains(searchQuery) ?? false;
+          final titleMatch =
+              item.sourceTitle?.toLowerCase().contains(searchQuery) ?? false;
+          final seriesMatch =
+              item.series?.title.toLowerCase().contains(searchQuery) ?? false;
+          final episodeMatch =
+              item.episode?.title.toLowerCase().contains(searchQuery) ?? false;
           return titleMatch || seriesMatch || episodeMatch;
         }).toList();
 
@@ -883,7 +945,9 @@ class _HistoryView extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  searchQuery.isEmpty ? 'No history records' : 'No history matches search',
+                  searchQuery.isEmpty
+                      ? 'No history records'
+                      : 'No history matches search',
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -919,14 +983,15 @@ class _HistoryView extends ConsumerWidget {
             return latestB.compareTo(latestA);
           });
 
-          return RefreshIndicator(
+          return M3RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(sonarrHistoryProvider(instance));
               await ref.read(sonarrHistoryProvider(instance).future);
             },
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: seriesList.length + (unknownSeriesItems.isNotEmpty ? 1 : 0),
+              itemCount:
+                  seriesList.length + (unknownSeriesItems.isNotEmpty ? 1 : 0),
               itemBuilder: (BuildContext context, int index) {
                 if (index < seriesList.length) {
                   final series = seriesList[index];
@@ -948,7 +1013,7 @@ class _HistoryView extends ConsumerWidget {
           );
         } else {
           // Plain list layout
-          return RefreshIndicator(
+          return M3RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(sonarrHistoryProvider(instance));
               await ref.read(sonarrHistoryProvider(instance).future);
@@ -987,7 +1052,8 @@ class _HistoryView extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 FilledButton.tonal(
-                  onPressed: () => ref.invalidate(sonarrHistoryProvider(instance)),
+                  onPressed: () =>
+                      ref.invalidate(sonarrHistoryProvider(instance)),
                   child: const Text('Retry'),
                 ),
               ],
@@ -1011,7 +1077,8 @@ class _GroupedHistoryCard extends ConsumerStatefulWidget {
   final List<SonarrHistoryItem> items;
 
   @override
-  ConsumerState<_GroupedHistoryCard> createState() => _GroupedHistoryCardState();
+  ConsumerState<_GroupedHistoryCard> createState() =>
+      _GroupedHistoryCardState();
 }
 
 class _GroupedHistoryCardState extends ConsumerState<_GroupedHistoryCard> {
@@ -1025,7 +1092,8 @@ class _GroupedHistoryCardState extends ConsumerState<_GroupedHistoryCard> {
     String? posterUrl;
     if (widget.series?.images != null && api != null) {
       try {
-        final img = widget.series!.images.firstWhere((i) => i.coverType == 'poster');
+        final img =
+            widget.series!.images.firstWhere((i) => i.coverType == 'poster');
         posterUrl = api.posterUrl(img);
       } catch (_) {}
     }
@@ -1070,10 +1138,12 @@ class _GroupedHistoryCardState extends ConsumerState<_GroupedHistoryCard> {
                               imageUrl: posterUrl,
                               fit: BoxFit.cover,
                               placeholder: (context, url) => Container(
-                                color: theme.colorScheme.surfaceContainerHighest,
+                                color:
+                                    theme.colorScheme.surfaceContainerHighest,
                               ),
                               errorWidget: (context, url, err) => Container(
-                                color: theme.colorScheme.surfaceContainerHighest,
+                                color:
+                                    theme.colorScheme.surfaceContainerHighest,
                                 child: Icon(
                                   Icons.live_tv,
                                   size: 18,
@@ -1116,7 +1186,8 @@ class _GroupedHistoryCardState extends ConsumerState<_GroupedHistoryCard> {
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.primaryContainer,
                       borderRadius: BorderRadius.circular(10),
@@ -1181,7 +1252,8 @@ class _GroupedHistoryCardState extends ConsumerState<_GroupedHistoryCard> {
                         ),
                         IconButton(
                           icon: const Icon(Icons.info_outline, size: 20),
-                          onPressed: () => _showHistoryDetails(context, ref, widget.instance, item),
+                          onPressed: () => _showHistoryDetails(
+                              context, ref, widget.instance, item),
                         ),
                       ],
                     ),
@@ -1269,16 +1341,20 @@ class _BlocklistView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final blocklistAsync = ref.watch(sonarrBlocklistProvider(instance));
-    final searchQuery = ref.watch(sonarrActivitySearchQueryProvider(instance)).toLowerCase();
+    final searchQuery =
+        ref.watch(sonarrActivitySearchQueryProvider(instance)).toLowerCase();
     final grouped = ref.watch(sonarrActivityGroupedProvider(instance));
 
     return blocklistAsync.when(
       data: (List<SonarrBlocklistItem> items) {
         final filteredItems = items.where((item) {
           if (searchQuery.isEmpty) return true;
-          final titleMatch = item.sourceTitle?.toLowerCase().contains(searchQuery) ?? false;
-          final seriesMatch = item.series?.title.toLowerCase().contains(searchQuery) ?? false;
-          final messageMatch = item.message?.toLowerCase().contains(searchQuery) ?? false;
+          final titleMatch =
+              item.sourceTitle?.toLowerCase().contains(searchQuery) ?? false;
+          final seriesMatch =
+              item.series?.title.toLowerCase().contains(searchQuery) ?? false;
+          final messageMatch =
+              item.message?.toLowerCase().contains(searchQuery) ?? false;
           return titleMatch || seriesMatch || messageMatch;
         }).toList();
 
@@ -1294,7 +1370,9 @@ class _BlocklistView extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  searchQuery.isEmpty ? 'No blocklisted items' : 'No blocklist matches search',
+                  searchQuery.isEmpty
+                      ? 'No blocklisted items'
+                      : 'No blocklist matches search',
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -1330,14 +1408,15 @@ class _BlocklistView extends ConsumerWidget {
             return latestB.compareTo(latestA);
           });
 
-          return RefreshIndicator(
+          return M3RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(sonarrBlocklistProvider(instance));
               await ref.read(sonarrBlocklistProvider(instance).future);
             },
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: seriesList.length + (unknownSeriesItems.isNotEmpty ? 1 : 0),
+              itemCount:
+                  seriesList.length + (unknownSeriesItems.isNotEmpty ? 1 : 0),
               itemBuilder: (BuildContext context, int index) {
                 if (index < seriesList.length) {
                   final series = seriesList[index];
@@ -1359,7 +1438,7 @@ class _BlocklistView extends ConsumerWidget {
           );
         } else {
           // Plain list layout
-          return RefreshIndicator(
+          return M3RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(sonarrBlocklistProvider(instance));
               await ref.read(sonarrBlocklistProvider(instance).future);
@@ -1398,7 +1477,8 @@ class _BlocklistView extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 FilledButton.tonal(
-                  onPressed: () => ref.invalidate(sonarrBlocklistProvider(instance)),
+                  onPressed: () =>
+                      ref.invalidate(sonarrBlocklistProvider(instance)),
                   child: const Text('Retry'),
                 ),
               ],
@@ -1422,7 +1502,8 @@ class _GroupedBlocklistCard extends ConsumerStatefulWidget {
   final List<SonarrBlocklistItem> items;
 
   @override
-  ConsumerState<_GroupedBlocklistCard> createState() => _GroupedBlocklistCardState();
+  ConsumerState<_GroupedBlocklistCard> createState() =>
+      _GroupedBlocklistCardState();
 }
 
 class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
@@ -1432,15 +1513,18 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final api = ref.watch(sonarrApiProvider(widget.instance)).value;
-    final selection = ref.watch(sonarrBlocklistSelectionProvider(widget.instance));
+    final selection =
+        ref.watch(sonarrBlocklistSelectionProvider(widget.instance));
     final isSelecting = selection.isNotEmpty;
     final groupIds = widget.items.map((i) => i.id).toList();
     final isGroupSelected = groupIds.every(selection.contains);
 
     void toggleGroupSelection() {
-      final notifier = ref.read(sonarrBlocklistSelectionProvider(widget.instance).notifier);
+      final notifier =
+          ref.read(sonarrBlocklistSelectionProvider(widget.instance).notifier);
       if (isGroupSelected) {
-        notifier.state = selection.where((id) => !groupIds.contains(id)).toSet();
+        notifier.state =
+            selection.where((id) => !groupIds.contains(id)).toSet();
       } else {
         notifier.state = {...selection, ...groupIds};
       }
@@ -1449,7 +1533,8 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
     String? posterUrl;
     if (widget.series?.images != null && api != null) {
       try {
-        final img = widget.series!.images.firstWhere((i) => i.coverType == 'poster');
+        final img =
+            widget.series!.images.firstWhere((i) => i.coverType == 'poster');
         posterUrl = api.posterUrl(img);
       } catch (_) {}
     }
@@ -1502,10 +1587,12 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
                                   imageUrl: posterUrl,
                                   fit: BoxFit.cover,
                                   placeholder: (context, url) => Container(
-                                    color: theme.colorScheme.surfaceContainerHighest,
+                                    color: theme
+                                        .colorScheme.surfaceContainerHighest,
                                   ),
                                   errorWidget: (context, url, err) => Container(
-                                    color: theme.colorScheme.surfaceContainerHighest,
+                                    color: theme
+                                        .colorScheme.surfaceContainerHighest,
                                     child: Icon(
                                       Icons.live_tv,
                                       size: 18,
@@ -1514,7 +1601,8 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
                                   ),
                                 )
                               : Container(
-                                  color: theme.colorScheme.surfaceContainerHighest,
+                                  color:
+                                      theme.colorScheme.surfaceContainerHighest,
                                   child: Icon(
                                     Icons.live_tv,
                                     size: 18,
@@ -1523,7 +1611,8 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
                                 ),
                           if (isGroupSelected)
                             Container(
-                              color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                              color: theme.colorScheme.primary
+                                  .withValues(alpha: 0.25),
                               child: Center(
                                 child: Container(
                                   padding: const EdgeInsets.all(3),
@@ -1568,7 +1657,8 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.errorContainer,
                       borderRadius: BorderRadius.circular(10),
@@ -1603,9 +1693,12 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
                   final isItemSelected = selection.contains(item.id);
 
                   void toggleItemSelection() {
-                    final notifier = ref.read(sonarrBlocklistSelectionProvider(widget.instance).notifier);
+                    final notifier = ref.read(
+                        sonarrBlocklistSelectionProvider(widget.instance)
+                            .notifier);
                     if (isItemSelected) {
-                      notifier.state = selection.where((id) => id != item.id).toSet();
+                      notifier.state =
+                          selection.where((id) => id != item.id).toSet();
                     } else {
                       notifier.state = {...selection, item.id};
                     }
@@ -1644,12 +1737,14 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                if (item.message != null && item.message!.isNotEmpty)
+                                if (item.message != null &&
+                                    item.message!.isNotEmpty)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 2),
                                     child: Text(
                                       item.message!,
-                                      style: theme.textTheme.bodySmall?.copyWith(
+                                      style:
+                                          theme.textTheme.bodySmall?.copyWith(
                                         color: theme.colorScheme.error,
                                         fontSize: 11,
                                       ),
@@ -1668,12 +1763,15 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
                                         ),
                                         margin: const EdgeInsets.only(right: 6),
                                         decoration: BoxDecoration(
-                                          color: theme.colorScheme.surfaceContainerHighest,
-                                          borderRadius: BorderRadius.circular(4),
+                                          color: theme.colorScheme
+                                              .surfaceContainerHighest,
+                                          borderRadius:
+                                              BorderRadius.circular(4),
                                         ),
                                         child: Text(
                                           item.indexer!,
-                                          style: theme.textTheme.bodySmall?.copyWith(
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
                                             fontSize: 9,
                                             fontWeight: FontWeight.w500,
                                           ),
@@ -1681,7 +1779,8 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
                                       ),
                                     Text(
                                       _formatDateTime(item.date),
-                                      style: theme.textTheme.bodySmall?.copyWith(
+                                      style:
+                                          theme.textTheme.bodySmall?.copyWith(
                                         color: theme.colorScheme.outline,
                                         fontSize: 10,
                                       ),
@@ -1697,7 +1796,8 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
                                 Icons.delete_outline,
                                 color: theme.colorScheme.error,
                               ),
-                              onPressed: () => _confirmDeleteBlocklistItem(context, ref, widget.instance, item),
+                              onPressed: () => _confirmDeleteBlocklistItem(
+                                  context, ref, widget.instance, item),
                             ),
                         ],
                       ),
@@ -1730,7 +1830,8 @@ class _PlainBlocklistCard extends ConsumerWidget {
     final isSelected = selection.contains(item.id);
 
     void toggleSelection() {
-      final notifier = ref.read(sonarrBlocklistSelectionProvider(instance).notifier);
+      final notifier =
+          ref.read(sonarrBlocklistSelectionProvider(instance).notifier);
       if (isSelected) {
         notifier.state = selection.where((id) => id != item.id).toSet();
       } else {
@@ -1807,7 +1908,8 @@ class _PlainBlocklistCard extends ConsumerWidget {
                   Icons.delete_outline,
                   color: theme.colorScheme.error,
                 ),
-                onPressed: () => _confirmDeleteBlocklistItem(context, ref, instance, item),
+                onPressed: () =>
+                    _confirmDeleteBlocklistItem(context, ref, instance, item),
               ),
       ),
     );
@@ -1922,7 +2024,8 @@ void _showHistoryDetails(
             children: <Widget>[
               _DetailRow(label: 'Event Type', value: eventType.toUpperCase()),
               _DetailRow(label: 'Date', value: _formatDateTime(item.date)),
-              _DetailRow(label: 'Source Title', value: item.sourceTitle ?? 'None'),
+              _DetailRow(
+                  label: 'Source Title', value: item.sourceTitle ?? 'None'),
               if (item.downloadId != null)
                 _DetailRow(label: 'Download ID', value: item.downloadId!),
               if (item.data != null && item.data!.isNotEmpty) ...[
@@ -1961,11 +2064,13 @@ void _showHistoryDetails(
         actions: <Widget>[
           if (eventType.toLowerCase() == 'grabbed')
             TextButton(
-              style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
+              style: TextButton.styleFrom(
+                  foregroundColor: theme.colorScheme.error),
               onPressed: () async {
                 Navigator.of(context).pop();
                 try {
-                  final api = await ref.read(sonarrApiProvider(instance).future);
+                  final api =
+                      await ref.read(sonarrApiProvider(instance).future);
                   await api.failHistoryItem(item.id);
                   ref.invalidate(sonarrHistoryProvider(instance));
                   if (context.mounted) {
@@ -2038,7 +2143,8 @@ void _confirmDeleteBlocklistItem(
                 ref.invalidate(sonarrBlocklistProvider(instance));
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Item removed from blocklist.')),
+                    const SnackBar(
+                        content: Text('Item removed from blocklist.')),
                   );
                 }
               } catch (e) {
@@ -2078,6 +2184,7 @@ String _formatDateTime(String? isoDate) {
     return isoDate;
   }
 }
+
 class _ActivityBulkActionsBar extends StatelessWidget {
   const _ActivityBulkActionsBar({
     required this.instance,
@@ -2190,7 +2297,8 @@ class _QueueBulkGrabDialog extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return AlertDialog(
       title: Text('Force Grab ${selectedIds.length} Releases?'),
-      content: const Text('Are you sure you want to force download the selected releases from the queue?'),
+      content: const Text(
+          'Are you sure you want to force download the selected releases from the queue?'),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
@@ -2231,7 +2339,8 @@ class _QueueBulkGrabDialog extends ConsumerWidget {
             Navigator.pop(context); // pop dialog
 
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Forced grab successfully triggered')),
+              const SnackBar(
+                  content: Text('Forced grab successfully triggered')),
             );
           },
           child: const Text('Force Grab'),
@@ -2253,10 +2362,12 @@ class _QueueBulkDeleteDialog extends ConsumerStatefulWidget {
   final VoidCallback onClear;
 
   @override
-  ConsumerState<_QueueBulkDeleteDialog> createState() => _QueueBulkDeleteDialogState();
+  ConsumerState<_QueueBulkDeleteDialog> createState() =>
+      _QueueBulkDeleteDialogState();
 }
 
-class _QueueBulkDeleteDialogState extends ConsumerState<_QueueBulkDeleteDialog> {
+class _QueueBulkDeleteDialogState
+    extends ConsumerState<_QueueBulkDeleteDialog> {
   bool _blocklist = false;
 
   @override
@@ -2267,7 +2378,8 @@ class _QueueBulkDeleteDialogState extends ConsumerState<_QueueBulkDeleteDialog> 
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Are you sure you want to remove these items from download client queue?'),
+          const Text(
+              'Are you sure you want to remove these items from download client queue?'),
           const SizedBox(height: 16),
           CheckboxListTile(
             title: const Text('Add items to blocklist'),
@@ -2303,7 +2415,8 @@ class _QueueBulkDeleteDialogState extends ConsumerState<_QueueBulkDeleteDialog> 
             try {
               final api =
                   await ref.read(sonarrApiProvider(widget.instance).future);
-              await api.bulkDeleteQueue(widget.selectedIds.toList(), blocklist: _blocklist);
+              await api.bulkDeleteQueue(widget.selectedIds.toList(),
+                  blocklist: _blocklist);
             } catch (e) {
               error = e;
             } finally {
@@ -2347,7 +2460,8 @@ class _BlocklistBulkDeleteDialog extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return AlertDialog(
       title: Text('Remove ${selectedIds.length} items from Blocklist?'),
-      content: const Text('Are you sure you want to remove these items from blocklist? Sonarr will be able to search and grab these releases again.'),
+      content: const Text(
+          'Are you sure you want to remove these items from blocklist? Sonarr will be able to search and grab these releases again.'),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
@@ -2392,7 +2506,8 @@ class _BlocklistBulkDeleteDialog extends ConsumerWidget {
             Navigator.pop(context); // pop dialog
 
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Successfully removed items from blocklist')),
+              const SnackBar(
+                  content: Text('Successfully removed items from blocklist')),
             );
           },
           child: const Text('Remove'),
@@ -2401,4 +2516,3 @@ class _BlocklistBulkDeleteDialog extends ConsumerWidget {
     );
   }
 }
-

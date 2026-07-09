@@ -24,7 +24,8 @@ class RadarrRelease {
   String get quality =>
       ((raw['quality'] as Map?)?['quality'] as Map?)?['name'] as String? ?? '';
   String get releaseGroup => (raw['releaseGroup'] as String?) ?? '';
-  int get customFormatScore => ((raw['customFormatScore'] as num?) ?? 0).toInt();
+  int get customFormatScore =>
+      ((raw['customFormatScore'] as num?) ?? 0).toInt();
 
   String? get downloadUrl => raw['downloadUrl'] as String?;
   String? get guid => raw['guid'] as String?;

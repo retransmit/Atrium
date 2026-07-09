@@ -189,8 +189,7 @@ class _ResultCard extends ConsumerWidget {
                           fit: BoxFit.cover,
                           memCacheWidth: 300,
                           errorWidget: (_, __, ___) => Container(
-                            color:
-                                theme.colorScheme.surfaceContainerHighest,
+                            color: theme.colorScheme.surfaceContainerHighest,
                             child: Icon(
                               Icons.movie_outlined,
                               color: theme.colorScheme.outline,
@@ -211,8 +210,7 @@ class _ResultCard extends ConsumerWidget {
                         if (result.year != null && result.year! > 0)
                           '${result.year}',
                         if (result.runtime > 0) '${result.runtime} min',
-                        if (result.studio != null &&
-                            result.studio!.isNotEmpty)
+                        if (result.studio != null && result.studio!.isNotEmpty)
                           result.studio!,
                       ].join(' • '),
                       style: theme.textTheme.labelSmall
@@ -426,16 +424,17 @@ class _AddMovieSheetState extends ConsumerState<_AddMovieSheet> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: <Widget>[
                 TextButton(
-                  onPressed:
-                      _busy ? null : () => Navigator.of(context).pop(),
+                  onPressed: _busy ? null : () => Navigator.of(context).pop(),
                   child: const Text('Cancel'),
                 ),
                 const SizedBox(width: Insets.sm),
                 FilledButton.icon(
-                  onPressed:
-                      _busy || loading || _profileId == null || _rootPath == null
-                          ? null
-                          : _add,
+                  onPressed: _busy ||
+                          loading ||
+                          _profileId == null ||
+                          _rootPath == null
+                      ? null
+                      : _add,
                   icon: _busy
                       ? const SizedBox(
                           width: 16,
@@ -465,7 +464,8 @@ String _fmtSize(int bytes) {
     value /= 1024;
     unit++;
   }
-  final String text =
-      value >= 100 || unit == 0 ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
+  final String text = value >= 100 || unit == 0
+      ? value.toStringAsFixed(0)
+      : value.toStringAsFixed(1);
   return '$text ${units[unit]}';
 }

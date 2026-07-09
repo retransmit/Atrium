@@ -44,7 +44,8 @@ class RadarrApi {
 
   Future<RadarrMovie> getMovieById(int id) async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/movie/$id');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/movie/$id');
       return RadarrMovie.fromJson(resp.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -72,7 +73,8 @@ class RadarrApi {
   }
 
   /// Paginated download/import history, newest first.
-  Future<RadarrHistoryPage> getHistory({int page = 1, int pageSize = 50}) async {
+  Future<RadarrHistoryPage> getHistory(
+      {int page = 1, int pageSize = 50}) async {
     try {
       final Response<dynamic> resp = await _dio.get<dynamic>(
         '$_base/history',
@@ -175,9 +177,11 @@ class RadarrApi {
   /// Disk space per mapped root/drive.
   Future<List<RadarrDiskSpace>> getDiskSpace() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/diskspace');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/diskspace');
       return (resp.data as List<dynamic>)
-          .map((dynamic e) => RadarrDiskSpace.fromJson(e as Map<String, dynamic>))
+          .map((dynamic e) =>
+              RadarrDiskSpace.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -199,9 +203,11 @@ class RadarrApi {
   /// Scheduled tasks.
   Future<List<RadarrSystemTask>> getSystemTasks() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/system/task');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/system/task');
       return (resp.data as List<dynamic>)
-          .map((dynamic e) => RadarrSystemTask.fromJson(e as Map<String, dynamic>))
+          .map((dynamic e) =>
+              RadarrSystemTask.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -362,8 +368,7 @@ class RadarrApi {
           await _dio.get<dynamic>('$_base/rootfolder');
       return (resp.data as List<dynamic>)
           .map(
-            (dynamic e) =>
-                RadarrRootFolder.fromJson(e as Map<String, dynamic>),
+            (dynamic e) => RadarrRootFolder.fromJson(e as Map<String, dynamic>),
           )
           .toList();
     } on DioException catch (e) {
@@ -383,14 +388,13 @@ class RadarrApi {
     bool searchOnAdd = true,
   }) async {
     try {
-      final Map<String, dynamic> body =
-          Map<String, dynamic>.of(lookup.raw)
-            ..['qualityProfileId'] = qualityProfileId
-            ..['rootFolderPath'] = rootFolderPath
-            ..['monitored'] = monitored
-            ..['addOptions'] = <String, dynamic>{
-              'searchForMovie': searchOnAdd,
-            };
+      final Map<String, dynamic> body = Map<String, dynamic>.of(lookup.raw)
+        ..['qualityProfileId'] = qualityProfileId
+        ..['rootFolderPath'] = rootFolderPath
+        ..['monitored'] = monitored
+        ..['addOptions'] = <String, dynamic>{
+          'searchForMovie': searchOnAdd,
+        };
       await _dio.post<dynamic>('$_base/movie', data: body);
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -450,17 +454,20 @@ class RadarrApi {
     final String? upstream = image.remoteUrl;
     if (remote != null && remote.isNotEmpty) {
       final Uri base = Uri.parse(_dio.options.baseUrl);
-      
+
       String pathOrUrl = remote;
       if (pathOrUrl.startsWith('/MediaCover/')) {
-        pathOrUrl = '$_base/mediacover${pathOrUrl.substring('/MediaCover'.length)}';
+        pathOrUrl =
+            '$_base/mediacover${pathOrUrl.substring('/MediaCover'.length)}';
       } else if (pathOrUrl.startsWith('MediaCover/')) {
-        pathOrUrl = '$_base/mediacover${pathOrUrl.substring('MediaCover'.length)}';
+        pathOrUrl =
+            '$_base/mediacover${pathOrUrl.substring('MediaCover'.length)}';
       }
 
       final Uri abs = pathOrUrl.startsWith('http')
           ? Uri.parse(pathOrUrl)
-          : base.resolve(pathOrUrl.startsWith('/') ? pathOrUrl.substring(1) : pathOrUrl);
+          : base.resolve(
+              pathOrUrl.startsWith('/') ? pathOrUrl.substring(1) : pathOrUrl);
 
       if (apiKey == null || apiKey!.isEmpty) {
         return abs.toString();
@@ -625,7 +632,8 @@ class RadarrApi {
 
   Future<Map<String, dynamic>> getUiConfigRaw() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/config/ui');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/config/ui');
       return resp.data as Map<String, dynamic>;
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -649,7 +657,8 @@ class RadarrApi {
 
   Future<void> createTag(String label) async {
     try {
-      await _dio.post<dynamic>('$_base/tag', data: <String, dynamic>{'label': label});
+      await _dio
+          .post<dynamic>('$_base/tag', data: <String, dynamic>{'label': label});
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -686,8 +695,11 @@ class RadarrApi {
 
   Future<List<Map<String, dynamic>>> getIndexerSchema() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/indexer/schema');
-      return (resp.data as List<dynamic>).map((dynamic e) => e as Map<String, dynamic>).toList();
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/indexer/schema');
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => e as Map<String, dynamic>)
+          .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -739,9 +751,11 @@ class RadarrApi {
 
   Future<List<RadarrDownloadClient>> getDownloadClients() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/downloadclient');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/downloadclient');
       return (resp.data as List<dynamic>)
-          .map((dynamic e) => RadarrDownloadClient.fromJson(e as Map<String, dynamic>))
+          .map((dynamic e) =>
+              RadarrDownloadClient.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -750,8 +764,11 @@ class RadarrApi {
 
   Future<List<Map<String, dynamic>>> getDownloadClientSchema() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/downloadclient/schema');
-      return (resp.data as List<dynamic>).map((dynamic e) => e as Map<String, dynamic>).toList();
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/downloadclient/schema');
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => e as Map<String, dynamic>)
+          .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -803,9 +820,11 @@ class RadarrApi {
 
   Future<List<RadarrNotification>> getNotifications() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/notification');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/notification');
       return (resp.data as List<dynamic>)
-          .map((dynamic e) => RadarrNotification.fromJson(e as Map<String, dynamic>))
+          .map((dynamic e) =>
+              RadarrNotification.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -814,8 +833,11 @@ class RadarrApi {
 
   Future<List<Map<String, dynamic>>> getNotificationSchema() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/notification/schema');
-      return (resp.data as List<dynamic>).map((dynamic e) => e as Map<String, dynamic>).toList();
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/notification/schema');
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => e as Map<String, dynamic>)
+          .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -833,7 +855,8 @@ class RadarrApi {
     }
   }
 
-  Future<void> updateNotificationRaw(Map<String, dynamic> notificationJson) async {
+  Future<void> updateNotificationRaw(
+      Map<String, dynamic> notificationJson) async {
     try {
       await _dio.put<dynamic>(
         '$_base/notification/${notificationJson['id']}',
@@ -845,9 +868,11 @@ class RadarrApi {
     }
   }
 
-  Future<void> testNotificationRaw(Map<String, dynamic> notificationJson) async {
+  Future<void> testNotificationRaw(
+      Map<String, dynamic> notificationJson) async {
     try {
-      await _dio.post<dynamic>('$_base/notification/test', data: notificationJson);
+      await _dio.post<dynamic>('$_base/notification/test',
+          data: notificationJson);
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -867,9 +892,11 @@ class RadarrApi {
 
   Future<List<RadarrImportList>> getImportLists() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/importlist');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/importlist');
       return (resp.data as List<dynamic>)
-          .map((dynamic e) => RadarrImportList.fromJson(e as Map<String, dynamic>))
+          .map((dynamic e) =>
+              RadarrImportList.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -878,8 +905,11 @@ class RadarrApi {
 
   Future<List<Map<String, dynamic>>> getImportListSchema() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/importlist/schema');
-      return (resp.data as List<dynamic>).map((dynamic e) => e as Map<String, dynamic>).toList();
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/importlist/schema');
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => e as Map<String, dynamic>)
+          .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -931,7 +961,8 @@ class RadarrApi {
 
   Future<RadarrHostConfig> getHostConfig() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/config/host');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/config/host');
       return RadarrHostConfig.fromJson(resp.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -948,7 +979,8 @@ class RadarrApi {
 
   Future<RadarrNamingConfig> getNamingConfig() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/config/naming');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/config/naming');
       return RadarrNamingConfig.fromJson(resp.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -965,8 +997,10 @@ class RadarrApi {
 
   Future<RadarrMediaManagementConfig> getMediaManagementConfig() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/config/mediamanagement');
-      return RadarrMediaManagementConfig.fromJson(resp.data as Map<String, dynamic>);
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/config/mediamanagement');
+      return RadarrMediaManagementConfig.fromJson(
+          resp.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -974,7 +1008,8 @@ class RadarrApi {
 
   Future<void> updateMediaManagementConfigRaw(Map<String, dynamic> raw) async {
     try {
-      await _dio.put<dynamic>('$_base/config/mediamanagement/${raw['id']}', data: raw);
+      await _dio.put<dynamic>('$_base/config/mediamanagement/${raw['id']}',
+          data: raw);
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -982,7 +1017,8 @@ class RadarrApi {
 
   Future<RadarrUiConfig> getUiConfig() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/config/ui');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/config/ui');
       return RadarrUiConfig.fromJson(resp.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -1005,7 +1041,8 @@ class RadarrApi {
     try {
       final Response<dynamic> resp = await _dio.get<dynamic>('$_base/metadata');
       return (resp.data as List<dynamic>)
-          .map((dynamic e) => RadarrMetadataProvider.fromJson(e as Map<String, dynamic>))
+          .map((dynamic e) =>
+              RadarrMetadataProvider.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -1038,9 +1075,11 @@ class RadarrApi {
 
   Future<List<RadarrDelayProfile>> getDelayProfiles() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/delayprofile');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/delayprofile');
       return (resp.data as List<dynamic>)
-          .map((dynamic e) => RadarrDelayProfile.fromJson(e as Map<String, dynamic>))
+          .map((dynamic e) =>
+              RadarrDelayProfile.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -1077,9 +1116,11 @@ class RadarrApi {
 
   Future<List<RadarrCustomFormat>> getCustomFormats() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/customformat');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/customformat');
       return (resp.data as List<dynamic>)
-          .map((dynamic e) => RadarrCustomFormat.fromJson(e as Map<String, dynamic>))
+          .map((dynamic e) =>
+              RadarrCustomFormat.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -1116,9 +1157,11 @@ class RadarrApi {
 
   Future<List<RadarrQualityDefinition>> getQualityDefinitions() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/qualitydefinition');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/qualitydefinition');
       return (resp.data as List<dynamic>)
-          .map((dynamic e) => RadarrQualityDefinition.fromJson(e as Map<String, dynamic>))
+          .map((dynamic e) =>
+              RadarrQualityDefinition.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -1127,7 +1170,8 @@ class RadarrApi {
 
   Future<void> updateQualityDefinitionRaw(Map<String, dynamic> raw) async {
     try {
-      await _dio.put<dynamic>('$_base/qualitydefinition/${raw['id']}', data: raw);
+      await _dio.put<dynamic>('$_base/qualitydefinition/${raw['id']}',
+          data: raw);
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -1139,8 +1183,11 @@ class RadarrApi {
 
   Future<List<Map<String, dynamic>>> getQualityProfilesRaw() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/qualityprofile');
-      return (resp.data as List<dynamic>).map((dynamic e) => e as Map<String, dynamic>).toList();
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/qualityprofile');
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => e as Map<String, dynamic>)
+          .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -1148,7 +1195,8 @@ class RadarrApi {
 
   Future<Map<String, dynamic>> getQualityProfileSchema() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/qualityprofile/schema');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/qualityprofile/schema');
       return resp.data as Map<String, dynamic>;
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -1185,9 +1233,11 @@ class RadarrApi {
 
   Future<List<RadarrReleaseProfile>> getReleaseProfiles() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/releaseprofile');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/releaseprofile');
       return (resp.data as List<dynamic>)
-          .map((dynamic e) => RadarrReleaseProfile.fromJson(e as Map<String, dynamic>))
+          .map((dynamic e) =>
+              RadarrReleaseProfile.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -1224,9 +1274,11 @@ class RadarrApi {
 
   Future<List<RadarrImportListExclusion>> getImportListExclusions() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/importlistexclusion');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/importlistexclusion');
       return (resp.data as List<dynamic>)
-          .map((dynamic e) => RadarrImportListExclusion.fromJson(e as Map<String, dynamic>))
+          .map((dynamic e) =>
+              RadarrImportListExclusion.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -1255,9 +1307,11 @@ class RadarrApi {
 
   Future<List<RadarrAutoTaggingRule>> getAutoTaggingRules() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/autotagging');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/autotagging');
       return (resp.data as List<dynamic>)
-          .map((dynamic e) => RadarrAutoTaggingRule.fromJson(e as Map<String, dynamic>))
+          .map((dynamic e) =>
+              RadarrAutoTaggingRule.fromJson(e as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);

@@ -147,7 +147,8 @@ class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('General configuration settings saved!')),
+          const SnackBar(
+              content: Text('General configuration settings saved!')),
         );
         Navigator.pop(context);
       }
@@ -165,7 +166,8 @@ class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final hostConfigAsync = ref.watch(sonarrHostConfigProvider(widget.instance));
+    final hostConfigAsync =
+        ref.watch(sonarrHostConfigProvider(widget.instance));
 
     return Scaffold(
       appBar: AppBar(
@@ -227,7 +229,9 @@ class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
                             helperText: 'Use * to bind to all interfaces',
                           ),
                           validator: (val) =>
-                              (val == null || val.trim().isEmpty) ? 'Required' : null,
+                              (val == null || val.trim().isEmpty)
+                                  ? 'Required'
+                                  : null,
                         ),
                         const SizedBox(height: Insets.md),
                         Row(
@@ -240,10 +244,10 @@ class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
                                   labelText: 'Port Number',
                                   border: OutlineInputBorder(),
                                 ),
-                                validator: (val) =>
-                                    (val == null || int.tryParse(val.trim()) == null)
-                                        ? 'Must be integer'
-                                        : null,
+                                validator: (val) => (val == null ||
+                                        int.tryParse(val.trim()) == null)
+                                    ? 'Must be integer'
+                                    : null,
                               ),
                             ),
                             const SizedBox(width: Insets.md),
@@ -255,10 +259,10 @@ class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
                                   labelText: 'SSL Port Number',
                                   border: OutlineInputBorder(),
                                 ),
-                                validator: (val) =>
-                                    (val == null || int.tryParse(val.trim()) == null)
-                                        ? 'Must be integer'
-                                        : null,
+                                validator: (val) => (val == null ||
+                                        int.tryParse(val.trim()) == null)
+                                    ? 'Must be integer'
+                                    : null,
                               ),
                             ),
                           ],
@@ -336,9 +340,12 @@ class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
                               icon: const Icon(Icons.copy),
                               tooltip: 'Copy API Key',
                               onPressed: () {
-                                Clipboard.setData(ClipboardData(text: _apiKeyController.text));
+                                Clipboard.setData(ClipboardData(
+                                    text: _apiKeyController.text));
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('API Key copied to clipboard!')),
+                                  const SnackBar(
+                                      content:
+                                          Text('API Key copied to clipboard!')),
                                 );
                               },
                             ),
@@ -378,22 +385,36 @@ class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
                           ),
                           items: [
                             const DropdownMenuItem(
-                                value: 'fatal', child: Text('Fatal'),),
+                              value: 'fatal',
+                              child: Text('Fatal'),
+                            ),
                             const DropdownMenuItem(
-                                value: 'error', child: Text('Error'),),
+                              value: 'error',
+                              child: Text('Error'),
+                            ),
                             const DropdownMenuItem(
-                                value: 'warn', child: Text('Warn'),),
+                              value: 'warn',
+                              child: Text('Warn'),
+                            ),
                             const DropdownMenuItem(
-                                value: 'info', child: Text('Info'),),
+                              value: 'info',
+                              child: Text('Info'),
+                            ),
                             const DropdownMenuItem(
-                                value: 'debug', child: Text('Debug'),),
+                              value: 'debug',
+                              child: Text('Debug'),
+                            ),
                             const DropdownMenuItem(
-                                value: 'trace', child: Text('Trace'),),
+                              value: 'trace',
+                              child: Text('Trace'),
+                            ),
                             // Keep any unexpected server value selectable so
                             // the dropdown never hits the missing-value assert.
                             if (!_logLevels.contains(_logLevel))
                               DropdownMenuItem(
-                                  value: _logLevel, child: Text(_logLevel),),
+                                value: _logLevel,
+                                child: Text(_logLevel),
+                              ),
                           ],
                           onChanged: (val) {
                             if (val != null) {

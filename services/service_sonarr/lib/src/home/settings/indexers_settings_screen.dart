@@ -70,9 +70,11 @@ class _IndexersTab extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _selectIndexerPresetAndAdd(
-      BuildContext context, WidgetRef ref,) async {
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final schemasAsync = ref.read(sonarrIndexerSchemaProvider(instance));
-    
+
     final presets = schemasAsync.value ?? [];
     if (presets.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -113,7 +115,8 @@ class _IndexersTab extends ConsumerWidget {
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         Navigator.pop(context);
-                        _showIndexerEditorDialog(context, ref, preset, isNew: true);
+                        _showIndexerEditorDialog(context, ref, preset,
+                            isNew: true);
                       },
                     );
                   },
@@ -127,8 +130,11 @@ class _IndexersTab extends ConsumerWidget {
   }
 
   Future<void> _showIndexerEditorDialog(
-      BuildContext context, WidgetRef ref, Map<String, dynamic> indexer,
-      {bool isNew = false,}) async {
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> indexer, {
+    bool isNew = false,
+  }) async {
     final fields = (indexer['fields'] as List<dynamic>?)
             ?.map((dynamic f) => f as Map<String, dynamic>)
             .toList() ??
@@ -139,21 +145,24 @@ class _IndexersTab extends ConsumerWidget {
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          title: Text(isNew ? 'Add ${indexer['name']}' : 'Edit ${indexer['name']}'),
+          title: Text(
+              isNew ? 'Add ${indexer['name']}' : 'Edit ${indexer['name']}'),
           content: SizedBox(
             width: double.maxFinite,
             child: SingleChildScrollView(
               child: DynamicSchemaForm(
                 fields: fields,
                 onTest: (updatedFields) async {
-                  final api = await ref.read(sonarrApiProvider(instance).future);
+                  final api =
+                      await ref.read(sonarrApiProvider(instance).future);
                   final payload = Map<String, dynamic>.from(indexer);
                   payload['fields'] = updatedFields;
                   await api.testIndexer(payload);
                 },
                 onSave: (updatedFields) async {
                   try {
-                    final api = await ref.read(sonarrApiProvider(instance).future);
+                    final api =
+                        await ref.read(sonarrApiProvider(instance).future);
                     final payload = Map<String, dynamic>.from(indexer);
                     payload['fields'] = updatedFields;
 
@@ -168,8 +177,10 @@ class _IndexersTab extends ConsumerWidget {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text(
-                                'Indexer ${isNew ? 'added' : 'updated'}!',),),
+                          content: Text(
+                            'Indexer ${isNew ? 'added' : 'updated'}!',
+                          ),
+                        ),
                       );
                     }
                   } catch (e) {
@@ -189,7 +200,10 @@ class _IndexersTab extends ConsumerWidget {
   }
 
   Future<void> _deleteIndexer(
-      BuildContext context, WidgetRef ref, int id,) async {
+    BuildContext context,
+    WidgetRef ref,
+    int id,
+  ) async {
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
       await api.deleteIndexer(id);
@@ -253,7 +267,8 @@ class _IndexersTab extends ConsumerWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  subtitle: Text('$implementation • Protocol: ${protocol.toUpperCase()}'),
+                  subtitle: Text(
+                      '$implementation • Protocol: ${protocol.toUpperCase()}'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -287,7 +302,9 @@ class _ImportListsTab extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _selectImportListPresetAndAdd(
-      BuildContext context, WidgetRef ref,) async {
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final schemasAsync = ref.read(sonarrImportListSchemaProvider(instance));
     final presets = schemasAsync.value ?? [];
     if (presets.isEmpty) {
@@ -329,7 +346,8 @@ class _ImportListsTab extends ConsumerWidget {
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         Navigator.pop(context);
-                        _showImportListEditorDialog(context, ref, preset, isNew: true);
+                        _showImportListEditorDialog(context, ref, preset,
+                            isNew: true);
                       },
                     );
                   },
@@ -343,8 +361,11 @@ class _ImportListsTab extends ConsumerWidget {
   }
 
   Future<void> _showImportListEditorDialog(
-      BuildContext context, WidgetRef ref, Map<String, dynamic> list,
-      {bool isNew = false,}) async {
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> list, {
+    bool isNew = false,
+  }) async {
     final fields = (list['fields'] as List<dynamic>?)
             ?.map((dynamic f) => f as Map<String, dynamic>)
             .toList() ??
@@ -362,14 +383,16 @@ class _ImportListsTab extends ConsumerWidget {
               child: DynamicSchemaForm(
                 fields: fields,
                 onTest: (updatedFields) async {
-                  final api = await ref.read(sonarrApiProvider(instance).future);
+                  final api =
+                      await ref.read(sonarrApiProvider(instance).future);
                   final payload = Map<String, dynamic>.from(list);
                   payload['fields'] = updatedFields;
                   await api.testImportList(payload);
                 },
                 onSave: (updatedFields) async {
                   try {
-                    final api = await ref.read(sonarrApiProvider(instance).future);
+                    final api =
+                        await ref.read(sonarrApiProvider(instance).future);
                     final payload = Map<String, dynamic>.from(list);
                     payload['fields'] = updatedFields;
 
@@ -417,14 +440,17 @@ class _ImportListsTab extends ConsumerWidget {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text(
-                                'Import list ${isNew ? 'added' : 'updated'}!',),),
+                          content: Text(
+                            'Import list ${isNew ? 'added' : 'updated'}!',
+                          ),
+                        ),
                       );
                     }
                   } catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Failed to save import list: $e')),
+                        SnackBar(
+                            content: Text('Failed to save import list: $e')),
                       );
                     }
                   }
@@ -438,7 +464,10 @@ class _ImportListsTab extends ConsumerWidget {
   }
 
   Future<void> _deleteImportList(
-      BuildContext context, WidgetRef ref, int id,) async {
+    BuildContext context,
+    WidgetRef ref,
+    int id,
+  ) async {
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
       await api.deleteImportList(id);
@@ -544,7 +573,7 @@ class _IndexerOptionsTabState extends ConsumerState<_IndexerOptionsTab> {
   late final TextEditingController _retentionController;
   late final TextEditingController _maxSizeController;
   late final TextEditingController _rssIntervalController;
-  
+
   bool _initialized = false;
   bool _saving = false;
   Map<String, dynamic>? _rawConfig;
@@ -575,7 +604,8 @@ class _IndexerOptionsTabState extends ConsumerState<_IndexerOptionsTab> {
     _minAgeController.text = (config['minimumAge'] as int? ?? 0).toString();
     _retentionController.text = (config['retention'] as int? ?? 0).toString();
     _maxSizeController.text = (config['maximumSize'] as int? ?? 0).toString();
-    _rssIntervalController.text = (config['rssSyncInterval'] as int? ?? 15).toString();
+    _rssIntervalController.text =
+        (config['rssSyncInterval'] as int? ?? 15).toString();
   }
 
   Future<void> _save() async {
@@ -589,13 +619,16 @@ class _IndexerOptionsTabState extends ConsumerState<_IndexerOptionsTab> {
       final payload = Map<String, dynamic>.from(_rawConfig!);
 
       payload['minimumAge'] = int.tryParse(_minAgeController.text.trim()) ?? 0;
-      payload['retention'] = int.tryParse(_retentionController.text.trim()) ?? 0;
-      payload['maximumSize'] = int.tryParse(_maxSizeController.text.trim()) ?? 0;
-      payload['rssSyncInterval'] = int.tryParse(_rssIntervalController.text.trim()) ?? 15;
+      payload['retention'] =
+          int.tryParse(_retentionController.text.trim()) ?? 0;
+      payload['maximumSize'] =
+          int.tryParse(_maxSizeController.text.trim()) ?? 0;
+      payload['rssSyncInterval'] =
+          int.tryParse(_rssIntervalController.text.trim()) ?? 15;
 
       await api.updateIndexerConfig(payload);
       ref.invalidate(sonarrIndexerConfigProvider(widget.instance));
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Indexer options saved!')),
@@ -662,7 +695,8 @@ class _IndexerOptionsTabState extends ConsumerState<_IndexerOptionsTab> {
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
                           labelText: 'Retention (Days)',
-                          helperText: 'Usenet only: max retention age (0 = unlimited)',
+                          helperText:
+                              'Usenet only: max retention age (0 = unlimited)',
                           border: OutlineInputBorder(),
                         ),
                       ),

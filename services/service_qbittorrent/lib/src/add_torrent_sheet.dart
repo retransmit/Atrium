@@ -150,7 +150,6 @@ class _AddTorrentSheetState extends ConsumerState<AddTorrentSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-
             if (_mode == AddTorrentMode.link)
               TextField(
                 controller: _links,
@@ -225,8 +224,7 @@ class _AddTorrentSheetState extends ConsumerState<AddTorrentSheet> {
       ),
       actions: <Widget>[
         TextButton(
-          onPressed:
-              _busy ? null : () => Navigator.of(context).pop(false),
+          onPressed: _busy ? null : () => Navigator.of(context).pop(false),
           child: const Text('Cancel'),
         ),
         FilledButton.icon(

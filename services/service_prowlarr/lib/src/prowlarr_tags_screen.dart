@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'prowlarr_api.dart';
 import 'prowlarr_providers.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// Settings ▸ Tags: Prowlarr's `/tag` list (just id + label). Add, rename, and
 /// delete. Reuses the generic provider list/CRUD helpers (tags have no schema
@@ -29,7 +30,7 @@ class ProwlarrTagsScreen extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: const Text('Add'),
       ),
-      body: RefreshIndicator(
+      body: M3RefreshIndicator(
         onRefresh: () async => ref.invalidate(prowlarrProvidersProvider(_args)),
         child: AsyncValueView<List<Map<String, dynamic>>>(
           value: tags,
@@ -42,13 +43,13 @@ class ProwlarrTagsScreen extends ConsumerWidget {
                 message: 'Tap Add to create a tag.',
               );
             }
-            final List<Map<String, dynamic>> sorted =
-                <Map<String, dynamic>>[...items]..sort(
-                    (Map<String, dynamic> a, Map<String, dynamic> b) =>
-                        ((a['label'] ?? '') as String)
-                            .toLowerCase()
-                            .compareTo(((b['label'] ?? '') as String).toLowerCase()),
-                  );
+            final List<Map<String, dynamic>> sorted = <Map<String, dynamic>>[
+              ...items
+            ]..sort(
+                (Map<String, dynamic> a, Map<String, dynamic> b) =>
+                    ((a['label'] ?? '') as String).toLowerCase().compareTo(
+                        ((b['label'] ?? '') as String).toLowerCase()),
+              );
             return ListView.builder(
               padding: Insets.pageH,
               itemCount: sorted.length,

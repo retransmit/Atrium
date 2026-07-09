@@ -16,6 +16,7 @@ import 'emby_session_detail_screen.dart';
 import 'models/emby_item.dart';
 import 'models/emby_session.dart';
 import 'models/emby_view.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// Container types - tapping drills into children. Everything else plays.
 /// (See the note in JellyfinHome: we dispatch on "is it a container?" so an
@@ -46,7 +47,8 @@ class EmbyHome extends ConsumerStatefulWidget {
 class _EmbyHomeState extends ConsumerState<EmbyHome> {
   @override
   Widget build(BuildContext context) {
-    final AsyncValue<List<EmbyView>> viewsAsync = ref.watch(embyViewsProvider(widget.instance));
+    final AsyncValue<List<EmbyView>> viewsAsync =
+        ref.watch(embyViewsProvider(widget.instance));
     final int index = ref.watch(embyActiveTabBarIndexProvider(widget.instance));
 
     return AsyncValueView<List<EmbyView>>(
@@ -60,11 +62,11 @@ class _EmbyHomeState extends ConsumerState<EmbyHome> {
             message: 'This Emby server has no libraries to show.',
           );
         }
-        
+
         final String libsKey = libraries.map((EmbyView l) => l.id).join(',');
         final int targetLength = libraries.length + 3;
         final int initialIndex = (index < targetLength) ? index : 0;
-        
+
         return DefaultTabController(
           key: ValueKey<String>(libsKey),
           length: targetLength,
@@ -174,7 +176,7 @@ class EmbyLibraryGrid extends ConsumerWidget {
         ref.watch(embyLibraryItemsProvider((instance, view)));
     final EmbyClient? client = ref.watch(embyClientProvider(instance)).value;
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(embyLibraryItemsProvider((instance, view))),
       child: AsyncValueView<List<EmbyItem>>(
@@ -348,7 +350,7 @@ class EmbyItemsGrid extends ConsumerWidget {
         ref.watch(embyItemsProvider((instance, libraryId)));
     final EmbyClient? client = ref.watch(embyClientProvider(instance)).value;
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(embyItemsProvider((instance, libraryId))),
       child: AsyncValueView<List<EmbyItem>>(
@@ -1056,7 +1058,7 @@ class _HomeSections extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(embySessionsProvider(instance));
         ref.invalidate(embyResumeItemsProvider(instance));
@@ -1370,37 +1372,215 @@ class _SessionCardState extends State<_SessionCard> {
           borderRadius: BorderRadius.circular(24),
         ),
         child: InkWell(
-        onTap: () => pushScreen<void>(
-          context,
-          EmbySessionDetailScreen(
-            initialSession: session,
-            instance: widget.instance,
+          onTap: () => pushScreen<void>(
+            context,
+            EmbySessionDetailScreen(
+              initialSession: session,
+              instance: widget.instance,
+            ),
           ),
-        ),
-        child: Stack(
-          children: <Widget>[
-            // Backdrop
-            if (session.posterUrl != null)
-              Positioned.fill(
-                child: Stack(
-                  fit: StackFit.expand,
+          child: Stack(
+            children: <Widget>[
+              // Backdrop
+              if (session.posterUrl != null)
+                Positioned.fill(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: <Widget>[
+                      Image.network(
+                        session.posterUrl!,
+                        fit: BoxFit.cover,
+                        alignment: Alignment.topCenter,
+                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: <Color>[
+                              theme.colorScheme.surfaceContainerLow
+                                  .withValues(alpha: 0.3),
+                              theme.colorScheme.surfaceContainerLow
+                                  .withValues(alpha: 0.85),
+                              theme.colorScheme.surfaceContainerLow
+                                  .withValues(alpha: 0.95),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // Content
+              Padding(
+                padding: const EdgeInsets.all(Insets.md),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Image.network(
-                      session.posterUrl!,
-                      fit: BoxFit.cover,
-                      alignment: Alignment.topCenter,
-                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    // Poster
+                    ConstrainedBox(
+                      constraints:
+                          const BoxConstraints(maxWidth: 120, maxHeight: 126),
+                      child: AspectRatio(
+                        aspectRatio: session.aspectRatio != null &&
+                                session.aspectRatio! > 0.0
+                            ? session.aspectRatio!
+                            : (2 / 3),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: <BoxShadow>[
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.25),
+                                blurRadius: 12,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                            image: session.posterUrl != null
+                                ? DecorationImage(
+                                    image: CachedNetworkImageProvider(
+                                      session.posterUrl!,
+                                    ),
+                                    fit: BoxFit.cover,
+                                    onError: (Object _, StackTrace? __) {},
+                                  )
+                                : null,
+                          ),
+                          child: session.posterUrl == null
+                              ? Icon(
+                                  Icons.movie_outlined,
+                                  color: theme.colorScheme.outline,
+                                  size: 32,
+                                )
+                              : null,
+                        ),
+                      ),
                     ),
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: <Color>[
-                            theme.colorScheme.surfaceContainerLow
-                                .withValues(alpha: 0.3),
-                            theme.colorScheme.surfaceContainerLow
-                                .withValues(alpha: 0.85),
-                            theme.colorScheme.surfaceContainerLow
-                                .withValues(alpha: 0.95),
+                    const SizedBox(width: Insets.lg),
+
+                    // Details
+                    Expanded(
+                      child: SizedBox(
+                        height: 126,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            // Title
+                            Text(
+                              session.showTitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                shadows: <Shadow>[
+                                  Shadow(
+                                    color: Colors.black.withValues(alpha: 0.8),
+                                    offset: const Offset(0, 2),
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+
+                            if (session.episodeName != null)
+                              Text(
+                                session.episodeName!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                  shadows: <Shadow>[
+                                    Shadow(
+                                      color:
+                                          Colors.black.withValues(alpha: 0.8),
+                                      offset: const Offset(0, 1),
+                                      blurRadius: 3,
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: theme.colorScheme.outlineVariant
+                                      .withValues(alpha: 0.5),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Icon(
+                                    Icons.person,
+                                    size: 14,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      '${session.user}: ${session.device}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style:
+                                          theme.textTheme.bodySmall?.copyWith(
+                                        color:
+                                            theme.colorScheme.onSurfaceVariant,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const Spacer(),
+
+                            // Progress Header
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: <Widget>[
+                                Text(
+                                  session.timePosition,
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  session.timeDuration,
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    color: theme.colorScheme.outline,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+
+                            // Progress Bar
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: LinearProgressIndicator(
+                                value: pct.clamp(0.0, 1.0),
+                                minHeight: 8,
+                                backgroundColor:
+                                    theme.colorScheme.surfaceContainerHighest,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  playing
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.outline,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -1408,184 +1588,9 @@ class _SessionCardState extends State<_SessionCard> {
                   ],
                 ),
               ),
-
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(Insets.md),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  // Poster
-                  ConstrainedBox(
-                    constraints:
-                        const BoxConstraints(maxWidth: 120, maxHeight: 126),
-                    child: AspectRatio(
-                      aspectRatio: session.aspectRatio != null &&
-                              session.aspectRatio! > 0.0
-                          ? session.aspectRatio!
-                          : (2 / 3),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: <BoxShadow>[
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.25),
-                              blurRadius: 12,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                          image: session.posterUrl != null
-                              ? DecorationImage(
-                                  image: CachedNetworkImageProvider(
-                                    session.posterUrl!,
-                                  ),
-                                  fit: BoxFit.cover,
-                                  onError: (Object _, StackTrace? __) {},
-                                )
-                              : null,
-                        ),
-                        child: session.posterUrl == null
-                            ? Icon(
-                                Icons.movie_outlined,
-                                color: theme.colorScheme.outline,
-                                size: 32,
-                              )
-                            : null,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: Insets.lg),
-
-                  // Details
-                  Expanded(
-                    child: SizedBox(
-                      height: 126,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          // Title
-                          Text(
-                            session.showTitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              shadows: <Shadow>[
-                                Shadow(
-                                  color: Colors.black.withValues(alpha: 0.8),
-                                  offset: const Offset(0, 2),
-                                  blurRadius: 4,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-
-                          if (session.episodeName != null)
-                            Text(
-                              session.episodeName!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                                shadows: <Shadow>[
-                                  Shadow(
-                                    color: Colors.black.withValues(alpha: 0.8),
-                                    offset: const Offset(0, 1),
-                                    blurRadius: 3,
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.surfaceContainerHighest
-                                  .withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: theme.colorScheme.outlineVariant
-                                    .withValues(alpha: 0.5),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: <Widget>[
-                                Icon(
-                                  Icons.person,
-                                  size: 14,
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                                const SizedBox(width: 4),
-                                Flexible(
-                                  child: Text(
-                                    '${session.user}: ${session.device}',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const Spacer(),
-
-                          // Progress Header
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: <Widget>[
-                              Text(
-                                session.timePosition,
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              Text(
-                                session.timeDuration,
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  color: theme.colorScheme.outline,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-
-                          // Progress Bar
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: LinearProgressIndicator(
-                              value: pct.clamp(0.0, 1.0),
-                              minHeight: 8,
-                              backgroundColor:
-                                  theme.colorScheme.surfaceContainerHighest,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                playing
-                                    ? theme.colorScheme.primary
-                                    : theme.colorScheme.outline,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

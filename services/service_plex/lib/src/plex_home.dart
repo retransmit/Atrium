@@ -12,6 +12,7 @@ import 'plex_item_detail.dart';
 import 'plex_music_screens.dart';
 import 'plex_providers.dart';
 import 'plex_session_detail_screen.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// Plex item types that open the detail screen; everything else is a container
 /// we drill into. Plex types are reliable and lowercase, so an allowlist is
@@ -159,7 +160,7 @@ class _ItemsGridState extends ConsumerState<_ItemsGrid> {
     final AsyncValue<List<PlexMetadata>> items = ref.watch(_provider);
     final PlexApi? api = ref.watch(plexApiProvider(widget.instance)).value;
 
-    final Widget grid = RefreshIndicator(
+    final Widget grid = M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(_provider);
         if (widget.isSection) {
@@ -216,10 +217,9 @@ class _ItemsGridState extends ConsumerState<_ItemsGrid> {
   /// blocked. Once loaded, `.value` keeps the last-known genres through a
   /// later refresh error rather than dropping the strip.
   Widget _genreStrip() {
-    final List<PlexGenreDir> genres = ref
-            .watch(plexGenresProvider((widget.instance, widget.id)))
-            .value ??
-        const <PlexGenreDir>[];
+    final List<PlexGenreDir> genres =
+        ref.watch(plexGenresProvider((widget.instance, widget.id))).value ??
+            const <PlexGenreDir>[];
     if (genres.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -327,7 +327,7 @@ class _HomeSections extends ConsumerWidget {
     final List<PlexLibrary> libraries =
         ref.watch(plexLibrariesProvider(instance)).value ??
             const <PlexLibrary>[];
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(plexSessionsProvider(instance));
         ref.invalidate(plexOnDeckProvider(instance));
@@ -502,7 +502,8 @@ class _NowStreamingSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final List<PlexSession> sessions =
-        ref.watch(plexSessionsProvider(instance)).value ?? const <PlexSession>[];
+        ref.watch(plexSessionsProvider(instance)).value ??
+            const <PlexSession>[];
     if (sessions.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -578,7 +579,8 @@ class _SessionCard extends ConsumerWidget {
         child: InkWell(
           onTap: () => pushScreen<void>(
             context,
-            PlexSessionDetailScreen(instance: instance, initialSession: session),
+            PlexSessionDetailScreen(
+                instance: instance, initialSession: session),
           ),
           child: Stack(
             fit: StackFit.expand,
@@ -797,11 +799,10 @@ class PlexPosterCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
-    final double progress = (item.viewOffset != null &&
-            item.duration != null &&
-            item.duration! > 0)
-        ? item.viewOffset! / item.duration!
-        : 0;
+    final double progress =
+        (item.viewOffset != null && item.duration != null && item.duration! > 0)
+            ? item.viewOffset! / item.duration!
+            : 0;
     final bool isEpisode = item.grandparentTitle != null;
 
     return InkWell(

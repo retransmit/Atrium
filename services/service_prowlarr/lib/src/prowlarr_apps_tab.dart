@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'models/prowlarr_application.dart';
 import 'prowlarr_providers.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// The Apps tab: the applications Prowlarr syncs its indexers to (Sonarr,
 /// Radarr, ...). Tapping a row opens its config form. Add and sync live on the
@@ -23,7 +24,7 @@ class ProwlarrAppsTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<ProwlarrApplication>> apps =
         ref.watch(prowlarrApplicationsProvider(instance));
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(prowlarrApplicationsProvider(instance)),
       child: AsyncValueView<List<ProwlarrApplication>>(

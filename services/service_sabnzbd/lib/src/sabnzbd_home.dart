@@ -8,6 +8,7 @@ import 'models/sab_queue.dart';
 import 'models/sab_stats.dart';
 import 'sabnzbd_api.dart';
 import 'sabnzbd_providers.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 /// SABnzbd's per-instance UI: Queue / History / Server tabs.
 class SabnzbdHome extends StatelessWidget {
@@ -53,7 +54,7 @@ class _QueueTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<SabQueue> queue = ref.watch(sabQueueProvider(instance));
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async => ref.invalidate(sabQueueProvider(instance)),
       child: AsyncValueView<SabQueue>(
         value: queue,
@@ -144,8 +145,8 @@ class _QueueSummary extends ConsumerWidget {
                   children: <Widget>[
                     Text(
                       speed,
-                      style: theme.textTheme.titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w700, color: accent),
+                      style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700, color: accent),
                     ),
                     Text(
                       _isPaused
@@ -182,7 +183,8 @@ class _QueueSummary extends ConsumerWidget {
             children: <Widget>[
               _StatPill(
                 icon: Icons.speed,
-                label: 'Limit ${queue.speedlimit.isEmpty ? "100" : queue.speedlimit}%',
+                label:
+                    'Limit ${queue.speedlimit.isEmpty ? "100" : queue.speedlimit}%',
                 color: cs.tertiary,
               ),
               if (queue.diskspace1.isNotEmpty) ...<Widget>[
@@ -265,7 +267,8 @@ class _SlotCard extends ConsumerWidget {
                     <String>[
                       slot.status,
                       if (slot.mb.isNotEmpty) _mbToHuman(slot.mb),
-                      if (slot.timeleft.isNotEmpty && slot.timeleft != '0:00:00')
+                      if (slot.timeleft.isNotEmpty &&
+                          slot.timeleft != '0:00:00')
                         slot.timeleft,
                     ].join(' • '),
                     maxLines: 1,
@@ -316,8 +319,9 @@ class _HistoryTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<SabHistory> history = ref.watch(sabHistoryProvider(instance));
-    return RefreshIndicator(
+    final AsyncValue<SabHistory> history =
+        ref.watch(sabHistoryProvider(instance));
+    return M3RefreshIndicator(
       onRefresh: () async => ref.invalidate(sabHistoryProvider(instance)),
       child: AsyncValueView<SabHistory>(
         value: history,
@@ -463,11 +467,10 @@ class _ServerTab extends ConsumerWidget {
     final AsyncValue<SabServerStats> stats =
         ref.watch(sabServerStatsProvider(instance));
     final SabQueue? queue = ref.watch(sabQueueProvider(instance)).value;
-    final String version =
-        ref.watch(sabVersionProvider(instance)).value ?? '';
+    final String version = ref.watch(sabVersionProvider(instance)).value ?? '';
     final int currentLimit = int.tryParse(queue?.speedlimit ?? '') ?? 100;
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(sabServerStatsProvider(instance));
         ref.invalidate(sabVersionProvider(instance));
@@ -481,10 +484,18 @@ class _ServerTab extends ConsumerWidget {
             child: stats.when(
               data: (SabServerStats s) => Row(
                 children: <Widget>[
-                  Expanded(child: _StatTile(label: 'Today', value: _fmtBytes(s.day))),
-                  Expanded(child: _StatTile(label: 'Week', value: _fmtBytes(s.week))),
-                  Expanded(child: _StatTile(label: 'Month', value: _fmtBytes(s.month))),
-                  Expanded(child: _StatTile(label: 'Total', value: _fmtBytes(s.total))),
+                  Expanded(
+                      child:
+                          _StatTile(label: 'Today', value: _fmtBytes(s.day))),
+                  Expanded(
+                      child:
+                          _StatTile(label: 'Week', value: _fmtBytes(s.week))),
+                  Expanded(
+                      child:
+                          _StatTile(label: 'Month', value: _fmtBytes(s.month))),
+                  Expanded(
+                      child:
+                          _StatTile(label: 'Total', value: _fmtBytes(s.total))),
                 ],
               ),
               loading: () => const Padding(
@@ -535,7 +546,8 @@ class _ServerTab extends ConsumerWidget {
 }
 
 class _SpeedLimitControl extends ConsumerStatefulWidget {
-  const _SpeedLimitControl({required this.instance, required this.initialPercent});
+  const _SpeedLimitControl(
+      {required this.instance, required this.initialPercent});
 
   final Instance instance;
   final int initialPercent;
@@ -585,7 +597,8 @@ class _SpeedLimitControlState extends ConsumerState<_SpeedLimitControl> {
 // Shared -------------------------------------------------------------------
 
 class _StatPill extends StatelessWidget {
-  const _StatPill({required this.icon, required this.label, required this.color});
+  const _StatPill(
+      {required this.icon, required this.label, required this.color});
 
   final IconData icon;
   final String label;
@@ -638,8 +651,8 @@ class _SectionCard extends StatelessWidget {
         children: <Widget>[
           Text(
             title,
-            style:
-                theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            style: theme.textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: Insets.sm),
           child,
@@ -749,8 +762,9 @@ String _fmtBytes(int bytes) {
     value /= 1024;
     unit++;
   }
-  final String text =
-      value >= 100 || unit == 0 ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
+  final String text = value >= 100 || unit == 0
+      ? value.toStringAsFixed(0)
+      : value.toStringAsFixed(1);
   return '$text ${units[unit]}';
 }
 

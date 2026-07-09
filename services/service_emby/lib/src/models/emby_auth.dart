@@ -35,7 +35,9 @@ abstract class EmbyUserPolicy with _$EmbyUserPolicy {
   const factory EmbyUserPolicy({
     @JsonKey(name: 'IsAdministrator') @Default(false) bool isAdministrator,
     @JsonKey(name: 'EnableAllFolders') @Default(true) bool enableAllFolders,
-    @JsonKey(name: 'EnabledFolders') @Default(<String>[]) List<String> enabledFolders,
+    @JsonKey(name: 'EnabledFolders')
+    @Default(<String>[])
+    List<String> enabledFolders,
   }) = _EmbyUserPolicy;
 
   factory EmbyUserPolicy.fromJson(Map<String, dynamic> json) =>

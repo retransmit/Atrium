@@ -23,6 +23,7 @@ dependencies:
   hive_ce: ^2.10.1
   intl: ^0.20.1
   json_annotation: ^4.9.0
+  m3_expressive: ^1.0.0
   meta: ^1.16.0
   url_launcher: ^6.3.2
 

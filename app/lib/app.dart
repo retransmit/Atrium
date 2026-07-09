@@ -34,7 +34,8 @@ class AtriumApp extends ConsumerWidget {
           title: 'Atrium',
           debugShowCheckedModeBanner: false,
           theme: AtriumTheme.light(lightScheme, fontFamily: resolvedFontFamily),
-          darkTheme: AtriumTheme.dark(darkScheme, fontFamily: resolvedFontFamily),
+          darkTheme:
+              AtriumTheme.dark(darkScheme, fontFamily: resolvedFontFamily),
           themeMode: themeMode,
           routerConfig: router,
           // Overlay the opt-in biometric lock above every route.
@@ -156,7 +157,8 @@ class _LockScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Icon(Icons.lock_outline, size: 64, color: theme.colorScheme.primary),
+            Icon(Icons.lock_outline,
+                size: 64, color: theme.colorScheme.primary),
             const SizedBox(height: 16),
             Text('Atrium is locked', style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),

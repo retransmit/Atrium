@@ -12,6 +12,7 @@ import 'sonarr_api.dart';
 import 'sonarr_providers.dart';
 import 'sonarr_release_search_screen.dart';
 import 'sonarr_settings_form_screen.dart';
+import 'package:m3_expressive/m3_expressive.dart';
 
 class SeriesDetailScreen extends ConsumerWidget {
   const SeriesDetailScreen({
@@ -95,7 +96,7 @@ class _SeriesDetailBody extends ConsumerWidget {
     final int downloadedCount = series.statistics?.episodeFileCount ?? 0;
     final int totalEpisodes = series.statistics?.episodeCount ?? 0;
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () => _refresh(context, ref),
       child: CustomScrollView(
         slivers: <Widget>[
@@ -629,7 +630,8 @@ class _ActionsRow extends ConsumerWidget {
                   onPressed: () async {
                     Navigator.of(context).pop();
                     try {
-                      final api = await ref.read(sonarrApiProvider(instance).future);
+                      final api =
+                          await ref.read(sonarrApiProvider(instance).future);
                       await api.updateSeasonPass(
                         seriesIds: [series.id],
                         monitorType: selectedType,
@@ -649,7 +651,8 @@ class _ActionsRow extends ConsumerWidget {
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Failed to update monitoring: $e')),
+                          SnackBar(
+                              content: Text('Failed to update monitoring: $e')),
                         );
                       }
                     }
@@ -941,8 +944,10 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
                       size: 18,
                       color: isMonitored ? cs.primary : cs.outline,
                     ),
-                    tooltip: isMonitored ? 'Unmonitor Season' : 'Monitor Season',
-                    onPressed: () => _toggleSeasonMonitoring(context, isMonitored),
+                    tooltip:
+                        isMonitored ? 'Unmonitor Season' : 'Monitor Season',
+                    onPressed: () =>
+                        _toggleSeasonMonitoring(context, isMonitored),
                     visualDensity: VisualDensity.compact,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(
@@ -1017,7 +1022,8 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
                   // Delete season files
                   if (downloaded > 0)
                     IconButton(
-                      icon: Icon(Icons.delete_outline, color: cs.error, size: 20),
+                      icon:
+                          Icon(Icons.delete_outline, color: cs.error, size: 20),
                       tooltip: 'Delete Season Files',
                       onPressed: () => _confirmDeleteSeasonFiles(context),
                       visualDensity: VisualDensity.compact,
@@ -1062,11 +1068,12 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
     );
   }
 
-  Future<void> _toggleSeasonMonitoring(BuildContext context, bool currentMonitored) async {
+  Future<void> _toggleSeasonMonitoring(
+      BuildContext context, bool currentMonitored) async {
     try {
       final api = await ref.read(sonarrApiProvider(widget.instance).future);
       final raw = await api.getSeriesRaw(widget.series.id);
-      
+
       final List<dynamic> seasons = raw['seasons'] as List<dynamic>;
       for (final dynamic s in seasons) {
         final Map<String, dynamic> season = s as Map<String, dynamic>;
@@ -1075,11 +1082,12 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
           break;
         }
       }
-      
+
       await api.updateSeriesRaw(raw);
 
       if (!context.mounted) return;
-      ref.invalidate(sonarrSeriesByIdProvider((widget.instance, widget.series.id)));
+      ref.invalidate(
+          sonarrSeriesByIdProvider((widget.instance, widget.series.id)));
       ref.invalidate(sonarrSeriesProvider(widget.instance));
       widget.onRefreshed();
 
@@ -1129,7 +1137,7 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
 
     if (confirm == true) {
       if (!context.mounted) return;
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Deleting season files...'),
@@ -1165,15 +1173,18 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
       }
 
       if (!context.mounted) return;
-      ref.invalidate(sonarrEpisodesProvider((widget.instance, widget.series.id)));
-      ref.invalidate(sonarrSeriesByIdProvider((widget.instance, widget.series.id)));
+      ref.invalidate(
+          sonarrEpisodesProvider((widget.instance, widget.series.id)));
+      ref.invalidate(
+          sonarrSeriesByIdProvider((widget.instance, widget.series.id)));
       ref.invalidate(sonarrSeriesProvider(widget.instance));
       widget.onRefreshed();
 
       if (context.mounted) {
         if (failedCount == 0) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Successfully deleted $deletedCount file(s).')),
+            SnackBar(
+                content: Text('Successfully deleted $deletedCount file(s).')),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1242,8 +1253,7 @@ class _EpisodeRow extends ConsumerWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
 
-    final Color statusColor =
-        episode.hasFile ? cs.tertiary : cs.outlineVariant;
+    final Color statusColor = episode.hasFile ? cs.tertiary : cs.outlineVariant;
 
     return Padding(
       padding: const EdgeInsets.symmetric(
