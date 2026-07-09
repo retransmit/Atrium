@@ -1,6 +1,8 @@
 import 'package:core_models/core_models.dart';
+import 'package:core_router/core_router.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import 'settings/connect_settings_screen.dart';
 import 'settings/download_clients_screen.dart';
@@ -111,6 +113,20 @@ class SettingsTab extends StatelessWidget {
             subtitle: 'Manage label identifiers for categories, series, and profiles.',
             icon: Icons.label_outline,
             screen: TagsSettingsScreen(instance: instance),
+          ),
+          _buildSettingsCard(
+            context: context,
+            title: 'Connection Settings',
+            subtitle: 'Edit connection URL, API Key, and label for this Sonarr instance in Atrium.',
+            icon: Icons.key_outlined,
+            onTap: () {
+              context.pushNamed(
+                AtriumRoutes.editInstanceName,
+                pathParameters: <String, String>{
+                  'instanceId': instance.id,
+                },
+              );
+            },
           ),
           const SizedBox(height: Insets.md),
 

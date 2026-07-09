@@ -307,7 +307,19 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     if (!hasCalendarServices) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Calendar')),
+        appBar: AppBar(
+          leading: Builder(
+            builder: (BuildContext context) {
+              return IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () {
+                  openDrawer(context);
+                },
+              );
+            },
+          ),
+          title: const Text('Calendar'),
+        ),
         body: const EmptyView(
           icon: Icons.calendar_today_outlined,
           title: 'No calendar services',
@@ -319,6 +331,16 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: Builder(
+          builder: (BuildContext context) {
+            return IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () {
+                openDrawer(context);
+              },
+            );
+          },
+        ),
         title: const Text('Calendar'),
       ),
       body: M3RefreshIndicator(

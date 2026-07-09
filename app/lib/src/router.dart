@@ -1,4 +1,6 @@
 import 'package:core_router/core_router.dart';
+import 'package:core_profile/core_profile.dart';
+import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -28,7 +30,16 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
           GoRouterState state,
           StatefulNavigationShell shell,
         ) =>
-            ScaffoldWithNavBar(navigationShell: shell),
+            Consumer(
+              builder: (BuildContext context, WidgetRef ref, Widget? child) {
+                final List<Instance> instances = ref.watch(activeInstancesProvider);
+                final Profile? profile = ref.watch(activeProfileProvider);
+                return ScaffoldWithNavBar(
+                  navigationShell: shell,
+                  drawer: ServicesDrawer(instances: instances, profile: profile),
+                );
+              },
+            ),
         branches: <StatefulShellBranch>[
           StatefulShellBranch(
             routes: <RouteBase>[

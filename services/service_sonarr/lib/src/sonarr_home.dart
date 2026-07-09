@@ -97,13 +97,15 @@ class SonarrHome extends ConsumerWidget {
       drawer: drawer,
       body: NotificationListener<UserScrollNotification>(
         onNotification: (UserScrollNotification notification) {
-          final ScrollDirection direction = notification.direction;
-          if (direction == ScrollDirection.reverse) {
-            ref.read(sonarrBottomNavVisibleProvider(instance).notifier).state =
-                false;
-          } else if (direction == ScrollDirection.forward) {
-            ref.read(sonarrBottomNavVisibleProvider(instance).notifier).state =
-                true;
+          if (notification.metrics.axis == Axis.vertical) {
+            final ScrollDirection direction = notification.direction;
+            if (direction == ScrollDirection.reverse) {
+              ref.read(sonarrBottomNavVisibleProvider(instance).notifier).state =
+                  false;
+            } else if (direction == ScrollDirection.forward) {
+              ref.read(sonarrBottomNavVisibleProvider(instance).notifier).state =
+                  true;
+            }
           }
           return false;
         },

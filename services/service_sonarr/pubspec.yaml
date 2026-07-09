@@ -13,6 +13,7 @@ dependencies:
   core_models:
   core_networking:
   core_profile:
+  core_router:
   core_storage:
   core_ui:
   dio: ^5.7.0
@@ -20,6 +21,7 @@ dependencies:
     sdk: flutter
   flutter_riverpod: ^3.3.2
   freezed_annotation: ^3.1.0
+  go_router: ^17.3.0
   hive_ce: ^2.10.1
   intl: ^0.20.1
   json_annotation: ^4.9.0

@@ -23,7 +23,7 @@ sealed class NetworkException implements Exception {
       DioExceptionType.cancel =>
         const NetworkCancelledException('Request was cancelled.'),
       DioExceptionType.badResponse => _fromBadResponse(e),
-      DioExceptionType.unknown =>
+      DioExceptionType.unknown || _ =>
         NetworkUnknownException(e.message ?? 'Unknown network error.'),
     };
   }
