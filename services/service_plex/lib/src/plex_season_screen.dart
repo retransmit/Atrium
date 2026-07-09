@@ -9,69 +9,19 @@ import 'plex_api.dart';
 import 'plex_item_detail.dart';
 import 'plex_providers.dart';
 
-/// Seasons of a show, each drilling into its episode list. Browse/manage
-/// only: episodes carry a watched toggle, playback stays with the official
-/// Plex app.
-class PlexSeasonScreen extends ConsumerWidget {
-  const PlexSeasonScreen({
-    required this.instance,
-    required this.show,
-    super.key,
-  });
-
-  final Instance instance;
-  final PlexMetadata show;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<List<PlexMetadata>> seasons =
-        ref.watch(plexChildrenProvider((instance, show.ratingKey)));
-    final PlexApi? api = ref.watch(plexApiProvider(instance)).value;
-
-    return Scaffold(
-      appBar: AppBar(title: Text(show.title)),
-      body: RefreshIndicator(
-        onRefresh: () async =>
-            ref.invalidate(plexChildrenProvider((instance, show.ratingKey))),
-        child: AsyncValueView<List<PlexMetadata>>(
-          value: seasons,
-          onRetry: () =>
-              ref.invalidate(plexChildrenProvider((instance, show.ratingKey))),
-          data: (List<PlexMetadata> list) {
-            if (list.isEmpty) {
-              return const EmptyView(
-                icon: Icons.tv_outlined,
-                title: 'No seasons',
-                message: 'This show has no seasons yet.',
-              );
-            }
-            return ListView.separated(
-              padding: Insets.page,
-              itemCount: list.length,
-              separatorBuilder: (_, __) => const SizedBox(height: Insets.md),
-              itemBuilder: (BuildContext context, int index) {
-                final PlexMetadata season = list[index];
-                return _SeasonCard(
-                  instance: instance,
-                  season: season,
-                  imageUrl: api?.imageUrl(season.thumb),
-                );
-              },
-            );
-          },
-        ),
-      ),
-    );
-  }
-}
+/// Season and episode browsing for a Plex show. Browse/manage only: episodes
+/// carry a watched toggle; playback stays with the official Plex app. Seasons
+/// are shown inline on the show's detail screen ([PlexSeasonCard]); tapping one
+/// opens its [PlexEpisodeList].
 
 /// Tonal card for one season: poster, title, and watched progress from
 /// `viewedLeafCount / leafCount`. Tapping opens the episode list.
-class _SeasonCard extends StatelessWidget {
-  const _SeasonCard({
+class PlexSeasonCard extends StatelessWidget {
+  const PlexSeasonCard({
     required this.instance,
     required this.season,
     required this.imageUrl,
+    super.key,
   });
 
   final Instance instance;
@@ -97,7 +47,7 @@ class _SeasonCard extends StatelessWidget {
       child: InkWell(
         onTap: () => pushScreen<void>(
           context,
-          _PlexEpisodeList(instance: instance, season: season),
+          PlexEpisodeList(instance: instance, season: season),
         ),
         child: SizedBox(
           height: 96,
@@ -172,8 +122,8 @@ class _SeasonCard extends StatelessWidget {
 /// Episodes of one season. Each row shows the SxEx label, watched state, and
 /// a trailing toggle that scrobbles/unscrobbles the episode on the server.
 /// Tapping a row opens the episode detail screen.
-class _PlexEpisodeList extends ConsumerWidget {
-  const _PlexEpisodeList({required this.instance, required this.season});
+class PlexEpisodeList extends ConsumerWidget {
+  const PlexEpisodeList({required this.instance, required this.season, super.key});
 
   final Instance instance;
   final PlexMetadata season;

@@ -176,27 +176,9 @@ class _PlexItemDetailScreenState extends ConsumerState<PlexItemDetailScreen> {
                 ),
                 if (item.type == 'show')
                   SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        Insets.lg,
-                        Insets.lg,
-                        Insets.lg,
-                        0,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: FilledButton.tonalIcon(
-                          onPressed: () => pushScreen<void>(
-                            context,
-                            PlexSeasonScreen(
-                              instance: widget.instance,
-                              show: item,
-                            ),
-                          ),
-                          icon: const Icon(Icons.video_library_outlined),
-                          label: const Text('View seasons'),
-                        ),
-                      ),
+                    child: _ShowSeasons(
+                      instance: widget.instance,
+                      showRatingKey: item.ratingKey,
                     ),
                   ),
                 if (item.summary != null && item.summary!.isNotEmpty)
@@ -448,6 +430,50 @@ class _Header extends StatelessWidget {
         ? 'S${item.parentIndex} E${item.index}'
         : '';
     return se.isEmpty ? item.title : '$se - ${item.title}';
+  }
+}
+
+/// Inline seasons on a show's detail: a header plus one [PlexSeasonCard] per
+/// season, each opening that season's [PlexEpisodeList]. Renders nothing while
+/// the seasons load or when the show has none.
+class _ShowSeasons extends ConsumerWidget {
+  const _ShowSeasons({required this.instance, required this.showRatingKey});
+
+  final Instance instance;
+  final String showRatingKey;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
+    final List<PlexMetadata> seasons =
+        ref.watch(plexChildrenProvider((instance, showRatingKey))).value ??
+            const <PlexMetadata>[];
+    if (seasons.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final PlexApi? api = ref.watch(plexApiProvider(instance)).value;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Insets.lg, Insets.lg, Insets.lg, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            'Seasons',
+            style: theme.textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: Insets.md),
+          for (final PlexMetadata season in seasons) ...<Widget>[
+            PlexSeasonCard(
+              instance: instance,
+              season: season,
+              imageUrl: api?.imageUrl(season.thumb),
+            ),
+            const SizedBox(height: Insets.md),
+          ],
+        ],
+      ),
+    );
   }
 }
 
