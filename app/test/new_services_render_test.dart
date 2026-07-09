@@ -217,12 +217,18 @@ void main() {
         plexRecentlyAddedProvider(instance).overrideWith(
           (Ref ref) async => const <PlexMetadata>[],
         ),
+        // The hub renders a row per library, so its items provider must be
+        // overridden too (a real fetch would leave a pending timer).
+        plexItemsProvider((instance, '1')).overrideWith(
+          (Ref ref) async => const <PlexMetadata>[],
+        ),
       ],
       PlexHome(instance: instance),
       pumps: 4,
     );
     expect(find.text('Continue Watching'), findsOneWidget);
-    expect(find.text('Blade Runner'), findsOneWidget);
+    // Once in the featured hero, once in the Continue Watching row.
+    expect(find.text('Blade Runner'), findsNWidgets(2));
     expect(find.text('Movies'), findsOneWidget);
   });
 

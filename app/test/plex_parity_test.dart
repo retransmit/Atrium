@@ -144,6 +144,10 @@ void main() {
             .overrideWith((Ref ref) async => const <PlexMetadata>[]),
         plexRecentlyAddedProvider(instance)
             .overrideWith((Ref ref) async => const <PlexMetadata>[]),
+        // The hub renders a row per library, so its items provider must be
+        // overridden too (a real fetch would leave a pending timer).
+        plexItemsProvider((instance, '1'))
+            .overrideWith((Ref ref) async => const <PlexMetadata>[]),
       ],
       PlexHome(instance: instance),
       pumps: 4,
@@ -245,8 +249,10 @@ void main() {
       pumps: 4,
     );
 
-    // Open the Movies library: unfiltered grid plus the genre strip.
-    await tester.tap(find.text('Movies'));
+    // Open the Movies library: unfiltered grid plus the genre strip. 'Movies'
+    // appears twice on the hub (chip + library row header), so target the
+    // chip.
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Movies'));
     for (int i = 0; i < 3; i++) {
       await tester.pump();
     }
@@ -261,5 +267,104 @@ void main() {
     }
     expect(find.text('Die Hard'), findsOneWidget);
     expect(find.text('Heat'), findsNothing);
+  });
+
+  testWidgets('PlexHome hub shows a featured hero for the top on-deck item',
+      (WidgetTester tester) async {
+    final Instance instance = makeInstance();
+    await pumpBody(
+      tester,
+      <Override>[
+        plexApiProvider(instance)
+            .overrideWith((Ref ref) async => PlexApi(Dio(), token: 'tok')),
+        plexLibrariesProvider(instance).overrideWith(
+          (Ref ref) async => const <PlexLibrary>[
+            PlexLibrary(key: '1', title: 'Movies', type: 'movie'),
+          ],
+        ),
+        plexSessionsProvider(instance)
+            .overrideWith((Ref ref) async => const <PlexSession>[]),
+        plexOnDeckProvider(instance).overrideWith(
+          (Ref ref) async => const <PlexMetadata>[
+            PlexMetadata(
+                ratingKey: '10', title: 'Blade Runner', year: 1982,
+                type: 'movie', viewOffset: 600000, duration: 6000000),
+          ],
+        ),
+        plexRecentlyAddedProvider(instance)
+            .overrideWith((Ref ref) async => const <PlexMetadata>[]),
+        plexItemsProvider((instance, '1'))
+            .overrideWith((Ref ref) async => const <PlexMetadata>[]),
+      ],
+      PlexHome(instance: instance),
+      pumps: 5,
+    );
+    expect(find.text('Blade Runner'), findsWidgets); // hero (+ maybe row)
+    expect(find.text('Resume'), findsOneWidget); // viewOffset>0 -> Resume
+  });
+
+  testWidgets('PlexHome hub shows a per-library row without a chip tap',
+      (WidgetTester tester) async {
+    final Instance instance = makeInstance();
+    await pumpBody(
+      tester,
+      <Override>[
+        plexApiProvider(instance)
+            .overrideWith((Ref ref) async => PlexApi(Dio(), token: 'tok')),
+        plexLibrariesProvider(instance).overrideWith(
+          (Ref ref) async => const <PlexLibrary>[
+            PlexLibrary(key: '7', title: 'TV Shows', type: 'show'),
+          ],
+        ),
+        plexSessionsProvider(instance)
+            .overrideWith((Ref ref) async => const <PlexSession>[]),
+        plexOnDeckProvider(instance)
+            .overrideWith((Ref ref) async => const <PlexMetadata>[]),
+        plexRecentlyAddedProvider(instance)
+            .overrideWith((Ref ref) async => const <PlexMetadata>[]),
+        plexItemsProvider((instance, '7')).overrideWith(
+          (Ref ref) async => const <PlexMetadata>[
+            PlexMetadata(ratingKey: '70', title: 'The Wire', type: 'show'),
+          ],
+        ),
+      ],
+      PlexHome(instance: instance),
+      pumps: 5,
+    );
+    expect(find.text('TV Shows'), findsWidgets); // library row header (+ chip)
+    expect(find.text('The Wire'), findsOneWidget); // row item, no chip tap
+  });
+
+  testWidgets('Now Streaming backdrop card shows the session title',
+      (WidgetTester tester) async {
+    final Instance instance = makeInstance();
+    await pumpBody(
+      tester,
+      <Override>[
+        plexApiProvider(instance)
+            .overrideWith((Ref ref) async => PlexApi(Dio(), token: 'tok')),
+        plexLibrariesProvider(instance)
+            .overrideWith((Ref ref) async => const <PlexLibrary>[]),
+        plexSessionsProvider(instance).overrideWith(
+          (Ref ref) async => const <PlexSession>[
+            PlexSession(
+              title: 'Dune',
+              art: '/art/1',
+              player: PlexSessionPlayer(
+                  title: 'TV', machineIdentifier: 'x', state: 'playing'),
+              session: PlexSessionInfo(id: 's1'),
+            ),
+          ],
+        ),
+        plexOnDeckProvider(instance)
+            .overrideWith((Ref ref) async => const <PlexMetadata>[]),
+        plexRecentlyAddedProvider(instance)
+            .overrideWith((Ref ref) async => const <PlexMetadata>[]),
+      ],
+      PlexHome(instance: instance),
+      pumps: 5,
+    );
+    expect(find.text('Now Streaming'), findsOneWidget);
+    expect(find.text('Dune'), findsWidgets);
   });
 }
