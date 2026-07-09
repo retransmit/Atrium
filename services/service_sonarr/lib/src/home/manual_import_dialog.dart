@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:core_models/core_models.dart';
+import 'package:core_networking/core_networking.dart';
 import 'package:core_ui/core_ui.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -81,23 +83,59 @@ class __ManualImportSetupDialogState
       return;
     }
 
+    final CancelToken cancelToken = CancelToken();
+
     // Show loading overlay
     final NavigatorState nav = Navigator.of(context, rootNavigator: true);
     unawaited(showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) => const PopScope<Object?>(
+      builder: (BuildContext dialogContext) => PopScope<Object?>(
         canPop: false,
         child: Center(
           child: Card(
+            margin: const EdgeInsets.symmetric(horizontal: 32),
             child: Padding(
-              padding: EdgeInsets.all(24.0),
+              padding: const EdgeInsets.all(24.0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  ExpressiveProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Scanning folder contents...'),
+                  const ExpressiveProgressIndicator(),
+                  const SizedBox(height: 16),
+                  const Text('Scanning folder contents...'),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: <Widget>[
+                      TextButton(
+                        onPressed: () async {
+                          final bool? confirm = await showDialog<bool>(
+                            context: dialogContext,
+                            builder: (BuildContext confirmContext) => AlertDialog(
+                              title: const Text('Cancel Scan?'),
+                              content: const Text(
+                                'Are you sure you want to stop scanning this folder?',
+                              ),
+                              actions: <Widget>[
+                                TextButton(
+                                  onPressed: () => Navigator.pop(confirmContext, false),
+                                  child: const Text('No'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(confirmContext, true),
+                                  child: const Text('Yes, Cancel'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            cancelToken.cancel('user_cancelled');
+                          }
+                        },
+                        child: const Text('Cancel'),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -115,6 +153,7 @@ class __ManualImportSetupDialogState
       scanResults = await api.getManualImport(
         folder: folder,
         filterExistingFiles: filterExisting,
+        cancelToken: cancelToken,
       );
     } catch (e) {
       error = e;
@@ -124,9 +163,15 @@ class __ManualImportSetupDialogState
 
     if (!mounted) return;
     if (error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Scan failed: $error')),
-      );
+      if (error is NetworkCancelledException) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Scan cancelled.')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Scan failed: $error')),
+        );
+      }
       return;
     }
 
@@ -525,13 +570,51 @@ class __ManualImportMappingScreenState
   final Set<String> _selectedPaths = <String>{};
   bool _importing = false;
 
+  bool _isVideoFile(Map<String, dynamic> f) {
+    final String? path = (f['path'] as String?)?.toLowerCase();
+    if (path == null) return false;
+
+    // TypeScript definition files are never videos
+    if (path.endsWith('.d.ts')) return false;
+
+    // Standard video extensions supported by Sonarr / Radarr / typical players
+    const Set<String> videoExtensions = <String>{
+      '.mkv',
+      '.mp4',
+      '.avi',
+      '.m4v',
+      '.mov',
+      '.wmv',
+      '.mpg',
+      '.mpeg',
+      '.flv',
+      '.webm',
+      '.ts',
+    };
+
+    final bool hasVideoExtension = videoExtensions.any(path.endsWith);
+    if (!hasVideoExtension) return false;
+
+    // If it's a .ts file, ensure it's not a tiny TypeScript file.
+    // Real video .ts files are typically at least 1MB (1,048,576 bytes).
+    if (path.endsWith('.ts')) {
+      final int size = (f['size'] as num?)?.toInt() ?? 0;
+      if (size < 1024 * 1024) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   @override
   void initState() {
     super.initState();
-    // Copy the items locally so they are mutable
-    _files = List<dynamic>.from(
+    // Copy the items locally so they are mutable, filtering out non-video files
+    final List<Map<String, dynamic>> rawFiles = List<Map<String, dynamic>>.from(
       widget.initialFiles.map((dynamic f) => Map<String, dynamic>.from(f as Map)),
     );
+    _files = rawFiles.where(_isVideoFile).toList();
 
     // Auto-select items that are parsed successfully and have no rejections
     for (final f in _files.cast<Map<String, dynamic>>()) {

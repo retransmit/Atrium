@@ -18,7 +18,19 @@ class SettingsScreen extends ConsumerWidget {
         ref.read(preferencesProvider.notifier);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(
+        leading: Builder(
+          builder: (BuildContext context) {
+            return IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () {
+                openDrawer(context);
+              },
+            );
+          },
+        ),
+        title: const Text('Settings'),
+      ),
       body: ListView(
         children: <Widget>[
           const _SectionHeader('Appearance'),

@@ -234,6 +234,9 @@ class SonarrApi {
       final Response<dynamic> resp = await _dio.get<dynamic>(
         '$_base/release',
         queryParameters: qParams,
+        options: Options(
+          receiveTimeout: Duration.zero,
+        ),
       );
       return (resp.data as List<dynamic>)
           .map((dynamic e) => e as Map<String, dynamic>)
@@ -246,6 +249,20 @@ class SonarrApi {
   Future<void> downloadRelease(Map<String, dynamic> release) async {
     try {
       await _dio.post<dynamic>('$_base/release', data: release);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getEpisodeFiles(int seriesId) async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>(
+        '$_base/episodefile',
+        queryParameters: <String, dynamic>{'seriesId': seriesId},
+      );
+      return (resp.data as List<dynamic>)
+          .map((dynamic e) => e as Map<String, dynamic>)
+          .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -658,6 +675,7 @@ class SonarrApi {
   Future<List<dynamic>> getManualImport({
     required String folder,
     bool filterExistingFiles = false,
+    CancelToken? cancelToken,
   }) async {
     try {
       final Response<dynamic> resp = await _dio.get<dynamic>(
@@ -666,6 +684,10 @@ class SonarrApi {
           'folder': folder,
           'filterExistingFiles': filterExistingFiles,
         },
+        cancelToken: cancelToken,
+        options: Options(
+          receiveTimeout: const Duration(seconds: 180),
+        ),
       );
       return resp.data as List<dynamic>;
     } on DioException catch (e) {

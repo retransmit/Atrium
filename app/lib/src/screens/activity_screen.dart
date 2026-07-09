@@ -9,7 +9,19 @@ class ActivityScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Activity')),
+      appBar: AppBar(
+        leading: Builder(
+          builder: (BuildContext context) {
+            return IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () {
+                openDrawer(context);
+              },
+            );
+          },
+        ),
+        title: const Text('Activity'),
+      ),
       body: const EmptyView(
         icon: Icons.swap_vert_outlined,
         title: 'Activity coming soon',

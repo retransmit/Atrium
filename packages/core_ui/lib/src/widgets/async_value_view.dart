@@ -32,8 +32,8 @@ class AsyncValueView<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return value.when(
-      skipLoadingOnReload: true,
-      skipLoadingOnRefresh: true,
+      skipLoadingOnReload: !value.hasError,
+      skipLoadingOnRefresh: !value.hasError,
       data: data,
       loading: () =>
           loading ?? const Center(child: ExpressiveProgressIndicator()),
