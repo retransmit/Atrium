@@ -156,15 +156,18 @@ void main() {
     expect(find.text('Dune'), findsOneWidget);
   });
 
-  testWidgets('PlexSeasonScreen lists seasons', (WidgetTester tester) async {
+  testWidgets('show detail lists its seasons inline',
+      (WidgetTester tester) async {
     final Instance instance = makeInstance();
-    const PlexMetadata show =
-        PlexMetadata(ratingKey: '100', title: 'The Wire', type: 'show');
     await pumpBody(
       tester,
       <Override>[
         plexApiProvider(instance)
             .overrideWith((Ref ref) async => PlexApi(Dio(), token: 'tok')),
+        plexItemDetailProvider((instance, '100')).overrideWith(
+          (Ref ref) async =>
+              const PlexMetadata(ratingKey: '100', title: 'The Wire', type: 'show'),
+        ),
         plexChildrenProvider((instance, '100')).overrideWith(
           (Ref ref) async => const <PlexMetadata>[
             PlexMetadata(
@@ -176,11 +179,12 @@ void main() {
           ],
         ),
       ],
-      PlexSeasonScreen(instance: instance, show: show),
-      pumps: 3,
+      PlexItemDetailScreen(instance: instance, ratingKey: '100'),
+      pumps: 4,
     );
-    expect(find.text('The Wire'), findsOneWidget);
-    expect(find.text('Season 1'), findsOneWidget);
+    expect(find.text('The Wire'), findsWidgets); // header title
+    expect(find.text('Seasons'), findsOneWidget); // inline section header
+    expect(find.text('Season 1'), findsOneWidget); // season card
   });
 
   testWidgets('PlexAlbumScreen lists tracks', (WidgetTester tester) async {

@@ -11,7 +11,6 @@ import 'plex_api.dart';
 import 'plex_item_detail.dart';
 import 'plex_music_screens.dart';
 import 'plex_providers.dart';
-import 'plex_season_screen.dart';
 import 'plex_session_detail_screen.dart';
 
 /// Plex item types that open the detail screen; everything else is a container
@@ -261,15 +260,12 @@ class _ItemsGridState extends ConsumerState<_ItemsGrid> {
 /// drills into a child grid. Uses the root navigator so GoRouter's shell
 /// rebuilds don't sweep the pushed route.
 void openPlexItem(BuildContext context, Instance instance, PlexMetadata item) {
-  if (plexPlayableTypes.contains(item.type)) {
+  if (plexPlayableTypes.contains(item.type) || item.type == 'show') {
+    // Shows open the detail screen too (synopsis, cast, and their seasons
+    // shown inline), matching how movies and the Emby/Jellyfin modules behave.
     pushScreen<void>(
       context,
       PlexItemDetailScreen(instance: instance, ratingKey: item.ratingKey),
-    );
-  } else if (item.type == 'show') {
-    pushScreen<void>(
-      context,
-      PlexSeasonScreen(instance: instance, show: item),
     );
   } else if (item.type == 'artist') {
     pushScreen<void>(
