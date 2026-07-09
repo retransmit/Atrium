@@ -133,20 +133,42 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                 sonarrActiveTabBarIndexProvider(widget.instance),
               ) ==
               0
-          ? FloatingActionButton.extended(
-              shape: const StadiumBorder(),
-              backgroundColor: theme.colorScheme.primaryContainer,
-              foregroundColor: theme.colorScheme.onPrimaryContainer,
-              onPressed: () {
-                Navigator.of(context, rootNavigator: true).push(
-                  FadePageRoute<void>(
-                    builder: (BuildContext context) =>
-                        SonarrAddSeriesSearchScreen(instance: widget.instance),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Add Series'),
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: <Widget>[
+                FloatingActionButton.small(
+                  heroTag: 'sonarr_sort_filter_fab',
+                  backgroundColor: theme.colorScheme.secondaryContainer,
+                  foregroundColor: theme.colorScheme.onSecondaryContainer,
+                  onPressed: () {
+                    showModalBottomSheet<void>(
+                      context: context,
+                      showDragHandle: true,
+                      builder: (BuildContext context) =>
+                          _SortFilterBottomSheet(instance: widget.instance),
+                    );
+                  },
+                  child: const Icon(Icons.tune),
+                ),
+                const SizedBox(height: 12),
+                FloatingActionButton.extended(
+                  heroTag: 'sonarr_add_series_fab',
+                  shape: const StadiumBorder(),
+                  backgroundColor: theme.colorScheme.primaryContainer,
+                  foregroundColor: theme.colorScheme.onPrimaryContainer,
+                  onPressed: () {
+                    Navigator.of(context, rootNavigator: true).push(
+                      FadePageRoute<void>(
+                        builder: (BuildContext context) =>
+                            SonarrAddSeriesSearchScreen(instance: widget.instance),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Series'),
+                ),
+              ],
             )
           : null,
       body: GestureDetector(
@@ -185,7 +207,7 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                         : IconButton(
                             icon: const Icon(Icons.menu),
                             onPressed: () {
-                              Scaffold.of(context).openDrawer();
+                              openDrawer(context);
                             },
                           ),
                     title: isSelecting
@@ -538,9 +560,11 @@ class _SeriesCard extends StatelessWidget {
   }
 
   String _subtitle() {
+    final int sizeOnDisk = series.statistics?.sizeOnDisk ?? 0;
     final List<String> parts = <String>[
       if (series.year != null) '${series.year}',
       if (series.status != null) series.status!,
+      if (sizeOnDisk > 0) _formatSize(sizeOnDisk),
     ];
     return parts.join(' • ');
   }
@@ -740,10 +764,12 @@ class _SeriesBannerCard extends ConsumerWidget {
   }
 
   String _metaText() {
+    final int sizeOnDisk = series.statistics?.sizeOnDisk ?? 0;
     final List<String> parts = <String>[
       if (series.year != null) '${series.year}',
       if (series.network != null && series.network!.isNotEmpty) series.network!,
       if (series.status != null && series.status!.isNotEmpty) series.status!,
+      if (sizeOnDisk > 0) _formatSize(sizeOnDisk),
     ];
     return parts.join(' • ');
   }
@@ -1141,5 +1167,146 @@ class _BulkDeleteDialogState extends ConsumerState<_BulkDeleteDialog> {
       ],
     );
   }
+}
+
+class _SortFilterBottomSheet extends ConsumerWidget {
+  const _SortFilterBottomSheet({required this.instance});
+
+  final Instance instance;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+
+    final sortField = ref.watch(sonarrSeriesSortFieldProvider(instance));
+    final sortAscending = ref.watch(sonarrSeriesSortAscendingProvider(instance));
+    final filter = ref.watch(sonarrSeriesFilterProvider(instance));
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Filter',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: SonarrSeriesFilter.values.map((f) {
+                  final label = switch (f) {
+                    SonarrSeriesFilter.all => 'All',
+                    SonarrSeriesFilter.monitoredOnly => 'Monitored Only',
+                    SonarrSeriesFilter.unmonitoredOnly => 'Unmonitored Only',
+                    SonarrSeriesFilter.continuingOnly => 'Continuing Only',
+                    SonarrSeriesFilter.endedOnly => 'Ended Only',
+                    SonarrSeriesFilter.missingEpisodes => 'Missing Episodes',
+                  };
+                  final selected = filter == f;
+                  return ChoiceChip(
+                    label: Text(label),
+                    selected: selected,
+                    onSelected: (val) {
+                      if (val) {
+                        ref
+                            .read(sonarrSeriesFilterProvider(instance).notifier)
+                            .state = f;
+                      }
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Sort By',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: SonarrSeriesSortField.values.map((field) {
+                  final label = switch (field) {
+                    SonarrSeriesSortField.monitoredStatus => 'Monitored/Status',
+                    SonarrSeriesSortField.title => 'Title',
+                    SonarrSeriesSortField.network => 'Network',
+                    SonarrSeriesSortField.nextAiring => 'Next Airing',
+                    SonarrSeriesSortField.previousAiring => 'Previous Airing',
+                    SonarrSeriesSortField.added => 'Added',
+                    SonarrSeriesSortField.seasons => 'Seasons',
+                    SonarrSeriesSortField.episodes => 'Episodes',
+                    SonarrSeriesSortField.episodeCount => 'Episode Count',
+                    SonarrSeriesSortField.sizeOnDisk => 'Size on Disk',
+                  };
+                  final selected = sortField == field;
+                  return ChoiceChip(
+                    label: Text(label),
+                    selected: selected,
+                    onSelected: (val) {
+                      if (val) {
+                        ref
+                            .read(sonarrSeriesSortFieldProvider(instance).notifier)
+                            .state = field;
+                      }
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Order',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SegmentedButton<bool>(
+                segments: const <ButtonSegment<bool>>[
+                  ButtonSegment<bool>(
+                    value: true,
+                    label: Text('Ascending'),
+                    icon: Icon(Icons.arrow_upward),
+                  ),
+                  ButtonSegment<bool>(
+                    value: false,
+                    label: Text('Descending'),
+                    icon: Icon(Icons.arrow_downward),
+                  ),
+                ],
+                selected: {sortAscending},
+                onSelectionChanged: (val) {
+                  ref
+                      .read(sonarrSeriesSortAscendingProvider(instance).notifier)
+                      .state = val.first;
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _formatSize(int bytes) {
+  if (bytes <= 0) return '0 B';
+  const List<String> suffixes = <String>['B', 'KB', 'MB', 'GB', 'TB'];
+  int i = 0;
+  double dBytes = bytes.toDouble();
+  while (dBytes >= 1024 && i < suffixes.length - 1) {
+    dBytes /= 1024;
+    i++;
+  }
+  return '${dBytes.toStringAsFixed(1)} ${suffixes[i]}';
 }
 

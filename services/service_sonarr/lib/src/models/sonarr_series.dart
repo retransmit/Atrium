@@ -26,6 +26,7 @@ abstract class SonarrSeries with _$SonarrSeries {
     String? previousAiring,
     int? tvdbId,
     String? titleSlug,
+    String? added,
   }) = _SonarrSeries;
 
   factory SonarrSeries.fromJson(Map<String, dynamic> json) =>

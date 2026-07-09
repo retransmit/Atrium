@@ -22,13 +22,18 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: Builder(
+          builder: (BuildContext context) {
+            return IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () {
+                openDrawer(context);
+              },
+            );
+          },
+        ),
         title: Text(profile == null ? 'Atrium' : profile.name),
       ),
-      drawer: ServicesDrawer(instances: instances, profile: profile),
-      // Wide left-edge drag zone so the sidebar opens with a swipe from well
-      // inside the screen, clear of Android's system back-gesture strip - no
-      // need to hit the hamburger.
-      drawerEdgeDragWidth: MediaQuery.sizeOf(context).width * 0.5,
       body: instances.isEmpty
           ? EmptyView(
               icon: Icons.dns_outlined,
@@ -349,6 +354,51 @@ class _HealthAwareTile extends ConsumerWidget {
         final GoRouter router = GoRouter.of(context);
         Navigator.of(context).pop();
         router.go(AtriumRoutes.servicePath(instance.kind.name, instance.id));
+      },
+      onLongPress: () {
+        showModalBottomSheet<void>(
+          context: context,
+          showDragHandle: true,
+          builder: (BuildContext sheetContext) {
+            return SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  ListTile(
+                    leading: const Icon(Icons.open_in_new),
+                    title: const Text('Open service'),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      final GoRouter router = GoRouter.of(context);
+                      Navigator.of(context).pop();
+                      router.go(
+                        AtriumRoutes.servicePath(
+                          instance.kind.name,
+                          instance.id,
+                        ),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.edit),
+                    title: const Text('Edit connection settings'),
+                    onTap: () {
+                      Navigator.pop(sheetContext);
+                      final GoRouter router = GoRouter.of(context);
+                      Navigator.of(context).pop();
+                      router.goNamed(
+                        AtriumRoutes.editInstanceName,
+                        pathParameters: <String, String>{
+                          'instanceId': instance.id,
+                        },
+                      );
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
       },
     );
   }

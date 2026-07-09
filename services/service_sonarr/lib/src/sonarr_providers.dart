@@ -54,11 +54,53 @@ final sonarrSeriesByIdProvider =
 });
 
 /// Active layout view mode for the series tab (grid or list).
+/// Active layout view mode for the series tab (grid or list).
 enum SonarrViewMode { grid, list }
+
+/// Sorting fields supported by the Sonarr Series tab.
+enum SonarrSeriesSortField {
+  monitoredStatus,
+  title,
+  network,
+  nextAiring,
+  previousAiring,
+  added,
+  seasons,
+  episodes,
+  episodeCount,
+  sizeOnDisk,
+}
+
+/// Filter settings supported by the Sonarr Series tab.
+enum SonarrSeriesFilter {
+  all,
+  monitoredOnly,
+  unmonitoredOnly,
+  continuingOnly,
+  endedOnly,
+  missingEpisodes,
+}
 
 /// Persistent view mode preference for Sonarr series.
 final sonarrViewModeProvider = StateProvider.family<SonarrViewMode, Instance>(
   (ref, instance) => SonarrViewMode.grid,
+);
+
+/// Sort field preference for Sonarr series.
+final sonarrSeriesSortFieldProvider =
+    StateProvider.family<SonarrSeriesSortField, Instance>(
+  (ref, instance) => SonarrSeriesSortField.title,
+);
+
+/// Sort direction preference for Sonarr series.
+final sonarrSeriesSortAscendingProvider = StateProvider.family<bool, Instance>(
+  (ref, instance) => true,
+);
+
+/// Active filter setting for Sonarr series.
+final sonarrSeriesFilterProvider =
+    StateProvider.family<SonarrSeriesFilter, Instance>(
+  (ref, instance) => SonarrSeriesFilter.all,
 );
 
 /// Search query string for Sonarr series.
@@ -77,16 +119,142 @@ final sonarrFilteredSeriesProvider = Provider.autoDispose
   final AsyncValue<List<SonarrSeries>> seriesAsync =
       ref.watch(sonarrSeriesProvider(instance));
 
+  final SonarrSeriesSortField sortField =
+      ref.watch(sonarrSeriesSortFieldProvider(instance));
+  final bool sortAscending =
+      ref.watch(sonarrSeriesSortAscendingProvider(instance));
+  final SonarrSeriesFilter filter =
+      ref.watch(sonarrSeriesFilterProvider(instance));
+
   return seriesAsync.whenData((List<SonarrSeries> list) {
-    if (query.isEmpty) {
-      return list;
+    Iterable<SonarrSeries> filtered = list;
+
+    // 1. Filter by search query
+    if (query.isNotEmpty) {
+      final String lowercaseQuery = query.toLowerCase();
+      filtered = filtered.where(
+        (SonarrSeries s) => s.title.toLowerCase().contains(lowercaseQuery),
+      );
     }
-    final String lowercaseQuery = query.toLowerCase();
-    return list
-        .where(
-          (SonarrSeries s) => s.title.toLowerCase().contains(lowercaseQuery),
-        )
-        .toList();
+
+    // 2. Filter by active filter setting
+    switch (filter) {
+      case SonarrSeriesFilter.all:
+        break;
+      case SonarrSeriesFilter.monitoredOnly:
+        filtered = filtered.where((SonarrSeries s) => s.monitored);
+        break;
+      case SonarrSeriesFilter.unmonitoredOnly:
+        filtered = filtered.where((SonarrSeries s) => !s.monitored);
+        break;
+      case SonarrSeriesFilter.continuingOnly:
+        filtered = filtered.where(
+          (SonarrSeries s) => s.status?.toLowerCase() == 'continuing',
+        );
+        break;
+      case SonarrSeriesFilter.endedOnly:
+        filtered = filtered.where(
+          (SonarrSeries s) => s.status?.toLowerCase() == 'ended',
+        );
+        break;
+      case SonarrSeriesFilter.missingEpisodes:
+        filtered = filtered.where((SonarrSeries s) {
+          final SonarrSeriesStatistics? stats = s.statistics;
+          if (stats == null) return false;
+          return stats.episodeFileCount < stats.episodeCount;
+        });
+        break;
+    }
+
+    // 3. Sort
+    final List<SonarrSeries> result = filtered.toList();
+    result.sort((SonarrSeries a, SonarrSeries b) {
+      int compare = 0;
+      switch (sortField) {
+        case SonarrSeriesSortField.monitoredStatus:
+          if (a.monitored != b.monitored) {
+            compare = a.monitored ? -1 : 1;
+          } else {
+            final String statusA = a.status?.toLowerCase() ?? '';
+            final String statusB = b.status?.toLowerCase() ?? '';
+            if (statusA != statusB) {
+              compare = statusA.compareTo(statusB);
+            } else {
+              final String titleA = a.sortTitle ?? a.title;
+              final String titleB = b.sortTitle ?? b.title;
+              compare = titleA.toLowerCase().compareTo(titleB.toLowerCase());
+            }
+          }
+          break;
+        case SonarrSeriesSortField.title:
+          final String titleA = a.sortTitle ?? a.title;
+          final String titleB = b.sortTitle ?? b.title;
+          compare = titleA.toLowerCase().compareTo(titleB.toLowerCase());
+          break;
+        case SonarrSeriesSortField.network:
+          final String netA = a.network ?? '';
+          final String netB = b.network ?? '';
+          compare = netA.toLowerCase().compareTo(netB.toLowerCase());
+          break;
+        case SonarrSeriesSortField.nextAiring:
+          if (a.nextAiring == null && b.nextAiring == null) {
+            compare = 0;
+          } else if (a.nextAiring == null) {
+            compare = 1;
+          } else if (b.nextAiring == null) {
+            compare = -1;
+          } else {
+            compare = a.nextAiring!.compareTo(b.nextAiring!);
+          }
+          break;
+        case SonarrSeriesSortField.previousAiring:
+          if (a.previousAiring == null && b.previousAiring == null) {
+            compare = 0;
+          } else if (a.previousAiring == null) {
+            compare = 1;
+          } else if (b.previousAiring == null) {
+            compare = -1;
+          } else {
+            compare = a.previousAiring!.compareTo(b.previousAiring!);
+          }
+          break;
+        case SonarrSeriesSortField.added:
+          if (a.added == null && b.added == null) {
+            compare = 0;
+          } else if (a.added == null) {
+            compare = 1;
+          } else if (b.added == null) {
+            compare = -1;
+          } else {
+            compare = a.added!.compareTo(b.added!);
+          }
+          break;
+        case SonarrSeriesSortField.seasons:
+          final int valA = a.statistics?.seasonCount ?? 0;
+          final int valB = b.statistics?.seasonCount ?? 0;
+          compare = valA.compareTo(valB);
+          break;
+        case SonarrSeriesSortField.episodes:
+          final int valA = a.statistics?.episodeFileCount ?? 0;
+          final int valB = b.statistics?.episodeFileCount ?? 0;
+          compare = valA.compareTo(valB);
+          break;
+        case SonarrSeriesSortField.episodeCount:
+          final int valA = a.statistics?.episodeCount ?? 0;
+          final int valB = b.statistics?.episodeCount ?? 0;
+          compare = valA.compareTo(valB);
+          break;
+        case SonarrSeriesSortField.sizeOnDisk:
+          final int valA = a.statistics?.sizeOnDisk ?? 0;
+          final int valB = b.statistics?.sizeOnDisk ?? 0;
+          compare = valA.compareTo(valB);
+          break;
+      }
+
+      return sortAscending ? compare : -compare;
+    });
+
+    return result;
   });
 });
 
@@ -106,7 +274,28 @@ final sonarrEpisodesProvider =
 ) async {
   final (Instance instance, int seriesId) = key;
   final SonarrApi api = await ref.watch(sonarrApiProvider(instance).future);
-  return api.getEpisodes(seriesId);
+
+  final results = await Future.wait([
+    api.getEpisodes(seriesId),
+    api.getEpisodeFiles(seriesId),
+  ]);
+
+  final List<SonarrEpisode> episodes = results[0] as List<SonarrEpisode>;
+  final List<Map<String, dynamic>> files = results[1] as List<Map<String, dynamic>>;
+
+  final Map<int, Map<String, dynamic>> filesById = {
+    for (final file in files) file['id'] as int: file,
+  };
+
+  return episodes.map((episode) {
+    if (episode.hasFile && episode.episodeFileId != null) {
+      final fileMap = filesById[episode.episodeFileId!];
+      if (fileMap != null) {
+        return episode.copyWith(episodeFile: fileMap);
+      }
+    }
+    return episode;
+  }).toList();
 });
 
 /// All releases for an episode (interactive search).

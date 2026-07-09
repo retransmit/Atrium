@@ -7,14 +7,21 @@ import 'package:go_router/go_router.dart';
 /// navigation stack (tapping away from a deep screen and back returns you
 /// where you were). Used as the builder for a `StatefulShellRoute`.
 class ScaffoldWithNavBar extends StatelessWidget {
-  const ScaffoldWithNavBar({required this.navigationShell, super.key});
+  const ScaffoldWithNavBar({
+    required this.navigationShell,
+    this.drawer,
+    super.key,
+  });
 
   final StatefulNavigationShell navigationShell;
+  final Widget? drawer;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: navigationShell,
+      drawer: drawer,
+      drawerEdgeDragWidth: drawer != null ? MediaQuery.sizeOf(context).width * 0.5 : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: navigationShell.currentIndex,
         onDestinationSelected: _onTap,

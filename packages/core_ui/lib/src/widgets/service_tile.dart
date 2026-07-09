@@ -13,6 +13,7 @@ class ServiceTile extends StatelessWidget {
     this.health = Health.unknown,
     this.subtitle,
     this.onTap,
+    this.onLongPress,
     super.key,
   });
 
@@ -23,6 +24,7 @@ class ServiceTile extends StatelessWidget {
   /// e.g., a queue count or "3 missing".
   final String? subtitle;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +48,7 @@ class ServiceTile extends StatelessWidget {
         subtitle: Text(subtitle ?? instance.kind.tagline),
         trailing: StatusChip(health: health, compact: true),
         onTap: onTap,
+        onLongPress: onLongPress,
       ),
     );
   }
