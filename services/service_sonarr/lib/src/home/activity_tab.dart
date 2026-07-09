@@ -312,7 +312,7 @@ class _QueueView extends ConsumerWidget {
           );
         }
 
-        return RefreshIndicator(
+        return M3RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(sonarrQueueProvider(instance));
             await ref.read(sonarrQueueProvider(instance).future);
@@ -919,7 +919,7 @@ class _HistoryView extends ConsumerWidget {
             return latestB.compareTo(latestA);
           });
 
-          return RefreshIndicator(
+          return M3RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(sonarrHistoryProvider(instance));
               await ref.read(sonarrHistoryProvider(instance).future);
@@ -948,7 +948,7 @@ class _HistoryView extends ConsumerWidget {
           );
         } else {
           // Plain list layout
-          return RefreshIndicator(
+          return M3RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(sonarrHistoryProvider(instance));
               await ref.read(sonarrHistoryProvider(instance).future);
@@ -1330,7 +1330,7 @@ class _BlocklistView extends ConsumerWidget {
             return latestB.compareTo(latestA);
           });
 
-          return RefreshIndicator(
+          return M3RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(sonarrBlocklistProvider(instance));
               await ref.read(sonarrBlocklistProvider(instance).future);
@@ -1359,7 +1359,7 @@ class _BlocklistView extends ConsumerWidget {
           );
         } else {
           // Plain list layout
-          return RefreshIndicator(
+          return M3RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(sonarrBlocklistProvider(instance));
               await ref.read(sonarrBlocklistProvider(instance).future);

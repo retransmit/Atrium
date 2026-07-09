@@ -53,7 +53,7 @@ class _QueueTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<SabQueue> queue = ref.watch(sabQueueProvider(instance));
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async => ref.invalidate(sabQueueProvider(instance)),
       child: AsyncValueView<SabQueue>(
         value: queue,
@@ -317,7 +317,7 @@ class _HistoryTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<SabHistory> history = ref.watch(sabHistoryProvider(instance));
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async => ref.invalidate(sabHistoryProvider(instance)),
       child: AsyncValueView<SabHistory>(
         value: history,
@@ -467,7 +467,7 @@ class _ServerTab extends ConsumerWidget {
         ref.watch(sabVersionProvider(instance)).value ?? '';
     final int currentLimit = int.tryParse(queue?.speedlimit ?? '') ?? 100;
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(sabServerStatsProvider(instance));
         ref.invalidate(sabVersionProvider(instance));

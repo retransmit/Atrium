@@ -176,7 +176,7 @@ class JellyfinLibraryGrid extends ConsumerWidget {
     final JellyfinClient? client =
         ref.watch(jellyfinClientProvider(instance)).value;
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(jellyfinLibraryItemsProvider((instance, view))),
       child: AsyncValueView<List<JellyfinItem>>(
@@ -353,7 +353,7 @@ class JellyfinItemsGrid extends ConsumerWidget {
     final JellyfinClient? client =
         ref.watch(jellyfinClientProvider(instance)).value;
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(jellyfinItemsProvider((instance, libraryId))),
       child: AsyncValueView<List<JellyfinItem>>(
@@ -1038,7 +1038,7 @@ class _HomeSections extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(jellyfinSessionsProvider(instance));
         ref.invalidate(jellyfinResumeItemsProvider(instance));

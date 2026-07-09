@@ -123,7 +123,7 @@ class _MoviesTab extends ConsumerWidget {
             _FilterChipsRow(instance: instance),
             const SizedBox(height: Insets.xs),
             Expanded(
-              child: RefreshIndicator(
+              child: M3RefreshIndicator(
                 onRefresh: () async {
                   ref.invalidate(radarrMoviesProvider(instance));
                   await ref.read(radarrMoviesProvider(instance).future);
@@ -664,7 +664,7 @@ class _QueueTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<RadarrQueuePage> queue =
         ref.watch(radarrQueueProvider(instance));
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async => ref.invalidate(radarrQueueProvider(instance)),
       child: AsyncValueView<RadarrQueuePage>(
         value: queue,
@@ -742,7 +742,7 @@ class _HistoryTabState extends ConsumerState<_HistoryTab> {
     final ThemeData theme = Theme.of(context);
     final AsyncValue<RadarrHistoryPage> history =
         ref.watch(radarrHistoryProvider((widget.instance, _page)));
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(radarrHistoryProvider((widget.instance, _page))),
       child: AsyncValueView<RadarrHistoryPage>(
@@ -921,7 +921,7 @@ class _WantedListState extends ConsumerState<_WantedList> {
         ? ref.watch(radarrWantedCutoffProvider((widget.instance, _page)))
         : ref.watch(radarrWantedMissingProvider((widget.instance, _page)));
     final RadarrApi? api = ref.watch(radarrApiProvider(widget.instance)).value;
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async => _invalidate(),
       child: AsyncValueView<RadarrWantedPage>(
         value: wanted,
@@ -1040,7 +1040,7 @@ class _BlocklistTabState extends ConsumerState<_BlocklistTab> {
   Widget build(BuildContext context) {
     final AsyncValue<RadarrBlocklistPage> blocklist =
         ref.watch(radarrBlocklistProvider((widget.instance, _page)));
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(radarrBlocklistProvider((widget.instance, _page))),
       child: AsyncValueView<RadarrBlocklistPage>(
@@ -1123,7 +1123,7 @@ class _SystemTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(radarrHealthProvider(instance));
         ref.invalidate(radarrSystemStatusProvider(instance));
@@ -1383,7 +1383,7 @@ class _SettingsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(radarrIndexersRawProvider(instance));
         ref.invalidate(radarrDownloadClientsRawProvider(instance));

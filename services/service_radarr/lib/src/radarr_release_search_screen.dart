@@ -237,7 +237,7 @@ class _RadarrReleaseSearchScreenState
             ),
           ),
           Expanded(
-            child: RefreshIndicator(
+            child: M3RefreshIndicator(
               onRefresh: () async {
                 ref.invalidate(radarrReleasesProvider((widget.instance, widget.movie.id)));
               },

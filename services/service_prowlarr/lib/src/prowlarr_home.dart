@@ -138,7 +138,7 @@ class _IndexersTab extends ConsumerWidget {
         ref.watch(prowlarrStatsByIdProvider(instance)).value ??
             const <int, ProwlarrIndexerStat>{};
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(prowlarrIndexersProvider(instance));
         ref.invalidate(prowlarrStatsByIdProvider(instance));

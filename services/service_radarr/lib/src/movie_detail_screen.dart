@@ -92,7 +92,7 @@ class _Body extends ConsumerWidget {
         .firstWhereOrNull((RadarrImage i) => i.coverType == 'fanart');
     final String? fanartUrl = fanart == null ? null : api?.posterUrl(fanart);
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async => _refresh(ref),
       child: CustomScrollView(
         slivers: <Widget>[

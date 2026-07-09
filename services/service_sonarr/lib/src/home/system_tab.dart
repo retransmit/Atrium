@@ -214,7 +214,7 @@ class _StatusTab extends ConsumerWidget {
     final healthAsync = ref.watch(sonarrHealthProvider(instance));
     final diskAsync = ref.watch(sonarrDiskSpaceProvider(instance));
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(sonarrSystemStatusProvider(instance));
         ref.invalidate(sonarrHealthProvider(instance));
@@ -668,7 +668,7 @@ class _TasksTab extends ConsumerWidget {
     final ThemeData theme = Theme.of(context);
     final tasksAsync = ref.watch(sonarrTasksProvider(instance));
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(sonarrTasksProvider(instance));
         await ref.read(sonarrTasksProvider(instance).future);
@@ -820,7 +820,7 @@ class _UpdatesTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final updatesAsync = ref.watch(sonarrUpdatesProvider(instance));
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(sonarrUpdatesProvider(instance));
         await ref.read(sonarrUpdatesProvider(instance).future);
@@ -1141,7 +1141,7 @@ class _LogsTabState extends ConsumerState<_LogsTab> {
               return Column(
                 children: <Widget>[
                   Expanded(
-                    child: RefreshIndicator(
+                    child: M3RefreshIndicator(
                       onRefresh: () async {
                         ref.invalidate(sonarrLogsProvider((
                           widget.instance,
@@ -1403,7 +1403,7 @@ class _BackupsTab extends ConsumerWidget {
     final ThemeData theme = Theme.of(context);
     final backupsAsync = ref.watch(sonarrBackupsProvider(instance));
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(sonarrBackupsProvider(instance));
         await ref.read(sonarrBackupsProvider(instance).future);

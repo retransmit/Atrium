@@ -794,7 +794,7 @@ class _EpisodeListLayout extends ConsumerWidget {
         }
       }
 
-        return RefreshIndicator(
+        return M3RefreshIndicator(
           onRefresh: () async {
             onRefresh();
           },

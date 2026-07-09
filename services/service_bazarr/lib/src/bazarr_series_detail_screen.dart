@@ -30,7 +30,7 @@ class BazarrSeriesDetailScreen extends ConsumerWidget {
         ref.watch(bazarrEpisodesProvider(args));
     return Scaffold(
       appBar: AppBar(title: Text(series.title, overflow: TextOverflow.ellipsis)),
-      body: RefreshIndicator(
+      body: M3RefreshIndicator(
         onRefresh: () async => ref.invalidate(bazarrEpisodesProvider(args)),
         child: AsyncValueView<List<BazarrEpisode>>(
           value: episodes,

@@ -28,7 +28,7 @@ class PlexArtistScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text(artist.title)),
-      body: RefreshIndicator(
+      body: M3RefreshIndicator(
         onRefresh: () async =>
             ref.invalidate(plexChildrenProvider((instance, artist.ratingKey))),
         child: AsyncValueView<List<PlexMetadata>>(
@@ -167,7 +167,7 @@ class PlexAlbumScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text(album.title)),
-      body: RefreshIndicator(
+      body: M3RefreshIndicator(
         onRefresh: () async =>
             ref.invalidate(plexChildrenProvider((instance, album.ratingKey))),
         child: AsyncValueView<List<PlexMetadata>>(

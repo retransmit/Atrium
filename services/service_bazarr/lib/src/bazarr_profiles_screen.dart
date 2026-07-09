@@ -28,7 +28,7 @@ class BazarrProfilesScreen extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: const Text('Add'),
       ),
-      body: RefreshIndicator(
+      body: M3RefreshIndicator(
         onRefresh: () async => ref.invalidate(bazarrProfilesProvider(instance)),
         child: AsyncValueView<List<BazarrLanguageProfile>>(
           value: profiles,

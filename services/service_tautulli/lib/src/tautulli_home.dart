@@ -66,7 +66,7 @@ class _ActivityTab extends ConsumerWidget {
         ref.watch(tautulliActivityProvider(instance));
     final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).value;
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async => ref.invalidate(tautulliActivityProvider(instance)),
       child: AsyncValueView<TautulliActivity>(
         value: activity,
@@ -604,7 +604,7 @@ class _HistoryTab extends ConsumerWidget {
     final AsyncValue<TautulliHistoryPage> history =
         ref.watch(tautulliHistoryProvider(instance));
     final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).value;
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async => ref.invalidate(tautulliHistoryProvider(instance)),
       child: AsyncValueView<TautulliHistoryPage>(
         value: history,
@@ -744,7 +744,7 @@ class _StatsTab extends ConsumerWidget {
     final AsyncValue<List<TautulliHomeStat>> stats =
         ref.watch(tautulliHomeStatsProvider(instance));
     final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).value;
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(tautulliHomeStatsProvider(instance)),
       child: AsyncValueView<List<TautulliHomeStat>>(
@@ -946,7 +946,7 @@ class _UsersTab extends ConsumerWidget {
     final AsyncValue<List<TautulliUser>> users =
         ref.watch(tautulliUsersProvider(instance));
     final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).value;
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async => ref.invalidate(tautulliUsersProvider(instance)),
       child: AsyncValueView<List<TautulliUser>>(
         value: users,

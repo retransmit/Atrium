@@ -67,7 +67,7 @@ class _ProwlarrHistoryTabState extends ConsumerState<ProwlarrHistoryTab> {
           ),
         ),
         Expanded(
-          child: RefreshIndicator(
+          child: M3RefreshIndicator(
             onRefresh: () async =>
                 ref.invalidate(prowlarrHistoryProvider(args)),
             child: AsyncValueView<ProwlarrHistoryPage>(

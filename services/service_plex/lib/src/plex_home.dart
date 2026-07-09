@@ -159,7 +159,7 @@ class _ItemsGridState extends ConsumerState<_ItemsGrid> {
     final AsyncValue<List<PlexMetadata>> items = ref.watch(_provider);
     final PlexApi? api = ref.watch(plexApiProvider(widget.instance)).value;
 
-    final Widget grid = RefreshIndicator(
+    final Widget grid = M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(_provider);
         if (widget.isSection) {
@@ -327,7 +327,7 @@ class _HomeSections extends ConsumerWidget {
     final List<PlexLibrary> libraries =
         ref.watch(plexLibrariesProvider(instance)).value ??
             const <PlexLibrary>[];
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(plexSessionsProvider(instance));
         ref.invalidate(plexOnDeckProvider(instance));

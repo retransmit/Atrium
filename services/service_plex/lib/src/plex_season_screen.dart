@@ -136,7 +136,7 @@ class PlexEpisodeList extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text(season.title)),
-      body: RefreshIndicator(
+      body: M3RefreshIndicator(
         onRefresh: () async => ref
             .invalidate(plexChildrenProvider((instance, season.ratingKey))),
         child: AsyncValueView<List<PlexMetadata>>(

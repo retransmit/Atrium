@@ -17,7 +17,7 @@ class GlancesHome extends ConsumerWidget {
     final Set<String> pinnedNets = ref.watch(glancesPinnedNetworkProvider(instance));
 
     return statsAsync.when(
-      data: (GlancesStats stats) => RefreshIndicator(
+      data: (GlancesStats stats) => M3RefreshIndicator(
         onRefresh: () async => ref.refresh(glancesStatsProvider(instance).future),
         child: ListView(
           padding: Insets.page,
@@ -65,7 +65,7 @@ class GlancesHome extends ConsumerWidget {
           ],
         ),
       ),
-      loading: () => const Center(child: ExpressiveProgressIndicator()),
+      loading: () => const Center(child: CircularProgressIndicator()),
       error: (Object e, StackTrace st) => Center(
         child: Padding(
           padding: Insets.page,
@@ -557,7 +557,7 @@ class _GaugeCard extends StatelessWidget {
                     duration: const Duration(milliseconds: 600),
                     curve: Curves.easeOutCubic,
                     builder: (BuildContext context, double value, Widget? child) {
-                      return ExpressiveProgressIndicator(
+                      return CircularProgressIndicator(
                         value: value,
                         strokeWidth: 8,
                         strokeCap: StrokeCap.round,

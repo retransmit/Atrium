@@ -29,7 +29,7 @@ class ProwlarrTagsScreen extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: const Text('Add'),
       ),
-      body: RefreshIndicator(
+      body: M3RefreshIndicator(
         onRefresh: () async => ref.invalidate(prowlarrProvidersProvider(_args)),
         child: AsyncValueView<List<Map<String, dynamic>>>(
           value: tags,

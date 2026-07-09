@@ -34,7 +34,7 @@ class QbittorrentHome extends ConsumerWidget {
       body: Column(
         children: <Widget>[
           Expanded(
-            child: RefreshIndicator(
+            child: M3RefreshIndicator(
               onRefresh: () async => _refresh(ref),
               child: AsyncValueView<List<QbitTorrent>>(
                 value: torrents,

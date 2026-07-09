@@ -52,7 +52,7 @@ class _SeerrRequestsTab extends ConsumerWidget {
     final AsyncValue<List<SeerrRequest>> requests =
         ref.watch(seerrRequestsProvider(instance));
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(seerrRequestsProvider(instance));
         ref.invalidate(seerrRequestCountsProvider(instance));

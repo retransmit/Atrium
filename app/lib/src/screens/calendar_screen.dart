@@ -321,7 +321,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       appBar: AppBar(
         title: const Text('Calendar'),
       ),
-      body: RefreshIndicator(
+      body: M3RefreshIndicator(
         onRefresh: () async => ref.invalidate(globalCalendarProvider(_visibleMonth)),
         child: AsyncValueView<List<CalendarEvent>>(
           value: calendar,

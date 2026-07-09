@@ -197,6 +197,20 @@ class JellyfinItemDetailScreen extends ConsumerWidget {
                     child: _ExpandableOverview(text: item.overview!),
                   ),
                 ),
+              if (_InfoSection.canShow(item))
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left: Insets.lg,
+                      right: Insets.lg,
+                      bottom: Insets.lg,
+                      top: (item.overview != null && item.overview!.isNotEmpty)
+                          ? 0
+                          : Insets.lg,
+                    ),
+                    child: _InfoSection(item: item),
+                  ),
+                ),
               if (item.people.isNotEmpty)
                 SliverToBoxAdapter(
                   child: _PeopleRow(item: item, client: client),
@@ -612,6 +626,102 @@ class _ExpandableOverviewState extends State<_ExpandableOverview> {
           label: Text(
             _expanded ? 'Read Less' : 'Read More',
             style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Series / episode facts for an item, shown as a tonal card on the detail
+/// screen when the item carries a series name or a season+episode number.
+class _InfoSection extends StatelessWidget {
+  const _InfoSection({required this.item});
+
+  final JellyfinItem item;
+
+  static bool canShow(JellyfinItem item) {
+    return (item.seriesName != null && item.seriesName!.isNotEmpty) ||
+        (item.parentIndexNumber != null && item.indexNumber != null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(Insets.lg),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(Radii.lg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          if (item.seriesName != null && item.seriesName!.isNotEmpty)
+            _InfoRow(
+              icon: Icons.tv,
+              label: 'Series',
+              value: item.seriesName!,
+            ),
+          if (item.parentIndexNumber != null && item.indexNumber != null) ...<Widget>[
+            if (item.seriesName != null && item.seriesName!.isNotEmpty)
+              const SizedBox(height: Insets.sm),
+            _InfoRow(
+              icon: Icons.tag,
+              label: 'Episode',
+              value:
+                  'Season ${item.parentIndexNumber} Episode ${item.indexNumber}',
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// One labelled fact row (icon, label, value) inside [_InfoSection].
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Icon(icon, size: 20, color: cs.primary),
+        const SizedBox(width: Insets.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                label,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurface,
+                ),
+              ),
+            ],
           ),
         ),
       ],

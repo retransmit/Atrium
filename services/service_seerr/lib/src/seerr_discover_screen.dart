@@ -16,7 +16,7 @@ class SeerrDiscoverScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(seerrTrendingProvider(instance));
         ref.invalidate(seerrUpcomingMoviesProvider(instance));

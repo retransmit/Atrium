@@ -174,7 +174,7 @@ class EmbyLibraryGrid extends ConsumerWidget {
         ref.watch(embyLibraryItemsProvider((instance, view)));
     final EmbyClient? client = ref.watch(embyClientProvider(instance)).value;
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(embyLibraryItemsProvider((instance, view))),
       child: AsyncValueView<List<EmbyItem>>(
@@ -348,7 +348,7 @@ class EmbyItemsGrid extends ConsumerWidget {
         ref.watch(embyItemsProvider((instance, libraryId)));
     final EmbyClient? client = ref.watch(embyClientProvider(instance)).value;
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(embyItemsProvider((instance, libraryId))),
       child: AsyncValueView<List<EmbyItem>>(
@@ -1056,7 +1056,7 @@ class _HomeSections extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(embySessionsProvider(instance));
         ref.invalidate(embyResumeItemsProvider(instance));

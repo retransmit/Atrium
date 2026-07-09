@@ -95,7 +95,7 @@ class _SeriesDetailBody extends ConsumerWidget {
     final int downloadedCount = series.statistics?.episodeFileCount ?? 0;
     final int totalEpisodes = series.statistics?.episodeCount ?? 0;
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () => _refresh(context, ref),
       child: CustomScrollView(
         slivers: <Widget>[

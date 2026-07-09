@@ -146,7 +146,7 @@ class _OverviewTab extends ConsumerWidget {
     final Color accent = _accent(torrent.state, cs);
     final double progress = torrent.progress.clamp(0, 1).toDouble();
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(qbitPropertiesProvider((instance, torrent.hash))),
       child: AsyncValueView<QbitTorrentProperties>(
@@ -476,7 +476,7 @@ class _FilesTab extends ConsumerWidget {
     final AsyncValue<List<QbitFile>> files =
         ref.watch(qbitFilesProvider((instance, hash)));
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(qbitFilesProvider((instance, hash))),
       child: AsyncValueView<List<QbitFile>>(
@@ -591,7 +591,7 @@ class _TrackersTab extends ConsumerWidget {
     final AsyncValue<List<QbitTracker>> trackers =
         ref.watch(qbitTrackersProvider((instance, hash)));
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(qbitTrackersProvider((instance, hash))),
       child: AsyncValueView<List<QbitTracker>>(
@@ -701,7 +701,7 @@ class _PeersTab extends ConsumerWidget {
     final AsyncValue<List<QbitPeer>> peers =
         ref.watch(qbitPeersProvider((instance, hash)));
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async =>
           ref.invalidate(qbitPeersProvider((instance, hash))),
       child: AsyncValueView<List<QbitPeer>>(
