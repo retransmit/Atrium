@@ -46,6 +46,15 @@ class ServiceDetailScreen extends ConsumerWidget {
         ),
       );
     }
+    if (instance.kind == ServiceKind.radarr) {
+      return RadarrHome(
+        instance: instance,
+        drawer: ServicesDrawer(
+          instances: ref.watch(activeInstancesProvider),
+          profile: ref.watch(activeProfileProvider),
+        ),
+      );
+    }
     return Scaffold(
       drawer: ServicesDrawer(
         instances: ref.watch(activeInstancesProvider),
@@ -199,9 +208,9 @@ class ServiceDetailScreen extends ConsumerWidget {
 
   Widget _bodyFor(Instance instance) {
     return switch (instance.kind) {
-      // Sonarr never reaches here: build() returns SonarrHome early.
+      // Sonarr and Radarr never reach here: build() returns early.
       ServiceKind.sonarr => const SizedBox.shrink(),
-      ServiceKind.radarr => RadarrHome(instance: instance),
+      ServiceKind.radarr => const SizedBox.shrink(),
       ServiceKind.prowlarr => ProwlarrHome(instance: instance),
       ServiceKind.bazarr => BazarrHome(instance: instance),
       ServiceKind.seerr => SeerrHome(instance: instance),
