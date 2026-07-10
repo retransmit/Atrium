@@ -89,6 +89,11 @@ class _ActivityTab extends ConsumerWidget {
               final TautulliSession s = a.sessions[index - 1];
               return _SessionCard(
                 session: s,
+                backdropUrl: api?.imageUrl(
+                  s.art,
+                  width: 800,
+                  fallback: 'art',
+                ),
                 posterUrl: api?.imageUrl(s.posterThumb),
                 avatarUrl: api?.imageUrl(s.userThumb, fallback: 'art'),
                 onTap: () => _showSession(context, s),
@@ -128,8 +133,8 @@ class _ActivitySummary extends StatelessWidget {
         vertical: Insets.md,
       ),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(20),
+        color: cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(24),
       ),
       child: Row(
         children: <Widget>[
@@ -189,7 +194,7 @@ class _StatTile extends StatelessWidget {
           value,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.titleMedium
+          style: theme.textTheme.titleLarge
               ?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 2),
@@ -198,7 +203,7 @@ class _StatTile extends StatelessWidget {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: theme.textTheme.labelSmall
-              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ?.copyWith(color: theme.colorScheme.outline),
         ),
       ],
     );
@@ -211,20 +216,26 @@ class _StatDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         width: 1,
-        height: 36,
+        height: 44,
         color: Theme.of(context).colorScheme.outlineVariant,
       );
 }
 
+/// Backdrop card for one active stream: session art under a bottom-heavy
+/// scrim, the watching user top-left, the transcode decision top-right, the
+/// title bottom-left, and a live progress bar hugging the bottom edge.
+/// White/white70 only over the image scrim.
 class _SessionCard extends StatelessWidget {
   const _SessionCard({
     required this.session,
+    required this.backdropUrl,
     required this.posterUrl,
     required this.avatarUrl,
     required this.onTap,
   });
 
   final TautulliSession session;
+  final String? backdropUrl;
   final String? posterUrl;
   final String? avatarUrl;
   final VoidCallback onTap;
@@ -234,52 +245,133 @@ class _SessionCard extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final double pct = session.progressPercent / 100.0;
     final bool playing = session.state.toLowerCase() == 'playing';
+    final String? imageUrl = (backdropUrl != null && backdropUrl!.isNotEmpty)
+        ? backdropUrl
+        : posterUrl;
     final String meta = <String>[
-      session.friendlyName,
       if (session.player.isNotEmpty) session.player,
       if (session.qualityProfile.isNotEmpty) session.qualityProfile,
       if (session.bandwidth > 0) fmtTautulliKbps(session.bandwidth),
-    ].join(' • ');
+    ].join(' · ');
 
     return Card(
       margin: const EdgeInsets.only(bottom: Insets.md),
-      color: theme.colorScheme.surfaceContainerHigh,
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.all(Insets.md),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      clipBehavior: Clip.antiAlias,
+      color: theme.colorScheme.surfaceContainerLow,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(16)),
+      ),
+      child: SizedBox(
+        height: 180,
+        child: InkWell(
+          onTap: onTap,
+          child: Stack(
+            fit: StackFit.expand,
             children: <Widget>[
-              _Poster(url: posterUrl, width: 58, height: 87),
-              const SizedBox(width: Insets.md),
-              Expanded(
+              if (imageUrl != null && imageUrl.isNotEmpty)
+                CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  fit: BoxFit.cover,
+                  placeholder: (BuildContext context, String _) => ColoredBox(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                  ),
+                  errorWidget: (BuildContext context, String _, Object __) =>
+                      ColoredBox(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                  ),
+                )
+              else
+                ColoredBox(color: theme.colorScheme.surfaceContainerHighest),
+              // Bottom-heavy scrim: keeps the white overlay legible over any
+              // backdrop (and over the plain fill when there is no art).
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: <Color>[
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.45),
+                      Colors.black.withValues(alpha: 0.85),
+                    ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(Insets.md),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Icon(
-                          playing ? Icons.play_arrow : Icons.pause,
-                          size: 16,
-                          color: theme.colorScheme.primary,
+                        Expanded(
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: Insets.sm,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.35),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  _Avatar(
+                                    url: avatarUrl,
+                                    initial: _initial(session.friendlyName),
+                                    radius: 12,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(
+                                      session.friendlyName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.labelMedium
+                                          ?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: Insets.sm),
+                        _DecisionChip(decision: session.transcodeDecision),
+                      ],
+                    ),
+                    const Spacer(),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Icon(
+                            playing ? Icons.play_arrow : Icons.pause,
+                            size: 18,
+                            color: Colors.white70,
+                          ),
+                        ),
+                        const SizedBox(width: Insets.xs),
                         Expanded(
                           child: Text(
                             session.fullTitle,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodyMedium
-                                ?.copyWith(fontWeight: FontWeight.w600),
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        _DecisionChip(decision: session.transcodeDecision),
                       ],
                     ),
                     if (session.episodeLabel.isNotEmpty)
@@ -287,43 +379,35 @@ class _SessionCard extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 2),
                         child: Text(
                           session.episodeLabel,
+                          style: theme.textTheme.labelMedium
+                              ?.copyWith(color: Colors.white70),
+                        ),
+                      ),
+                    if (meta.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          meta,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.labelSmall
-                              ?.copyWith(color: theme.colorScheme.outline),
+                              ?.copyWith(color: Colors.white70),
                         ),
                       ),
-                    const SizedBox(height: Insets.sm),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: LinearProgressIndicator(
-                        value: pct.clamp(0, 1),
-                        minHeight: 6,
-                        color: playing
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.outline,
-                        backgroundColor:
-                            theme.colorScheme.surfaceContainerHighest,
-                      ),
-                    ),
-                    const SizedBox(height: Insets.sm),
-                    Row(
-                      children: <Widget>[
-                        _Avatar(
-                          url: avatarUrl,
-                          initial: _initial(session.friendlyName),
-                          radius: 9,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            meta,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.labelSmall,
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: LinearProgressIndicator(
+                  value: pct.clamp(0, 1),
+                  minHeight: 5,
+                  color: playing
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.outline,
+                  backgroundColor: Colors.white.withValues(alpha: 0.15),
                 ),
               ),
             ],
@@ -360,10 +444,10 @@ class _DecisionChip extends StatelessWidget {
         ),
     };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         _label(),
@@ -413,7 +497,7 @@ class _SessionSheetState extends ConsumerState<_SessionSheet> {
     final String audio =
         _streamLine(s.audioDecision, s.audioCodec, s.streamAudioCodec, '');
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: EdgeInsets.only(
           left: Insets.lg,
           right: Insets.lg,
@@ -452,34 +536,50 @@ class _SessionSheetState extends ConsumerState<_SessionSheet> {
               ],
             ),
             const SizedBox(height: Insets.md),
-            _DetailRow(label: 'User', value: s.friendlyName),
-            _DetailRow(label: 'State', value: _capitalize(s.state)),
-            _DetailRow(
-              label: 'Player',
-              value: <String>[
-                if (s.player.isNotEmpty) s.player,
-                if (s.product.isNotEmpty) s.product,
-                if (s.platform.isNotEmpty) s.platform,
-              ].join(' • '),
+            _DetailGroup(
+              label: 'Session',
+              children: <Widget>[
+                _DetailRow(label: 'User', value: s.friendlyName),
+                _DetailRow(label: 'State', value: _capitalize(s.state)),
+                _DetailRow(
+                  label: 'Player',
+                  value: <String>[
+                    if (s.player.isNotEmpty) s.player,
+                    if (s.product.isNotEmpty) s.product,
+                    if (s.platform.isNotEmpty) s.platform,
+                  ].join(' • '),
+                ),
+                if (s.qualityProfile.isNotEmpty)
+                  _DetailRow(label: 'Quality', value: s.qualityProfile),
+                if (s.location.isNotEmpty)
+                  _DetailRow(
+                    label: 'Location',
+                    value: s.location.toUpperCase(),
+                  ),
+                _DetailRow(label: 'Progress', value: '${s.progressPercent}%'),
+              ],
             ),
-            if (s.qualityProfile.isNotEmpty)
-              _DetailRow(label: 'Quality', value: s.qualityProfile),
-            _DetailRow(
-              label: 'Decision',
-              value: _capitalize(s.transcodeDecision),
+            const SizedBox(height: Insets.md),
+            _DetailGroup(
+              label: 'Stream',
+              children: <Widget>[
+                _ChipDetailRow(
+                  label: 'Decision',
+                  value: _capitalize(s.transcodeDecision),
+                ),
+                if (video.isNotEmpty)
+                  _ChipDetailRow(label: 'Video', value: video),
+                if (audio.isNotEmpty)
+                  _ChipDetailRow(label: 'Audio', value: audio),
+                if (s.container.isNotEmpty)
+                  _DetailRow(label: 'Container', value: s.container),
+                if (s.bandwidth > 0)
+                  _DetailRow(
+                    label: 'Bandwidth',
+                    value: fmtTautulliKbps(s.bandwidth),
+                  ),
+              ],
             ),
-            if (video.isNotEmpty) _DetailRow(label: 'Video', value: video),
-            if (audio.isNotEmpty) _DetailRow(label: 'Audio', value: audio),
-            if (s.container.isNotEmpty)
-              _DetailRow(label: 'Container', value: s.container),
-            if (s.bandwidth > 0)
-              _DetailRow(
-                label: 'Bandwidth',
-                value: fmtTautulliKbps(s.bandwidth),
-              ),
-            if (s.location.isNotEmpty)
-              _DetailRow(label: 'Location', value: s.location.toUpperCase()),
-            _DetailRow(label: 'Progress', value: '${s.progressPercent}%'),
             const SizedBox(height: Insets.lg),
             FilledButton.tonalIcon(
               style: FilledButton.styleFrom(
@@ -617,11 +717,9 @@ class _HistoryTab extends ConsumerWidget {
               message: 'Nothing has been watched yet.',
             );
           }
-          return ListView.separated(
+          return ListView.builder(
             padding: Insets.page,
             itemCount: page.records.length + 1,
-            separatorBuilder: (_, __) =>
-                const Divider(height: 1, indent: 56),
             itemBuilder: (BuildContext context, int index) {
               if (index == 0) {
                 return Padding(
@@ -668,64 +766,77 @@ class _HistoryTile extends StatelessWidget {
       >= 0.5 => (Icons.timelapse, theme.colorScheme.secondary),
       _ => (Icons.radio_button_unchecked, theme.colorScheme.outline),
     };
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: Insets.sm),
-      child: Row(
-        children: <Widget>[
-          _Poster(url: posterUrl, width: 40, height: 60),
-          const SizedBox(width: Insets.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  record.fullTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 3),
-                Row(
-                  children: <Widget>[
-                    _Avatar(
-                      url: avatarUrl,
-                      initial: _initial(record.friendlyName),
-                      radius: 8,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        <String>[
-                          record.friendlyName,
-                          relativeEpoch(record.date),
-                          if (record.playDuration > 0)
-                            fmtSeconds(record.playDuration),
-                        ].join(' • '),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.labelSmall
-                            ?.copyWith(color: theme.colorScheme.outline),
+    return Card(
+      margin: const EdgeInsets.only(bottom: Insets.sm),
+      elevation: 0,
+      color: theme.colorScheme.surfaceContainerLow,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(16)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(Insets.md),
+        child: Row(
+          children: <Widget>[
+            _Poster(url: posterUrl, width: 44, height: 66),
+            const SizedBox(width: Insets.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    record.fullTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: <Widget>[
+                      _Avatar(
+                        url: avatarUrl,
+                        initial: _initial(record.friendlyName),
+                        radius: 8,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          <String>[
+                            record.friendlyName,
+                            relativeEpoch(record.date),
+                            if (record.playDuration > 0)
+                              fmtSeconds(record.playDuration),
+                          ].join(' • '),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelSmall
+                              ?.copyWith(color: theme.colorScheme.outline),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: Insets.sm),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: <Widget>[
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: color.withValues(alpha: 0.15),
+                  child: Icon(icon, color: color, size: 18),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${record.percentComplete}%',
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: theme.colorScheme.outline),
                 ),
               ],
             ),
-          ),
-          const SizedBox(width: Insets.sm),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: <Widget>[
-              Icon(icon, color: color, size: 18),
-              const SizedBox(height: 2),
-              Text(
-                '${record.percentComplete}%',
-                style: theme.textTheme.labelSmall
-                    ?.copyWith(color: theme.colorScheme.outline),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -794,9 +905,11 @@ class _StatSection extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: Insets.md),
-      color: theme.colorScheme.surfaceContainerHigh,
+      color: theme.colorScheme.surfaceContainerLow,
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(24)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(Insets.md),
         child: Column(
@@ -804,8 +917,11 @@ class _StatSection extends StatelessWidget {
           children: <Widget>[
             Row(
               children: <Widget>[
-                Icon(_statIcon(stat.statId),
-                    size: 18, color: theme.colorScheme.primary,),
+                Icon(
+                  _statIcon(stat.statId),
+                  size: 20,
+                  color: theme.colorScheme.primary,
+                ),
                 const SizedBox(width: Insets.sm),
                 Text(
                   stat.title,
@@ -859,10 +975,10 @@ class _StatSection extends StatelessWidget {
                           if (showBar) ...<Widget>[
                             const SizedBox(height: 4),
                             ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(8),
                               child: LinearProgressIndicator(
                                 value: (metric(row) / maxMetric).clamp(0, 1),
-                                minHeight: 5,
+                                minHeight: 6,
                                 backgroundColor:
                                     theme.colorScheme.surfaceContainerHighest,
                               ),
@@ -959,10 +1075,9 @@ class _UsersTab extends ConsumerWidget {
               message: 'Tautulli has not seen any users yet.',
             );
           }
-          return ListView.separated(
+          return ListView.builder(
             padding: Insets.page,
             itemCount: list.length,
-            separatorBuilder: (_, __) => const Divider(height: 1, indent: 56),
             itemBuilder: (BuildContext context, int index) {
               final TautulliUser u = list[index];
               return _UserTile(
@@ -986,56 +1101,79 @@ class _UserTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: Insets.sm),
-      child: Row(
-        children: <Widget>[
-          _Avatar(
-            url: avatarUrl,
-            initial: _initial(user.friendlyName),
-            radius: 20,
-          ),
-          const SizedBox(width: Insets.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  user.friendlyName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyLarge,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  <String>[
-                    '${user.plays} plays',
-                    if (user.duration > 0) fmtSeconds(user.duration),
-                    if (user.lastSeen > 0) 'seen ${relativeEpoch(user.lastSeen)}',
-                  ].join(' • '),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.labelSmall
-                      ?.copyWith(color: theme.colorScheme.outline),
-                ),
-              ],
+    final String seen = <String>[
+      if (user.duration > 0) fmtSeconds(user.duration),
+      if (user.lastSeen > 0) 'seen ${relativeEpoch(user.lastSeen)}',
+    ].join(' • ');
+    return Card(
+      margin: const EdgeInsets.only(bottom: Insets.sm),
+      elevation: 0,
+      color: theme.colorScheme.surfaceContainerLow,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(16)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(Insets.md),
+        child: Row(
+          children: <Widget>[
+            _Avatar(
+              url: avatarUrl,
+              initial: _initial(user.friendlyName),
+              radius: 20,
             ),
-          ),
-          if (user.lastPlayed.isNotEmpty) ...<Widget>[
+            const SizedBox(width: Insets.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    user.friendlyName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyLarge
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  if (seen.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: 2),
+                    Text(
+                      seen,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelSmall
+                          ?.copyWith(color: theme.colorScheme.outline),
+                    ),
+                  ],
+                  if (user.lastPlayed.isNotEmpty) ...<Widget>[
+                    const SizedBox(height: 2),
+                    Text(
+                      user.lastPlayed,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelSmall
+                          ?.copyWith(color: theme.colorScheme.outline),
+                    ),
+                  ],
+                ],
+              ),
+            ),
             const SizedBox(width: Insets.sm),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 110),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: Insets.md,
+                vertical: 4,
+              ),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: Text(
-                user.lastPlayed,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.end,
-                style: theme.textTheme.labelSmall
-                    ?.copyWith(color: theme.colorScheme.outline),
+                '${user.plays} plays',
+                style: theme.textTheme.labelMedium
+                    ?.copyWith(color: theme.colorScheme.onPrimaryContainer),
               ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -1157,6 +1295,90 @@ class _DetailRow extends StatelessWidget {
           Expanded(
             child: Text(value, style: theme.textTheme.bodySmall),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A labeled cluster of detail rows on a tonal rounded container.
+class _DetailGroup extends StatelessWidget {
+  const _DetailGroup({required this.label, required this.children});
+
+  final String label;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.only(left: Insets.xs, bottom: Insets.xs),
+          child: Text(
+            label,
+            style: theme.textTheme.labelMedium
+                ?.copyWith(color: theme.colorScheme.outline),
+          ),
+        ),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(Insets.md),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(children: children),
+        ),
+      ],
+    );
+  }
+}
+
+/// A detail row whose value renders as a small tonal chip.
+class _ChipDetailRow extends StatelessWidget {
+  const _ChipDetailRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: <Widget>[
+          SizedBox(
+            width: 90,
+            child: Text(
+              label,
+              style: theme.textTheme.labelMedium
+                  ?.copyWith(color: theme.colorScheme.outline),
+            ),
+          ),
+          if (value.isNotEmpty)
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Insets.sm,
+                  vertical: 3,
+                ),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSecondaryContainer,
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
