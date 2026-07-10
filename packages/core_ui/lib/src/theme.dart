@@ -105,6 +105,7 @@ class _AtriumDynamicColorBuilderState
 
   Future<void> _initPlatformState() async {
     try {
+      // ignore: deprecated_member_use
       final CorePalette? corePalette =
           await DynamicColorPlugin.getCorePalette();
       if (!mounted) return;

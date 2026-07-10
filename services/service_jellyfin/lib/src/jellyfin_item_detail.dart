@@ -174,7 +174,7 @@ class JellyfinItemDetailScreen extends ConsumerWidget {
                       children: item.genres.map((String g) {
                         return Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
+                              horizontal: 10, vertical: 4,),
                           decoration: BoxDecoration(
                             color: Theme.of(context)
                                 .colorScheme

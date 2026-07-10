@@ -2,6 +2,7 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'glances_providers.dart';
 import 'models/glances_stats.dart';
@@ -31,14 +32,14 @@ class GlancesHome extends ConsumerWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: Radii.card,
                 side: BorderSide(
-                    color: Theme.of(context).colorScheme.outlineVariant),
+                    color: Theme.of(context).colorScheme.outlineVariant,),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(Insets.md),
                 child: Row(
                   children: <Widget>[
                     const Icon(Icons.schedule_outlined,
-                        color: Color(0xFF3B82F6)),
+                        color: Color(0xFF3B82F6),),
                     const SizedBox(width: Insets.md),
                     Expanded(
                       child: Text(
@@ -63,7 +64,7 @@ class GlancesHome extends ConsumerWidget {
             _buildNetworkSectionHeader(context, ref, stats.network),
             ...stats.network
                 .where((GlancesNetwork n) =>
-                    pinnedNets.isEmpty || pinnedNets.contains(n.interface))
+                    pinnedNets.isEmpty || pinnedNets.contains(n.interface),)
                 .map((GlancesNetwork n) => _buildNetworkCard(context, n)),
             const SizedBox(height: Insets.md),
             _buildSectionHeader(context, 'Disks', Icons.storage_outlined),
@@ -71,7 +72,8 @@ class GlancesHome extends ConsumerWidget {
           ],
         ),
       ),
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => const Center(
+          child: CircularProgressIndicatorM3E(shape: ProgressM3EShape.flat),),
       error: (Object e, StackTrace st) => Center(
         child: Padding(
           padding: Insets.page,
@@ -111,7 +113,7 @@ class GlancesHome extends ConsumerWidget {
   }
 
   Widget _buildSectionHeader(
-      BuildContext context, String title, IconData icon) {
+      BuildContext context, String title, IconData icon,) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: Insets.sm),
       child: Row(
@@ -131,7 +133,7 @@ class GlancesHome extends ConsumerWidget {
   }
 
   Widget _buildNetworkSectionHeader(
-      BuildContext context, WidgetRef ref, List<GlancesNetwork> networks) {
+      BuildContext context, WidgetRef ref, List<GlancesNetwork> networks,) {
     final Set<String> pinnedNets =
         ref.watch(glancesPinnedNetworkProvider(instance));
 
@@ -140,7 +142,7 @@ class GlancesHome extends ConsumerWidget {
       child: Row(
         children: <Widget>[
           Icon(Icons.network_check_outlined,
-              size: 20, color: Theme.of(context).colorScheme.primary),
+              size: 20, color: Theme.of(context).colorScheme.primary,),
           const SizedBox(width: Insets.sm),
           Text(
             'Network',
@@ -180,7 +182,7 @@ class GlancesHome extends ConsumerWidget {
   }
 
   void _showNetworkFilterDialog(BuildContext context, WidgetRef parentRef,
-      List<GlancesNetwork> networks) {
+      List<GlancesNetwork> networks,) {
     showDialog<void>(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -205,7 +207,7 @@ class GlancesHome extends ConsumerWidget {
                         if (pinnedNets.isEmpty) {
                           if (checked != true) {
                             newSet.addAll(networks
-                                .map((GlancesNetwork e) => e.interface));
+                                .map((GlancesNetwork e) => e.interface),);
                             newSet.remove(net.interface);
                           }
                         } else {
@@ -220,7 +222,7 @@ class GlancesHome extends ConsumerWidget {
                         }
                         ref
                             .read(
-                                glancesPinnedNetworkProvider(instance).notifier)
+                                glancesPinnedNetworkProvider(instance).notifier,)
                             .set(newSet);
                       },
                     );
@@ -296,15 +298,14 @@ class GlancesHome extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text('Swap',
-                          style: Theme.of(context).textTheme.titleSmall),
+                          style: Theme.of(context).textTheme.titleSmall,),
                       const SizedBox(height: 6),
-                      LinearProgressIndicator(
+                      LinearProgressIndicatorM3E(
+                        shape: ProgressM3EShape.flat,
                         value: (stats.swap.percentage / 100.0).clamp(0.0, 1.0),
-                        backgroundColor:
+                        trackColor:
                             const Color(0xFFF59E0B).withValues(alpha: 0.15),
-                        color: const Color(0xFFF59E0B),
-                        minHeight: 6,
-                        borderRadius: Radii.card,
+                        activeColor: const Color(0xFFF59E0B),
                       ),
                     ],
                   ),
@@ -350,7 +351,7 @@ class GlancesHome extends ConsumerWidget {
             Row(
               children: <Widget>[
                 Icon(Icons.developer_board,
-                    size: 20, color: theme.colorScheme.primary),
+                    size: 20, color: theme.colorScheme.primary,),
                 const SizedBox(width: Insets.sm),
                 Text(
                   'Cores (${cpu.physicalCores} Phys, ${cpu.logicalCores} Log)',
@@ -369,24 +370,23 @@ class GlancesHome extends ConsumerWidget {
                     SizedBox(
                       width: 60,
                       child: Text('Core ${core.id}',
-                          style: theme.textTheme.labelMedium),
+                          style: theme.textTheme.labelMedium,),
                     ),
                     Expanded(
                       child: TweenAnimationBuilder<double>(
                         tween: Tween<double>(
                             begin: 0.0,
-                            end: (core.usage / 100.0).clamp(0.0, 1.0)),
+                            end: (core.usage / 100.0).clamp(0.0, 1.0),),
                         duration: const Duration(milliseconds: 600),
                         curve: Curves.easeOutCubic,
                         builder: (BuildContext context, double value,
-                            Widget? child) {
-                          return LinearProgressIndicator(
+                            Widget? child,) {
+                          return LinearProgressIndicatorM3E(
+                            shape: ProgressM3EShape.flat,
                             value: value,
-                            backgroundColor: theme.colorScheme.onSurface
+                            trackColor: theme.colorScheme.onSurface
                                 .withValues(alpha: 0.1),
-                            color: theme.colorScheme.primary,
-                            minHeight: 6,
-                            borderRadius: Radii.card,
+                            activeColor: theme.colorScheme.primary,
                           );
                         },
                       ),
@@ -441,15 +441,14 @@ class GlancesHome extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: Insets.md),
-            LinearProgressIndicator(
+            LinearProgressIndicatorM3E(
+              shape: ProgressM3EShape.flat,
               value: pct.clamp(0.0, 1.0),
-              backgroundColor:
+              trackColor:
                   Theme.of(context).colorScheme.surfaceContainerHighest,
-              color: pct > 0.9
+              activeColor: pct > 0.9
                   ? Theme.of(context).colorScheme.error
                   : Theme.of(context).colorScheme.primary,
-              minHeight: 6,
-              borderRadius: Radii.card,
             ),
             const SizedBox(height: Insets.sm),
             Row(
@@ -505,7 +504,7 @@ class GlancesHome extends ConsumerWidget {
                   Row(
                     children: <Widget>[
                       Icon(Icons.arrow_upward,
-                          size: 14, color: theme.colorScheme.tertiary),
+                          size: 14, color: theme.colorScheme.tertiary,),
                       const SizedBox(width: 4),
                       Text(
                         '${_formatBytes(net.txSpeed)}/s',
@@ -513,7 +512,7 @@ class GlancesHome extends ConsumerWidget {
                       ),
                       const SizedBox(width: Insets.lg),
                       Icon(Icons.arrow_downward,
-                          size: 14, color: theme.colorScheme.primary),
+                          size: 14, color: theme.colorScheme.primary,),
                       const SizedBox(width: 4),
                       Text(
                         '${_formatBytes(net.rxSpeed)}/s',
@@ -567,7 +566,7 @@ class _GaugeCard extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(
-            vertical: Insets.lg, horizontal: Insets.md),
+            vertical: Insets.lg, horizontal: Insets.md,),
         child: Column(
           children: <Widget>[
             Row(
@@ -592,12 +591,11 @@ class _GaugeCard extends StatelessWidget {
                     curve: Curves.easeOutCubic,
                     builder:
                         (BuildContext context, double value, Widget? child) {
-                      return CircularProgressIndicator(
+                      return CircularProgressIndicatorM3E(
+                        shape: ProgressM3EShape.flat,
                         value: value,
-                        strokeWidth: 8,
-                        strokeCap: StrokeCap.round,
-                        backgroundColor: color.withValues(alpha: 0.15),
-                        color: color,
+                        trackColor: color.withValues(alpha: 0.15),
+                        activeColor: color,
                       );
                     },
                   ),

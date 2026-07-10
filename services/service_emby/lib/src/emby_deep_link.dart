@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'emby_client.dart';
@@ -12,6 +15,16 @@ Future<void> launchEmbyDeepLink(
   final String serverId = client.serverId ?? '';
   final String urlStr = 'emby://items/$serverId/$itemId';
   final Uri uri = Uri.parse(urlStr);
+
+  if (Platform.isAndroid) {
+    try {
+      const MethodChannel channel = MethodChannel('app.atrium/launcher');
+      final bool launched = await channel.invokeMethod<bool>('launchDeepLink', <String, dynamic>{
+        'url': urlStr,
+      }) ?? false;
+      if (launched) return;
+    } catch (_) {}
+  }
 
   try {
     final bool launched = await launchUrl(
