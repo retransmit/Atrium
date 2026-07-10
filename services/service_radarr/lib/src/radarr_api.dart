@@ -1286,7 +1286,8 @@ class RadarrApi {
 
   Future<List<dynamic>> getFileSystem({
     required String path,
-    bool includeFiles = true,
+    bool includeFiles = false,
+    bool allowFoldersWithoutTrailingSlashes = true,
   }) async {
     try {
       final Response<dynamic> resp = await _dio.get<dynamic>(
@@ -1294,9 +1295,17 @@ class RadarrApi {
         queryParameters: <String, dynamic>{
           'path': path,
           'includeFiles': includeFiles,
+          'allowFoldersWithoutTrailingSlashes':
+              allowFoldersWithoutTrailingSlashes,
         },
       );
-      return resp.data as List<dynamic>;
+      final dynamic data = resp.data;
+      if (data is Map<String, dynamic>) {
+        return (data['directories'] as List<dynamic>?) ?? <dynamic>[];
+      } else if (data is List<dynamic>) {
+        return data;
+      }
+      return <dynamic>[];
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
