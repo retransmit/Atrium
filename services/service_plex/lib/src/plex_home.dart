@@ -741,7 +741,7 @@ class _PlexSection extends ConsumerWidget {
               ),
             ),
             SizedBox(
-              height: 240,
+              height: _rowHeight(context),
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
@@ -776,6 +776,23 @@ class _PlexSection extends ConsumerWidget {
       },
       orElse: () => const SizedBox.shrink(),
     );
+  }
+
+  /// Height for the horizontal card list. The poster image is a fixed 190
+  /// logical px tall (card width is 190 * aspect ratio, so [AspectRatio]
+  /// resolves back to 190), but the caption below it is two single-line
+  /// texts that grow with the user's font scale, so the row height has to
+  /// grow with the scaled line heights instead of staying a constant.
+  static double _rowHeight(BuildContext context) {
+    final TextTheme textTheme = Theme.of(context).textTheme;
+    final TextScaler textScaler = MediaQuery.textScalerOf(context);
+    double lineHeight(TextStyle? style) =>
+        (style?.height ?? 1.5) * textScaler.scale(style?.fontSize ?? 12);
+    return 190 +
+        Insets.xs +
+        lineHeight(textTheme.labelMedium) +
+        lineHeight(textTheme.labelSmall) +
+        Insets.md;
   }
 }
 
@@ -903,6 +920,8 @@ class PlexPosterCard extends ConsumerWidget {
           else if (item.year != null)
             Text(
               '${item.year}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: theme.textTheme.labelSmall
                   ?.copyWith(color: theme.colorScheme.outline),
             ),

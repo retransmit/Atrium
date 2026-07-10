@@ -42,246 +42,256 @@ class EmbyAlbumScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: CustomScrollView(
-        slivers: <Widget>[
-          // Top Section: Album Info
-          SliverToBoxAdapter(
-            child: albumImageUrl != null
-                ? SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.5,
-                    child: Stack(
-                      children: <Widget>[
-                        Positioned.fill(
-                          child: CachedNetworkImage(
-                            imageUrl: albumImageUrl!,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        Positioned.fill(
-                          child: ColoredBox(
-                            color: Colors.black.withValues(alpha: 0.4),
-                          ),
-                        ),
-                        Positioned.fill(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: <Color>[
-                                  Theme.of(context)
-                                      .colorScheme
-                                      .surface
-                                      .withValues(alpha: 0.0),
-                                  Theme.of(context)
-                                      .colorScheme
-                                      .surface
-                                      .withValues(alpha: 0.55),
-                                  Theme.of(context).colorScheme.surface,
-                                ],
-                                stops: const <double>[0.35, 0.75, 1.0],
-                              ),
+      body: M3RefreshIndicator(
+        onRefresh: () async => ref.invalidate(
+          embyAlbumDataFutureProvider((instance, albumId, albumArtist)),
+        ),
+        child: CustomScrollView(
+          slivers: <Widget>[
+            // Top Section: Album Info
+            SliverToBoxAdapter(
+              child: albumImageUrl != null
+                  ? SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.5,
+                      child: Stack(
+                        children: <Widget>[
+                          Positioned.fill(
+                            child: CachedNetworkImage(
+                              imageUrl: albumImageUrl!,
+                              fit: BoxFit.cover,
                             ),
                           ),
-                        ),
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          child: _buildHeader(context, client),
-                        ),
-                      ],
-                    ),
-                  )
-                : SafeArea(
-                    bottom: false,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: Insets.lg),
-                      child: _buildHeader(context, client),
-                    ),
-                  ),
-          ),
-
-          if (albumGenres != null && albumGenres!.isNotEmpty)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.only(
-                  left: Insets.lg,
-                  right: Insets.lg,
-                  top: Insets.lg,
-                ),
-                child: Wrap(
-                  spacing: 6.0,
-                  runSpacing: 6.0,
-                  children: albumGenres!.map((String g) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        g,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSecondaryContainer,
-                              fontWeight: FontWeight.w500,
+                          Positioned.fill(
+                            child: ColoredBox(
+                              color: Colors.black.withValues(alpha: 0.4),
                             ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-
-          if (albumOverview != null && albumOverview!.isNotEmpty)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(Insets.lg),
-                child: OverviewBox(overview: albumOverview!),
-              ),
-            ),
-
-          // Data Section: Bio and Tracks
-          SliverToBoxAdapter(
-            child: AsyncValueView<AlbumScreenData>(
-              value: dataAsync,
-              onRetry: () => ref.invalidate(
-                embyAlbumDataFutureProvider(
-                  (instance, albumId, albumArtist),
-                ),
-              ),
-              data: (AlbumScreenData data) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    // Bottom Section: Tracklist
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: Insets.lg,
-                        vertical: Insets.sm,
-                      ),
-                      child: Text(
-                        'Tracks - ${data.tracks.length}',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      padding: EdgeInsets.zero,
-                      itemCount: data.tracks.length,
-                      itemBuilder: (BuildContext context, int index) {
-                        final EmbyItem song = data.tracks[index];
-
-                        String duration = '';
-                        if (song.runTimeTicks != null) {
-                          final int totalSeconds =
-                              (song.runTimeTicks! / 10000000).round();
-                          final int minutes = totalSeconds ~/ 60;
-                          final int seconds = totalSeconds % 60;
-                          duration =
-                              '$minutes:${seconds.toString().padLeft(2, '0')}';
-                        }
-
-                        final String? imageUrl =
-                            client?.imageUrl(song) ?? albumImageUrl;
-
-                        return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: Insets.lg,
-                            vertical: Insets.xs,
                           ),
-                          onTap: () {
-                            if (client != null) {
-                              launchEmbyDeepLink(context, client, song.id);
-                            }
-                          },
-                          leading: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              SizedBox(
-                                width: 24,
-                                child: Text(
-                                  song.indexNumber?.toString() ??
-                                      '${index + 1}',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
-                                      ?.copyWith(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .outline,
-                                      ),
-                                  textAlign: TextAlign.center,
+                          Positioned.fill(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: <Color>[
+                                    Theme.of(context)
+                                        .colorScheme
+                                        .surface
+                                        .withValues(alpha: 0.0),
+                                    Theme.of(context)
+                                        .colorScheme
+                                        .surface
+                                        .withValues(alpha: 0.55),
+                                    Theme.of(context).colorScheme.surface,
+                                  ],
+                                  stops: const <double>[0.35, 0.75, 1.0],
                                 ),
                               ),
-                              const SizedBox(width: Insets.md),
-                              if (imageUrl != null)
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(4),
-                                  child: CachedNetworkImage(
-                                    imageUrl: imageUrl,
-                                    width: 48,
-                                    height: 48,
-                                    fit: BoxFit.cover,
-                                    errorWidget: (context, url, error) =>
-                                        Container(
+                            ),
+                          ),
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: _buildHeader(context, client),
+                          ),
+                        ],
+                      ),
+                    )
+                  : SafeArea(
+                      bottom: false,
+                      child: Padding(
+                        // Clear the floating back arrow: the body extends
+                        // behind the transparent app bar, so without artwork
+                        // the header would sit underneath it.
+                        padding: const EdgeInsets.only(
+                          top: kToolbarHeight + Insets.lg,
+                        ),
+                        child: _buildHeader(context, client),
+                      ),
+                    ),
+            ),
+
+            if (albumGenres != null && albumGenres!.isNotEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.only(
+                    left: Insets.lg,
+                    right: Insets.lg,
+                    top: Insets.lg,
+                  ),
+                  child: Wrap(
+                    spacing: 6.0,
+                    runSpacing: 6.0,
+                    children: albumGenres!.map((String g) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          g,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSecondaryContainer,
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+
+            if (albumOverview != null && albumOverview!.isNotEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(Insets.lg),
+                  child: OverviewBox(overview: albumOverview!),
+                ),
+              ),
+
+            // Data Section: Bio and Tracks
+            SliverToBoxAdapter(
+              child: AsyncValueView<AlbumScreenData>(
+                value: dataAsync,
+                onRetry: () => ref.invalidate(
+                  embyAlbumDataFutureProvider(
+                    (instance, albumId, albumArtist),
+                  ),
+                ),
+                data: (AlbumScreenData data) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      // Bottom Section: Tracklist
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: Insets.lg,
+                          vertical: Insets.sm,
+                        ),
+                        child: Text(
+                          'Tracks - ${data.tracks.length}',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: EdgeInsets.zero,
+                        itemCount: data.tracks.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          final EmbyItem song = data.tracks[index];
+
+                          String duration = '';
+                          if (song.runTimeTicks != null) {
+                            final int totalSeconds =
+                                (song.runTimeTicks! / 10000000).round();
+                            final int minutes = totalSeconds ~/ 60;
+                            final int seconds = totalSeconds % 60;
+                            duration =
+                                '$minutes:${seconds.toString().padLeft(2, '0')}';
+                          }
+
+                          final String? imageUrl =
+                              client?.imageUrl(song) ?? albumImageUrl;
+
+                          return ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: Insets.lg,
+                              vertical: Insets.xs,
+                            ),
+                            onTap: () {
+                              if (client != null) {
+                                launchEmbyDeepLink(context, client, song.id);
+                              }
+                            },
+                            leading: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                SizedBox(
+                                  width: 24,
+                                  child: Text(
+                                    song.indexNumber?.toString() ??
+                                        '${index + 1}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .outline,
+                                        ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                                const SizedBox(width: Insets.md),
+                                if (imageUrl != null)
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: CachedNetworkImage(
+                                      imageUrl: imageUrl,
                                       width: 48,
                                       height: 48,
-                                      decoration: BoxDecoration(
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .surfaceContainerHighest,
-                                        borderRadius: BorderRadius.circular(4),
+                                      fit: BoxFit.cover,
+                                      errorWidget: (context, url, error) =>
+                                          Container(
+                                        width: 48,
+                                        height: 48,
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .surfaceContainerHighest,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: const Icon(Icons.music_note),
                                       ),
-                                      child: const Icon(Icons.music_note),
                                     ),
+                                  )
+                                else
+                                  Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .surfaceContainerHighest,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Icon(Icons.music_note),
                                   ),
-                                )
-                              else
-                                Container(
-                                  width: 48,
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .surfaceContainerHighest,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: const Icon(Icons.music_note),
-                                ),
-                            ],
-                          ),
-                          title: Text(
-                            song.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Text(
-                            song.artists.isNotEmpty
-                                ? '${song.artists.join(', ')} • $duration'
-                                : duration,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: Insets.xl),
-                  ],
-                );
-              },
+                              ],
+                            ),
+                            title: Text(
+                              song.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              song.artists.isNotEmpty
+                                  ? '${song.artists.join(', ')} • $duration'
+                                  : duration,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: Insets.xl),
+                    ],
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

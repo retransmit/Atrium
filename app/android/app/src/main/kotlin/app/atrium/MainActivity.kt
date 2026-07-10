@@ -20,7 +20,6 @@ class MainActivity : FlutterFragmentActivity() {
                     if (launchIntent != null) {
                         launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT)
-                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
                         startActivity(launchIntent)
                         result.success(true)
                     } else {

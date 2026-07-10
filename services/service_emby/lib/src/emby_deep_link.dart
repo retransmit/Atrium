@@ -13,7 +13,18 @@ Future<void> launchEmbyDeepLink(
   String itemId,
 ) async {
   final String serverId = client.serverId ?? '';
-  final String urlStr = 'emby://items/$serverId/$itemId';
+  if (serverId.isEmpty) {
+    // Without a server id the emby:// route is dead: the Emby app opens on
+    // an empty screen and the launch still reports success. Skip the deep
+    // link attempts entirely and show the fallback message instead.
+    if (context.mounted) {
+      _showNotInstalled(context);
+    }
+    return;
+  }
+
+  final String urlStr =
+      'emby://items/${Uri.encodeComponent(serverId)}/${Uri.encodeComponent(itemId)}';
   final Uri uri = Uri.parse(urlStr);
 
   if (Platform.isAndroid) {

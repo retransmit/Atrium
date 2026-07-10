@@ -21,12 +21,37 @@ class OverviewBox extends StatefulWidget {
 }
 
 class _OverviewBoxState extends State<OverviewBox> {
+  static const int _collapsedMaxLines = 3;
+
   bool _expanded = false;
+
+  /// Whether [OverviewBox.overview] wraps past [_collapsedMaxLines] lines at
+  /// the given width, using the same style, direction, and text scale the
+  /// visible [Text] will render with.
+  bool _exceedsCollapsedLines(
+    BuildContext context,
+    TextStyle? style,
+    double maxWidth,
+  ) {
+    final TextPainter painter = TextPainter(
+      text: TextSpan(text: widget.overview, style: style),
+      maxLines: _collapsedMaxLines,
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout(maxWidth: maxWidth);
+    final bool exceeds = painter.didExceedMaxLines;
+    painter.dispose();
+    return exceeds;
+  }
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
+    final TextStyle? bodyStyle = theme.textTheme.bodyMedium?.copyWith(
+      color: cs.onSurfaceVariant,
+      height: 1.5,
+    );
 
     return Container(
       width: double.infinity,
@@ -44,41 +69,50 @@ class _OverviewBoxState extends State<OverviewBox> {
                 ?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: Insets.sm),
-          AnimatedCrossFade(
-            firstChild: Text(
-              widget.overview,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: cs.onSurfaceVariant,
-                height: 1.5,
-              ),
-            ),
-            secondChild: Text(
-              widget.overview,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: cs.onSurfaceVariant,
-                height: 1.5,
-              ),
-            ),
-            crossFadeState: _expanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 250),
+          LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              final bool needsToggle = _exceedsCollapsedLines(
+                context,
+                bodyStyle,
+                constraints.maxWidth,
+              );
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  AnimatedCrossFade(
+                    firstChild: Text(
+                      widget.overview,
+                      maxLines: _collapsedMaxLines,
+                      overflow: TextOverflow.ellipsis,
+                      style: bodyStyle,
+                    ),
+                    secondChild: Text(
+                      widget.overview,
+                      style: bodyStyle,
+                    ),
+                    crossFadeState: _expanded
+                        ? CrossFadeState.showSecond
+                        : CrossFadeState.showFirst,
+                    duration: const Duration(milliseconds: 250),
+                  ),
+                  if (needsToggle) ...<Widget>[
+                    const SizedBox(height: Insets.xs),
+                    GestureDetector(
+                      onTap: () => setState(() => _expanded = !_expanded),
+                      child: Text(
+                        _expanded ? 'Show less' : 'Show more',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: cs.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
           ),
-          if (widget.overview.length > 150) ...<Widget>[
-            const SizedBox(height: Insets.xs),
-            GestureDetector(
-              onTap: () => setState(() => _expanded = !_expanded),
-              child: Text(
-                _expanded ? 'Show less' : 'Show more',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: cs.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );

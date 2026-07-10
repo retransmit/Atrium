@@ -72,8 +72,7 @@ class GlancesHome extends ConsumerWidget {
           ],
         ),
       ),
-      loading: () => const Center(
-          child: CircularProgressIndicatorM3E(shape: ProgressM3EShape.flat),),
+      loading: () => const Center(child: ExpressiveProgressIndicator()),
       error: (Object e, StackTrace st) => Center(
         child: Padding(
           padding: Insets.page,

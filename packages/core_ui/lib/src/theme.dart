@@ -18,7 +18,9 @@ abstract final class AtriumTheme {
 
   static ThemeData light(ColorScheme? dynamicScheme, {String? fontFamily}) =>
       _build(
-          dynamicScheme ?? ColorScheme.fromSeed(seedColor: seed), fontFamily);
+        dynamicScheme ?? ColorScheme.fromSeed(seedColor: seed),
+        fontFamily,
+      );
 
   static ThemeData dark(ColorScheme? dynamicScheme, {String? fontFamily}) =>
       _build(
@@ -124,6 +126,10 @@ class _AtriumDynamicColorBuilderState
       if (kDebugMode) {
         debugPrint('dynamic_color: Failed to obtain core palette. $e');
       }
+    } on MissingPluginException catch (e) {
+      if (kDebugMode) {
+        debugPrint('dynamic_color: Core palette channel unavailable. $e');
+      }
     }
 
     try {
@@ -137,7 +143,6 @@ class _AtriumDynamicColorBuilderState
         setState(() {
           _light = ColorScheme.fromSeed(
             seedColor: accentColor,
-            brightness: Brightness.light,
           );
           _dark = ColorScheme.fromSeed(
             seedColor: accentColor,
@@ -149,6 +154,12 @@ class _AtriumDynamicColorBuilderState
     } on PlatformException catch (e) {
       if (kDebugMode) {
         debugPrint('dynamic_color: Failed to obtain accent color. $e');
+      }
+    } on MissingPluginException catch (e) {
+      // Android without desktop accent support reports notImplemented, which
+      // surfaces here rather than as a PlatformException. Keep the seed theme.
+      if (kDebugMode) {
+        debugPrint('dynamic_color: Accent color channel unavailable. $e');
       }
     }
   }
