@@ -14,4 +14,5 @@ export 'src/jellyfin_session_detail_screen.dart';
 export 'src/jellyfin_settings_screen.dart';
 export 'src/models/jellyfin_auth.dart';
 export 'src/models/jellyfin_item.dart';
+export 'src/models/jellyfin_session.dart';
 export 'src/models/jellyfin_view.dart';

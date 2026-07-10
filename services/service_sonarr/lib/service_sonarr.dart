@@ -5,6 +5,7 @@ import 'package:core_models/core_models.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 export 'src/models/sonarr_episode.dart';
+export 'src/models/sonarr_queue_item.dart';
 export 'src/models/sonarr_series.dart';
 export 'src/series_detail_screen.dart';
 export 'src/sonarr_add_series_search_screen.dart';
