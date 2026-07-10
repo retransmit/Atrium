@@ -513,6 +513,8 @@ class RadarrApi {
   Future<List<dynamic>> getManualImport({
     required String folder,
     int? movieId,
+    bool filterExistingFiles = true,
+    CancelToken? cancelToken,
   }) async {
     try {
       final Response<dynamic> resp = await _dio.get<dynamic>(
@@ -520,7 +522,12 @@ class RadarrApi {
         queryParameters: <String, dynamic>{
           'folder': folder,
           if (movieId != null) 'movieId': movieId,
+          'filterExistingFiles': filterExistingFiles,
         },
+        cancelToken: cancelToken,
+        options: Options(
+          receiveTimeout: const Duration(seconds: 180),
+        ),
       );
       return resp.data as List<dynamic>;
     } on DioException catch (e) {
@@ -528,9 +535,19 @@ class RadarrApi {
     }
   }
 
-  Future<void> executeManualImport(List<dynamic> items) async {
+  Future<void> executeManualImport({
+    required List<dynamic> files,
+    String importMode = 'Move',
+  }) async {
     try {
-      await _dio.post<dynamic>('$_base/manualimport', data: items);
+      await _dio.post<dynamic>(
+        '$_base/command',
+        data: <String, dynamic>{
+          'name': 'ManualImport',
+          'importMode': importMode,
+          'files': files,
+        },
+      );
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }

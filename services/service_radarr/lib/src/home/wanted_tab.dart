@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../service_radarr.dart';
+import 'manual_import_dialog.dart';
 
 class WantedTab extends ConsumerStatefulWidget {
   const WantedTab({required this.instance, super.key});
@@ -382,9 +383,21 @@ class _WantedListView extends ConsumerWidget {
             },
             child: ListView.builder(
               padding: const EdgeInsets.all(Insets.md),
-              itemCount: studioKeys.length,
+              itemCount: studioKeys.length + 1,
               itemBuilder: (context, index) {
-                final studio = studioKeys[index];
+                if (index == 0) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        showManualImportFlow(context, ref, instance);
+                      },
+                      icon: const Icon(Icons.folder_open, size: 18),
+                      label: const Text('Manual Import'),
+                    ),
+                  );
+                }
+                final studio = studioKeys[index - 1];
                 final studioMovies = groupedMap[studio]!;
                 return _GroupedWantedCard(
                   instance: instance,
@@ -410,9 +423,21 @@ class _WantedListView extends ConsumerWidget {
             },
             child: ListView.builder(
               padding: const EdgeInsets.all(Insets.md),
-              itemCount: movies.length,
+              itemCount: movies.length + 1,
               itemBuilder: (context, index) {
-                final movie = movies[index];
+                if (index == 0) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        showManualImportFlow(context, ref, instance);
+                      },
+                      icon: const Icon(Icons.folder_open, size: 18),
+                      label: const Text('Manual Import'),
+                    ),
+                  );
+                }
+                final movie = movies[index - 1];
                 final isSelected = selectedIds.contains(movie.id);
 
                 return Padding(
