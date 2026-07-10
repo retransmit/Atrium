@@ -226,7 +226,7 @@ final activityDownloadsProvider =
         collect(
           instance,
           ref.watch(radarrQueueProvider(instance)),
-          (RadarrQueuePage page) => _radarrDownloads(instance, page),
+          (List<RadarrQueueItem> items) => _radarrDownloads(instance, items),
         );
       default:
         break;
@@ -528,18 +528,18 @@ List<ActivityDownload> _sonarrDownloads(
 
 List<ActivityDownload> _radarrDownloads(
   Instance instance,
-  RadarrQueuePage page,
+  List<RadarrQueueItem> items,
 ) {
   return <ActivityDownload>[
-    for (final RadarrQueueRecord record in page.records)
+    for (final RadarrQueueItem item in items)
       ActivityDownload(
-        key: '${instance.id}:${record.id}',
+        key: '${instance.id}:${item.id}',
         instance: instance,
         sourceKind: instance.kind,
-        title: (record.title ?? '').isEmpty ? 'Unknown' : record.title!,
-        progress: _sizeProgress(record.size, record.sizeleft),
-        eta: (record.timeleft ?? '').isEmpty ? null : record.timeleft,
-        status: _arrStatusLabel(record.status, record.trackedDownloadState),
+        title: (item.title ?? '').isEmpty ? 'Unknown' : item.title!,
+        progress: _sizeProgress(item.size ?? 0, item.sizeleft ?? 0),
+        eta: (item.timeleft ?? '').isEmpty ? null : item.timeleft,
+        status: _arrStatusLabel(item.status, item.trackedDownloadState),
       ),
   ];
 }

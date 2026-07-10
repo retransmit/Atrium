@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:collection/collection.dart';
 import 'package:core_models/core_models.dart';
@@ -7,18 +8,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../service_sonarr.dart';
+import '../../service_radarr.dart';
 
-class SeriesTab extends ConsumerStatefulWidget {
-  const SeriesTab({required this.instance, super.key});
+class MoviesTab extends ConsumerStatefulWidget {
+  const MoviesTab({required this.instance, super.key});
 
   final Instance instance;
 
   @override
-  ConsumerState<SeriesTab> createState() => _SeriesTabState();
+  ConsumerState<MoviesTab> createState() => _MoviesTabState();
 }
 
-class _SeriesTabState extends ConsumerState<SeriesTab>
+class _MoviesTabState extends ConsumerState<MoviesTab>
     with WidgetsBindingObserver {
   late final TextEditingController _searchController;
   late final ScrollController _scrollController;
@@ -30,7 +31,7 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     final String initialQuery =
-        ref.read(sonarrSearchQueryProvider(widget.instance));
+        ref.read(radarrSearchQueryProvider(widget.instance));
     _searchController = TextEditingController(text: initialQuery);
     _scrollController = ScrollController()..addListener(_onScroll);
     _searchFocusNode = FocusNode()..addListener(_onFocusChange);
@@ -38,7 +39,7 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
 
   @override
   void dispose() {
-    ref.read(sonarrSearchActiveProvider(widget.instance).notifier).state =
+    ref.read(radarrSearchActiveProvider(widget.instance).notifier).state =
         false;
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
@@ -65,7 +66,7 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
   void _updateSearchActiveState() {
     final bool isActive =
         _searchFocusNode.hasFocus || _searchController.text.isNotEmpty;
-    ref.read(sonarrSearchActiveProvider(widget.instance).notifier).state =
+    ref.read(radarrSearchActiveProvider(widget.instance).notifier).state =
         isActive;
   }
 
@@ -87,15 +88,15 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final AsyncValue<List<SonarrSeries>> filtered =
-        ref.watch(sonarrFilteredSeriesProvider(widget.instance));
-    final SonarrApi? api = ref.watch(sonarrApiProvider(widget.instance)).value;
-    final SonarrViewMode viewMode =
-        ref.watch(sonarrViewModeProvider(widget.instance));
-    final selection = ref.watch(sonarrSeriesSelectionProvider(widget.instance));
+    final AsyncValue<List<RadarrMovie>> filtered =
+        ref.watch(radarrFilteredMoviesProvider(widget.instance));
+    final RadarrApi? api = ref.watch(radarrApiProvider(widget.instance)).value;
+    final RadarrViewMode viewMode =
+        ref.watch(radarrViewModeProvider(widget.instance));
+    final selection = ref.watch(radarrMoviesSelectionProvider(widget.instance));
     final isSelecting = selection.isNotEmpty;
 
-    ref.listen<int>(sonarrSeriesScrollToTopProvider(widget.instance),
+    ref.listen<int>(radarrMoviesScrollToTopProvider(widget.instance),
         (previous, next) {
       if (next > 0 && _scrollController.hasClients) {
         _scrollController.animateTo(
@@ -106,9 +107,7 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
       }
     });
 
-    // Keep the local controller in sync when the search query is cleared
-    // externally (SonarrHome unwinds search state on system back).
-    ref.listen<String>(sonarrSearchQueryProvider(widget.instance),
+    ref.listen<String>(radarrSearchQueryProvider(widget.instance),
         (String? previous, String next) {
       if (next.isEmpty && _searchController.text.isNotEmpty) {
         setState(() {
@@ -125,12 +124,12 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
               instance: widget.instance,
               selectedIds: selection,
               onClear: () {
-                ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier).state = {};
+                ref.read(radarrMoviesSelectionProvider(widget.instance).notifier).state = {};
               },
             )
           : null,
       floatingActionButton: !isSelecting && ref.watch(
-                sonarrActiveTabBarIndexProvider(widget.instance),
+                radarrActiveTabBarIndexProvider(widget.instance),
               ) ==
               0
           ? Column(
@@ -138,7 +137,7 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
               crossAxisAlignment: CrossAxisAlignment.end,
               children: <Widget>[
                 FloatingActionButton.small(
-                  heroTag: 'sonarr_sort_filter_fab',
+                  heroTag: 'radarr_sort_filter_fab',
                   backgroundColor: theme.colorScheme.secondaryContainer,
                   foregroundColor: theme.colorScheme.onSecondaryContainer,
                   onPressed: () {
@@ -154,7 +153,7 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                 ),
                 const SizedBox(height: 12),
                 FloatingActionButton.extended(
-                  heroTag: 'sonarr_add_series_fab',
+                  heroTag: 'radarr_add_movie_fab',
                   shape: const StadiumBorder(),
                   backgroundColor: theme.colorScheme.primaryContainer,
                   foregroundColor: theme.colorScheme.onPrimaryContainer,
@@ -162,12 +161,12 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                     Navigator.of(context, rootNavigator: true).push(
                       FadePageRoute<void>(
                         builder: (BuildContext context) =>
-                            SonarrAddSeriesSearchScreen(instance: widget.instance),
+                            AddMovieScreen(instance: widget.instance),
                       ),
                     );
                   },
                   icon: const Icon(Icons.add),
-                  label: const Text('Add Series'),
+                  label: const Text('Add Movie'),
                 ),
               ],
             )
@@ -175,20 +174,19 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         behavior: HitTestBehavior.translucent,
-        child: AsyncValueView<List<SonarrSeries>>(
+        child: AsyncValueView<List<RadarrMovie>>(
           value: filtered,
           onRetry: () =>
-              ref.invalidate(sonarrSeriesProvider(widget.instance)),
-          data: (List<SonarrSeries> list) {
+              ref.invalidate(radarrMoviesProvider(widget.instance)),
+          data: (List<RadarrMovie> list) {
             return M3RefreshIndicator(
               onRefresh: () async {
-                ref.invalidate(sonarrSeriesProvider(widget.instance));
-                await ref.read(sonarrSeriesProvider(widget.instance).future);
+                ref.invalidate(radarrMoviesProvider(widget.instance));
+                await ref.read(radarrMoviesProvider(widget.instance).future);
               },
               child: CustomScrollView(
                 controller: _scrollController,
                 slivers: <Widget>[
-                  // Built-in Material 3 SliverAppBar with floating & snap animation
                   SliverAppBar(
                     floating: true,
                     snap: true,
@@ -202,13 +200,13 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                         ? IconButton(
                             icon: const Icon(Icons.close),
                             onPressed: () {
-                              ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier).state = {};
+                              ref.read(radarrMoviesSelectionProvider(widget.instance).notifier).state = {};
                             },
                           )
                         : IconButton(
                             icon: const Icon(Icons.menu),
                             onPressed: () {
-                              openDrawer(context);
+                              Scaffold.of(context).openDrawer();
                             },
                           ),
                     title: isSelecting
@@ -221,7 +219,7 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                         : SearchBar(
                             focusNode: _searchFocusNode,
                             controller: _searchController,
-                            hintText: 'Search series...',
+                            hintText: 'Search movies...',
                             onTapOutside: (event) {
                               if (_searchFocusNode.hasFocus) {
                                 _searchFocusNode.unfocus();
@@ -241,7 +239,7 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                                     });
                                     ref
                                         .read(
-                                          sonarrSearchQueryProvider(
+                                          radarrSearchQueryProvider(
                                             widget.instance,
                                           ).notifier,
                                         )
@@ -254,7 +252,7 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                               setState(() {});
                               ref
                                   .read(
-                                    sonarrSearchQueryProvider(widget.instance)
+                                    radarrSearchQueryProvider(widget.instance)
                                         .notifier,
                                   )
                                   .state = value;
@@ -270,8 +268,8 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                               tooltip: 'Select all',
                               onPressed: () {
                                 ref
-                                    .read(sonarrSeriesSelectionProvider(widget.instance).notifier)
-                                    .state = list.map((s) => s.id).toSet();
+                                    .read(radarrMoviesSelectionProvider(widget.instance).notifier)
+                                    .state = list.map((m) => m.id).toSet();
                               },
                             )
                           else
@@ -280,30 +278,30 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                               tooltip: 'Deselect all',
                               onPressed: () {
                                 ref
-                                    .read(sonarrSeriesSelectionProvider(widget.instance).notifier)
+                                    .read(radarrMoviesSelectionProvider(widget.instance).notifier)
                                     .state = {};
                               },
                             ),
                       ] else ...<Widget>[
                         IconButton(
                           icon: Icon(
-                            viewMode == SonarrViewMode.grid
+                            viewMode == RadarrViewMode.grid
                                 ? Icons.view_list
                                 : Icons.grid_view,
                           ),
-                          tooltip: viewMode == SonarrViewMode.grid
+                          tooltip: viewMode == RadarrViewMode.grid
                               ? 'Switch to list view'
                               : 'Switch to grid view',
                           onPressed: () {
                             ref
                                     .read(
-                                      sonarrViewModeProvider(widget.instance)
+                                      radarrViewModeProvider(widget.instance)
                                           .notifier,
                                     )
                                     .state =
-                                viewMode == SonarrViewMode.grid
-                                    ? SonarrViewMode.list
-                                    : SonarrViewMode.grid;
+                                viewMode == RadarrViewMode.grid
+                                    ? RadarrViewMode.list
+                                    : RadarrViewMode.grid;
                           },
                         ),
                       ],
@@ -314,13 +312,13 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                     const SliverFillRemaining(
                       hasScrollBody: false,
                       child: EmptyView(
-                        icon: Icons.live_tv_outlined,
-                        title: 'No series found',
+                        icon: Icons.movie_outlined,
+                        title: 'No movies found',
                         message:
                             'Try adjusting your search query or active filters.',
                       ),
                     )
-                  else if (viewMode == SonarrViewMode.grid)
+                  else if (viewMode == RadarrViewMode.grid)
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(
                         Insets.md,
@@ -338,42 +336,42 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                         ),
                         delegate: SliverChildBuilderDelegate(
                           (BuildContext context, int index) {
-                            final SonarrSeries s = list[index];
-                            final SonarrImage? poster =
-                                s.images.firstWhereOrNull(
-                              (SonarrImage i) => i.coverType == 'poster',
+                            final RadarrMovie m = list[index];
+                            final RadarrImage? poster = m.images
+                                .firstWhereOrNull(
+                              (RadarrImage i) => i.coverType == 'poster',
                             );
-                            final isSelected = selection.contains(s.id);
-                            return _SeriesCard(
-                              series: s,
+                            final isSelected = selection.contains(m.id);
+                            return _MovieCard(
+                              movie: m,
                               imageUrl: poster == null
                                   ? null
                                   : api?.posterUrl(poster, width: 500),
                               selected: isSelected,
                               onLongPress: () {
-                                final notifier = ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier);
+                                final notifier = ref.read(radarrMoviesSelectionProvider(widget.instance).notifier);
                                 if (isSelected) {
-                                  notifier.state = selection.where((id) => id != s.id).toSet();
+                                  notifier.state = selection.where((id) => id != m.id).toSet();
                                 } else {
-                                  notifier.state = {...selection, s.id};
+                                  notifier.state = {...selection, m.id};
                                 }
                               },
                               onTap: () {
                                 if (isSelecting) {
-                                  final notifier = ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier);
+                                  final notifier = ref.read(radarrMoviesSelectionProvider(widget.instance).notifier);
                                   if (isSelected) {
-                                    notifier.state = selection.where((id) => id != s.id).toSet();
+                                    notifier.state = selection.where((id) => id != m.id).toSet();
                                   } else {
-                                    notifier.state = {...selection, s.id};
+                                    notifier.state = {...selection, m.id};
                                   }
                                 } else {
                                   Navigator.of(context, rootNavigator: true)
                                       .push(
                                     FadePageRoute<void>(
                                       builder: (BuildContext context) =>
-                                          SeriesDetailScreen(
+                                          MovieDetailScreen(
                                         instance: widget.instance,
-                                        series: s,
+                                        movieId: m.id,
                                       ),
                                     ),
                                   );
@@ -396,40 +394,40 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                       sliver: SliverList(
                         delegate: SliverChildBuilderDelegate(
                           (BuildContext context, int index) {
-                            final SonarrSeries s = list[index];
+                            final RadarrMovie m = list[index];
                             return Padding(
                               padding:
                                   const EdgeInsets.only(bottom: Insets.md),
-                              child: _SeriesBannerCard(
+                              child: _MovieBannerCard(
                                 instance: widget.instance,
-                                series: s,
-                                selected: selection.contains(s.id),
+                                movie: m,
+                                selected: selection.contains(m.id),
                                 onLongPress: () {
-                                  final isSelected = selection.contains(s.id);
-                                  final notifier = ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier);
+                                  final isSelected = selection.contains(m.id);
+                                  final notifier = ref.read(radarrMoviesSelectionProvider(widget.instance).notifier);
                                   if (isSelected) {
-                                    notifier.state = selection.where((id) => id != s.id).toSet();
+                                    notifier.state = selection.where((id) => id != m.id).toSet();
                                   } else {
-                                    notifier.state = {...selection, s.id};
+                                    notifier.state = {...selection, m.id};
                                   }
                                 },
                                 onTap: () {
-                                  final isSelected = selection.contains(s.id);
+                                  final isSelected = selection.contains(m.id);
                                   if (isSelecting) {
-                                    final notifier = ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier);
+                                    final notifier = ref.read(radarrMoviesSelectionProvider(widget.instance).notifier);
                                     if (isSelected) {
-                                      notifier.state = selection.where((id) => id != s.id).toSet();
+                                      notifier.state = selection.where((id) => id != m.id).toSet();
                                     } else {
-                                      notifier.state = {...selection, s.id};
+                                      notifier.state = {...selection, m.id};
                                     }
                                   } else {
                                     Navigator.of(context, rootNavigator: true)
                                         .push(
                                       FadePageRoute<void>(
                                         builder: (BuildContext context) =>
-                                            SeriesDetailScreen(
+                                            MovieDetailScreen(
                                           instance: widget.instance,
-                                          series: s,
+                                          movieId: m.id,
                                         ),
                                       ),
                                     );
@@ -452,16 +450,16 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
   }
 }
 
-class _SeriesCard extends StatelessWidget {
-  const _SeriesCard({
-    required this.series,
+class _MovieCard extends StatelessWidget {
+  const _MovieCard({
+    required this.movie,
     required this.imageUrl,
     required this.onTap,
     this.selected = false,
     this.onLongPress,
   });
 
-  final SonarrSeries series;
+  final RadarrMovie movie;
   final String? imageUrl;
   final VoidCallback onTap;
   final bool selected;
@@ -489,7 +487,7 @@ class _SeriesCard extends StatelessWidget {
                 fit: StackFit.expand,
                 children: <Widget>[
                   Hero(
-                    tag: 'series-poster-${series.id}',
+                    tag: 'movie-poster-${movie.id}',
                     child: _Poster(imageUrl: imageUrl, theme: theme),
                   ),
                   if (selected)
@@ -512,19 +510,34 @@ class _SeriesCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                  if (series.monitored)
-                    Positioned(
-                      top: 6,
-                      right: 6,
-                      child: _Badge(
-                        color: theme.colorScheme.primary,
-                        child: Icon(
-                          Icons.bookmark,
-                          size: 12,
-                          color: theme.colorScheme.onPrimary,
+                  if (!selected) ...[
+                    if (movie.hasFile)
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: _Badge(
+                          color: theme.colorScheme.primary,
+                          child: Icon(
+                            Icons.check,
+                            size: 12,
+                            color: theme.colorScheme.onPrimary,
+                          ),
+                        ),
+                      )
+                    else if (movie.monitored)
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: _Badge(
+                          color: theme.colorScheme.secondaryContainer,
+                          child: Icon(
+                            Icons.bookmark,
+                            size: 12,
+                            color: theme.colorScheme.onSecondaryContainer,
+                          ),
                         ),
                       ),
-                    ),
+                  ],
                 ],
               ),
             ),
@@ -534,7 +547,7 @@ class _SeriesCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(
-                    series.title,
+                    movie.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.labelLarge?.copyWith(
@@ -561,27 +574,25 @@ class _SeriesCard extends StatelessWidget {
   }
 
   String _subtitle() {
-    final int sizeOnDisk = series.statistics?.sizeOnDisk ?? 0;
     final List<String> parts = <String>[
-      if (series.year != null) '${series.year}',
-      if (series.status != null) series.status!,
-      if (sizeOnDisk > 0) _formatSize(sizeOnDisk),
+      if (movie.year != null) '${movie.year}',
+      if (movie.sizeOnDisk > 0) _formatSize(movie.sizeOnDisk),
     ];
     return parts.join(' • ');
   }
 }
 
-class _SeriesBannerCard extends ConsumerWidget {
-  const _SeriesBannerCard({
+class _MovieBannerCard extends ConsumerWidget {
+  const _MovieBannerCard({
     required this.instance,
-    required this.series,
+    required this.movie,
     required this.onTap,
     this.selected = false,
     this.onLongPress,
   });
 
   final Instance instance;
-  final SonarrSeries series;
+  final RadarrMovie movie;
   final VoidCallback onTap;
   final bool selected;
   final VoidCallback? onLongPress;
@@ -589,14 +600,14 @@ class _SeriesBannerCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
-    final SonarrApi? api = ref.watch(sonarrApiProvider(instance)).value;
+    final RadarrApi? api = ref.watch(radarrApiProvider(instance)).value;
 
-    final SonarrImage? banner = series.images
-        .firstWhereOrNull((SonarrImage i) => i.coverType == 'banner');
+    final RadarrImage? banner = movie.images
+        .firstWhereOrNull((RadarrImage i) => i.coverType == 'banner');
     final String? bannerUrl = banner == null ? null : api?.posterUrl(banner);
 
-    final SonarrImage? poster = series.images
-        .firstWhereOrNull((SonarrImage i) => i.coverType == 'poster');
+    final RadarrImage? poster = movie.images
+        .firstWhereOrNull((RadarrImage i) => i.coverType == 'poster');
     final String? posterUrl =
         poster == null ? null : api?.posterUrl(poster, width: 500);
 
@@ -684,7 +695,7 @@ class _SeriesBannerCard extends ConsumerWidget {
                       ),
                       child: posterUrl != null
                           ? Hero(
-                              tag: 'series-poster-${series.id}',
+                              tag: 'movie-poster-${movie.id}',
                               child: CachedNetworkImage(
                                 imageUrl: posterUrl,
                                 fit: BoxFit.cover,
@@ -695,13 +706,13 @@ class _SeriesBannerCard extends ConsumerWidget {
                                 errorWidget: (_, __, ___) => Container(
                                   color:
                                       theme.colorScheme.surfaceContainerHighest,
-                                  child: const Icon(Icons.live_tv, size: 20),
+                                  child: const Icon(Icons.movie_outlined, size: 20),
                                 ),
                               ),
                             )
                           : Container(
                               color: theme.colorScheme.surfaceContainerHighest,
-                              child: const Icon(Icons.live_tv, size: 20),
+                              child: const Icon(Icons.movie_outlined, size: 20),
                             ),
                     ),
                   ),
@@ -714,7 +725,7 @@ class _SeriesBannerCard extends ConsumerWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: <Widget>[
                           Text(
-                            series.title,
+                            movie.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.titleMedium?.copyWith(
@@ -738,7 +749,7 @@ class _SeriesBannerCard extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(width: Insets.sm),
-                  if (series.monitored)
+                  if (movie.monitored)
                     Padding(
                       padding: const EdgeInsets.only(right: Insets.md),
                       child: Container(
@@ -765,12 +776,10 @@ class _SeriesBannerCard extends ConsumerWidget {
   }
 
   String _metaText() {
-    final int sizeOnDisk = series.statistics?.sizeOnDisk ?? 0;
     final List<String> parts = <String>[
-      if (series.year != null) '${series.year}',
-      if (series.network != null && series.network!.isNotEmpty) series.network!,
-      if (series.status != null && series.status!.isNotEmpty) series.status!,
-      if (sizeOnDisk > 0) _formatSize(sizeOnDisk),
+      if (movie.year != null) '${movie.year}',
+      if (movie.studio != null && movie.studio!.isNotEmpty) movie.studio!,
+      if (movie.sizeOnDisk > 0) _formatSize(movie.sizeOnDisk),
     ];
     return parts.join(' • ');
   }
@@ -786,7 +795,7 @@ class _Poster extends StatelessWidget {
   Widget build(BuildContext context) {
     final Widget fallback = Container(
       color: theme.colorScheme.surfaceContainerHighest,
-      child: Icon(Icons.live_tv_outlined, color: theme.colorScheme.outline),
+      child: Icon(Icons.movie_outlined, color: theme.colorScheme.outline),
     );
     if (imageUrl == null) {
       return fallback;
@@ -841,6 +850,7 @@ class FadePageRoute<T> extends PageRouteBuilder<T> {
           reverseTransitionDuration: const Duration(milliseconds: 250),
         );
 }
+
 class _BulkActionsBar extends StatelessWidget {
   const _BulkActionsBar({
     required this.instance,
@@ -930,16 +940,16 @@ class _BulkEditDialog extends ConsumerStatefulWidget {
 class _BulkEditDialogState extends ConsumerState<_BulkEditDialog> {
   bool? _monitored;
   int? _qualityProfileId;
-  String? _seriesType;
   String? _rootFolderPath;
+  bool _moveFiles = true;
 
   @override
   Widget build(BuildContext context) {
-    final profilesAsync = ref.watch(sonarrQualityProfilesProvider(widget.instance));
-    final foldersAsync = ref.watch(sonarrRootFoldersProvider(widget.instance));
+    final profilesAsync = ref.watch(radarrQualityProfilesProvider(widget.instance));
+    final foldersAsync = ref.watch(radarrRootFoldersProvider(widget.instance));
 
     return AlertDialog(
-      title: const Text('Bulk Edit Series'),
+      title: const Text('Bulk Edit Movies'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -957,21 +967,6 @@ class _BulkEditDialogState extends ConsumerState<_BulkEditDialog> {
                 DropdownMenuItem(value: false, child: Text('Unmonitored')),
               ],
               onChanged: (val) => setState(() => _monitored = val),
-            ),
-            const SizedBox(height: Insets.md),
-            DropdownButtonFormField<String?>(
-              initialValue: _seriesType,
-              decoration: const InputDecoration(
-                labelText: 'Series Type',
-                border: OutlineInputBorder(),
-              ),
-              items: const [
-                DropdownMenuItem(child: Text('Keep current')),
-                DropdownMenuItem(value: 'standard', child: Text('Standard')),
-                DropdownMenuItem(value: 'daily', child: Text('Daily')),
-                DropdownMenuItem(value: 'anime', child: Text('Anime')),
-              ],
-              onChanged: (val) => setState(() => _seriesType = val),
             ),
             const SizedBox(height: Insets.md),
             profilesAsync.when(
@@ -1019,6 +1014,18 @@ class _BulkEditDialogState extends ConsumerState<_BulkEditDialog> {
               ),
               error: (_, __) => const Text('Error loading folders'),
             ),
+            if (_rootFolderPath != null) ...[
+              const SizedBox(height: Insets.sm),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Move files to the new folder'),
+                subtitle: const Text(
+                  'Off leaves the files behind in the old folder',
+                ),
+                value: _moveFiles,
+                onChanged: (val) => setState(() => _moveFiles = val),
+              ),
+            ],
           ],
         ),
       ),
@@ -1032,11 +1039,13 @@ class _BulkEditDialogState extends ConsumerState<_BulkEditDialog> {
             final NavigatorState nav =
                 Navigator.of(context, rootNavigator: true);
             final payload = <String, dynamic>{
-              'seriesIds': widget.selectedIds.toList(),
+              'movieIds': widget.selectedIds.toList(),
               if (_monitored != null) 'monitored': _monitored,
               if (_qualityProfileId != null) 'qualityProfileId': _qualityProfileId,
-              if (_seriesType != null) 'seriesType': _seriesType,
               if (_rootFolderPath != null) 'rootFolderPath': _rootFolderPath,
+              // Changing the root folder without moveFiles orphans the
+              // files on disk, so send the user's explicit choice.
+              if (_rootFolderPath != null) 'moveFiles': _moveFiles,
             };
 
             unawaited(showDialog<void>(
@@ -1051,8 +1060,8 @@ class _BulkEditDialogState extends ConsumerState<_BulkEditDialog> {
             Object? error;
             try {
               final api =
-                  await ref.read(sonarrApiProvider(widget.instance).future);
-              await api.bulkUpdateSeries(payload);
+                  await ref.read(radarrApiProvider(widget.instance).future);
+              await api.bulkUpdateMovies(payload);
             } catch (e) {
               error = e;
             } finally {
@@ -1062,16 +1071,16 @@ class _BulkEditDialogState extends ConsumerState<_BulkEditDialog> {
             if (!context.mounted) return;
             if (error != null) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error updating series: $error')),
+                SnackBar(content: Text('Error updating movies: $error')),
               );
               return;
             }
-            ref.invalidate(sonarrSeriesProvider(widget.instance));
-            ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier).state = {};
+            ref.invalidate(radarrMoviesProvider(widget.instance));
+            ref.read(radarrMoviesSelectionProvider(widget.instance).notifier).state = {};
             Navigator.pop(context); // pop dialog
 
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Successfully updated series')),
+              const SnackBar(content: Text('Successfully updated movies')),
             );
           },
           child: const Text('Save'),
@@ -1100,12 +1109,12 @@ class _BulkDeleteDialogState extends ConsumerState<_BulkDeleteDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Delete ${widget.selectedIds.length} Series?'),
+      title: Text('Delete ${widget.selectedIds.length} Movies?'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Are you sure you want to delete these series? This action cannot be undone.'),
+          const Text('Are you sure you want to delete these movies? This action cannot be undone.'),
           const SizedBox(height: 16),
           CheckboxListTile(
             title: const Text('Delete all files from disk'),
@@ -1140,8 +1149,8 @@ class _BulkDeleteDialogState extends ConsumerState<_BulkDeleteDialog> {
             Object? error;
             try {
               final api =
-                  await ref.read(sonarrApiProvider(widget.instance).future);
-              await api.bulkDeleteSeries(widget.selectedIds.toList(), deleteFiles: _deleteFiles);
+                  await ref.read(radarrApiProvider(widget.instance).future);
+              await api.bulkDeleteMovies(widget.selectedIds.toList(), deleteFiles: _deleteFiles);
             } catch (e) {
               error = e;
             } finally {
@@ -1151,16 +1160,16 @@ class _BulkDeleteDialogState extends ConsumerState<_BulkDeleteDialog> {
             if (!context.mounted) return;
             if (error != null) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error deleting series: $error')),
+                SnackBar(content: Text('Error deleting movies: $error')),
               );
               return;
             }
-            ref.invalidate(sonarrSeriesProvider(widget.instance));
-            ref.read(sonarrSeriesSelectionProvider(widget.instance).notifier).state = {};
+            ref.invalidate(radarrMoviesProvider(widget.instance));
+            ref.read(radarrMoviesSelectionProvider(widget.instance).notifier).state = {};
             Navigator.pop(context); // pop dialog
 
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Successfully deleted series')),
+              const SnackBar(content: Text('Successfully deleted movies')),
             );
           },
           child: const Text('Delete'),
@@ -1179,9 +1188,9 @@ class _SortFilterBottomSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
 
-    final sortField = ref.watch(sonarrSeriesSortFieldProvider(instance));
-    final sortAscending = ref.watch(sonarrSeriesSortAscendingProvider(instance));
-    final filter = ref.watch(sonarrSeriesFilterProvider(instance));
+    final sortOption = ref.watch(radarrMovieSortFieldProvider(instance));
+    final sortAscending = ref.watch(radarrMovieSortAscendingProvider(instance));
+    final filter = ref.watch(radarrMovieFilterProvider(instance));
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -1200,33 +1209,48 @@ class _SortFilterBottomSheet extends ConsumerWidget {
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
-                runSpacing: 4,
-                children: SonarrSeriesFilter.values.map((f) {
-                  final label = switch (f) {
-                    SonarrSeriesFilter.all => 'All',
-                    SonarrSeriesFilter.monitoredOnly => 'Monitored Only',
-                    SonarrSeriesFilter.unmonitoredOnly => 'Unmonitored Only',
-                    SonarrSeriesFilter.continuingOnly => 'Continuing Only',
-                    SonarrSeriesFilter.endedOnly => 'Ended Only',
-                    SonarrSeriesFilter.missingEpisodes => 'Missing Episodes',
-                  };
-                  final selected = filter == f;
-                  return ChoiceChip(
-                    label: Text(label),
-                    selected: selected,
+                runSpacing: 8,
+                children: [
+                  ChoiceChip(
+                    label: const Text('All Status'),
+                    selected: filter == RadarrMovieFilter.all,
                     onSelected: (val) {
-                      if (val) {
-                        ref
-                            .read(sonarrSeriesFilterProvider(instance).notifier)
-                            .state = f;
-                      }
+                      if (val) ref.read(radarrMovieFilterProvider(instance).notifier).state = RadarrMovieFilter.all;
                     },
-                  );
-                }).toList(),
+                  ),
+                  ChoiceChip(
+                    label: const Text('Downloaded Only'),
+                    selected: filter == RadarrMovieFilter.downloaded,
+                    onSelected: (val) {
+                      if (val) ref.read(radarrMovieFilterProvider(instance).notifier).state = RadarrMovieFilter.downloaded;
+                    },
+                  ),
+                  ChoiceChip(
+                    label: const Text('Missing Only'),
+                    selected: filter == RadarrMovieFilter.missing,
+                    onSelected: (val) {
+                      if (val) ref.read(radarrMovieFilterProvider(instance).notifier).state = RadarrMovieFilter.missing;
+                    },
+                  ),
+                  ChoiceChip(
+                    label: const Text('Monitored Only'),
+                    selected: filter == RadarrMovieFilter.monitoredOnly,
+                    onSelected: (val) {
+                      if (val) ref.read(radarrMovieFilterProvider(instance).notifier).state = RadarrMovieFilter.monitoredOnly;
+                    },
+                  ),
+                  ChoiceChip(
+                    label: const Text('Unmonitored Only'),
+                    selected: filter == RadarrMovieFilter.unmonitoredOnly,
+                    onSelected: (val) {
+                      if (val) ref.read(radarrMovieFilterProvider(instance).notifier).state = RadarrMovieFilter.unmonitoredOnly;
+                    },
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               Text(
-                'Sort By',
+                'Sort',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -1234,63 +1258,80 @@ class _SortFilterBottomSheet extends ConsumerWidget {
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
-                runSpacing: 4,
-                children: SonarrSeriesSortField.values.map((field) {
-                  final label = switch (field) {
-                    SonarrSeriesSortField.monitoredStatus => 'Monitored/Status',
-                    SonarrSeriesSortField.title => 'Title',
-                    SonarrSeriesSortField.network => 'Network',
-                    SonarrSeriesSortField.nextAiring => 'Next Airing',
-                    SonarrSeriesSortField.previousAiring => 'Previous Airing',
-                    SonarrSeriesSortField.added => 'Added',
-                    SonarrSeriesSortField.seasons => 'Seasons',
-                    SonarrSeriesSortField.episodes => 'Episodes',
-                    SonarrSeriesSortField.episodeCount => 'Episode Count',
-                    SonarrSeriesSortField.sizeOnDisk => 'Size on Disk',
-                  };
-                  final selected = sortField == field;
-                  return ChoiceChip(
-                    label: Text(label),
-                    selected: selected,
+                runSpacing: 8,
+                children: [
+                  ChoiceChip(
+                    label: const Text('Title'),
+                    selected: sortOption == RadarrMovieSortField.title,
                     onSelected: (val) {
                       if (val) {
-                        ref
-                            .read(sonarrSeriesSortFieldProvider(instance).notifier)
-                            .state = field;
+                        if (sortOption == RadarrMovieSortField.title) {
+                          ref.read(radarrMovieSortAscendingProvider(instance).notifier).state = !sortAscending;
+                        } else {
+                          ref.read(radarrMovieSortFieldProvider(instance).notifier).state = RadarrMovieSortField.title;
+                          ref.read(radarrMovieSortAscendingProvider(instance).notifier).state = true;
+                        }
                       }
                     },
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Order',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              SegmentedButton<bool>(
-                segments: const <ButtonSegment<bool>>[
-                  ButtonSegment<bool>(
-                    value: true,
-                    label: Text('Ascending'),
-                    icon: Icon(Icons.arrow_upward),
                   ),
-                  ButtonSegment<bool>(
-                    value: false,
-                    label: Text('Descending'),
-                    icon: Icon(Icons.arrow_downward),
+                  ChoiceChip(
+                    label: const Text('Year'),
+                    selected: sortOption == RadarrMovieSortField.year,
+                    onSelected: (val) {
+                      if (val) {
+                        if (sortOption == RadarrMovieSortField.year) {
+                          ref.read(radarrMovieSortAscendingProvider(instance).notifier).state = !sortAscending;
+                        } else {
+                          ref.read(radarrMovieSortFieldProvider(instance).notifier).state = RadarrMovieSortField.year;
+                          ref.read(radarrMovieSortAscendingProvider(instance).notifier).state = false;
+                        }
+                      }
+                    },
+                  ),
+                  ChoiceChip(
+                    label: const Text('Date Added'),
+                    selected: sortOption == RadarrMovieSortField.added,
+                    onSelected: (val) {
+                      if (val) {
+                        if (sortOption == RadarrMovieSortField.added) {
+                          ref.read(radarrMovieSortAscendingProvider(instance).notifier).state = !sortAscending;
+                        } else {
+                          ref.read(radarrMovieSortFieldProvider(instance).notifier).state = RadarrMovieSortField.added;
+                          ref.read(radarrMovieSortAscendingProvider(instance).notifier).state = false;
+                        }
+                      }
+                    },
+                  ),
+                  ChoiceChip(
+                    label: const Text('Size on Disk'),
+                    selected: sortOption == RadarrMovieSortField.sizeOnDisk,
+                    onSelected: (val) {
+                      if (val) {
+                        if (sortOption == RadarrMovieSortField.sizeOnDisk) {
+                          ref.read(radarrMovieSortAscendingProvider(instance).notifier).state = !sortAscending;
+                        } else {
+                          ref.read(radarrMovieSortFieldProvider(instance).notifier).state = RadarrMovieSortField.sizeOnDisk;
+                          ref.read(radarrMovieSortAscendingProvider(instance).notifier).state = false;
+                        }
+                      }
+                    },
+                  ),
+                  ChoiceChip(
+                    label: const Text('Monitored Status'),
+                    selected: sortOption == RadarrMovieSortField.monitoredStatus,
+                    onSelected: (val) {
+                      if (val) {
+                        if (sortOption == RadarrMovieSortField.monitoredStatus) {
+                          ref.read(radarrMovieSortAscendingProvider(instance).notifier).state = !sortAscending;
+                        } else {
+                          ref.read(radarrMovieSortFieldProvider(instance).notifier).state = RadarrMovieSortField.monitoredStatus;
+                          ref.read(radarrMovieSortAscendingProvider(instance).notifier).state = true;
+                        }
+                      }
+                    },
                   ),
                 ],
-                selected: {sortAscending},
-                onSelectionChanged: (val) {
-                  ref
-                      .read(sonarrSeriesSortAscendingProvider(instance).notifier)
-                      .state = val.first;
-                },
               ),
-              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -1301,13 +1342,7 @@ class _SortFilterBottomSheet extends ConsumerWidget {
 
 String _formatSize(int bytes) {
   if (bytes <= 0) return '0 B';
-  const List<String> suffixes = <String>['B', 'KB', 'MB', 'GB', 'TB'];
-  int i = 0;
-  double dBytes = bytes.toDouble();
-  while (dBytes >= 1024 && i < suffixes.length - 1) {
-    dBytes /= 1024;
-    i++;
-  }
-  return '${dBytes.toStringAsFixed(1)} ${suffixes[i]}';
+  const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  final i = (log(bytes) / log(1024)).floor();
+  return '${(bytes / pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
 }
-

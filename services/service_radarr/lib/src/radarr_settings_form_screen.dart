@@ -3,242 +3,96 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'models/radarr_movie.dart';
 import 'radarr_providers.dart';
 
-/// Generic add/edit form for the provider-style settings resources (indexers,
-/// download clients, notifications, import lists).
-///
-/// In add mode it first shows the provider schema list, then renders the
-/// selected template's dynamic fields. In edit mode it jumps straight to the
-/// field form built from the existing item. Test / Save / Delete all
-/// round-trip the FULL raw object back through the API layer.
 class RadarrSettingsFormScreen extends ConsumerStatefulWidget {
   const RadarrSettingsFormScreen({
     required this.instance,
-    required this.category,
-    this.itemRaw,
+    required this.movie,
     super.key,
   });
 
   final Instance instance;
-  final String category; // 'downloadclient', 'indexer', 'notification', 'importlist'
-  final Map<String, dynamic>? itemRaw;
+  final RadarrMovie movie;
 
   @override
   ConsumerState<RadarrSettingsFormScreen> createState() =>
       _RadarrSettingsFormScreenState();
 }
 
-class _ScrollBehavior extends ScrollBehavior {
-  @override
-  Widget buildScrollbar(
-    BuildContext context,
-    Widget child,
-    ScrollableDetails details,
-  ) {
-    return child;
-  }
-}
-
 class _RadarrSettingsFormScreenState
     extends ConsumerState<RadarrSettingsFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
+  late final TextEditingController _pathController;
+  late final Future<Map<String, dynamic>> _rawMovieFuture;
 
-  Map<String, dynamic>? _selectedTemplate;
-  List<Map<String, dynamic>> _fields = [];
-  final Map<String, bool> _obscurePasswords = {};
-  bool _showAdvanced = false;
-  bool _testing = false;
+  bool _monitored = true;
+  int? _selectedQualityProfileId;
+  String _minimumAvailability = 'announced';
+  List<int> _selectedTagIds = [];
+
   bool _saving = false;
-
-  bool get _isEdit => widget.itemRaw != null;
-
-  String get _categoryDisplayName {
-    switch (widget.category) {
-      case 'downloadclient':
-        return 'Download Client';
-      case 'indexer':
-        return 'Indexer';
-      case 'notification':
-        return 'Notification';
-      case 'importlist':
-        return 'Import List';
-      default:
-        return 'Settings';
-    }
-  }
+  bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
-    if (_isEdit) {
-      _selectedTemplate = widget.itemRaw;
-      _nameController.text = (widget.itemRaw!['name'] as String?) ?? '';
-      if (widget.itemRaw!['fields'] != null) {
-        _fields = (widget.itemRaw!['fields'] as List<dynamic>)
-            .map(
-              (dynamic f) =>
-                  Map<String, dynamic>.from(f as Map<dynamic, dynamic>),
-            )
-            .toList();
-      }
-    }
+    _pathController = TextEditingController();
+    _rawMovieFuture = ref
+        .read(radarrApiProvider(widget.instance).future)
+        .then((api) => api.getMovieRaw(widget.movie.id));
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _pathController.dispose();
     super.dispose();
   }
 
-  void _onTemplateSelected(Map<String, dynamic> template) {
-    setState(() {
-      _selectedTemplate = template;
-      _nameController.text = (template['name'] as String?) ??
-          (template['implementationName'] as String?) ??
-          '';
-      if (template['fields'] != null) {
-        _fields = (template['fields'] as List<dynamic>)
-            .map(
-              (dynamic f) =>
-                  Map<String, dynamic>.from(f as Map<dynamic, dynamic>),
-            )
-            .toList();
-      }
-    });
+  void _initializeValues(Map<String, dynamic> rawMovie) {
+    if (_initialized) return;
+    _initialized = true;
+
+    _pathController.text = (rawMovie['path'] as String?) ?? '';
+    _monitored = (rawMovie['monitored'] as bool?) ?? true;
+    _selectedQualityProfileId = rawMovie['qualityProfileId'] as int?;
+    _minimumAvailability =
+        (rawMovie['minimumAvailability'] as String?) ?? 'announced';
+    _selectedTagIds =
+        List<int>.from((rawMovie['tags'] as Iterable?) ?? <int>[]);
   }
 
-  AsyncValue<List<Map<String, dynamic>>> _getSchemaValue() {
-    switch (widget.category) {
-      case 'downloadclient':
-        return ref.watch(radarrDownloadClientSchemaProvider(widget.instance));
-      case 'indexer':
-        return ref.watch(radarrIndexerSchemaProvider(widget.instance));
-      case 'notification':
-        return ref.watch(radarrNotificationSchemaProvider(widget.instance));
-      case 'importlist':
-        return ref.watch(radarrImportListSchemaProvider(widget.instance));
-      default:
-        return const AsyncValue.loading();
-    }
-  }
-
-  Map<String, dynamic> _buildPayload() {
-    final payload = Map<String, dynamic>.from(_selectedTemplate!);
-    payload['fields'] = _fields;
-    payload['name'] = _nameController.text.trim();
-    return payload;
-  }
-
-  Future<void> _testConnection() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _testing = true);
-
-    final api = await ref.read(radarrApiProvider(widget.instance).future);
-    final payload = _buildPayload();
-
-    try {
-      switch (widget.category) {
-        case 'downloadclient':
-          await api.testDownloadClientRaw(payload);
-          break;
-        case 'indexer':
-          await api.testIndexerRaw(payload);
-          break;
-        case 'notification':
-          await api.testNotificationRaw(payload);
-          break;
-        case 'importlist':
-          await api.testImportListRaw(payload);
-          break;
-      }
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Connection test successful!')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Test failed: ${e.toString()}')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _testing = false);
-    }
-  }
-
-  Future<void> _save() async {
+  Future<void> _save(Map<String, dynamic> rawMovie) async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
 
-    final api = await ref.read(radarrApiProvider(widget.instance).future);
-    final payload = _buildPayload();
-
     try {
-      if (_isEdit) {
-        switch (widget.category) {
-          case 'downloadclient':
-            await api.updateDownloadClientRaw(payload);
-            break;
-          case 'indexer':
-            await api.updateIndexerRaw(payload);
-            break;
-          case 'notification':
-            await api.updateNotificationRaw(payload);
-            break;
-          case 'importlist':
-            await api.updateImportListRaw(payload);
-            break;
-        }
-      } else {
-        switch (widget.category) {
-          case 'downloadclient':
-            await api.createDownloadClientRaw(payload);
-            break;
-          case 'indexer':
-            await api.createIndexerRaw(payload);
-            break;
-          case 'notification':
-            await api.createNotificationRaw(payload);
-            break;
-          case 'importlist':
-            await api.createImportListRaw(payload);
-            break;
-        }
-      }
+      final api = await ref.read(radarrApiProvider(widget.instance).future);
 
-      // Invalidate target providers (both typed and raw views).
-      switch (widget.category) {
-        case 'downloadclient':
-          ref.invalidate(radarrDownloadClientsProvider(widget.instance));
-          ref.invalidate(radarrDownloadClientsRawProvider(widget.instance));
-          break;
-        case 'indexer':
-          ref.invalidate(radarrIndexersProvider(widget.instance));
-          ref.invalidate(radarrIndexersRawProvider(widget.instance));
-          break;
-        case 'notification':
-          ref.invalidate(radarrNotificationsProvider(widget.instance));
-          ref.invalidate(radarrNotificationsRawProvider(widget.instance));
-          break;
-        case 'importlist':
-          ref.invalidate(radarrImportListsProvider(widget.instance));
-          ref.invalidate(radarrImportListsRawProvider(widget.instance));
-          break;
-      }
+      final Map<String, dynamic> payload = Map<String, dynamic>.from(rawMovie);
+      payload['path'] = _pathController.text.trim();
+      payload['monitored'] = _monitored;
+      payload['qualityProfileId'] = _selectedQualityProfileId;
+      payload['minimumAvailability'] = _minimumAvailability;
+      payload['tags'] = _selectedTagIds;
+
+      await api.updateMovieRaw(payload);
+      ref.invalidate(
+        radarrMovieByIdProvider((widget.instance, widget.movie.id)),
+      );
+      ref.invalidate(radarrMoviesProvider(widget.instance));
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$_categoryDisplayName saved!')),
+          const SnackBar(content: Text('Movie settings saved successfully!')),
         );
-        Navigator.of(context).pop();
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save: ${e.toString()}')),
+          SnackBar(content: Text('Failed to save settings: $e')),
         );
       }
     } finally {
@@ -248,278 +102,216 @@ class _RadarrSettingsFormScreenState
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final ThemeData theme = Theme.of(context);
+    final profilesAsync =
+        ref.watch(radarrQualityProfilesProvider(widget.instance));
+    final tagsAsync = ref.watch(radarrTagsProvider(widget.instance));
 
-    if (_selectedTemplate == null) {
-      // Show list of provider schemas.
-      final schemaVal = _getSchemaValue();
-      return Scaffold(
-        appBar: AppBar(
-          title: Text('Select $_categoryDisplayName Type'),
-        ),
-        body: AsyncValueView<List<Map<String, dynamic>>>(
-          value: schemaVal,
-          data: (templates) {
-            if (templates.isEmpty) {
-              return Center(
-                child: Text('No $_categoryDisplayName templates available.'),
-              );
-            }
-            return ListView.builder(
-              padding: Insets.page,
-              itemCount: templates.length,
-              itemBuilder: (context, idx) {
-                final template = templates[idx];
-                final name =
-                    (template['implementationName'] as String?) ?? 'Unknown';
-                final info = (template['infoLink'] as String?) ?? '';
-                return Card(
-                  margin: const EdgeInsets.only(bottom: Insets.md),
-                  child: ListTile(
-                    title: Text(
-                      name,
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: info.isNotEmpty
-                        ? Text(info, maxLines: 1, overflow: TextOverflow.ellipsis)
-                        : null,
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _onTemplateSelected(template),
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _rawMovieFuture,
+      builder: (context, snapshot) {
+        final rawMovie = snapshot.data;
+        if (rawMovie != null) {
+          _initializeValues(rawMovie);
+        }
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Edit Movie Settings'),
+            actions: [
+              if (_saving)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.0),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: ExpressiveProgressIndicator(strokeWidth: 2),
                   ),
-                );
-              },
-            );
-          },
-        ),
-      );
-    }
-
-    // Otherwise render the form for the selected template.
-    final implementationName =
-        (_selectedTemplate!['implementationName'] as String?) ?? '';
-    final title = _isEdit ? 'Edit $implementationName' : 'Add $implementationName';
-
-    final visibleFields = _fields.where((f) {
-      if (!_showAdvanced && f['advanced'] == true) return false;
-      if (f['hidden'] == 'hidden') return false;
-      return true;
-    }).toList();
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        actions: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Advanced', style: TextStyle(fontSize: 12)),
-              Switch(
-                value: _showAdvanced,
-                onChanged: (val) => setState(() => _showAdvanced = val),
-              ),
+                )
+              else if (rawMovie != null)
+                IconButton(
+                  icon: const Icon(Icons.check),
+                  onPressed: () => _save(rawMovie),
+                ),
             ],
           ),
-        ],
-      ),
-      body: Form(
-        key: _formKey,
-        child: ScrollConfiguration(
-          behavior: _ScrollBehavior(),
-          child: ListView(
-            padding: Insets.page,
-            children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Name',
-                  helperText: 'Unique name for this configuration',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (val) =>
-                    (val == null || val.trim().isEmpty) ? 'Required' : null,
-              ),
-              const SizedBox(height: Insets.md),
-              ...visibleFields.map((field) {
-                final String fieldType =
-                    (field['type'] as String?) ?? 'textbox';
-                final String label = (field['label'] as String?) ??
-                    (field['name'] as String? ?? '');
-                final String? help = field['helpText'] as String?;
-
-                switch (fieldType) {
-                  case 'checkbox':
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: Insets.md),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: theme.dividerColor),
-                        borderRadius: Radii.card,
-                      ),
-                      child: SwitchListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: Insets.md,
-                        ),
-                        title: Text(label),
-                        subtitle: help != null ? Text(help) : null,
-                        value: (field['value'] as bool?) ?? false,
-                        onChanged: (val) => setState(() => field['value'] = val),
-                      ),
-                    );
-
-                  case 'select':
-                    final options = (field['selectOptions'] as List<dynamic>?)
-                            ?.map((dynamic e) => e as Map<String, dynamic>)
-                            .toList() ??
-                        <Map<String, dynamic>>[];
-                    final currentValue = field['value'];
-                    // Ensure currentValue is in options.
-                    final hasMatch =
-                        options.any((opt) => opt['value'] == currentValue);
-                    final dropdownValue = hasMatch
-                        ? currentValue
-                        : (options.isNotEmpty ? options[0]['value'] : null);
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: Insets.md),
-                      child: DropdownButtonFormField<dynamic>(
-                        initialValue: dropdownValue,
-                        decoration: InputDecoration(
-                          labelText: label,
-                          helperText: help,
-                          border: const OutlineInputBorder(),
-                        ),
-                        items: options.map((opt) {
-                          return DropdownMenuItem<dynamic>(
-                            value: opt['value'],
-                            child: Text(
-                              (opt['name'] ?? opt['value'] ?? '').toString(),
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (val) => setState(() => field['value'] = val),
-                      ),
-                    );
-
-                  case 'number':
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: Insets.md),
-                      child: TextFormField(
-                        initialValue: (field['value'] ?? '').toString(),
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: label,
-                          helperText: help,
-                          border: const OutlineInputBorder(),
-                        ),
-                        onChanged: (val) =>
-                            field['value'] = num.tryParse(val) ?? val,
-                        validator: (val) {
-                          if (val == null || val.trim().isEmpty) {
-                            return 'Required';
-                          }
-                          if (num.tryParse(val) == null) {
-                            return 'Must be a valid number';
-                          }
-                          return null;
-                        },
-                      ),
-                    );
-
-                  case 'password':
-                    final name = field['name'] as String;
-                    final obscure = _obscurePasswords[name] ?? true;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: Insets.md),
-                      child: TextFormField(
-                        initialValue: (field['value'] ?? '').toString(),
-                        obscureText: obscure,
-                        decoration: InputDecoration(
-                          labelText: label,
-                          helperText: help,
-                          border: const OutlineInputBorder(),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              obscure
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                            ),
-                            onPressed: () => setState(
-                              () => _obscurePasswords[name] = !obscure,
+          body: snapshot.hasError
+              ? Center(
+                  child: Text(
+                    'Error loading movie metadata: ${snapshot.error}',
+                  ),
+                )
+              : rawMovie == null
+                  ? const Center(child: ExpressiveProgressIndicator())
+                  : Form(
+                      key: _formKey,
+                      child: ListView(
+                        padding: const EdgeInsets.all(Insets.md),
+                        children: [
+                          Text(
+                            widget.movie.title,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ),
-                        onChanged: (val) => field['value'] = val,
-                        validator: (val) =>
-                            (val == null || val.trim().isEmpty)
-                                ? 'Required'
-                                : null,
-                      ),
-                    );
+                          const SizedBox(height: Insets.md),
 
-                  case 'textbox':
-                  default:
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: Insets.md),
-                      child: TextFormField(
-                        initialValue: (field['value'] ?? '').toString(),
-                        decoration: InputDecoration(
-                          labelText: label,
-                          helperText: help,
-                          border: const OutlineInputBorder(),
-                        ),
-                        onChanged: (val) => field['value'] = val,
-                        validator: (val) {
-                          // Allow known-optional textbox fields to be empty.
-                          if (field['name'] == 'directory') return null;
-                          if (field['name'] == 'avatar') return null;
-                          if (val == null || val.trim().isEmpty) {
-                            return 'Required';
-                          }
-                          return null;
-                        },
-                      ),
-                    );
-                }
-              }),
-              const SizedBox(height: Insets.lg),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _testing ? null : _testConnection,
-                      icon: _testing
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: ExpressiveProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.science_outlined),
-                      label: const Text('Test'),
-                    ),
-                  ),
-                  const SizedBox(width: Insets.md),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: _saving ? null : _save,
-                      icon: _saving
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: ExpressiveProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
+                          TextFormField(
+                            controller: _pathController,
+                            decoration: const InputDecoration(
+                              labelText: 'Path',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.folder_open),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                  return 'Path cannot be empty';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: Insets.md),
+
+                          SwitchListTile(
+                            title: const Text('Monitored'),
+                            subtitle: const Text(
+                              'Monitor and download new releases for this movie',
+                            ),
+                            secondary: const Icon(Icons.bookmark_outline),
+                            value: _monitored,
+                            onChanged: (val) {
+                              setState(() => _monitored = val);
+                            },
+                          ),
+                          const SizedBox(height: Insets.md),
+
+                          profilesAsync.when(
+                            loading: () => const Center(
+                              child: ExpressiveProgressIndicator(),
+                            ),
+                            error: (err, stack) =>
+                                Text('Error loading profiles: $err'),
+                            data: (profiles) {
+                              final hasSelected = profiles.any(
+                                (p) => p['id'] == _selectedQualityProfileId,
+                              );
+                              if (!hasSelected) {
+                                _selectedQualityProfileId = profiles.isNotEmpty
+                                    ? profiles.first['id'] as int?
+                                    : null;
+                              }
+                              return DropdownButtonFormField<int>(
+                                initialValue: _selectedQualityProfileId,
+                                decoration: const InputDecoration(
+                                  labelText: 'Quality Profile',
+                                  border: OutlineInputBorder(),
+                                  prefixIcon: Icon(Icons.high_quality),
+                                ),
+                                items: profiles.map((p) {
+                                  return DropdownMenuItem<int>(
+                                    value: p['id'] as int,
+                                    child: Text(
+                                      (p['name'] as String?) ?? 'Unknown',
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (val) {
+                                  setState(
+                                    () => _selectedQualityProfileId = val,
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                          const SizedBox(height: Insets.md),
+
+                          DropdownButtonFormField<String>(
+                            initialValue: _minimumAvailability,
+                            decoration: const InputDecoration(
+                              labelText: 'Minimum Availability',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.star_border),
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'announced',
+                                child: Text('Announced'),
                               ),
-                            )
-                          : const Icon(Icons.save_outlined),
-                      label: Text(_isEdit ? 'Save Changes' : 'Create'),
+                              DropdownMenuItem(
+                                value: 'inCinemas',
+                                child: Text('In Cinemas'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'released',
+                                child: Text('Released'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'preDB',
+                                child: Text('PreDB'),
+                              ),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) {
+                                setState(() => _minimumAvailability = val);
+                              }
+                            },
+                          ),
+                          const SizedBox(height: Insets.md),
+
+                          tagsAsync.when(
+                            loading: () => const Center(
+                              child: ExpressiveProgressIndicator(),
+                            ),
+                            error: (err, stack) =>
+                                Text('Error loading tags: $err'),
+                            data: (tags) {
+                              if (tags.isEmpty) {
+                                return const SizedBox.shrink();
+                              }
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Tags',
+                                    style: theme.textTheme.titleSmall
+                                        ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: Insets.xs),
+                                  Wrap(
+                                    spacing: Insets.xs,
+                                    runSpacing: Insets.xs,
+                                    children: tags.map((t) {
+                                      final id = t['id'] as int;
+                                      final label =
+                                          (t['label'] as String?) ?? '';
+                                      final isSelected =
+                                          _selectedTagIds.contains(id);
+                                      return FilterChip(
+                                        label: Text(label),
+                                        selected: isSelected,
+                                        onSelected: (selected) {
+                                          setState(() {
+                                            if (selected) {
+                                              _selectedTagIds.add(id);
+                                            } else {
+                                              _selectedTagIds.remove(id);
+                                            }
+                                          });
+                                        },
+                                      );
+                                    }).toList(),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
