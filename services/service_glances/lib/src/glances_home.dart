@@ -13,12 +13,15 @@ class GlancesHome extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<GlancesStats> statsAsync = ref.watch(glancesStatsProvider(instance));
-    final Set<String> pinnedNets = ref.watch(glancesPinnedNetworkProvider(instance));
+    final AsyncValue<GlancesStats> statsAsync =
+        ref.watch(glancesStatsProvider(instance));
+    final Set<String> pinnedNets =
+        ref.watch(glancesPinnedNetworkProvider(instance));
 
     return statsAsync.when(
       data: (GlancesStats stats) => M3RefreshIndicator(
-        onRefresh: () async => ref.refresh(glancesStatsProvider(instance).future),
+        onRefresh: () async =>
+            ref.refresh(glancesStatsProvider(instance).future),
         child: ListView(
           padding: Insets.page,
           children: <Widget>[
@@ -27,13 +30,15 @@ class GlancesHome extends ConsumerWidget {
               margin: const EdgeInsets.only(bottom: Insets.md),
               shape: RoundedRectangleBorder(
                 borderRadius: Radii.card,
-                side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                side: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(Insets.md),
                 child: Row(
                   children: <Widget>[
-                    const Icon(Icons.schedule_outlined, color: Color(0xFF3B82F6)),
+                    const Icon(Icons.schedule_outlined,
+                        color: Color(0xFF3B82F6)),
                     const SizedBox(width: Insets.md),
                     Expanded(
                       child: Text(
@@ -57,7 +62,8 @@ class GlancesHome extends ConsumerWidget {
             const SizedBox(height: Insets.md),
             _buildNetworkSectionHeader(context, ref, stats.network),
             ...stats.network
-                .where((GlancesNetwork n) => pinnedNets.isEmpty || pinnedNets.contains(n.interface))
+                .where((GlancesNetwork n) =>
+                    pinnedNets.isEmpty || pinnedNets.contains(n.interface))
                 .map((GlancesNetwork n) => _buildNetworkCard(context, n)),
             const SizedBox(height: Insets.md),
             _buildSectionHeader(context, 'Disks', Icons.storage_outlined),
@@ -104,7 +110,8 @@ class GlancesHome extends ConsumerWidget {
     return parts.join(' ');
   }
 
-  Widget _buildSectionHeader(BuildContext context, String title, IconData icon) {
+  Widget _buildSectionHeader(
+      BuildContext context, String title, IconData icon) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: Insets.sm),
       child: Row(
@@ -123,14 +130,17 @@ class GlancesHome extends ConsumerWidget {
     );
   }
 
-  Widget _buildNetworkSectionHeader(BuildContext context, WidgetRef ref, List<GlancesNetwork> networks) {
-    final Set<String> pinnedNets = ref.watch(glancesPinnedNetworkProvider(instance));
-    
+  Widget _buildNetworkSectionHeader(
+      BuildContext context, WidgetRef ref, List<GlancesNetwork> networks) {
+    final Set<String> pinnedNets =
+        ref.watch(glancesPinnedNetworkProvider(instance));
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: Insets.sm),
       child: Row(
         children: <Widget>[
-          Icon(Icons.network_check_outlined, size: 20, color: Theme.of(context).colorScheme.primary),
+          Icon(Icons.network_check_outlined,
+              size: 20, color: Theme.of(context).colorScheme.primary),
           const SizedBox(width: Insets.sm),
           Text(
             'Network',
@@ -169,13 +179,15 @@ class GlancesHome extends ConsumerWidget {
     );
   }
 
-  void _showNetworkFilterDialog(BuildContext context, WidgetRef parentRef, List<GlancesNetwork> networks) {
+  void _showNetworkFilterDialog(BuildContext context, WidgetRef parentRef,
+      List<GlancesNetwork> networks) {
     showDialog<void>(
       context: context,
       builder: (BuildContext dialogContext) {
         return Consumer(
           builder: (BuildContext context, WidgetRef ref, Widget? child) {
-            final Set<String> pinnedNets = ref.watch(glancesPinnedNetworkProvider(instance));
+            final Set<String> pinnedNets =
+                ref.watch(glancesPinnedNetworkProvider(instance));
             return AlertDialog(
               title: const Text('Filter Network Interfaces'),
               content: SizedBox(
@@ -183,7 +195,8 @@ class GlancesHome extends ConsumerWidget {
                 child: ListView(
                   shrinkWrap: true,
                   children: networks.map((GlancesNetwork net) {
-                    final bool isSelected = pinnedNets.isEmpty || pinnedNets.contains(net.interface);
+                    final bool isSelected = pinnedNets.isEmpty ||
+                        pinnedNets.contains(net.interface);
                     return CheckboxListTile(
                       title: Text(net.interface),
                       value: isSelected,
@@ -191,7 +204,8 @@ class GlancesHome extends ConsumerWidget {
                         final Set<String> newSet = Set<String>.from(pinnedNets);
                         if (pinnedNets.isEmpty) {
                           if (checked != true) {
-                            newSet.addAll(networks.map((GlancesNetwork e) => e.interface));
+                            newSet.addAll(networks
+                                .map((GlancesNetwork e) => e.interface));
                             newSet.remove(net.interface);
                           }
                         } else {
@@ -204,7 +218,10 @@ class GlancesHome extends ConsumerWidget {
                             newSet.clear();
                           }
                         }
-                        ref.read(glancesPinnedNetworkProvider(instance).notifier).set(newSet);
+                        ref
+                            .read(
+                                glancesPinnedNetworkProvider(instance).notifier)
+                            .set(newSet);
                       },
                     );
                   }).toList(),
@@ -213,7 +230,9 @@ class GlancesHome extends ConsumerWidget {
               actions: <Widget>[
                 TextButton(
                   onPressed: () {
-                    ref.read(glancesPinnedNetworkProvider(instance).notifier).set(<String>{});
+                    ref
+                        .read(glancesPinnedNetworkProvider(instance).notifier)
+                        .set(<String>{});
                   },
                   child: const Text('Reset'),
                 ),
@@ -249,7 +268,8 @@ class GlancesHome extends ConsumerWidget {
               child: _GaugeCard(
                 title: 'Memory',
                 percent: stats.memory.percentage / 100.0,
-                subtitle: '${(stats.memory.used / 1024 / 1024 / 1024).toStringAsFixed(2)} / ${(stats.memory.total / 1024 / 1024 / 1024).toStringAsFixed(2)} GB',
+                subtitle:
+                    '${(stats.memory.used / 1024 / 1024 / 1024).toStringAsFixed(2)} / ${(stats.memory.total / 1024 / 1024 / 1024).toStringAsFixed(2)} GB',
                 subtitleIcon: Icons.data_usage_outlined,
                 icon: Icons.memory_outlined,
                 color: const Color(0xFF6366F1), // Indigo
@@ -262,7 +282,8 @@ class GlancesHome extends ConsumerWidget {
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: Radii.card,
-            side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+            side:
+                BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
           ),
           child: Padding(
             padding: const EdgeInsets.all(Insets.md),
@@ -274,11 +295,13 @@ class GlancesHome extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text('Swap', style: Theme.of(context).textTheme.titleSmall),
+                      Text('Swap',
+                          style: Theme.of(context).textTheme.titleSmall),
                       const SizedBox(height: 6),
                       LinearProgressIndicator(
                         value: (stats.swap.percentage / 100.0).clamp(0.0, 1.0),
-                        backgroundColor: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                        backgroundColor:
+                            const Color(0xFFF59E0B).withValues(alpha: 0.15),
                         color: const Color(0xFFF59E0B),
                         minHeight: 6,
                         borderRadius: Radii.card,
@@ -326,13 +349,14 @@ class GlancesHome extends ConsumerWidget {
           children: <Widget>[
             Row(
               children: <Widget>[
-                Icon(Icons.developer_board, size: 20, color: theme.colorScheme.primary),
+                Icon(Icons.developer_board,
+                    size: 20, color: theme.colorScheme.primary),
                 const SizedBox(width: Insets.sm),
                 Text(
                   'Cores (${cpu.physicalCores} Phys, ${cpu.logicalCores} Log)',
                   style: theme.textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -344,17 +368,22 @@ class GlancesHome extends ConsumerWidget {
                   children: <Widget>[
                     SizedBox(
                       width: 60,
-                      child: Text('Core ${core.id}', style: theme.textTheme.labelMedium),
+                      child: Text('Core ${core.id}',
+                          style: theme.textTheme.labelMedium),
                     ),
                     Expanded(
                       child: TweenAnimationBuilder<double>(
-                        tween: Tween<double>(begin: 0.0, end: (core.usage / 100.0).clamp(0.0, 1.0)),
+                        tween: Tween<double>(
+                            begin: 0.0,
+                            end: (core.usage / 100.0).clamp(0.0, 1.0)),
                         duration: const Duration(milliseconds: 600),
                         curve: Curves.easeOutCubic,
-                        builder: (BuildContext context, double value, Widget? child) {
+                        builder: (BuildContext context, double value,
+                            Widget? child) {
                           return LinearProgressIndicator(
                             value: value,
-                            backgroundColor: theme.colorScheme.onSurface.withValues(alpha: 0.1),
+                            backgroundColor: theme.colorScheme.onSurface
+                                .withValues(alpha: 0.1),
                             color: theme.colorScheme.primary,
                             minHeight: 6,
                             borderRadius: Radii.card,
@@ -414,7 +443,8 @@ class GlancesHome extends ConsumerWidget {
             const SizedBox(height: Insets.md),
             LinearProgressIndicator(
               value: pct.clamp(0.0, 1.0),
-              backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+              backgroundColor:
+                  Theme.of(context).colorScheme.surfaceContainerHighest,
               color: pct > 0.9
                   ? Theme.of(context).colorScheme.error
                   : Theme.of(context).colorScheme.primary,
@@ -474,14 +504,16 @@ class GlancesHome extends ConsumerWidget {
                   const SizedBox(height: 6),
                   Row(
                     children: <Widget>[
-                      Icon(Icons.arrow_upward, size: 14, color: theme.colorScheme.tertiary),
+                      Icon(Icons.arrow_upward,
+                          size: 14, color: theme.colorScheme.tertiary),
                       const SizedBox(width: 4),
                       Text(
                         '${_formatBytes(net.txSpeed)}/s',
                         style: theme.textTheme.labelMedium,
                       ),
                       const SizedBox(width: Insets.lg),
-                      Icon(Icons.arrow_downward, size: 14, color: theme.colorScheme.primary),
+                      Icon(Icons.arrow_downward,
+                          size: 14, color: theme.colorScheme.primary),
                       const SizedBox(width: 4),
                       Text(
                         '${_formatBytes(net.rxSpeed)}/s',
@@ -534,7 +566,8 @@ class _GaugeCard extends StatelessWidget {
         side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: Insets.lg, horizontal: Insets.md),
+        padding: const EdgeInsets.symmetric(
+            vertical: Insets.lg, horizontal: Insets.md),
         child: Column(
           children: <Widget>[
             Row(
@@ -553,10 +586,12 @@ class _GaugeCard extends StatelessWidget {
                   width: 80,
                   height: 80,
                   child: TweenAnimationBuilder<double>(
-                    tween: Tween<double>(begin: 0.0, end: percent.clamp(0.0, 1.0)),
+                    tween:
+                        Tween<double>(begin: 0.0, end: percent.clamp(0.0, 1.0)),
                     duration: const Duration(milliseconds: 600),
                     curve: Curves.easeOutCubic,
-                    builder: (BuildContext context, double value, Widget? child) {
+                    builder:
+                        (BuildContext context, double value, Widget? child) {
                       return CircularProgressIndicator(
                         value: value,
                         strokeWidth: 8,

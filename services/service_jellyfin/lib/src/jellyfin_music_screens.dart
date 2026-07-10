@@ -108,7 +108,8 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                   runSpacing: 6.0,
                   children: albumGenres!.map((String g) {
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.secondaryContainer,
                         borderRadius: BorderRadius.circular(12),
@@ -116,9 +117,11 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                       child: Text(
                         g,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSecondaryContainer,
-                          fontWeight: FontWeight.w500,
-                        ),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSecondaryContainer,
+                              fontWeight: FontWeight.w500,
+                            ),
                       ),
                     );
                   }).toList(),
