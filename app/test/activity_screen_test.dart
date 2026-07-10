@@ -130,6 +130,15 @@ void main() {
               dlspeed: 1048576,
               size: 100000,
             ),
+            // Complete but actively seeding: must appear as an upload.
+            QbitTorrent(
+              hash: 'h2',
+              name: 'Fedora.iso',
+              state: 'uploading',
+              progress: 1.0,
+              upspeed: 524288,
+              size: 100000,
+            ),
           ],
         ),
         sonarrQueueProvider(sonarr).overrideWith(
@@ -146,10 +155,13 @@ void main() {
         ),
       ],
     );
-    // 'Downloads' appears in the summary bar tile and the section header.
-    expect(find.text('Downloads'), findsWidgets);
+    // 'Transfers' appears in the summary bar tile and the section header.
+    expect(find.text('Transfers'), findsWidgets);
     expect(find.text('Ubuntu.iso'), findsOneWidget);
     expect(find.text('Severance.S01E01.1080p'), findsOneWidget);
+    // The seeding torrent shows as an active upload with its status label.
+    expect(find.text('Fedora.iso'), findsOneWidget);
+    expect(find.text('Seeding'), findsOneWidget);
   });
 
   testWidgets('an unreachable source shows a chip without hiding the rest',

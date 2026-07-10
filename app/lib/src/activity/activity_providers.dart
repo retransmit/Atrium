@@ -66,6 +66,7 @@ class ActivityDownload {
     required this.progress,
     required this.status,
     this.speedBps,
+    this.upSpeedBps,
     this.eta,
   });
 
@@ -78,6 +79,10 @@ class ActivityDownload {
   /// Completion, 0-1.
   final double progress;
   final int? speedBps;
+
+  /// Upload rate, bytes/s. Non-null only while actively seeding
+  /// (qBittorrent); usenet clients never set it.
+  final int? upSpeedBps;
   final String? eta;
 
   /// Short status label ('Downloading', 'Queued', 'Importing', ...).
@@ -106,6 +111,7 @@ typedef ActivitySummary = ({
   int streamCount,
   int downloadCount,
   int totalDlBps,
+  int totalUpBps,
 });
 
 /// Active streams across every media-server / Tautulli instance of the
@@ -238,13 +244,16 @@ final activitySummaryProvider =
   final ActivityStreamsState streams = ref.watch(activityStreamsProvider);
   final ActivityDownloadsState downloads = ref.watch(activityDownloadsProvider);
   int totalDlBps = 0;
+  int totalUpBps = 0;
   for (final ActivityDownload download in downloads.downloads) {
     totalDlBps += download.speedBps ?? 0;
+    totalUpBps += download.upSpeedBps ?? 0;
   }
   return (
     streamCount: streams.streams.length,
     downloadCount: downloads.downloads.length,
     totalDlBps: totalDlBps,
+    totalUpBps: totalUpBps,
   );
 });
 
@@ -420,10 +429,11 @@ List<ActivityDownload> _qbitDownloads(
   List<QbitTorrent> torrents,
 ) {
   return <ActivityDownload>[
-    // Downloading-ish only: incomplete torrents plus anything actively
-    // pulling bytes. Seeding-idle and paused-complete stay out of the feed.
+    // Active transfers: incomplete torrents plus anything actively moving
+    // bytes in either direction. Idle seeds and paused-complete torrents
+    // stay out of the feed.
     for (final QbitTorrent t in torrents)
-      if (t.progress < 1.0 || t.dlspeed > 0)
+      if (t.progress < 1.0 || t.dlspeed > 0 || t.upspeed > 0)
         ActivityDownload(
           key: '${instance.id}:${t.hash}',
           instance: instance,
@@ -431,6 +441,7 @@ List<ActivityDownload> _qbitDownloads(
           title: t.name,
           progress: t.progress.clamp(0.0, 1.0),
           speedBps: t.dlspeed > 0 ? t.dlspeed : null,
+          upSpeedBps: t.upspeed > 0 ? t.upspeed : null,
           eta: _fmtEtaSeconds(t.eta),
           status: _qbitStatusLabel(t.state),
         ),

@@ -46,7 +46,7 @@ class ActivityScreen extends ConsumerWidget {
       body = const EmptyView(
         icon: Icons.swap_vert_outlined,
         title: 'Nothing happening right now',
-        message: 'Active streams and downloads will show up here.',
+        message: 'Active streams and transfers will show up here.',
       );
     } else {
       final bool showStreams = streamsState.streams.isNotEmpty ||
@@ -78,11 +78,14 @@ class ActivityScreen extends ConsumerWidget {
               const SizedBox(height: Insets.sm),
             if (showDownloads) ...<Widget>[
               _SectionHeader(
-                title: 'Downloads',
-                trailing: summary.totalDlBps > 0
-                    ? '${downloadsState.downloads.length} · '
-                        '${fmtSpeedBps(summary.totalDlBps)}'
-                    : '${downloadsState.downloads.length}',
+                title: 'Transfers',
+                trailing: <String>[
+                  '${downloadsState.downloads.length}',
+                  if (summary.totalDlBps > 0)
+                    '↓ ${fmtSpeedBps(summary.totalDlBps)}',
+                  if (summary.totalUpBps > 0)
+                    '↑ ${fmtSpeedBps(summary.totalUpBps)}',
+                ].join(' · '),
               ),
               if (downloadsState.errors.isNotEmpty)
                 ActivitySourceErrorChips(errors: downloadsState.errors),
@@ -173,9 +176,9 @@ class _SummaryBar extends StatelessWidget {
           const _StatDivider(),
           Expanded(
             child: _StatTile(
-              icon: Icons.download_outlined,
+              icon: Icons.swap_vert,
               value: '${summary.downloadCount}',
-              label: summary.downloadCount == 1 ? 'Download' : 'Downloads',
+              label: summary.downloadCount == 1 ? 'Transfer' : 'Transfers',
               color: cs.secondary,
             ),
           ),
@@ -183,7 +186,10 @@ class _SummaryBar extends StatelessWidget {
           Expanded(
             child: _StatTile(
               icon: Icons.speed,
-              value: fmtSpeedBps(summary.totalDlBps),
+              value: summary.totalUpBps > 0
+                  ? '↓ ${fmtSpeedBps(summary.totalDlBps)}'
+                      '  ↑ ${fmtSpeedBps(summary.totalUpBps)}'
+                  : fmtSpeedBps(summary.totalDlBps),
               label: 'Speed',
               color: cs.tertiary,
             ),
@@ -214,12 +220,16 @@ class _StatTile extends StatelessWidget {
       children: <Widget>[
         Icon(icon, size: 20, color: color),
         const SizedBox(height: 6),
-        Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style:
-              theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+        // Scale down instead of ellipsizing: the speed tile can carry both a
+        // download and an upload rate at once.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            maxLines: 1,
+            style: theme.textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.w700),
+          ),
         ),
         const SizedBox(height: 2),
         Text(
