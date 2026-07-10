@@ -49,7 +49,7 @@ class _PlexItemDetailScreenState extends ConsumerState<PlexItemDetailScreen> {
 
     // maximumColorCount is left at its default of 16.
     PaletteGenerator.fromImageProvider(
-      CachedNetworkImageProvider(posterUrl),
+      CachedNetworkImageProvider(posterUrl, maxWidth: 200, maxHeight: 300),
       size: const Size(200, 300),
       timeout: Duration.zero,
     ).then((PaletteGenerator palette) {

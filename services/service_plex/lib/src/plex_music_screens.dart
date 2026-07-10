@@ -3,6 +3,7 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 import 'models/plex_models.dart';
 import 'plex_api.dart';
@@ -43,14 +44,11 @@ class PlexArtistScreen extends ConsumerWidget {
                 message: 'This artist has no albums yet.',
               );
             }
-            return GridView.builder(
+            return MasonryGridView.extent(
               padding: Insets.page,
-              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 160,
-                childAspectRatio: 0.72,
-                crossAxisSpacing: Insets.md,
-                mainAxisSpacing: Insets.md,
-              ),
+              maxCrossAxisExtent: 160,
+              crossAxisSpacing: Insets.md,
+              mainAxisSpacing: Insets.md,
               itemCount: list.length,
               itemBuilder: (BuildContext context, int index) {
                 final PlexMetadata album = list[index];
@@ -90,8 +88,10 @@ class _AlbumCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Expanded(
+          AspectRatio(
+            aspectRatio: 1.0,
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
