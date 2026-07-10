@@ -2,7 +2,7 @@
 
 The central courtyard for your self-hosted media stack.
 One Android app that fronts Sonarr, Radarr, Prowlarr, Bazarr,
-Jellyseerr / Overseerr, Tautulli, Jellyfin, Emby, Plex, qBittorrent,
+Seerr, Tautulli, Jellyfin, Emby, Plex, qBittorrent,
 SABnzbd and Glances - and routes every request through the right URL
 whether you're on the home Wi-Fi or out in the world.
 
@@ -55,7 +55,7 @@ All services are **work in progress** - functional today, still evolving:
 | Radarr                 | same depth as Sonarr, movie flavored                                  |
 | Prowlarr               | indexers, search + grab, history, settings, system                    |
 | Bazarr                 | series/movies, wanted, manual subtitle search, system                 |
-| Jellyseerr / Overseerr | discover, search, requests management                                 |
+| Seerr                  | discover, search, requests management                                 |
 | Tautulli               | activity, history, stats, users, terminate                            |
 | Jellyfin               | libraries, detail, seasons, music, sessions with remote control       |
 | Emby                   | same depth as Jellyfin                                                |

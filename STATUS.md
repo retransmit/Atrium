@@ -48,7 +48,7 @@ Atrium is a **controller** app. Video playback was removed by design
   system
 - **Bazarr**: series/movies with per-episode subtitle status, manual
   provider search/download/delete, wanted, history, blacklist, system
-- **Jellyseerr / Overseerr**: discover (trending/upcoming/genres),
+- **Seerr** (Jellyseerr / Overseerr): discover (trending/upcoming/genres),
   search, item detail with request submission (profile/folder/server
   selection), requests management (approve/decline/delete/retry)
 - **Tautulli**: activity (10s poll) with backdrop session cards and a
