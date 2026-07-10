@@ -1,99 +1,100 @@
 # Atrium - Status
 
-> Snapshot of what genuinely works and what is left, as of 2026-06-19.
-> Atrium is in early development; nothing here is a release promise.
+> Snapshot of what genuinely works and what is left, as of 2026-07-10.
+> Atrium is in early development and every module is still work in
+> progress; nothing here is a release promise.
 
 ## Scope note
 
 Atrium is a **controller** app. Video playback was removed by design
-(2026-06-12): media servers are browse/manage only. Do not re-add a player.
+(2026-06-12): media servers are browse/manage/remote-control only, with
+"open in the official app" deep links. Do not re-add a player.
 
-## What is DONE (genuinely complete)
+## App shell
 
-- Core foundation: profiles, multi-instance, dual-URL routing, secure key
-  storage, import/export (live-verified incl. SAF picker), per-service
-  health dots, theming, launcher icon
-- **qBittorrent** (phone-verified live): cookie login (qBit 5.x 204 fix),
-  3s realtime list polling, add magnet/file, categories, pause/resume/
-  delete/recheck/queue moves, detail screen (overview/files/trackers),
-  per-file priority
-- **Sonarr** (live-verified, the deepest module): poster grid with a
-  grid/banner series-view toggle (persisted per instance), a redesigned
-  series-detail screen (fanart backdrop, quality pill, season monitor
-  toggles, season search, delete-season-files), search-and-add (quality
-  profile + root folder + monitor options), queue 3s / library 60s polling,
-  interactive release search, plus Wanted (missing + cutoff-unmet), History,
-  Blocklist, System (status/disk/tasks/health/backups), and a Settings editor
-  (indexers, download clients, notifications, import lists, host/media-
-  management/naming config) - settings writes live-verified
-- **Radarr** (live-verified): same depth as Sonarr, movie flavored, plus
-  interactive release search
-- **Calendar** (top-level tab, replaces the old Library placeholder): month
-  grid aggregating upcoming Sonarr + Radarr airings/releases with status dots
-- **Prowlarr** (live-verified incl. grab-to-client): tabbed Indexers /
-  History / Settings / System. Indexer list + stats w/ 60s polling, add/edit
-  indexers from the schema picker, enable/disable (forceSave), test, manual
-  search across indexers w/ seeders/size/age sort, grab lands in the download
-  client; History (event-type filtered) showing grab titles; a full Settings
-  menu (Apps, Download Clients, Notifications, Indexer Proxies, Sync Profiles,
-  Tags) with add/edit/test/delete; System (status, health, tasks, backups)
-- **Tautulli** (live-verified, poster-rich): Activity tab w/ 10s polling,
-  session detail sheet (codecs, decisions, bandwidth, terminate w/ inline
-  errors), History, Stats (30-day home stats), Users - all with Plex artwork
-  via Tautulli's image proxy, user avatars, ranked stat bars, and tab icons
-- **Glances** (system monitor, live-verified): per-instance polling, animated
-  CPU/Memory gauges, swap + per-core usage bars, network rx/tx with multi-select
-  interface pinning, disk usage, uptime.
-- **Seerr** (formerly Overseerr, live-verified): complete integration including
-  a rich Discover tab (trending, upcoming, genres), robust search, detailed item
-  views (movie/tv details with cast, trailer, request status), request submission
-  (with automatic "all seasons" tv handling, plus quality-profile / root-folder /
-  server selection), and a full Requests management tab (approve/decline/delete/
-  retry) with 10s auto-refresh polling. The Requests tab and item detail use
-  poster-rich cards (a darkened backdrop-image background, poster, metadata, and
-  solid availability/approval status pills) styled after the Jellyseerr layout.
-- **Jellyfin / Emby** (live-verified): auth, library chips + poster grid, folder
-  drill-down, Next Up / Recently Added / Continue Watching resume rows, active
-  sessions tab, item detail screens, in-server search, favorite toggles, and
-  watched/unwatched toggles.
-- **Bazarr** (live-verified, full module): tabbed Series / Movies / Wanted /
-  History / Blacklist / System. Browse Sonarr/Radarr-backed series + movies
-  with per-episode/movie subtitle status, manual provider search + download +
-  delete of subtitles, the wanted (missing) list, subtitle History, Blacklist
-  (removable), and System (status, health, providers w/ reset, tasks, backups,
-  logs).
+- Dashboard with role-grouped services sidebar (available on every tab
+  via the shell drawer) and a profile switcher
+- **Activity tab**: cross-instance live feed - summary bar, Now
+  Streaming (backdrop session cards from Plex / Jellyfin / Emby /
+  Tautulli, tap-through to each module's now-playing screen) and
+  Transfers (qBittorrent downloads *and active uploads*, SABnzbd slots,
+  Sonarr/Radarr queues). Per-instance resilience: an unreachable server
+  degrades to a chip, never blocks the feed
+- **Calendar tab**: month grid aggregating upcoming Sonarr + Radarr
+  airings/releases with status dots
+- **Settings**: theme, biometric lock, profile import/export (SAF,
+  live-verified), **Wake-on-LAN devices** (profile-stored, magic packets
+  over pure Dart UDP), **custom HTTP headers** (global + per-instance,
+  for reverse-proxy auth), all carried by profile export/import
+- Material 3 Expressive look app-wide: tonal cards, pills,
+  poster-palette theming, backdrop session cards, M3 pull-to-refresh
+
+## What works today (live-verified unless noted; all still in progress)
+
+- Core foundation: profiles, multi-instance, dual-URL routing, secure
+  key storage, import/export, per-service health dots, theming
+- **qBittorrent**: cookie login (qBit 5.x 204 fix), 3s realtime polling,
+  add magnet/file, categories, pause/resume/delete/recheck/queue moves,
+  torrent detail (overview/files/trackers), per-file priority
+- **Sonarr** (the canonical *arr module): poster/banner grid with
+  client-side sort & filter (status, network, airing, added, size on
+  disk) and per-series disk sizes, series detail (fanart backdrop,
+  season monitor/search), search-and-add, queue/wanted/history/
+  blocklist/system tabs, and a full Settings editor (17 panels) -
+  settings writes live-verified
+- **Radarr**: same depth as Sonarr, movie flavored
+- **Prowlarr**: indexers (add/edit/test from schema), manual search
+  across indexers with grab-to-client, history, full settings menu,
+  system
+- **Bazarr**: series/movies with per-episode subtitle status, manual
+  provider search/download/delete, wanted, history, blacklist, system
+- **Jellyseerr / Overseerr**: discover (trending/upcoming/genres),
+  search, item detail with request submission (profile/folder/server
+  selection), requests management (approve/decline/delete/retry)
+- **Tautulli**: activity (10s poll) with backdrop session cards and a
+  detail sheet (codecs, decisions, bandwidth, terminate with inline
+  errors), history, 30-day stats, users - restyled to the expressive
+  look 2026-07-10
+- **Jellyfin / Emby**: auth (incl. passwordless accounts), library
+  browse, item detail (backdrop, palette accents, cast, series/episode
+  info), season/episode screens, music, in-server search, resume rows,
+  favorite + watched toggles, active-session screens with poster-palette
+  theming and remote transport controls, remote artwork selection
+  (https-validated, confirm-before-replace), deep links to the official
+  apps
+- **Plex** (full parity, 2026-07-09): Jellyfin-style home (featured
+  hero, backdrop Now Streaming cards, per-library rows with See all),
+  library grids with genre filtering, item detail with palette accents
+  and inline seasons, episode watched toggles, music
+  (artist/album/track), global search, **now-playing controller**
+  (play/pause/seek/skip for Companion-controllable players, view-only
+  otherwise; terminate degrades to a clear Plex Pass message), Open in
+  Plex deep link. Note: real remote control needs a live stream on a
+  controllable client - the UI and read-only data are verified, the
+  transport commands are exercised best-effort
+- **Glances**: per-instance polling, CPU/memory gauges, swap + per-core
+  bars, network with interface pinning, disks, uptime
 
 ## Partially done
 
-### Plex (browse + hub + detail + search, live-verified)
-
-Have: library chips, a Home hub (Continue Watching from on-deck +
-Recently Added), poster grid, folder drill-down, item detail (synopsis,
-genres, cast with headshots/roles, ratings, runtime), global search, and a
-watched/unwatched toggle (scrobble) on the detail screen and card
-long-press. Missing:
-
-1. Now Playing / active sessions tab (deliberately skipped - the Tautulli
-   module already shows live Plex sessions)
-2. Show-level detail (a show still drills straight to its seasons grid)
-
-### Other shallow modules
-
-- SABnzbd: queue control only; missing history, categories, speed limits,
-  polling
+- **SABnzbd**: queue control only; missing history, categories, speed
+  limits (also the one module never tested against a live server)
 
 ## App-wide TODO
 
-1. Release signing + F-Droid metadata (debug-signed right now)
-2. iOS platform scaffold
-3. Live-stack testing of SABnzbd (built from docs only)
-4. Possible profile loss after Android hard-kill (seen once - investigate
-   crash-safe Hive writes/backup)
-5. Polish: empty states, tablet layouts, localization
+1. Dashboard widgets (the aggregation providers behind the Activity tab
+   were built to be reused; a Wake-on-LAN widget is planned)
+2. Release signing + F-Droid metadata (debug-signed right now)
+3. iOS platform scaffold
+4. Live-stack testing of SABnzbd
+5. Possible profile loss after Android hard-kill (seen once -
+   investigate crash-safe Hive writes/backup)
+6. Polish: tablet layouts, localization
 
 ## Contributing
 
 PRs target `development`. Generated freezed/json files are gitignored -
 run build_runner in each changed package after pulling model changes.
 All imperative navigation must use `pushScreen` from core_ui (root
-navigator); see CONTRIBUTING.md.
+navigator), and do not run repo-wide `dart format` (it fights the lint
+config); see CONTRIBUTING.md.

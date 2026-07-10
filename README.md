@@ -2,11 +2,13 @@
 
 The central courtyard for your self-hosted media stack.
 One Android app that fronts Sonarr, Radarr, Prowlarr, Bazarr,
-Overseerr / Jellyseerr, Tautulli, Jellyfin, Emby, Plex, qBittorrent
-and SABnzbd - and routes every request through the right URL whether
-you're on the home Wi-Fi or out in the world.
+Jellyseerr / Overseerr, Tautulli, Jellyfin, Emby, Plex, qBittorrent,
+SABnzbd and Glances - and routes every request through the right URL
+whether you're on the home Wi-Fi or out in the world.
 
-> **Status:** early development. Nothing is shippable yet.
+> **Status:** early development - everything is work in progress. The
+> modules below are functional and tested against live servers, but
+> builds are debug-signed and there is no store / F-Droid release yet.
 
 ## Why
 
@@ -23,26 +25,44 @@ external URLs.
   app probes the LAN URL with a short timeout, caches the verdict per
   network, and falls back to WAN. You can pin Force-Local or
   Force-External per instance.
+- **Activity feed.** One tab aggregates live activity across every
+  instance: active streams from Plex / Jellyfin / Emby / Tautulli and
+  transfers (downloads and active uploads) from qBittorrent, SABnzbd,
+  and the *arr queues.
+- **Controller, not a player.** Media servers are browse/manage/remote-
+  control surfaces; playback stays with the official apps (deep links
+  provided).
+- **Wake-on-LAN.** Store your machines (MAC / broadcast / port) in the
+  profile and wake them from Settings; magic packets are sent with pure
+  Dart UDP.
+- **Reverse-proxy friendly.** Global and per-instance custom HTTP
+  headers (Authelia / Cloudflare Access style) ride every request.
 - **Hardware-backed credentials.** API keys live in the Android Keystore
   via `flutter_secure_storage`. Optional biometric unlock on launch.
-- **F-Droid first.** Reproducible build; no proprietary blobs as hard
-  deps. Google Cast support ships as a separate Play flavor.
+  Profiles export/import as JSON (including WOL devices and headers).
+- **Material 3 Expressive.** Tonal cards, poster-palette theming,
+  backdrop now-playing cards, and dynamic color throughout.
+- **F-Droid first.** Reproducible build; no proprietary blobs and no
+  runtime-fetching dependencies.
 
 ## Services
 
-| Service                | Status   |
-| ---------------------- | -------- |
-| Sonarr                 | planned  |
-| Radarr                 | planned  |
-| Prowlarr               | planned  |
-| Bazarr                 | planned  |
-| Overseerr / Jellyseerr | planned  |
-| Tautulli               | planned  |
-| Jellyfin               | planned  |
-| Emby                   | planned  |
-| Plex                   | planned  |
-| qBittorrent            | planned  |
-| SABnzbd                | planned  |
+All services are **work in progress** - functional today, still evolving:
+
+| Service                | What works today                                                      |
+| ---------------------- | --------------------------------------------------------------------- |
+| Sonarr                 | 7 tabs incl. full Settings editor, sort/filter, calendar              |
+| Radarr                 | same depth as Sonarr, movie flavored                                  |
+| Prowlarr               | indexers, search + grab, history, settings, system                    |
+| Bazarr                 | series/movies, wanted, manual subtitle search, system                 |
+| Jellyseerr / Overseerr | discover, search, requests management                                 |
+| Tautulli               | activity, history, stats, users, terminate                            |
+| Jellyfin               | libraries, detail, seasons, music, sessions with remote control       |
+| Emby                   | same depth as Jellyfin                                                |
+| Plex                   | libraries, detail, seasons, music, genres, now-playing controller     |
+| qBittorrent            | realtime list, add/manage, torrent detail                             |
+| SABnzbd                | queue control (history / categories / limits still to come)           |
+| Glances                | CPU/memory/network/disk monitoring                                    |
 
 ## Build
 
@@ -54,13 +74,15 @@ flutter run -d <device>
 ```
 
 Code-generation step (run after edits to any freezed / json_serializable
-model). To run code generation for a specific package, navigate to that package's directory and run:
+model). To run code generation for a specific package, navigate to that
+package's directory and run:
 
 ```sh
 dart run build_runner build --delete-conflicting-outputs
 ```
 
-Alternatively, to run code generation for all packages in the workspace from the repository root, run:
+Alternatively, to run code generation for all packages in the workspace
+from the repository root, run:
 
 ```sh
 dart run tool/build_all.dart
@@ -71,16 +93,17 @@ dart run tool/build_all.dart
 ```
 app/                     Flutter application - the APK target
 packages/                Cross-service infrastructure
-  core_models/           Domain models (Profile, Instance, ServiceKind)
+  core_models/           Domain models (Profile, Instance, WolDevice, ...)
   core_storage/          Secure storage, Hive boxes, biometric unlock
-  core_networking/       Dio factory, dual-URL resolver
+  core_networking/       Dio factory, dual-URL resolver, WOL, custom headers
   core_profile/          Profile CRUD, providers, import/export
   core_ui/               Material 3 theme + shared widgets
-  core_router/           GoRouter setup
+  core_router/           GoRouter setup (shell with drawer + bottom nav)
 services/                One feature package per integrated service
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution guide.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution guide and
+[STATUS.md](STATUS.md) for a detailed feature snapshot.
 
 ## License
 
