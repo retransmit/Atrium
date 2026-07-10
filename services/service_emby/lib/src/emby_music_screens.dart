@@ -116,7 +116,9 @@ class EmbyAlbumScreen extends ConsumerWidget {
                   children: albumGenres!.map((String g) {
                     return Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.secondaryContainer,
                         borderRadius: BorderRadius.circular(12),
@@ -140,10 +142,7 @@ class EmbyAlbumScreen extends ConsumerWidget {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(Insets.lg),
-                child: _ExpandableText(
-                  text: albumOverview!,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
+                child: OverviewBox(overview: albumOverview!),
               ),
             ),
 
@@ -351,7 +350,7 @@ class EmbyAlbumScreen extends ConsumerWidget {
                         BlendMode.srcIn,
                       ),
                     ),
-                    label: const Text('Play on Emby'),
+                    label: const Text('Play Now'),
                   ),
                 ),
                 const SizedBox(height: Insets.xs),
@@ -364,46 +363,3 @@ class EmbyAlbumScreen extends ConsumerWidget {
   }
 }
 
-class _ExpandableText extends StatefulWidget {
-  const _ExpandableText({
-    required this.text,
-    this.style,
-  });
-
-  final String text;
-  final TextStyle? style;
-
-  @override
-  State<_ExpandableText> createState() => _ExpandableTextState();
-}
-
-class _ExpandableTextState extends State<_ExpandableText> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          widget.text,
-          style: widget.style,
-          maxLines: _expanded ? null : 4,
-          overflow: _expanded ? null : TextOverflow.fade,
-        ),
-        const SizedBox(height: Insets.sm),
-        FilledButton.tonalIcon(
-          onPressed: () => setState(() => _expanded = !_expanded),
-          icon: Icon(
-            _expanded ? Icons.expand_less : Icons.expand_more,
-            size: 18,
-          ),
-          label: Text(
-            _expanded ? 'Collapse' : 'Read more',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-      ],
-    );
-  }
-}

@@ -49,16 +49,18 @@ class JellyfinAlbumScreen extends ConsumerWidget {
           SliverToBoxAdapter(
             child: albumImageUrl != null
                 ? SizedBox(
-                    height: 240,
+                    height: MediaQuery.of(context).size.height * 0.5,
                     child: Stack(
                       children: <Widget>[
                         Positioned.fill(
-                          child: Opacity(
-                            opacity: 0.45,
-                            child: CachedNetworkImage(
-                              imageUrl: albumImageUrl!,
-                              fit: BoxFit.cover,
-                            ),
+                          child: CachedNetworkImage(
+                            imageUrl: albumImageUrl!,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        Positioned.fill(
+                          child: ColoredBox(
+                            color: Colors.black.withValues(alpha: 0.4),
                           ),
                         ),
                         Positioned.fill(
@@ -68,11 +70,17 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
                                 colors: <Color>[
-                                  Colors.black54,
-                                  Colors.transparent,
-                                  Theme.of(context).scaffoldBackgroundColor,
+                                  Theme.of(context)
+                                      .colorScheme
+                                      .surface
+                                      .withValues(alpha: 0.0),
+                                  Theme.of(context)
+                                      .colorScheme
+                                      .surface
+                                      .withValues(alpha: 0.55),
+                                  Theme.of(context).colorScheme.surface,
                                 ],
-                                stops: const <double>[0.0, 0.4, 1.0],
+                                stops: const <double>[0.35, 0.75, 1.0],
                               ),
                             ),
                           ),
@@ -109,7 +117,9 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                   children: albumGenres!.map((String g) {
                     return Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Theme.of(context).colorScheme.secondaryContainer,
                         borderRadius: BorderRadius.circular(12),
@@ -133,10 +143,7 @@ class JellyfinAlbumScreen extends ConsumerWidget {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(Insets.lg),
-                child: _ExpandableText(
-                  text: albumOverview!,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
+                child: OverviewBox(overview: albumOverview!),
               ),
             ),
 
@@ -336,7 +343,7 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                       }
                     },
                     icon: const Icon(Icons.play_circle_fill),
-                    label: const Text('Play'),
+                    label: const Text('Play Now'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).colorScheme.primary,
                       foregroundColor: Theme.of(context).colorScheme.onPrimary,
@@ -356,45 +363,3 @@ class JellyfinAlbumScreen extends ConsumerWidget {
   }
 }
 
-class _ExpandableText extends StatefulWidget {
-  const _ExpandableText({
-    required this.text,
-    this.style,
-  });
-
-  final String text;
-  final TextStyle? style;
-
-  @override
-  State<_ExpandableText> createState() => _ExpandableTextState();
-}
-
-class _ExpandableTextState extends State<_ExpandableText> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          widget.text,
-          style: widget.style,
-          maxLines: _expanded ? null : 4,
-          overflow: _expanded ? null : TextOverflow.fade,
-        ),
-        const SizedBox(height: Insets.sm),
-        InkWell(
-          onTap: () => setState(() => _expanded = !_expanded),
-          child: Text(
-            _expanded ? 'Collapse' : 'Read more',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}

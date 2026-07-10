@@ -10,6 +10,12 @@ environment:
   sdk: ^3.6.0
   flutter: ^3.27.0
 
+dependency_overrides:
+  dynamic_color:
+    path: packages/dynamic_color_dummy
+  progress_indicator_m3e:
+    path: packages/progress_indicator_m3e_fixed
+
 workspace:
   - app
   - packages/core_models

@@ -18,6 +18,9 @@ class MainActivity : FlutterFragmentActivity() {
                 if (packageName != null) {
                     val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
                     if (launchIntent != null) {
+                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT)
+                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
                         startActivity(launchIntent)
                         result.success(true)
                     } else {
@@ -25,6 +28,22 @@ class MainActivity : FlutterFragmentActivity() {
                     }
                 } else {
                     result.error("INVALID_ARGUMENT", "Package name is required", null)
+                }
+            } else if (call.method == "launchDeepLink") {
+                val url = call.argument<String>("url")
+                if (url != null) {
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT)
+                        intent.addFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.success(false)
+                    }
+                } else {
+                    result.error("INVALID_ARGUMENT", "URL is required", null)
                 }
             } else {
                 result.notImplemented()

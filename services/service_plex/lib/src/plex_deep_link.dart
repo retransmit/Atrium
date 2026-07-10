@@ -18,6 +18,15 @@ Future<void> launchPlexDeepLink(BuildContext context, {String? webUrl}) async {
         uri.scheme == 'https' &&
         uri.hasAuthority &&
         uri.host == 'app.plex.tv') {
+      if (Platform.isAndroid) {
+        try {
+          const MethodChannel channel = MethodChannel('app.atrium/launcher');
+          if (await channel.invokeMethod<bool>('launchDeepLink', <String, dynamic>{'url': webUrl}) ?? false) {
+            return;
+          }
+        } catch (_) {}
+      }
+
       try {
         if (await launchUrl(uri, mode: LaunchMode.externalApplication)) {
           return;

@@ -7,6 +7,7 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 import 'models/plex_models.dart';
 import 'plex_api.dart';
+import 'plex_deep_link.dart';
 import 'plex_providers.dart';
 
 /// Albums of an artist as a cover grid; tapping an album opens its track
@@ -148,8 +149,6 @@ class _AlbumCard extends StatelessWidget {
   }
 }
 
-/// Tracks of an album: track number, title, and duration. Display-only rows;
-/// tracks are not playable in-app.
 class PlexAlbumScreen extends ConsumerWidget {
   const PlexAlbumScreen({
     required this.instance,
@@ -164,34 +163,195 @@ class PlexAlbumScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<PlexMetadata>> tracks =
         ref.watch(plexChildrenProvider((instance, album.ratingKey)));
+    final PlexApi? api = ref.watch(plexApiProvider(instance)).value;
+    final String? albumImageUrl = api?.imageUrl(album.thumb);
 
     return Scaffold(
-      appBar: AppBar(title: Text(album.title)),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: <Widget>[
+          IconButton(
+            tooltip: 'Open in Plex',
+            icon: const Icon(Icons.open_in_new),
+            onPressed: () => launchPlexDeepLink(context),
+          ),
+        ],
+      ),
       body: M3RefreshIndicator(
         onRefresh: () async =>
             ref.invalidate(plexChildrenProvider((instance, album.ratingKey))),
-        child: AsyncValueView<List<PlexMetadata>>(
-          value: tracks,
-          onRetry: () =>
-              ref.invalidate(plexChildrenProvider((instance, album.ratingKey))),
-          data: (List<PlexMetadata> list) {
-            if (list.isEmpty) {
-              return const EmptyView(
-                icon: Icons.music_note_outlined,
-                title: 'No tracks',
-                message: 'This album has no tracks yet.',
-              );
-            }
-            return ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: Insets.sm),
-              itemCount: list.length,
-              itemBuilder: (BuildContext context, int index) {
-                final PlexMetadata track = list[index];
-                return _TrackRow(track: track);
-              },
-            );
-          },
+        child: CustomScrollView(
+          slivers: <Widget>[
+            SliverToBoxAdapter(
+              child: albumImageUrl != null
+                  ? SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.5,
+                      child: Stack(
+                        children: <Widget>[
+                          Positioned.fill(
+                            child: CachedNetworkImage(
+                              imageUrl: albumImageUrl,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          Positioned.fill(
+                            child: ColoredBox(
+                              color: Colors.black.withValues(alpha: 0.4),
+                            ),
+                          ),
+                          Positioned.fill(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: <Color>[
+                                    Theme.of(context)
+                                        .colorScheme
+                                        .surface
+                                        .withValues(alpha: 0.0),
+                                    Theme.of(context)
+                                        .colorScheme
+                                        .surface
+                                        .withValues(alpha: 0.55),
+                                    Theme.of(context).colorScheme.surface,
+                                  ],
+                                  stops: const <double>[0.35, 0.75, 1.0],
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            child: _buildHeader(context, api),
+                          ),
+                        ],
+                      ),
+                    )
+                  : SafeArea(
+                      bottom: false,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: Insets.lg),
+                        child: _buildHeader(context, api),
+                      ),
+                    ),
+            ),
+            if (album.summary != null && album.summary!.isNotEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(Insets.lg),
+                  child: OverviewBox(overview: album.summary!),
+                ),
+              ),
+            SliverToBoxAdapter(
+              child: AsyncValueView<List<PlexMetadata>>(
+                value: tracks,
+                onRetry: () => ref
+                    .invalidate(plexChildrenProvider((instance, album.ratingKey))),
+                data: (List<PlexMetadata> list) {
+                  if (list.isEmpty) {
+                    return const EmptyView(
+                      icon: Icons.music_note_outlined,
+                      title: 'No tracks',
+                      message: 'This album has no tracks yet.',
+                    );
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: Insets.lg,
+                          vertical: Insets.sm,
+                        ),
+                        child: Text(
+                          'Tracks - ${list.length}',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        padding: EdgeInsets.zero,
+                        itemCount: list.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          final PlexMetadata track = list[index];
+                          return _TrackRow(track: track);
+                        },
+                      ),
+                      const SizedBox(height: Insets.xl),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, PlexApi? api) {
+    final String? albumImageUrl = api?.imageUrl(album.thumb);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: <Widget>[
+          if (albumImageUrl != null)
+            ClipRRect(
+              borderRadius: Radii.card,
+              child: CachedNetworkImage(
+                imageUrl: albumImageUrl,
+                width: 140,
+                height: 140,
+                fit: BoxFit.cover,
+              ),
+            )
+          else
+            Container(
+              width: 140,
+              height: 140,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: Radii.card,
+              ),
+              child: const Icon(Icons.album, size: 48),
+            ),
+          const SizedBox(width: Insets.lg),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  album.title,
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                if (album.parentTitle != null) ...<Widget>[
+                  const SizedBox(height: Insets.xs),
+                  Text(
+                    album.parentTitle!,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                  ),
+                ],
+                const SizedBox(height: Insets.xs),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
