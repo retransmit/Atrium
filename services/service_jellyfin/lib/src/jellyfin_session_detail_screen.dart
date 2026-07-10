@@ -41,7 +41,7 @@ class _JellyfinSessionDetailScreenState
     _lastPosterUrl = posterUrl;
 
     PaletteGenerator.fromImageProvider(
-      CachedNetworkImageProvider(posterUrl),
+      CachedNetworkImageProvider(posterUrl, maxWidth: 200, maxHeight: 300),
       size: const Size(200, 300),
     ).then((PaletteGenerator palette) {
       if (mounted) {

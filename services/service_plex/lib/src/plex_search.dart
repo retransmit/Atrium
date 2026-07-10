@@ -2,6 +2,7 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 import 'models/plex_models.dart';
 import 'plex_api.dart';
@@ -85,14 +86,11 @@ class _SearchResults extends ConsumerWidget {
             message: 'No items found matching your search.',
           );
         }
-        return GridView.builder(
+        return MasonryGridView.extent(
           padding: Insets.page,
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 140,
-            childAspectRatio: 0.52,
-            crossAxisSpacing: Insets.md,
-            mainAxisSpacing: Insets.md,
-          ),
+          maxCrossAxisExtent: 140,
+          crossAxisSpacing: Insets.md,
+          mainAxisSpacing: Insets.md,
           itemCount: list.length,
           itemBuilder: (BuildContext context, int index) {
             final PlexMetadata item = list[index];

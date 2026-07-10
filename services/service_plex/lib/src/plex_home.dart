@@ -4,6 +4,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 import 'models/plex_models.dart';
 import 'models/plex_session.dart';
@@ -177,14 +178,11 @@ class _ItemsGridState extends ConsumerState<_ItemsGrid> {
               message: 'Nothing here yet.',
             );
           }
-          return GridView.builder(
+          return MasonryGridView.extent(
             padding: Insets.page,
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 140,
-              childAspectRatio: 0.52,
-              crossAxisSpacing: Insets.md,
-              mainAxisSpacing: Insets.md,
-            ),
+            maxCrossAxisExtent: 140,
+            crossAxisSpacing: Insets.md,
+            mainAxisSpacing: Insets.md,
             itemCount: list.length,
             itemBuilder: (BuildContext context, int index) {
               final PlexMetadata item = list[index];
@@ -751,8 +749,17 @@ class _PlexSection extends ConsumerWidget {
                 separatorBuilder: (_, __) => const SizedBox(width: Insets.md),
                 itemBuilder: (BuildContext context, int index) {
                   final PlexMetadata item = row[index];
+                  final double ratio = item.type == 'album' ||
+                          item.type == 'artist' ||
+                          item.type == 'track'
+                      ? 1.0
+                      : (item.type == 'episode' ? (16 / 9) : (2 / 3));
+
+                  final double exactWidth = 190.0 * ratio;
+                  final double cardWidth = exactWidth.clamp(80.0, 400.0);
+
                   return SizedBox(
-                    width: 120,
+                    width: cardWidth,
                     child: PlexPosterCard(
                       instance: instance,
                       item: item,
@@ -810,8 +817,14 @@ class PlexPosterCard extends ConsumerWidget {
       borderRadius: BorderRadius.circular(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Expanded(
+          AspectRatio(
+            aspectRatio: item.type == 'album' ||
+                    item.type == 'artist' ||
+                    item.type == 'track'
+                ? 1.0
+                : (item.type == 'episode' ? (16 / 9) : (2 / 3)),
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
@@ -906,9 +919,15 @@ class PlexPosterCard extends ConsumerWidget {
   }
 
   Widget _poster(ThemeData theme) {
+    final bool isMusic = item.type == 'album' ||
+        item.type == 'artist' ||
+        item.type == 'track';
     final Widget fallback = Container(
       color: theme.colorScheme.surfaceContainerHighest,
-      child: Icon(Icons.movie_outlined, color: theme.colorScheme.outline),
+      child: Icon(
+        isMusic ? Icons.album_outlined : Icons.movie_outlined,
+        color: theme.colorScheme.outline,
+      ),
     );
     if (imageUrl == null) {
       return fallback;
@@ -916,7 +935,7 @@ class PlexPosterCard extends ConsumerWidget {
     return CachedNetworkImage(
       imageUrl: imageUrl!,
       fit: BoxFit.cover,
-      memCacheWidth: 200,
+      memCacheWidth: 400,
       placeholder: (BuildContext context, String url) =>
           Container(color: theme.colorScheme.surfaceContainerHighest),
       errorWidget: (BuildContext context, String url, Object error) => fallback,
