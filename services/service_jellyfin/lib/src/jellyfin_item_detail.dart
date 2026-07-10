@@ -71,18 +71,18 @@ class JellyfinItemDetailScreen extends ConsumerWidget {
             if (itemAsync.value!.type != 'Episode')
               IconButton(
                 icon: const Icon(Icons.wallpaper),
-              tooltip: 'Change Backdrop',
-              onPressed: () {
-                pushScreen<void>(
-                  context,
-                  JellyfinRemoteImagesScreen(
-                    instance: instance,
-                    itemId: itemId,
-                    imageType: 'Backdrop',
-                  ),
-                );
-              },
-            ),
+                tooltip: 'Change Backdrop',
+                onPressed: () {
+                  pushScreen<void>(
+                    context,
+                    JellyfinRemoteImagesScreen(
+                      instance: instance,
+                      itemId: itemId,
+                      imageType: 'Backdrop',
+                    ),
+                  );
+                },
+              ),
           ],
         ],
       ),
@@ -92,7 +92,7 @@ class JellyfinItemDetailScreen extends ConsumerWidget {
             ref.invalidate(jellyfinItemDetailsProvider((instance, itemId))),
         data: (JellyfinItem item) {
           final String? backdropUrl = client?.backdropImageUrl(item);
-          
+
           return CustomScrollView(
             slivers: <Widget>[
               SliverToBoxAdapter(
@@ -173,17 +173,23 @@ class JellyfinItemDetailScreen extends ConsumerWidget {
                       runSpacing: 6.0,
                       children: item.genres.map((String g) {
                         return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.secondaryContainer,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .secondaryContainer,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
                             g,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onSecondaryContainer,
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSecondaryContainer,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                           ),
                         );
                       }).toList(),
@@ -194,7 +200,7 @@ class JellyfinItemDetailScreen extends ConsumerWidget {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.all(Insets.lg),
-                    child: _ExpandableOverview(text: item.overview!),
+                    child: OverviewBox(overview: item.overview!),
                   ),
                 ),
               if (_InfoSection.canShow(item))
@@ -593,46 +599,6 @@ class _SeasonsGrid extends ConsumerWidget {
   }
 }
 
-class _ExpandableOverview extends StatefulWidget {
-  const _ExpandableOverview({required this.text});
-  final String text;
-
-  @override
-  State<_ExpandableOverview> createState() => _ExpandableOverviewState();
-}
-
-class _ExpandableOverviewState extends State<_ExpandableOverview> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(
-          widget.text,
-          style: theme.textTheme.bodyLarge,
-          maxLines: _expanded ? null : 3,
-          overflow: _expanded ? null : TextOverflow.ellipsis,
-        ),
-        const SizedBox(height: Insets.sm),
-        FilledButton.tonalIcon(
-          onPressed: () => setState(() => _expanded = !_expanded),
-          icon: Icon(
-            _expanded ? Icons.expand_less : Icons.expand_more,
-            size: 18,
-          ),
-          label: Text(
-            _expanded ? 'Read Less' : 'Read More',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 /// Series / episode facts for an item, shown as a tonal card on the detail
 /// screen when the item carries a series name or a season+episode number.
 class _InfoSection extends StatelessWidget {
@@ -666,7 +632,8 @@ class _InfoSection extends StatelessWidget {
               label: 'Series',
               value: item.seriesName!,
             ),
-          if (item.parentIndexNumber != null && item.indexNumber != null) ...<Widget>[
+          if (item.parentIndexNumber != null &&
+              item.indexNumber != null) ...<Widget>[
             if (item.seriesName != null && item.seriesName!.isNotEmpty)
               const SizedBox(height: Insets.sm),
             _InfoRow(

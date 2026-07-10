@@ -1,5 +1,8 @@
 import 'package:dynamic_system_colors/dynamic_system_colors.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:material_color_utilities/material_color_utilities.dart';
 
 import 'design_tokens.dart';
 
@@ -14,9 +17,11 @@ abstract final class AtriumTheme {
   static const Color seed = Color(0xFF6750A4);
 
   static ThemeData light(ColorScheme? dynamicScheme, {String? fontFamily}) =>
-      _build(dynamicScheme ?? ColorScheme.fromSeed(seedColor: seed), fontFamily);
+      _build(
+          dynamicScheme ?? ColorScheme.fromSeed(seedColor: seed), fontFamily);
 
-  static ThemeData dark(ColorScheme? dynamicScheme, {String? fontFamily}) => _build(
+  static ThemeData dark(ColorScheme? dynamicScheme, {String? fontFamily}) =>
+      _build(
         dynamicScheme ??
             ColorScheme.fromSeed(
               seedColor: seed,
@@ -65,9 +70,90 @@ abstract final class AtriumTheme {
   static Widget withDynamicColor({
     required Widget Function(ColorScheme? light, ColorScheme? dark) builder,
   }) {
-    return DynamicColorBuilder(
+    return _AtriumDynamicColorBuilder(
       builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) =>
-          builder(lightDynamic, darkDynamic),
+          builder(lightDynamic?.harmonized(), darkDynamic?.harmonized()),
     );
+  }
+}
+
+/// A custom dynamic color builder that intentionally bypasses `getColorSchemes()`
+/// provided by `dynamic_system_colors` because it queries theme attributes using
+/// the Application context on Android 14+, causing Material You colors to fall back
+/// to non-dynamic system defaults. Instead, it relies directly on `getCorePalette()`,
+/// which uses global resources and works correctly.
+class _AtriumDynamicColorBuilder extends StatefulWidget {
+  const _AtriumDynamicColorBuilder({required this.builder});
+
+  final Widget Function(ColorScheme? light, ColorScheme? dark) builder;
+
+  @override
+  State<_AtriumDynamicColorBuilder> createState() =>
+      _AtriumDynamicColorBuilderState();
+}
+
+class _AtriumDynamicColorBuilderState
+    extends State<_AtriumDynamicColorBuilder> {
+  ColorScheme? _light;
+  ColorScheme? _dark;
+
+  @override
+  void initState() {
+    super.initState();
+    _initPlatformState();
+  }
+
+  Future<void> _initPlatformState() async {
+    try {
+      final CorePalette? corePalette =
+          await DynamicColorPlugin.getCorePalette();
+      if (!mounted) return;
+
+      if (corePalette != null) {
+        if (kDebugMode) {
+          debugPrint('dynamic_color: Core palette detected (bypassed schemes).');
+        }
+        setState(() {
+          _light = corePalette.toColorScheme();
+          _dark = corePalette.toColorScheme(brightness: Brightness.dark);
+        });
+        return;
+      }
+    } on PlatformException catch (e) {
+      if (kDebugMode) {
+        debugPrint('dynamic_color: Failed to obtain core palette. $e');
+      }
+    }
+
+    try {
+      final Color? accentColor = await DynamicColorPlugin.getAccentColor();
+      if (!mounted) return;
+
+      if (accentColor != null) {
+        if (kDebugMode) {
+          debugPrint('dynamic_color: Accent color detected.');
+        }
+        setState(() {
+          _light = ColorScheme.fromSeed(
+            seedColor: accentColor,
+            brightness: Brightness.light,
+          );
+          _dark = ColorScheme.fromSeed(
+            seedColor: accentColor,
+            brightness: Brightness.dark,
+          );
+        });
+        return;
+      }
+    } on PlatformException catch (e) {
+      if (kDebugMode) {
+        debugPrint('dynamic_color: Failed to obtain accent color. $e');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.builder(_light, _dark);
   }
 }
