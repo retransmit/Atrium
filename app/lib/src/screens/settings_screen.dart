@@ -1,3 +1,4 @@
+import 'package:core_profile/core_profile.dart';
 import 'package:core_storage/core_storage.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
@@ -5,9 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../preferences.dart';
 import '../profile_io.dart';
+import 'custom_headers_screen.dart';
+import 'wake_on_lan_screen.dart';
 
-/// App settings: theme mode, optional biometric unlock, and profile
-/// import/export.
+/// App settings: theme mode, optional biometric unlock, network tools
+/// (Wake-on-LAN, custom headers), and profile import/export.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -16,6 +19,8 @@ class SettingsScreen extends ConsumerWidget {
     final Preferences prefs = ref.watch(preferencesProvider);
     final PreferencesController controller =
         ref.read(preferencesProvider.notifier);
+    final int wolCount =
+        ref.watch(activeProfileProvider)?.wolDevices.length ?? 0;
 
     return Scaffold(
       appBar: AppBar(
@@ -102,6 +107,25 @@ class SettingsScreen extends ConsumerWidget {
           _BiometricTile(
             enabled: prefs.biometricEnabled,
             onChanged: controller.setBiometricEnabled,
+          ),
+          const Divider(),
+          const _SectionHeader('Network'),
+          ListTile(
+            leading: const Icon(Icons.bolt_outlined),
+            title: const Text('Wake-on-LAN'),
+            subtitle: Text(
+              wolCount == 0
+                  ? 'No devices configured'
+                  : '$wolCount device${wolCount == 1 ? '' : 's'} configured',
+            ),
+            onTap: () => pushScreen<void>(context, const WakeOnLanScreen()),
+          ),
+          ListTile(
+            leading: const Icon(Icons.language_outlined),
+            title: const Text('Custom Headers'),
+            subtitle: const Text('Add headers for reverse-proxy auth'),
+            onTap: () =>
+                pushScreen<void>(context, const CustomHeadersScreen()),
           ),
           const Divider(),
           const _SectionHeader('Data'),

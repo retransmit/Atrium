@@ -6,6 +6,7 @@ import 'package:dio/io.dart';
 
 import 'auth_interceptor.dart';
 import 'connection_resolver.dart';
+import 'headers.dart';
 
 /// Builds [Dio] clients pre-configured for an [Instance].
 ///
@@ -23,7 +24,10 @@ class DioFactory {
 
   final ConnectionResolver _resolver;
 
-  Future<Dio> create(Instance instance) async {
+  Future<Dio> create(
+    Instance instance, {
+    Map<String, String> globalHeaders = const <String, String>{},
+  }) async {
     final Uri resolvedUrl = await _resolver.resolve(instance);
     final String baseUrlStr = resolvedUrl.toString();
     final String baseUrl = baseUrlStr.endsWith('/') ? baseUrlStr : '$baseUrlStr/';
@@ -38,6 +42,12 @@ class DioFactory {
         // them to typed errors via NetworkException.fromDio in one place.
       ),
     );
+
+    // User-configured headers: profile-wide first, instance overrides on key
+    // collision. The AuthInterceptor below still wins last for its own keys
+    // because it runs per-request.
+    dio.options.headers
+        .addAll(mergeHeaders(globalHeaders, instance.customHeaders));
 
     if (instance.allowSelfSignedCerts) {
       // The user has explicitly chosen to skip cert validation for this

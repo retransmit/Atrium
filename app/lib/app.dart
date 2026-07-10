@@ -1,5 +1,9 @@
+import 'package:core_models/core_models.dart';
+import 'package:core_networking/core_networking.dart';
+import 'package:core_profile/core_profile.dart';
 import 'package:core_storage/core_storage.dart';
 import 'package:core_ui/core_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -20,6 +24,25 @@ class AtriumApp extends ConsumerWidget {
     final String? fontFamily =
         ref.watch(preferencesProvider.select((Preferences p) => p.fontFamily));
     final GoRouter router = ref.watch(routerProvider);
+
+    // Mirror the active profile's global headers into the networking layer
+    // so every instance request carries them. Writes are guarded by a map
+    // compare so redundant profile refreshes don't churn the Dio providers.
+    void syncGlobalHeaders(Profile? profile) {
+      final Map<String, String> next =
+          profile?.globalHeaders ?? const <String, String>{};
+      if (!mapEquals(ref.read(globalHeadersProvider), next)) {
+        ref.read(globalHeadersProvider.notifier).state = next;
+      }
+    }
+
+    ref.listen<Profile?>(
+      activeProfileProvider,
+      (Profile? prev, Profile? next) => syncGlobalHeaders(next),
+    );
+    // One-time initial set so headers apply on cold start, not only when the
+    // profile changes after this widget is built.
+    syncGlobalHeaders(ref.read(activeProfileProvider));
 
     String? resolvedFontFamily = fontFamily;
     if (fontFamily != null && fontFamily != 'JetBrainsMono Nerd Font') {

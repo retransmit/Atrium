@@ -1,6 +1,7 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'instance.dart';
+import 'wol_device.dart';
 
 part 'profile.freezed.dart';
 part 'profile.g.dart';
@@ -23,6 +24,14 @@ abstract class Profile with _$Profile {
     required String id,
     required String name,
     @Default(<Instance>[]) List<Instance> instances,
+
+    /// HTTP headers sent with every request from every instance in this
+    /// profile (an instance's own [Instance.customHeaders] win on key
+    /// collision). Typical use: reverse-proxy auth headers.
+    @Default(<String, String>{}) Map<String, String> globalHeaders,
+
+    /// Wake-on-LAN targets configured for this profile.
+    @Default(<WolDevice>[]) List<WolDevice> wolDevices,
   }) = _Profile;
 
   factory Profile.fromJson(Map<String, dynamic> json) =>

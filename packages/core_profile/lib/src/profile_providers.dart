@@ -49,6 +49,14 @@ class ProfileListController extends AsyncNotifier<List<Profile>> {
     await _reload();
   }
 
+  /// Persists [profile] in full (matched by its id) and refreshes the list.
+  /// Used by settings surfaces that edit profile-level fields (global
+  /// headers, Wake-on-LAN devices) rather than a single instance.
+  Future<void> updateProfile(Profile profile) async {
+    await _repo.saveProfile(profile);
+    await _reload();
+  }
+
   Future<void> upsertInstance(String profileId, Instance instance) async {
     await _repo.upsertInstance(profileId, instance);
     await _reload();

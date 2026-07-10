@@ -52,6 +52,7 @@ class EmbyClient {
     required String password,
     required String deviceId,
     required bool allowSelfSigned,
+    Map<String, String> customHeaders = const <String, String>{},
     String? Function(String itemId, String imageType)? getLocalOverride,
     void Function(String itemId, String imageType, String tag)? setLocalOverride,
   }) {
@@ -65,6 +66,9 @@ class EmbyClient {
         receiveTimeout: const Duration(seconds: 30),
       ),
     );
+    // User-configured headers (global + per-instance, already merged by the
+    // caller). The auth flow's own headers are set per-request and win last.
+    dio.options.headers.addAll(customHeaders);
     if (allowSelfSigned) {
       final IOHttpClientAdapter adapter =
           dio.httpClientAdapter as IOHttpClientAdapter;

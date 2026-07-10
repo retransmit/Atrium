@@ -51,6 +51,11 @@ abstract class Instance with _$Instance {
     /// How frequently this instance should be polled by the dashboard/widgets.
     /// Used by services that need high frequency updates like Glances.
     @Default(5) int pollingIntervalSeconds,
+
+    /// Extra HTTP headers sent with every request to this instance, merged
+    /// over the profile's global headers (instance wins on key collision).
+    /// Values live in the profile JSON like URLs do; they are not secrets.
+    @Default(<String, String>{}) Map<String, String> customHeaders,
   }) = _Instance;
 
   factory Instance.fromJson(Map<String, dynamic> json) =>

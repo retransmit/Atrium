@@ -41,11 +41,16 @@ final qbittorrentClientProvider =
           ),
         _ => ('', ''),
       };
+      final Map<String, String> customHeaders = mergeHeaders(
+        ref.watch(globalHeadersProvider),
+        instance.customHeaders,
+      );
       final QbittorrentClient client = QbittorrentClient.create(
         baseUrl: baseUrl,
         username: username,
         password: password,
         allowSelfSigned: instance.allowSelfSignedCerts,
+        customHeaders: customHeaders,
       );
       ref.onDispose(client.close);
       return client;

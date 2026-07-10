@@ -43,6 +43,7 @@ class QbittorrentClient {
     required String username,
     required String password,
     required bool allowSelfSigned,
+    Map<String, String> customHeaders = const <String, String>{},
   }) {
     final String baseUrlStr = baseUrl.toString();
     final String normalizedBaseUrl = baseUrlStr.endsWith('/') ? baseUrlStr : '$baseUrlStr/';
@@ -55,6 +56,9 @@ class QbittorrentClient {
         headers: <String, dynamic>{'Referer': normalizedBaseUrl},
       ),
     );
+    // User-configured headers ride alongside the Referer above (a user
+    // Referer key would deliberately override it - instance wins).
+    dio.options.headers.addAll(customHeaders);
     dio.interceptors.add(CookieManager(cookies));
     if (allowSelfSigned) {
       final IOHttpClientAdapter adapter =

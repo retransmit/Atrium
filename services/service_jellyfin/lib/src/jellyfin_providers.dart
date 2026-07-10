@@ -29,12 +29,17 @@ final jellyfinClientProvider = FutureProvider.family<JellyfinClient, Instance>((
     _ => ('', ''),
   };
   final Box<String> overridesBox = Hive.box<String>(AtriumBoxes.imageOverrides);
+  final Map<String, String> customHeaders = mergeHeaders(
+    ref.watch(globalHeadersProvider),
+    instance.customHeaders,
+  );
   final JellyfinClient client = JellyfinClient.create(
     baseUrl: baseUrl,
     username: username,
     password: password,
     deviceId: instance.id,
     allowSelfSigned: instance.allowSelfSignedCerts,
+    customHeaders: customHeaders,
     getLocalOverride: (String itemId, String type) => overridesBox.get('${instance.id}_${itemId}_$type'),
     setLocalOverride: (String itemId, String type, String tag) {
       if (tag.isEmpty) {
