@@ -74,9 +74,21 @@ For dialogs, sheets, and search pages the same rule applies via flags:
 
 ## Style
 
-The repo enforces `analysis_options.yaml` at the root - `flutter analyze` must
-pass. Notable rules: single quotes, trailing commas, `prefer_const_*`,
-no `print` (use a logger), `sort_pub_dependencies`.
+The repo enforces `analysis_options.yaml` at the root - `flutter analyze`
+must report **No issues found** on every PR. Notable rules: single quotes,
+trailing commas, `prefer_const_*`, no `print` (use a logger),
+`sort_pub_dependencies`.
+
+**Do not run repo-wide `dart format`.** Dart's newer "tall" formatter is
+deliberately incompatible with the `require_trailing_commas` lint this
+repo enforces - a whole-tree format adds hundreds of analyze issues and
+buries your actual change in noise. Format only the lines you touch, in
+the existing style of the file.
+
+**Dependencies need a check before they land.** Atrium targets F-Droid:
+every dependency must be FOSS-licensed and must not fetch anything from
+the network at runtime. Mention any new dependency in the PR description
+so it can be vetted.
 
 ## Commit / PR
 
@@ -96,7 +108,7 @@ Since PRs are squash-merged, your fork's `development` branch will diverge from 
 
 1. **Add the upstream remote** (do this once):
    ```sh
-   git remote add upstream https://github.com/0xLennox07/Atrium.git
+   git remote add upstream https://github.com/retransmit/Atrium.git
    ```
 
 2. **Sync your local `development` branch** before starting any new work:
