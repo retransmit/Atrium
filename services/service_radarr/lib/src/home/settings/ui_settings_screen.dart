@@ -209,7 +209,7 @@ class _UiSettingsScreenState extends ConsumerState<UiSettingsScreen> {
                         ),
                         const SizedBox(height: Insets.md),
                         DropdownButtonFormField<int>(
-                          value: _firstDayOfWeek,
+                          initialValue: _firstDayOfWeek,
                           decoration: const InputDecoration(
                             labelText: 'First Day of Week',
                             border: OutlineInputBorder(),

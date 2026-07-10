@@ -576,6 +576,7 @@ class _QueueCard extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     bool blocklist = false;
     final bool? ok = await showDialog<bool>(
       context: context,
@@ -609,17 +610,15 @@ class _QueueCard extends ConsumerWidget {
       ),
     );
 
-    if (ok ?? false) {
+    if ((ok ?? false) && context.mounted) {
       try {
         final api = await ref.read(radarrApiProvider(instance).future);
-        await api.deleteQueueItem(item.id, removeFromClient: true, blocklist: blocklist);
+        await api.deleteQueueItem(item.id, blocklist: blocklist);
         ref.invalidate(radarrQueueProvider(instance));
       } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to cancel: $e')),
-          );
-        }
+        messenger.showSnackBar(
+          SnackBar(content: Text('Failed to cancel: $e')),
+        );
       }
     }
   }
@@ -818,7 +817,7 @@ void _showHistoryDetails(
           ),
         ],
       ),
-    ));
+    ),);
   }
 
   final date = DateTime.tryParse(item.date ?? '')?.toLocal();
@@ -838,16 +837,19 @@ void _showHistoryDetails(
     });
   }
 
+  final bool canMarkFailed =
+      (item.eventType ?? '').toLowerCase() == 'grabbed';
+
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
+    useRootNavigator: true,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
     builder: (ctx) => DraggableScrollableSheet(
       expand: false,
-      initialChildSize: 0.5,
       minChildSize: 0.3,
       maxChildSize: 0.9,
       builder: (_, controller) => Column(
@@ -875,7 +877,45 @@ void _showHistoryDetails(
             child: ListView(
               controller: controller,
               padding: const EdgeInsets.all(20),
-              children: rows,
+              children: [
+                ...rows,
+                if (canMarkFailed) ...[
+                  const SizedBox(height: 8),
+                  FilledButton.tonalIcon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: theme.colorScheme.errorContainer,
+                      foregroundColor: theme.colorScheme.onErrorContainer,
+                    ),
+                    onPressed: () async {
+                      final ScaffoldMessengerState messenger =
+                          ScaffoldMessenger.of(context);
+                      Navigator.of(ctx).pop();
+                      try {
+                        final api = await ref
+                            .read(radarrApiProvider(instance).future);
+                        await api.failHistoryItem(item.id);
+                        if (!context.mounted) return;
+                        ref.invalidate(radarrHistoryProvider(instance));
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Marked release as failed. Radarr will search for replacements.',
+                            ),
+                          ),
+                        );
+                      } catch (e) {
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to flag release: $e'),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.report_gmailerrorred_outlined),
+                    label: const Text('Mark as Failed'),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
@@ -1484,6 +1524,7 @@ class _BlocklistCard extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     final bool? ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -1502,17 +1543,15 @@ class _BlocklistCard extends ConsumerWidget {
       ),
     );
 
-    if (ok ?? false) {
+    if ((ok ?? false) && context.mounted) {
       try {
         final api = await ref.read(radarrApiProvider(instance).future);
         await api.deleteBlocklistItem(item.id);
         ref.invalidate(radarrBlocklistProvider(instance));
       } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to remove: $e')),
-          );
-        }
+        messenger.showSnackBar(
+          SnackBar(content: Text('Failed to remove: $e')),
+        );
       }
     }
   }
@@ -1815,6 +1854,23 @@ class _ActivityBulkActionsBar extends StatelessWidget {
           if (isQueue) ...[
             TextButton.icon(
               style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.primary,
+              ),
+              onPressed: () {
+                showDialog<void>(
+                  context: context,
+                  builder: (BuildContext context) => _QueueBulkGrabDialog(
+                    instance: instance,
+                    selectedIds: selectedIds,
+                    onClear: onClear,
+                  ),
+                ).ignore();
+              },
+              icon: const Icon(Icons.download_outlined),
+              label: const Text('Force Grab'),
+            ),
+            TextButton.icon(
+              style: TextButton.styleFrom(
                 foregroundColor: theme.colorScheme.error,
               ),
               onPressed: () => _confirmBulkQueueDelete(context),
@@ -1875,7 +1931,7 @@ class _ActivityBulkActionsBar extends StatelessWidget {
     if (ok ?? false) {
       try {
         final api = await container.read(radarrApiProvider(instance).future);
-        await api.bulkDeleteQueue(selectedIds.toList(), removeFromClient: true, blocklist: blocklist);
+        await api.bulkDeleteQueue(selectedIds.toList(), blocklist: blocklist);
         container.invalidate(radarrQueueProvider(instance));
         onClear();
       } catch (e) {
@@ -1925,9 +1981,77 @@ class _ActivityBulkActionsBar extends StatelessWidget {
   }
 }
 
+class _QueueBulkGrabDialog extends ConsumerWidget {
+  const _QueueBulkGrabDialog({
+    required this.instance,
+    required this.selectedIds,
+    required this.onClear,
+  });
+
+  final Instance instance;
+  final Set<int> selectedIds;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return AlertDialog(
+      title: Text('Force Grab ${selectedIds.length} Releases?'),
+      content: const Text(
+        'Are you sure you want to force download the selected releases from the queue?',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            final NavigatorState nav =
+                Navigator.of(context, rootNavigator: true);
+            showDialog<void>(
+              context: context,
+              barrierDismissible: false,
+              builder: (ctx) => const PopScope<Object?>(
+                canPop: false,
+                child: Center(child: ExpressiveProgressIndicator()),
+              ),
+            ).ignore();
+
+            Object? error;
+            try {
+              final api = await ref.read(radarrApiProvider(instance).future);
+              await api.grabQueueItems(selectedIds.toList());
+            } catch (e) {
+              error = e;
+            } finally {
+              if (nav.mounted) nav.pop(); // pop loading
+            }
+
+            if (!context.mounted) return;
+            if (error != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error grabbing items: $error')),
+              );
+              return;
+            }
+            ref.invalidate(radarrQueueProvider(instance));
+            onClear();
+            Navigator.pop(context); // pop dialog
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Forced grab successfully triggered')),
+            );
+          },
+          child: const Text('Force Grab'),
+        ),
+      ],
+    );
+  }
+}
+
 String _formatSize(int bytes) {
   if (bytes <= 0) return '0 B';
   const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  var i = (log(bytes) / log(1024)).floor();
-  return ((bytes / pow(1024, i)).toStringAsFixed(1)) + ' ' + suffixes[i];
+  final i = (log(bytes) / log(1024)).floor();
+  return '${(bytes / pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
 }

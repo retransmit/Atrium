@@ -145,6 +145,7 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                     showModalBottomSheet<void>(
                       context: context,
                       showDragHandle: true,
+                      useRootNavigator: true,
                       builder: (BuildContext context) =>
                           _SortFilterBottomSheet(instance: widget.instance),
                     );

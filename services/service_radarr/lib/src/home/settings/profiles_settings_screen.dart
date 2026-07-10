@@ -67,7 +67,7 @@ class _QualityProfilesTab extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _showProfileDialog(
-      BuildContext context, WidgetRef ref, [Map<String, dynamic>? profile]) async {
+      BuildContext context, WidgetRef ref, [Map<String, dynamic>? profile,]) async {
     Map<String, dynamic>? schema;
     try {
       schema = await ref.read(radarrQualityProfileSchemaProvider(instance).future);
@@ -139,7 +139,7 @@ class _QualityProfilesTab extends ConsumerWidget {
                       if (upgradeAllowed && cutoffOptions.isNotEmpty) ...[
                         const SizedBox(height: Insets.md),
                         DropdownButtonFormField<int>(
-                          initialValue: cutoffId == 0 ? cutoffOptions.first['id'] as int : cutoffId,
+                          initialValue: cutoffOptions.any((q) => q['id'] == cutoffId) ? cutoffId : null,
                           decoration: const InputDecoration(
                             labelText: 'Upgrade Cutoff',
                             border: OutlineInputBorder(),
@@ -189,6 +189,32 @@ class _QualityProfilesTab extends ConsumerWidget {
                 FilledButton(
                   onPressed: () async {
                     if (nameController.text.trim().isEmpty) return;
+
+                    // Radarr requires the cutoff to reference an allowed
+                    // quality or group id, even when upgrades are disabled.
+                    final allowedIds = <int>[];
+                    for (final item in editableItems) {
+                      if (item['allowed'] as bool? ?? false) {
+                        final quality =
+                            item['quality'] as Map<String, dynamic>?;
+                        final itemId = quality != null
+                            ? quality['id'] as int?
+                            : item['id'] as int?;
+                        if (itemId != null) allowedIds.add(itemId);
+                      }
+                    }
+                    if (allowedIds.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Allow at least one quality first.'),
+                        ),
+                      );
+                      return;
+                    }
+                    final effectiveCutoff = allowedIds.contains(cutoffId)
+                        ? cutoffId
+                        : allowedIds.first;
+
                     try {
                       final api = await ref.read(radarrApiProvider(instance).future);
                       final payload = isEdit
@@ -197,12 +223,14 @@ class _QualityProfilesTab extends ConsumerWidget {
 
                       payload['name'] = nameController.text.trim();
                       payload['upgradeAllowed'] = upgradeAllowed;
-                      payload['cutoff'] = cutoffId;
+                      payload['cutoff'] = effectiveCutoff;
                       payload['items'] = editableItems;
 
                       if (isEdit) {
                         await api.updateQualityProfile(payload, payload['id'] as int);
                       } else {
+                        // Remove id for creation
+                        payload.remove('id');
                         await api.createQualityProfile(payload);
                       }
 

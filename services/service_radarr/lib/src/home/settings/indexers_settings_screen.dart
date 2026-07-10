@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../radarr_providers.dart';
+import 'widgets/confirm_delete.dart';
 import 'widgets/dynamic_schema_form.dart';
 
 class IndexersSettingsScreen extends ConsumerStatefulWidget {
@@ -67,7 +68,7 @@ class _IndexersTab extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _selectIndexerPresetAndAdd(
-      BuildContext context, WidgetRef ref) async {
+      BuildContext context, WidgetRef ref,) async {
     final schemasAsync = ref.read(radarrIndexerSchemaProvider(instance));
     
     final presets = schemasAsync.value ?? [];
@@ -125,7 +126,7 @@ class _IndexersTab extends ConsumerWidget {
 
   Future<void> _showIndexerEditorDialog(
       BuildContext context, WidgetRef ref, Map<String, dynamic> indexer,
-      {bool isNew = false}) async {
+      {bool isNew = false,}) async {
     final fields = (indexer['fields'] as List<dynamic>?)
             ?.map((dynamic f) => f as Map<String, dynamic>)
             .toList() ??
@@ -186,7 +187,10 @@ class _IndexersTab extends ConsumerWidget {
   }
 
   Future<void> _deleteIndexer(
-      BuildContext context, WidgetRef ref, int id) async {
+      BuildContext context, WidgetRef ref, int id, String name,) async {
+    final confirmed = await confirmDelete(context, 'Indexer "$name"');
+    if (!confirmed) return;
+
     try {
       final api = await ref.read(radarrApiProvider(instance).future);
       await api.deleteIndexer(id);
@@ -250,7 +254,7 @@ class _IndexersTab extends ConsumerWidget {
                       ),
                       IconButton(
                         icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
-                        onPressed: () => _deleteIndexer(context, ref, id),
+                        onPressed: () => _deleteIndexer(context, ref, id, name),
                       ),
                     ],
                   ),
@@ -270,7 +274,7 @@ class _ImportListsTab extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _selectImportListPresetAndAdd(
-      BuildContext context, WidgetRef ref) async {
+      BuildContext context, WidgetRef ref,) async {
     final schemasAsync = ref.read(radarrImportListSchemaProvider(instance));
     
     final presets = schemasAsync.value ?? [];
@@ -325,18 +329,21 @@ class _ImportListsTab extends ConsumerWidget {
 
   Future<void> _showImportListEditorDialog(
       BuildContext context, WidgetRef ref, Map<String, dynamic> list,
-      {bool isNew = false}) async {
+      {bool isNew = false,}) async {
     final fields = (list['fields'] as List<dynamic>?)
             ?.map((dynamic f) => f as Map<String, dynamic>)
             .toList() ??
         [];
+    final String listName = list['name'] as String? ??
+        list['implementationName'] as String? ??
+        'Import List';
 
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          title: Text(isNew ? 'Add ${list['name']}' : 'Edit ${list['name']}'),
+          title: Text(isNew ? 'Add $listName' : 'Edit $listName'),
           content: SizedBox(
             width: double.maxFinite,
             child: SingleChildScrollView(
@@ -355,6 +362,39 @@ class _ImportListsTab extends ConsumerWidget {
                     payload['fields'] = updatedFields;
 
                     if (isNew) {
+                      // New lists need root folder, quality profile and
+                      // movie defaults. Fill them from the server only
+                      // when the schema payload lacks a value; if a lookup
+                      // returns nothing, omit the key and let the server
+                      // validate. Edits keep the fetched list's own values.
+                      final dynamic existingRoot = payload['rootFolderPath'];
+                      if (existingRoot == null ||
+                          (existingRoot is String && existingRoot.isEmpty)) {
+                        final rootFolders = await ref.read(
+                          radarrRootFoldersProvider(instance).future,
+                        );
+                        final path = rootFolders.isNotEmpty
+                            ? rootFolders.first['path'] as String?
+                            : null;
+                        if (path != null && path.isNotEmpty) {
+                          payload['rootFolderPath'] = path;
+                        }
+                      }
+                      final dynamic existingProfile =
+                          payload['qualityProfileId'];
+                      if (existingProfile == null || existingProfile == 0) {
+                        final profiles = await ref.read(
+                          radarrQualityProfilesProvider(instance).future,
+                        );
+                        final profileId = profiles.isNotEmpty
+                            ? profiles.first['id'] as int?
+                            : null;
+                        if (profileId != null) {
+                          payload['qualityProfileId'] = profileId;
+                        }
+                      }
+                      payload['monitor'] ??= 'movieOnly';
+                      payload['minimumAvailability'] ??= 'announced';
                       await api.createImportList(payload);
                     } else {
                       await api.updateImportList(payload, payload['id'] as int);
@@ -386,7 +426,10 @@ class _ImportListsTab extends ConsumerWidget {
   }
 
   Future<void> _deleteImportList(
-      BuildContext context, WidgetRef ref, int id) async {
+      BuildContext context, WidgetRef ref, int id, String name,) async {
+    final confirmed = await confirmDelete(context, 'Import List "$name"');
+    if (!confirmed) return;
+
     try {
       final api = await ref.read(radarrApiProvider(instance).future);
       await api.deleteImportList(id);
@@ -447,7 +490,7 @@ class _ImportListsTab extends ConsumerWidget {
                       ),
                       IconButton(
                         icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
-                        onPressed: () => _deleteImportList(context, ref, id),
+                        onPressed: () => _deleteImportList(context, ref, id, name),
                       ),
                     ],
                   ),

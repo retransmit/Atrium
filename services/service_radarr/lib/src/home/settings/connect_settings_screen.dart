@@ -13,7 +13,7 @@ class ConnectSettingsScreen extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _selectNotificationPresetAndAdd(
-      BuildContext context, WidgetRef ref) async {
+      BuildContext context, WidgetRef ref,) async {
     final schemasAsync = ref.read(radarrNotificationSchemaProvider(instance));
     final presets = schemasAsync.value ?? [];
     if (presets.isEmpty) {
@@ -71,7 +71,7 @@ class ConnectSettingsScreen extends ConsumerWidget {
 
   Future<void> _showNotificationEditorDialog(
       BuildContext context, WidgetRef ref, Map<String, dynamic> notification,
-      {bool isNew = false}) async {
+      {bool isNew = false,}) async {
     final fields = (notification['fields'] as List<dynamic>?)
             ?.map((dynamic f) => f as Map<String, dynamic>)
             .toList() ??
@@ -132,7 +132,7 @@ class ConnectSettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _deleteNotification(
-      BuildContext context, WidgetRef ref, int id, String name) async {
+      BuildContext context, WidgetRef ref, int id, String name,) async {
     final confirmed = await confirmDelete(context, 'Notification "$name"');
     if (!confirmed) return;
 

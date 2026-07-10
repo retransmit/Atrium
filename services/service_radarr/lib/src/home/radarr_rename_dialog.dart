@@ -93,14 +93,14 @@ class _RadarrRenameDialogState extends ConsumerState<RadarrRenameDialog> {
               itemCount: files.length,
               itemBuilder: (context, index) {
                 final f = files[index];
+                // Paths may use either separator depending on the server OS.
+                final separators = RegExp(r'[\\/]');
                 final current =
-                    (f['existingPath'] as String?)?.split('/').last ??
-                    (f['existingPath'] as String?)?.split('\\').last ??
-                    'Unknown Name';
+                    (f['existingPath'] as String?)?.split(separators).last ??
+                        'Unknown Name';
                 final proposed =
-                    (f['newPath'] as String?)?.split('/').last ??
-                    (f['newPath'] as String?)?.split('\\').last ??
-                    'Unknown Name';
+                    (f['newPath'] as String?)?.split(separators).last ??
+                        'Unknown Name';
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: Insets.md),

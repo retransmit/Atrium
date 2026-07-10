@@ -358,7 +358,7 @@ class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
                         ),
                         const SizedBox(height: Insets.md),
                         DropdownButtonFormField<String>(
-                          value: _logLevel,
+                          initialValue: _logLevel,
                           decoration: const InputDecoration(
                             labelText: 'Log Level',
                             border: OutlineInputBorder(),

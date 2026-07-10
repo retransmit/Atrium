@@ -9,6 +9,7 @@ import 'settings/download_clients_screen.dart';
 import 'settings/general_settings_screen.dart';
 import 'settings/indexers_settings_screen.dart';
 import 'settings/media_management_settings_screen.dart';
+import 'settings/metadata_settings_screen.dart';
 import 'settings/parse_title_dialog.dart';
 import 'settings/profiles_settings_screen.dart';
 import 'settings/quality_definitions_screen.dart';
@@ -81,6 +82,13 @@ class SettingsTab extends StatelessWidget {
             subtitle: 'Discord, Telegram, Email, Plex notifications and trigger events.',
             icon: Icons.connect_without_contact,
             screen: ConnectSettingsScreen(instance: instance),
+          ),
+          _buildSettingsCard(
+            context: context,
+            title: 'Metadata Consumers',
+            subtitle: 'Configure metadata files creation for Kodi, Emby, Roksbox, and WDTV.',
+            icon: Icons.settings_applications_outlined,
+            screen: MetadataSettingsScreen(instance: instance),
           ),
           const SizedBox(height: Insets.md),
 

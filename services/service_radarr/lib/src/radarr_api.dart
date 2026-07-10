@@ -6,6 +6,10 @@ import 'models/radarr_history_item.dart';
 import 'models/radarr_movie.dart';
 import 'models/radarr_queue_item.dart';
 
+/// One page of wanted movies plus the server-side total, so callers can
+/// surface truncation when more records exist than were fetched.
+typedef RadarrWantedPage = ({List<RadarrMovie> records, int totalRecords});
+
 /// Thin typed client over the Radarr v3 REST API.
 class RadarrApi {
   RadarrApi(this._dio, {this.apiKey});
@@ -94,6 +98,9 @@ class RadarrApi {
     }
   }
 
+  /// Bulk-edits movies via Radarr's editor endpoint. When the payload
+  /// changes `rootFolderPath` it must also carry `moveFiles`, otherwise
+  /// Radarr re-links the movies without moving their files.
   Future<void> bulkUpdateMovies(Map<String, dynamic> payload) async {
     try {
       await _dio.put<dynamic>('$_base/movie/editor', data: payload);
@@ -181,7 +188,7 @@ class RadarrApi {
 
   Future<List<RadarrQueueItem>> getQueue({
     int page = 1,
-    int pageSize = 20,
+    int pageSize = 50,
   }) async {
     try {
       final Response<dynamic> resp = await _dio.get<dynamic>(
@@ -350,9 +357,9 @@ class RadarrApi {
     }
   }
 
-  Future<List<RadarrMovie>> getWantedMissing({
+  Future<RadarrWantedPage> getWantedMissing({
     int page = 1,
-    int pageSize = 20,
+    int pageSize = 150,
   }) async {
     try {
       final Response<dynamic> resp = await _dio.get<dynamic>(
@@ -362,23 +369,27 @@ class RadarrApi {
           'pageSize': pageSize,
         },
       );
-      final dynamic records = (resp.data as Map<String, dynamic>)['records'];
-      if (records is List<dynamic>) {
-        return records
-            .map(
-              (dynamic e) => RadarrMovie.fromJson(e as Map<String, dynamic>),
-            )
-            .toList();
-      }
-      return <RadarrMovie>[];
+      final Map<String, dynamic> data = resp.data as Map<String, dynamic>;
+      final dynamic records = data['records'];
+      final List<RadarrMovie> movies = records is List<dynamic>
+          ? records
+              .map(
+                (dynamic e) => RadarrMovie.fromJson(e as Map<String, dynamic>),
+              )
+              .toList()
+          : <RadarrMovie>[];
+      return (
+        records: movies,
+        totalRecords: data['totalRecords'] as int? ?? movies.length,
+      );
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
   }
 
-  Future<List<RadarrMovie>> getWantedCutoff({
+  Future<RadarrWantedPage> getWantedCutoff({
     int page = 1,
-    int pageSize = 20,
+    int pageSize = 150,
   }) async {
     try {
       final Response<dynamic> resp = await _dio.get<dynamic>(
@@ -388,15 +399,19 @@ class RadarrApi {
           'pageSize': pageSize,
         },
       );
-      final dynamic records = (resp.data as Map<String, dynamic>)['records'];
-      if (records is List<dynamic>) {
-        return records
-            .map(
-              (dynamic e) => RadarrMovie.fromJson(e as Map<String, dynamic>),
-            )
-            .toList();
-      }
-      return <RadarrMovie>[];
+      final Map<String, dynamic> data = resp.data as Map<String, dynamic>;
+      final dynamic records = data['records'];
+      final List<RadarrMovie> movies = records is List<dynamic>
+          ? records
+              .map(
+                (dynamic e) => RadarrMovie.fromJson(e as Map<String, dynamic>),
+              )
+              .toList()
+          : <RadarrMovie>[];
+      return (
+        records: movies,
+        totalRecords: data['totalRecords'] as int? ?? movies.length,
+      );
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -556,7 +571,7 @@ class RadarrApi {
   }
 
   Future<Map<String, dynamic>> createQualityProfile(
-      Map<String, dynamic> payload) async {
+      Map<String, dynamic> payload,) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/qualityprofile',
@@ -679,11 +694,16 @@ class RadarrApi {
     }
   }
 
+  // Provider create/update calls (indexers, download clients, notifications,
+  // import lists, metadata) ride `?forceSave=true` so a failing server-side
+  // connection test (offline client, unreachable indexer) does not 400 the
+  // save.
   Future<Map<String, dynamic>> createIndexer(
-      Map<String, dynamic> payload) async {
+      Map<String, dynamic> payload,) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/indexer',
+        queryParameters: <String, dynamic>{'forceSave': true},
         data: payload,
       );
       return resp.data as Map<String, dynamic>;
@@ -696,6 +716,7 @@ class RadarrApi {
     try {
       await _dio.put<dynamic>(
         '$_base/indexer/$id',
+        queryParameters: <String, dynamic>{'forceSave': true},
         data: payload,
       );
     } on DioException catch (e) {
@@ -765,10 +786,11 @@ class RadarrApi {
   }
 
   Future<Map<String, dynamic>> createDownloadClient(
-      Map<String, dynamic> payload) async {
+      Map<String, dynamic> payload,) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/downloadclient',
+        queryParameters: <String, dynamic>{'forceSave': true},
         data: payload,
       );
       return resp.data as Map<String, dynamic>;
@@ -778,10 +800,11 @@ class RadarrApi {
   }
 
   Future<void> updateDownloadClient(
-      Map<String, dynamic> payload, int id) async {
+      Map<String, dynamic> payload, int id,) async {
     try {
       await _dio.put<dynamic>(
         '$_base/downloadclient/$id',
+        queryParameters: <String, dynamic>{'forceSave': true},
         data: payload,
       );
     } on DioException catch (e) {
@@ -851,10 +874,11 @@ class RadarrApi {
   }
 
   Future<Map<String, dynamic>> createNotification(
-      Map<String, dynamic> payload) async {
+      Map<String, dynamic> payload,) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/notification',
+        queryParameters: <String, dynamic>{'forceSave': true},
         data: payload,
       );
       return resp.data as Map<String, dynamic>;
@@ -867,6 +891,7 @@ class RadarrApi {
     try {
       await _dio.put<dynamic>(
         '$_base/notification/$id',
+        queryParameters: <String, dynamic>{'forceSave': true},
         data: payload,
       );
     } on DioException catch (e) {
@@ -918,6 +943,7 @@ class RadarrApi {
     try {
       await _dio.put<dynamic>(
         '$_base/metadata/$id',
+        queryParameters: <String, dynamic>{'forceSave': true},
         data: payload,
       );
     } on DioException catch (e) {
@@ -950,7 +976,7 @@ class RadarrApi {
   }
 
   Future<Map<String, dynamic>> createCustomFormat(
-      Map<String, dynamic> payload) async {
+      Map<String, dynamic> payload,) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/customformat',
@@ -994,7 +1020,7 @@ class RadarrApi {
   }
 
   Future<Map<String, dynamic>> createDelayProfile(
-      Map<String, dynamic> payload) async {
+      Map<String, dynamic> payload,) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/delayprofile',
@@ -1071,10 +1097,11 @@ class RadarrApi {
   }
 
   Future<Map<String, dynamic>> createImportList(
-      Map<String, dynamic> payload) async {
+      Map<String, dynamic> payload,) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/importlist',
+        queryParameters: <String, dynamic>{'forceSave': true},
         data: payload,
       );
       return resp.data as Map<String, dynamic>;
@@ -1087,6 +1114,7 @@ class RadarrApi {
     try {
       await _dio.put<dynamic>(
         '$_base/importlist/$id',
+        queryParameters: <String, dynamic>{'forceSave': true},
         data: payload,
       );
     } on DioException catch (e) {
@@ -1207,7 +1235,7 @@ class RadarrApi {
   }
 
   Future<Map<String, dynamic>> createRemotePathMapping(
-      Map<String, dynamic> payload) async {
+      Map<String, dynamic> payload,) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/remotepathmapping',
@@ -1220,7 +1248,7 @@ class RadarrApi {
   }
 
   Future<void> updateRemotePathMapping(
-      Map<String, dynamic> payload, int id) async {
+      Map<String, dynamic> payload, int id,) async {
     try {
       await _dio.put<dynamic>(
         '$_base/remotepathmapping/$id',
@@ -1316,6 +1344,8 @@ class RadarrApi {
     int page = 1,
     int pageSize = 20,
     String? sortKey,
+    String? filterKey,
+    String? filterValue,
   }) async {
     try {
       final Response<dynamic> resp = await _dio.get<dynamic>(
@@ -1324,6 +1354,8 @@ class RadarrApi {
           'page': page,
           'pageSize': pageSize,
           if (sortKey != null) 'sortKey': sortKey,
+          if (filterKey != null) 'filterKey': filterKey,
+          if (filterValue != null) 'filterValue': filterValue,
         },
       );
       return resp.data as Map<String, dynamic>;

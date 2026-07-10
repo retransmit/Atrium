@@ -12,7 +12,7 @@ class MetadataSettingsScreen extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _showMetadataEditorDialog(
-      BuildContext context, WidgetRef ref, Map<String, dynamic> metadata) async {
+      BuildContext context, WidgetRef ref, Map<String, dynamic> metadata,) async {
     final fields = (metadata['fields'] as List<dynamic>?)
             ?.map((dynamic f) => f as Map<String, dynamic>)
             .toList() ??

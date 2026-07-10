@@ -314,6 +314,14 @@ class _WantedListView extends ConsumerWidget {
         ? ref.watch(radarrWantedFilteredCutoffProvider(instance))
         : ref.watch(radarrWantedFilteredMissingProvider(instance));
 
+    // The unfiltered page carries the server-side total, so the tab can say
+    // when the single fetched page does not cover everything.
+    final RadarrWantedPage? page = isCutoffTab
+        ? ref.watch(radarrWantedCutoffProvider(instance)).value
+        : ref.watch(radarrWantedMissingProvider(instance)).value;
+    final int fetchedCount = page?.records.length ?? 0;
+    final int totalRecords = page?.totalRecords ?? 0;
+
     final selectedIds = ref.watch(radarrWantedSelectionProvider(instance));
     final hasSelection = selectedIds.isNotEmpty;
     final bool isGrouped = ref.watch(radarrWantedGroupedProvider(instance));
@@ -352,6 +360,7 @@ class _WantedListView extends ConsumerWidget {
           );
         }
 
+        final Widget content;
         if (isGrouped) {
           // Group by studio
           final Map<String, List<RadarrMovie>> groupedMap = {};
@@ -361,7 +370,7 @@ class _WantedListView extends ConsumerWidget {
           }
           final studioKeys = groupedMap.keys.toList()..sort();
 
-          return M3RefreshIndicator(
+          content = M3RefreshIndicator(
             onRefresh: () async {
               if (isCutoffTab) {
                 ref.invalidate(radarrWantedCutoffProvider(instance));
@@ -388,37 +397,64 @@ class _WantedListView extends ConsumerWidget {
               },
             ),
           );
+        } else {
+          content = M3RefreshIndicator(
+            onRefresh: () async {
+              if (isCutoffTab) {
+                ref.invalidate(radarrWantedCutoffProvider(instance));
+                await ref.read(radarrWantedCutoffProvider(instance).future);
+              } else {
+                ref.invalidate(radarrWantedMissingProvider(instance));
+                await ref.read(radarrWantedMissingProvider(instance).future);
+              }
+            },
+            child: ListView.builder(
+              padding: const EdgeInsets.all(Insets.md),
+              itemCount: movies.length,
+              itemBuilder: (context, index) {
+                final movie = movies[index];
+                final isSelected = selectedIds.contains(movie.id);
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: _WantedMovieCard(
+                    instance: instance,
+                    movie: movie,
+                    isSelected: isSelected,
+                    hasSelection: hasSelection,
+                    isCutoffTab: isCutoffTab,
+                  ),
+                );
+              },
+            ),
+          );
         }
 
-        return M3RefreshIndicator(
-          onRefresh: () async {
-            if (isCutoffTab) {
-              ref.invalidate(radarrWantedCutoffProvider(instance));
-              await ref.read(radarrWantedCutoffProvider(instance).future);
-            } else {
-              ref.invalidate(radarrWantedMissingProvider(instance));
-              await ref.read(radarrWantedMissingProvider(instance).future);
-            }
-          },
-          child: ListView.builder(
-            padding: const EdgeInsets.all(Insets.md),
-            itemCount: movies.length,
-            itemBuilder: (context, index) {
-              final movie = movies[index];
-              final isSelected = selectedIds.contains(movie.id);
+        if (totalRecords <= fetchedCount) return content;
 
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
-                child: _WantedMovieCard(
-                  instance: instance,
-                  movie: movie,
-                  isSelected: isSelected,
-                  hasSelection: hasSelection,
-                  isCutoffTab: isCutoffTab,
+        // Only one page is fetched; be honest about the rest.
+        final ThemeData theme = Theme.of(context);
+        return Column(
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                Insets.md,
+                Insets.sm,
+                Insets.md,
+                0,
+              ),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Showing $fetchedCount of $totalRecords',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              );
-            },
-          ),
+              ),
+            ),
+            Expanded(child: content),
+          ],
         );
       },
     );
@@ -478,12 +514,11 @@ class _WantedMovieCard extends ConsumerWidget {
               notifier.state = {...selectedIds(ref), movie.id};
             }
           } else {
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => MovieDetailScreen(
-                  instance: instance,
-                  movieId: movie.id,
-                ),
+            pushScreen<void>(
+              context,
+              MovieDetailScreen(
+                instance: instance,
+                movieId: movie.id,
               ),
             );
           }

@@ -314,7 +314,7 @@ final radarrActivityGroupedProvider =
 
 /// Wanted tab missing movies provider. Polls every 30 seconds.
 final radarrWantedMissingProvider =
-    FutureProvider.autoDispose.family<List<RadarrMovie>, Instance>((
+    FutureProvider.autoDispose.family<RadarrWantedPage, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -325,7 +325,7 @@ final radarrWantedMissingProvider =
 
 /// Wanted tab cutoff unmet movies provider. Polls every 30 seconds.
 final radarrWantedCutoffProvider =
-    FutureProvider.autoDispose.family<List<RadarrMovie>, Instance>((
+    FutureProvider.autoDispose.family<RadarrWantedPage, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -358,15 +358,15 @@ final radarrWantedSearchQueryProvider =
 final radarrWantedFilteredMissingProvider = Provider.autoDispose
     .family<AsyncValue<List<RadarrMovie>>, Instance>((ref, instance) {
   final String query = ref.watch(radarrWantedSearchQueryProvider(instance));
-  final AsyncValue<List<RadarrMovie>> missingAsync =
+  final AsyncValue<RadarrWantedPage> missingAsync =
       ref.watch(radarrWantedMissingProvider(instance));
 
-  return missingAsync.whenData((List<RadarrMovie> list) {
+  return missingAsync.whenData((RadarrWantedPage page) {
     if (query.isEmpty) {
-      return list;
+      return page.records;
     }
     final String lowercaseQuery = query.toLowerCase();
-    return list
+    return page.records
         .where((RadarrMovie m) => m.title.toLowerCase().contains(lowercaseQuery))
         .toList();
   });
@@ -376,15 +376,15 @@ final radarrWantedFilteredMissingProvider = Provider.autoDispose
 final radarrWantedFilteredCutoffProvider = Provider.autoDispose
     .family<AsyncValue<List<RadarrMovie>>, Instance>((ref, instance) {
   final String query = ref.watch(radarrWantedSearchQueryProvider(instance));
-  final AsyncValue<List<RadarrMovie>> cutoffAsync =
+  final AsyncValue<RadarrWantedPage> cutoffAsync =
       ref.watch(radarrWantedCutoffProvider(instance));
 
-  return cutoffAsync.whenData((List<RadarrMovie> list) {
+  return cutoffAsync.whenData((RadarrWantedPage page) {
     if (query.isEmpty) {
-      return list;
+      return page.records;
     }
     final String lowercaseQuery = query.toLowerCase();
-    return list
+    return page.records
         .where((RadarrMovie m) => m.title.toLowerCase().contains(lowercaseQuery))
         .toList();
   });
@@ -689,7 +689,13 @@ final radarrLogsProvider = FutureProvider.autoDispose
 ) async {
   final (Instance instance, :int page, :int pageSize, :String? level) = key;
   final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
-  return api.getLogs(page: page, pageSize: pageSize);
+  final bool filterByLevel = level != null && level != 'all';
+  return api.getLogs(
+    page: page,
+    pageSize: pageSize,
+    filterKey: filterByLevel ? 'level' : null,
+    filterValue: filterByLevel ? level : null,
+  );
 });
 
 /// Log files list.

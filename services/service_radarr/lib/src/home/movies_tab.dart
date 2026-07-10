@@ -144,6 +144,7 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                     showModalBottomSheet<void>(
                       context: context,
                       showDragHandle: true,
+                      useRootNavigator: true,
                       builder: (BuildContext context) =>
                           _SortFilterBottomSheet(instance: widget.instance),
                     );
@@ -536,7 +537,7 @@ class _MovieCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                  ]
+                  ],
                 ],
               ),
             ),
@@ -940,6 +941,7 @@ class _BulkEditDialogState extends ConsumerState<_BulkEditDialog> {
   bool? _monitored;
   int? _qualityProfileId;
   String? _rootFolderPath;
+  bool _moveFiles = true;
 
   @override
   Widget build(BuildContext context) {
@@ -1012,6 +1014,18 @@ class _BulkEditDialogState extends ConsumerState<_BulkEditDialog> {
               ),
               error: (_, __) => const Text('Error loading folders'),
             ),
+            if (_rootFolderPath != null) ...[
+              const SizedBox(height: Insets.sm),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Move files to the new folder'),
+                subtitle: const Text(
+                  'Off leaves the files behind in the old folder',
+                ),
+                value: _moveFiles,
+                onChanged: (val) => setState(() => _moveFiles = val),
+              ),
+            ],
           ],
         ),
       ),
@@ -1029,6 +1043,9 @@ class _BulkEditDialogState extends ConsumerState<_BulkEditDialog> {
               if (_monitored != null) 'monitored': _monitored,
               if (_qualityProfileId != null) 'qualityProfileId': _qualityProfileId,
               if (_rootFolderPath != null) 'rootFolderPath': _rootFolderPath,
+              // Changing the root folder without moveFiles orphans the
+              // files on disk, so send the user's explicit choice.
+              if (_rootFolderPath != null) 'moveFiles': _moveFiles,
             };
 
             unawaited(showDialog<void>(
@@ -1127,7 +1144,7 @@ class _BulkDeleteDialogState extends ConsumerState<_BulkDeleteDialog> {
                 canPop: false,
                 child: Center(child: ExpressiveProgressIndicator()),
               ),
-            ));
+            ),);
 
             Object? error;
             try {
@@ -1326,6 +1343,6 @@ class _SortFilterBottomSheet extends ConsumerWidget {
 String _formatSize(int bytes) {
   if (bytes <= 0) return '0 B';
   const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  var i = (log(bytes) / log(1024)).floor();
-  return ((bytes / pow(1024, i)).toStringAsFixed(1)) + ' ' + suffixes[i];
+  final i = (log(bytes) / log(1024)).floor();
+  return '${(bytes / pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
 }

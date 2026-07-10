@@ -720,7 +720,7 @@ class _ActionsRow extends ConsumerWidget {
                     'Monitored',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  onPressed: () => _toggleMonitored(ref),
+                  onPressed: () => _toggleMonitored(context, ref),
                 )
               : OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
@@ -732,7 +732,7 @@ class _ActionsRow extends ConsumerWidget {
                   ),
                   icon: const Icon(Icons.bookmark_border, size: 20),
                   label: const Text('Unmonitored'),
-                  onPressed: () => _toggleMonitored(ref),
+                  onPressed: () => _toggleMonitored(context, ref),
                 ),
         ),
         const SizedBox(width: Insets.md),
@@ -750,15 +750,21 @@ class _ActionsRow extends ConsumerWidget {
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             onPressed: () async {
-              final RadarrApi api =
-                  await ref.read(radarrApiProvider(instance).future);
-              await api.runCommand(<String, dynamic>{
-                'name': 'MoviesSearch',
-                'movieIds': <int>[movie.id],
-              });
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
+              final ScaffoldMessengerState messenger =
+                  ScaffoldMessenger.of(context);
+              try {
+                final RadarrApi api =
+                    await ref.read(radarrApiProvider(instance).future);
+                await api.runCommand(<String, dynamic>{
+                  'name': 'MoviesSearch',
+                  'movieIds': <int>[movie.id],
+                });
+                messenger.showSnackBar(
                   const SnackBar(content: Text('Search started')),
+                );
+              } catch (e) {
+                messenger.showSnackBar(
+                  SnackBar(content: Text('Failed to start search: $e')),
                 );
               }
             },
@@ -783,12 +789,19 @@ class _ActionsRow extends ConsumerWidget {
     );
   }
 
-  Future<void> _toggleMonitored(WidgetRef ref) async {
-    final RadarrApi api = await ref.read(radarrApiProvider(instance).future);
-    final Map<String, dynamic> raw = await api.getMovieRaw(movie.id);
-    raw['monitored'] = !movie.monitored;
-    await api.updateMovieRaw(raw);
-    onRefreshed();
+  Future<void> _toggleMonitored(BuildContext context, WidgetRef ref) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    try {
+      final RadarrApi api = await ref.read(radarrApiProvider(instance).future);
+      final Map<String, dynamic> raw = await api.getMovieRaw(movie.id);
+      raw['monitored'] = !movie.monitored;
+      await api.updateMovieRaw(raw);
+      onRefreshed();
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to update monitoring: $e')),
+      );
+    }
   }
 }
 
@@ -867,6 +880,7 @@ class _OverflowMenu extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     bool deleteFiles = false;
     final bool? ok = await showDialog<bool>(
       context: context,
@@ -900,7 +914,9 @@ class _OverflowMenu extends ConsumerWidget {
         ),
       ),
     );
-    if (ok ?? false) {
+    if (!(ok ?? false)) return;
+    if (!context.mounted) return;
+    try {
       final RadarrApi api = await ref.read(radarrApiProvider(instance).future);
       await api.deleteMovie(movie.id, deleteFiles: deleteFiles);
       ref.invalidate(radarrMoviesProvider(instance));
@@ -908,6 +924,10 @@ class _OverflowMenu extends ConsumerWidget {
         // Pop back to movie list screen
         Navigator.of(context).pop();
       }
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to delete movie: $e')),
+      );
     }
   }
 }

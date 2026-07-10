@@ -68,7 +68,7 @@ class _DownloadClientsTab extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _selectClientPresetAndAdd(
-      BuildContext context, WidgetRef ref) async {
+      BuildContext context, WidgetRef ref,) async {
     final schemasAsync = ref.read(radarrDownloadClientSchemaProvider(instance));
     final presets = schemasAsync.value ?? [];
     if (presets.isEmpty) {
@@ -126,7 +126,7 @@ class _DownloadClientsTab extends ConsumerWidget {
 
   Future<void> _showClientEditorDialog(
       BuildContext context, WidgetRef ref, Map<String, dynamic> client,
-      {bool isNew = false}) async {
+      {bool isNew = false,}) async {
     final fields = (client['fields'] as List<dynamic>?)
             ?.map((dynamic f) => f as Map<String, dynamic>)
             .toList() ??
@@ -187,7 +187,7 @@ class _DownloadClientsTab extends ConsumerWidget {
   }
 
   Future<void> _deleteClient(
-      BuildContext context, WidgetRef ref, int id, String name) async {
+      BuildContext context, WidgetRef ref, int id, String name,) async {
     final confirmed = await confirmDelete(context, 'Download Client "$name"');
     if (!confirmed) return;
 
@@ -275,7 +275,7 @@ class _RemotePathMappingsTab extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _showMappingDialog(
-      BuildContext context, WidgetRef ref, [Map<String, dynamic>? mapping]) async {
+      BuildContext context, WidgetRef ref, [Map<String, dynamic>? mapping,]) async {
     final isEdit = mapping != null;
     final hostController = TextEditingController(text: mapping?['host'] as String? ?? '');
     final remoteController = TextEditingController(text: mapping?['remotePath'] as String? ?? '');
@@ -364,7 +364,7 @@ class _RemotePathMappingsTab extends ConsumerWidget {
   }
 
   Future<void> _deleteMapping(
-      BuildContext context, WidgetRef ref, int id, String host) async {
+      BuildContext context, WidgetRef ref, int id, String host,) async {
     final confirmed = await confirmDelete(context, 'Path Mapping for "$host"');
     if (!confirmed) return;
 
@@ -463,15 +463,17 @@ class _DownloadClientOptionsTabState
   bool _initialized = false;
   Map<String, dynamic>? _rawConfig;
 
-  bool _checkForFinishedDownloadItems = true;
+  bool _enableCompletedDownloadHandling = false;
+  bool _autoRedownloadFailed = false;
 
   void _initialize(Map<String, dynamic> config) {
     if (_initialized) return;
     _initialized = true;
     _rawConfig = config;
 
-    _checkForFinishedDownloadItems =
-        config['checkForFinishedDownloadItems'] as bool? ?? true;
+    _enableCompletedDownloadHandling =
+        config['enableCompletedDownloadHandling'] as bool? ?? false;
+    _autoRedownloadFailed = config['autoRedownloadFailed'] as bool? ?? false;
   }
 
   Future<void> _save() async {
@@ -481,7 +483,9 @@ class _DownloadClientOptionsTabState
     try {
       final api = await ref.read(radarrApiProvider(widget.instance).future);
       final payload = Map<String, dynamic>.from(_rawConfig!);
-      payload['checkForFinishedDownloadItems'] = _checkForFinishedDownloadItems;
+      payload['enableCompletedDownloadHandling'] =
+          _enableCompletedDownloadHandling;
+      payload['autoRedownloadFailed'] = _autoRedownloadFailed;
 
       await api.updateDownloadClientConfig(payload);
       ref.invalidate(radarrDownloadClientConfigProvider(widget.instance));
@@ -531,7 +535,7 @@ class _DownloadClientOptionsTabState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Download Client Options',
+                        'Completed Download Handling',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.primary,
@@ -540,10 +544,23 @@ class _DownloadClientOptionsTabState
                       const SizedBox(height: Insets.md),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
-                        title: const Text('Check for Finished Download Items'),
-                        value: _checkForFinishedDownloadItems,
+                        title: const Text('Enable Completed Download Handling'),
+                        subtitle: const Text(
+                          'Automatically import finished downloads from clients',
+                        ),
+                        value: _enableCompletedDownloadHandling,
+                        onChanged: (val) => setState(
+                            () => _enableCompletedDownloadHandling = val,),
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Redownload Failed'),
+                        subtitle: const Text(
+                          'Search for a release alternative if download reports failure',
+                        ),
+                        value: _autoRedownloadFailed,
                         onChanged: (val) =>
-                            setState(() => _checkForFinishedDownloadItems = val),
+                            setState(() => _autoRedownloadFailed = val),
                       ),
                       const SizedBox(height: Insets.lg),
                       SizedBox(
