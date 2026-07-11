@@ -249,7 +249,6 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
   int _activeTab = 0;
 
   // Local state variables for staging selections before clicking Apply
-  bool _paletteEnabled = false;
   ThemeSource _localSource = ThemeSource.system;
   String? _localSeedColorHex;
   String? _localImagePath;
@@ -271,15 +270,18 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
     super.initState();
     final prefs = ref.read(preferencesProvider);
     
-    final bool isDefaultPreset = prefs.themeSource == ThemeSource.preset &&
-        (prefs.customSeedColorHex == null || prefs.customSeedColorHex == '6750A4');
-    
-    _paletteEnabled = !isDefaultPreset;
     _localSource = prefs.themeSource;
     _localSeedColorHex = prefs.customSeedColorHex ?? '6750A4';
     _localImagePath = prefs.customImagePath;
     _localPaletteStyle = prefs.paletteStyle;
-    _activeTab = _localSource == ThemeSource.preset ? 1 : 0;
+
+    if (_localSource == ThemeSource.system) {
+      _activeTab = 0;
+    } else if (_localSource == ThemeSource.preset) {
+      _activeTab = 1;
+    } else {
+      _activeTab = 2;
+    }
     
     if (_localImagePath != null) {
       _loadPalette(_localImagePath!);
@@ -332,6 +334,7 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
         setState(() {
           _localImagePath = localPath;
           _localSource = ThemeSource.customImage;
+          _activeTab = 2;
         });
         
         await _loadPalette(localPath);
@@ -357,26 +360,29 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
           setState(() {
             _activeTab = index;
             if (index == 0) {
-              if (_localImagePath != null) {
-                _localSource = ThemeSource.customImage;
-              } else {
-                _localSource = ThemeSource.system;
-              }
-            } else {
+              _localSource = ThemeSource.system;
+            } else if (index == 1) {
               _localSource = ThemeSource.preset;
+            } else {
+              _localSource = ThemeSource.customImage;
             }
           });
         },
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
             color: isSelected ? cs.primaryContainer : cs.surfaceContainerHigh,
             borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? cs.primary : Colors.transparent,
+              width: 1.5,
+            ),
           ),
           alignment: Alignment.center,
           child: Text(
             label,
             style: TextStyle(
+              fontSize: 12,
               fontWeight: FontWeight.bold,
               color: isSelected ? cs.onPrimaryContainer : cs.onSurfaceVariant,
             ),
@@ -421,36 +427,29 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
 
     // Compute color scheme dynamically for interactive phone preview mockup
     final ColorScheme previewColorScheme;
-    if (!_paletteEnabled) {
-      previewColorScheme = colorSchemeFromSeedAndStyle(
-        const Color(0xFF6750A4),
+    Color seedColor = const Color(0xFF6750A4);
+    
+    if (_activeTab == 0) {
+      final systemScheme = theme.brightness == Brightness.dark
+          ? systemColorScheme.dark
+          : systemColorScheme.light;
+      previewColorScheme = systemScheme ?? colorSchemeFromSeedAndStyle(
+        seedColor,
         _localPaletteStyle,
         theme.brightness,
       );
     } else {
-      Color seedColor = const Color(0xFF6750A4);
-      if (_localSource == ThemeSource.system) {
-        final systemScheme = theme.brightness == Brightness.dark
-            ? systemColorScheme.dark
-            : systemColorScheme.light;
-        previewColorScheme = systemScheme ?? colorSchemeFromSeedAndStyle(
-          seedColor,
-          _localPaletteStyle,
-          theme.brightness,
-        );
-      } else {
-        if (_localSeedColorHex != null) {
-          final int? val = int.tryParse(_localSeedColorHex!, radix: 16);
-          if (val != null) {
-            seedColor = Color(val | 0xFF000000);
-          }
+      if (_localSeedColorHex != null) {
+        final int? val = int.tryParse(_localSeedColorHex!, radix: 16);
+        if (val != null) {
+          seedColor = Color(val | 0xFF000000);
         }
-        previewColorScheme = colorSchemeFromSeedAndStyle(
-          seedColor,
-          _localPaletteStyle,
-          theme.brightness,
-        );
       }
+      previewColorScheme = colorSchemeFromSeedAndStyle(
+        seedColor,
+        _localPaletteStyle,
+        theme.brightness,
+      );
     }
 
     return Column(
@@ -459,301 +458,287 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
         _ThemePreview(colorScheme: previewColorScheme),
         const SizedBox(height: Insets.md),
         
-        SwitchListTile(
-          contentPadding: EdgeInsets.zero,
-          title: const Text(
-            'Colour palette',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          subtitle: const Text('Match colors with your wallpaper or choose a base color'),
-          value: _paletteEnabled,
-          onChanged: (bool value) {
-            setState(() {
-              _paletteEnabled = value;
-              if (value) {
-                if (systemLight != null) {
-                  _localSource = ThemeSource.system;
-                  _activeTab = 0;
-                } else {
-                  _localSource = ThemeSource.preset;
-                  _localSeedColorHex = '6750A4';
-                  _activeTab = 1;
-                }
-              }
-            });
-          },
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildTabButton(0, 'System'),
+            const SizedBox(width: 6),
+            _buildTabButton(1, 'Basic colours'),
+            const SizedBox(width: 6),
+            _buildTabButton(2, 'Image'),
+          ],
         ),
+        const SizedBox(height: Insets.md),
+
+        // Palette style selection dropdown (shared for basic & image extraction types)
+        if (_activeTab != 0) ...[
+          DropdownButtonFormField<PaletteStyle>(
+            initialValue: _localPaletteStyle,
+            decoration: InputDecoration(
+              labelText: 'Palette style',
+              filled: true,
+              fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+              ),
+            ),
+            items: PaletteStyle.values.map((style) {
+              final String label = switch (style) {
+                PaletteStyle.tonalSpot => 'Tonal Spot',
+                PaletteStyle.content => 'Content',
+                PaletteStyle.expressive => 'Expressive',
+                PaletteStyle.fidelity => 'Fidelity',
+                PaletteStyle.fruitSalad => 'Fruit Salad',
+                PaletteStyle.monochrome => 'Monochrome',
+                PaletteStyle.neutral => 'Neutral',
+                PaletteStyle.rainbow => 'Rainbow',
+              };
+              return DropdownMenuItem<PaletteStyle>(
+                value: style,
+                child: Text(label),
+              );
+            }).toList(),
+            onChanged: (val) {
+              if (val != null) {
+                setState(() {
+                  _localPaletteStyle = val;
+                });
+              }
+            },
+          ),
+          const SizedBox(height: Insets.md),
+        ],
         
         AnimatedSize(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
-          child: _paletteEnabled
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: Insets.md),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_activeTab == 0)
+                Card(
+                  elevation: 0,
+                  color: theme.colorScheme.surfaceContainerHigh,
+                  child: Padding(
+                    padding: const EdgeInsets.all(Insets.md),
+                    child: Row(
                       children: [
-                        _buildTabButton(0, 'Wallpaper colours'),
+                        Icon(Icons.android, color: theme.colorScheme.primary, size: 28),
                         const SizedBox(width: Insets.md),
-                        _buildTabButton(1, 'Basic colours'),
-                      ],
-                    ),
-                    const SizedBox(height: Insets.md),
-
-                    // Palette style selection dropdown
-                    DropdownButtonFormField<PaletteStyle>(
-                      initialValue: _localPaletteStyle,
-                      decoration: InputDecoration(
-                        labelText: 'Palette style',
-                        filled: true,
-                        fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
-                        ),
-                      ),
-                      items: PaletteStyle.values.map((style) {
-                        final String label = switch (style) {
-                          PaletteStyle.tonalSpot => 'Tonal Spot',
-                          PaletteStyle.content => 'Content',
-                          PaletteStyle.expressive => 'Expressive',
-                          PaletteStyle.fidelity => 'Fidelity',
-                          PaletteStyle.fruitSalad => 'Fruit Salad',
-                          PaletteStyle.monochrome => 'Monochrome',
-                          PaletteStyle.neutral => 'Neutral',
-                          PaletteStyle.rainbow => 'Rainbow',
-                        };
-                        return DropdownMenuItem<PaletteStyle>(
-                          value: style,
-                          child: Text(label),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setState(() {
-                            _localPaletteStyle = val;
-                          });
-                        }
-                      },
-                    ),
-                    const SizedBox(height: Insets.md),
-                    
-                    if (_activeTab == 0) ...[
-                      if (_localImagePath != null) ...[
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Wallpaper: ${_localImagePath!.split(Platform.pathSeparator).last}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.bodyMedium?.copyWith(
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'System Wallpaper Colors',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                systemLight != null 
+                                    ? 'Using platform dynamic color matching (Android 12+).' 
+                                    : 'Dynamic colors unavailable. Using default theme.',
+                                style: TextStyle(
+                                  fontSize: 11,
                                   color: theme.colorScheme.onSurfaceVariant,
                                 ),
                               ),
-                            ),
-                            TextButton.icon(
-                              onPressed: _pickImage,
-                              icon: const Icon(Icons.change_circle_outlined, size: 16),
-                              label: const Text('Change'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: Insets.sm),
-                      ],
-                      
-                      if (_isExtracting) ...[
-                        const Center(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: Insets.md),
-                            child: CircularProgressIndicator(),
-                          ),
-                        ),
-                      ] else if (systemLight != null || _extractedColors.isNotEmpty) ...[
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              if (systemLight != null) ...[
-                                Column(
-                                  children: [
-                                    _ColorPillStack(
-                                      colors: [
-                                        systemLight.primary,
-                                        systemLight.primaryContainer,
-                                        systemLight.secondaryContainer,
-                                        systemLight.surfaceContainerHigh,
-                                      ],
-                                      isSelected: _localSource == ThemeSource.system,
-                                      onTap: () {
-                                        setState(() {
-                                          _localSource = ThemeSource.system;
-                                        });
-                                      },
-                                    ),
-                                    const SizedBox(height: 6),
-                                    const Text('System', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                  ],
-                                ),
-                                const SizedBox(width: 14),
-                              ],
-                              
-                              ..._extractedColors.map((Color seed) {
-                                final String hex = seed.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
-                                final bool isSelected = _localSource == ThemeSource.customImage &&
-                                    _localSeedColorHex?.toLowerCase() == hex.toLowerCase();
-                                
-                                final ColorScheme previewScheme = colorSchemeFromSeedAndStyle(
-                                  seed,
-                                  _localPaletteStyle,
-                                  theme.brightness,
-                                );
-                                final List<Color> pillColors = [
-                                  previewScheme.primary,
-                                  previewScheme.primaryContainer,
-                                  previewScheme.secondaryContainer,
-                                  previewScheme.surfaceContainerHigh,
-                                ];
-                                
-                                return Padding(
-                                  padding: const EdgeInsets.only(right: 14.0),
-                                  child: Column(
-                                    children: [
-                                      _ColorPillStack(
-                                        colors: pillColors,
-                                        isSelected: isSelected,
-                                        onTap: () {
-                                          setState(() {
-                                            _localSource = ThemeSource.customImage;
-                                            _localSeedColorHex = hex;
-                                          });
-                                        },
-                                      ),
-                                      const SizedBox(height: 6),
-                                      const Text('Dynamic', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                    ],
-                                  ),
-                                );
-                              }),
-                            ],
-                          ),
-                        ),
-                      ] else ...[
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(Insets.lg),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surfaceContainerHigh,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: theme.colorScheme.outlineVariant),
-                          ),
-                          child: Column(
-                            children: [
-                              Icon(Icons.wallpaper_outlined, size: 40, color: theme.colorScheme.onSurfaceVariant),
-                              const SizedBox(height: Insets.sm),
-                              const Text(
-                                'No custom wallpaper loaded',
-                                style: TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(height: Insets.xs),
-                              const Text(
-                                'Upload an image to generate coordinate dynamic color palettes',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 12),
-                              ),
-                              const SizedBox(height: Insets.md),
-                              FilledButton.icon(
-                                onPressed: _pickImage,
-                                icon: const Icon(Icons.upload, size: 18),
-                                label: const Text('Pick Image'),
-                              ),
                             ],
                           ),
                         ),
                       ],
-                    ],
-                    
-                    if (_activeTab == 1) ...[
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          ..._presets.map((Color c) {
-                            final String hex = c.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
-                            final bool isSelected = _localSource == ThemeSource.preset &&
-                                _localSeedColorHex?.toLowerCase() == hex.toLowerCase();
-                            
-                            return _buildColorCircle(c, isSelected, () {
-                              setState(() {
-                                _localSource = ThemeSource.preset;
-                                _localSeedColorHex = hex;
-                              });
-                            });
-                          }),
-                          
-                          if (_localSeedColorHex != null && !_presets.any((c) => 
-                              c.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toLowerCase() == 
-                              _localSeedColorHex!.toLowerCase())) ...[
-                            _buildColorCircle(
-                              Color(int.parse(_localSeedColorHex!, radix: 16) | 0xFF000000),
-                              _localSource == ThemeSource.preset,
-                              () {
-                                setState(() {
-                                  _localSource = ThemeSource.preset;
-                                });
-                              },
-                            ),
-                          ],
-                          
-                          GestureDetector(
-                            onTap: () async {
-                              final Color current = _localSeedColorHex != null
-                                  ? Color(int.parse(_localSeedColorHex!, radix: 16) | 0xFF000000)
-                                  : const Color(0xFF6750A4);
-                              
-                              final Color? picked = await showDialog<Color>(
-                                context: context,
-                                builder: (context) => _ColorPickerDialog(initialColor: current),
-                              );
-                              
-                              if (picked != null) {
-                                final String hex = picked.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
-                                setState(() {
-                                  _localSource = ThemeSource.preset;
-                                  _localSeedColorHex = hex;
-                                });
-                              }
-                            },
-                            child: Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.surfaceContainerHigh,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: theme.colorScheme.outlineVariant,
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: Icon(
-                                Icons.add,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
+                    ),
+                  ),
+                ),
+              
+              if (_activeTab == 2) ...[
+                if (_localImagePath != null) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Wallpaper: ${_localImagePath!.split(Platform.pathSeparator).last}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
-                        ],
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: _pickImage,
+                        icon: const Icon(Icons.change_circle_outlined, size: 16),
+                        label: const Text('Change'),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: Insets.sm),
+                ],
+                
+                if (_isExtracting) ...[
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: Insets.md),
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+                ] else if (_extractedColors.isNotEmpty) ...[
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: _extractedColors.map((Color seed) {
+                        final String hex = seed.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
+                        final bool isSelected = _localSource == ThemeSource.customImage &&
+                            _localSeedColorHex?.toLowerCase() == hex.toLowerCase();
+                        
+                        final ColorScheme previewScheme = colorSchemeFromSeedAndStyle(
+                          seed,
+                          _localPaletteStyle,
+                          theme.brightness,
+                        );
+                        final List<Color> pillColors = [
+                          previewScheme.primary,
+                          previewScheme.primaryContainer,
+                          previewScheme.secondaryContainer,
+                          previewScheme.surfaceContainerHigh,
+                        ];
+                        
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 14.0, bottom: 4.0),
+                          child: Column(
+                            children: [
+                              _ColorPillStack(
+                                colors: pillColors,
+                                isSelected: isSelected,
+                                onTap: () {
+                                  setState(() {
+                                    _localSource = ThemeSource.customImage;
+                                    _localSeedColorHex = hex;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 6),
+                              const Text('Dynamic', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ] else ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(Insets.lg),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHigh,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: theme.colorScheme.outlineVariant),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(Icons.wallpaper_outlined, size: 40, color: theme.colorScheme.onSurfaceVariant),
+                        const SizedBox(height: Insets.sm),
+                        const Text(
+                          'No custom wallpaper loaded',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: Insets.xs),
+                        const Text(
+                          'Upload an image to generate dynamic color palettes',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        const SizedBox(height: Insets.md),
+                        FilledButton.icon(
+                          onPressed: _pickImage,
+                          icon: const Icon(Icons.upload, size: 18),
+                          label: const Text('Pick Image'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+              
+              if (_activeTab == 1) ...[
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    ..._presets.map((Color c) {
+                      final String hex = c.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
+                      final bool isSelected = _localSource == ThemeSource.preset &&
+                          _localSeedColorHex?.toLowerCase() == hex.toLowerCase();
+                      
+                      return _buildColorCircle(c, isSelected, () {
+                        setState(() {
+                          _localSource = ThemeSource.preset;
+                          _localSeedColorHex = hex;
+                        });
+                      });
+                    }),
+                    
+                    if (_localSeedColorHex != null && !_presets.any((c) => 
+                        c.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toLowerCase() == 
+                        _localSeedColorHex!.toLowerCase())) ...[
+                      _buildColorCircle(
+                        Color(int.parse(_localSeedColorHex!, radix: 16) | 0xFF000000),
+                        _localSource == ThemeSource.preset,
+                        () {
+                          setState(() {
+                            _localSource = ThemeSource.preset;
+                          });
+                        },
+                      ),
+                    ],
+                    
+                    GestureDetector(
+                      onTap: () async {
+                        final Color current = _localSeedColorHex != null
+                            ? Color(int.parse(_localSeedColorHex!, radix: 16) | 0xFF000000)
+                            : const Color(0xFF6750A4);
+                        
+                        final Color? picked = await showDialog<Color>(
+                          context: context,
+                          builder: (context) => _ColorPickerDialog(initialColor: current),
+                        );
+                        
+                        if (picked != null) {
+                          final String hex = picked.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
+                          setState(() {
+                            _localSource = ThemeSource.preset;
+                            _localSeedColorHex = hex;
+                          });
+                        }
+                      },
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHigh,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: theme.colorScheme.outlineVariant,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.add,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
                   ],
-                )
-              : const SizedBox.shrink(),
+                ),
+              ],
+            ],
+          ),
         ),
         
         const SizedBox(height: Insets.lg),
@@ -761,16 +746,17 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
           width: double.infinity,
           child: FilledButton.icon(
             onPressed: () async {
-              if (!_paletteEnabled) {
+              if (_activeTab == 0) {
+                await controller.setThemeSource(ThemeSource.system);
+              } else if (_activeTab == 1) {
                 await controller.setThemeSource(ThemeSource.preset);
-                await controller.setCustomSeedColorHex('6750A4');
-                await controller.setPaletteStyle(PaletteStyle.tonalSpot);
+                await controller.setCustomSeedColorHex(_localSeedColorHex);
               } else {
-                await controller.setThemeSource(_localSource);
+                await controller.setThemeSource(ThemeSource.customImage);
                 await controller.setCustomSeedColorHex(_localSeedColorHex);
                 await controller.setCustomImagePath(_localImagePath);
-                await controller.setPaletteStyle(_localPaletteStyle);
               }
+              await controller.setPaletteStyle(_localPaletteStyle);
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
