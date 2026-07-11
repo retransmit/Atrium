@@ -295,40 +295,42 @@ class _OverviewTab extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: Insets.lg),
-                    Wrap(
-                      spacing: 8.0,
-                      runSpacing: 8.0,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: <Widget>[
-                        FilledButton.tonalIcon(
-                          icon: const Icon(Icons.pause, size: 18),
-                          label: const Text('Pause'),
+                        IconButton.filledTonal(
+                          icon: const Icon(Icons.pause),
+                          tooltip: 'Pause',
                           onPressed: () async {
                             final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
                             await client.pause(<String>[torrent.hash]);
                             ref.invalidate(qbitRawTorrentsProvider(instance));
                           },
                         ),
-                        FilledButton.tonalIcon(
-                          icon: const Icon(Icons.play_arrow, size: 18),
-                          label: const Text('Resume'),
+                        const SizedBox(width: Insets.md),
+                        IconButton.filledTonal(
+                          icon: const Icon(Icons.play_arrow),
+                          tooltip: 'Resume',
                           onPressed: () async {
                             final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
                             await client.resume(<String>[torrent.hash]);
                             ref.invalidate(qbitRawTorrentsProvider(instance));
                           },
                         ),
-                        FilledButton.tonalIcon(
-                          icon: const Icon(Icons.fast_forward, size: 18),
-                          label: const Text('Force Start'),
+                        const SizedBox(width: Insets.md),
+                        IconButton.filledTonal(
+                          icon: const Icon(Icons.fast_forward),
+                          tooltip: 'Force Start',
                           onPressed: () async {
                             final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
                             await client.setForceStart(<String>[torrent.hash], value: true);
                             ref.invalidate(qbitRawTorrentsProvider(instance));
                           },
                         ),
-                        FilledButton.tonalIcon(
-                          icon: const Icon(Icons.link, size: 18),
-                          label: const Text('Copy Magnet'),
+                        const SizedBox(width: Insets.xl),
+                        IconButton(
+                          icon: const Icon(Icons.link),
+                          tooltip: 'Copy Magnet',
                           onPressed: () async {
                             final String magnet = torrent.magnetUri.isNotEmpty 
                                 ? torrent.magnetUri 
@@ -339,9 +341,10 @@ class _OverviewTab extends ConsumerWidget {
                             }
                           },
                         ),
-                        FilledButton.tonalIcon(
-                          icon: const Icon(Icons.tag, size: 18),
-                          label: const Text('Copy Hash'),
+                        const SizedBox(width: Insets.xs),
+                        IconButton(
+                          icon: const Icon(Icons.tag),
+                          tooltip: 'Copy Hash',
                           onPressed: () async {
                             await Clipboard.setData(ClipboardData(text: torrent.hash));
                             if (context.mounted) {
