@@ -283,7 +283,19 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
       _activeTab = 2;
     }
     
-    if (_localImagePath != null) {
+    // Load stored dynamic colors if available, preventing recalculation
+    if (prefs.customImageColorsCsv != null && prefs.customImageColorsCsv!.isNotEmpty) {
+      try {
+        _extractedColors = prefs.customImageColorsCsv!
+            .split(',')
+            .map((hex) => Color(int.parse(hex, radix: 16) | 0xFF000000))
+            .toList();
+      } catch (_) {
+        if (_localImagePath != null) {
+          _loadPalette(_localImagePath!);
+        }
+      }
+    } else if (_localImagePath != null) {
       _loadPalette(_localImagePath!);
     }
   }
@@ -333,6 +345,12 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
         setState(() {
           _extractedColors = distinctColors;
         });
+
+        // Store colors to prevent recalculation when reloading page
+        final csv = distinctColors
+            .map((c) => c.toARGB32().toRadixString(16).padLeft(8, '0').substring(2))
+            .join(',');
+        await ref.read(preferencesProvider.notifier).setCustomImageColorsCsv(csv);
       }
     } catch (_) {}
     setState(() => _isExtracting = false);
@@ -345,11 +363,21 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
       );
       if (result != null && result.files.single.path != null) {
         final String filePath = result.files.single.path!;
+        final String originalName = result.files.single.name;
         final Directory appDir = await getApplicationSupportDirectory();
-        final String ext = filePath.contains('.') 
-            ? filePath.substring(filePath.lastIndexOf('.')) 
-            : '.png';
-        final String localPath = '${appDir.path}/custom_theme_image$ext';
+        
+        // Preserve the original name in the copied wallpaper path
+        final String localPath = '${appDir.path}/$originalName';
+        
+        // If a different custom image was previously stored, clean it up
+        if (_localImagePath != null && _localImagePath != localPath) {
+          try {
+            final oldFile = File(_localImagePath!);
+            if (await oldFile.exists()) {
+              await oldFile.delete();
+            }
+          } catch (_) {}
+        }
         
         await File(filePath).copy(localPath);
         
@@ -646,10 +674,14 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                             _localPaletteStyle,
                             theme.brightness,
                           );
+                          
+                          // Include two tertiary colors in the 6-band dynamic pill stack
                           final List<Color> pillColors = [
                             previewScheme.primary,
                             previewScheme.primaryContainer,
                             previewScheme.secondaryContainer,
+                            previewScheme.tertiary,
+                            previewScheme.tertiaryContainer,
                             previewScheme.surfaceContainerHigh,
                           ];
                           
@@ -932,6 +964,8 @@ class _ColorPillStack extends StatelessWidget {
                   Expanded(child: Container(color: colors[1])),
                   Expanded(child: Container(color: colors[2])),
                   Expanded(child: Container(color: colors[3])),
+                  Expanded(child: Container(color: colors[4])),
+                  Expanded(child: Container(color: colors[5])),
                 ],
               ),
             ),
@@ -945,7 +979,7 @@ class _ColorPillStack extends StatelessWidget {
                   color: activeColorScheme.primary,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: colors[3],
+                    color: colors[5],
                     width: 1.5,
                   ),
                 ),

@@ -41,6 +41,7 @@ class Preferences {
     this.paletteStyle = PaletteStyle.tonalSpot,
     this.customSeedColorHex,
     this.customImagePath,
+    this.customImageColorsCsv,
   });
 
   final ThemeMode themeMode;
@@ -51,6 +52,7 @@ class Preferences {
   final PaletteStyle paletteStyle;
   final String? customSeedColorHex;
   final String? customImagePath;
+  final String? customImageColorsCsv;
 
   Preferences copyWith({
     ThemeMode? themeMode,
@@ -61,6 +63,7 @@ class Preferences {
     PaletteStyle? paletteStyle,
     String? Function()? customSeedColorHex,
     String? Function()? customImagePath,
+    String? Function()? customImageColorsCsv,
   }) =>
       Preferences(
         themeMode: themeMode ?? this.themeMode,
@@ -71,6 +74,7 @@ class Preferences {
         paletteStyle: paletteStyle ?? this.paletteStyle,
         customSeedColorHex: customSeedColorHex != null ? customSeedColorHex() : this.customSeedColorHex,
         customImagePath: customImagePath != null ? customImagePath() : this.customImagePath,
+        customImageColorsCsv: customImageColorsCsv != null ? customImageColorsCsv() : this.customImageColorsCsv,
       );
 }
 
@@ -94,6 +98,7 @@ class PreferencesController extends Notifier<Preferences> {
   static const String _paletteProfileKey = 'pref.paletteProfile';
   static const String _customSeedColorHexKey = 'pref.customSeedColorHex';
   static const String _customImagePathKey = 'pref.customImagePath';
+  static const String _customImageColorsCsvKey = 'pref.customImageColorsCsv';
   static const String _paletteStyleKey = 'pref.paletteStyle';
 
   Box<String> get _box => ref.read(settingsBoxProvider);
@@ -134,6 +139,7 @@ class PreferencesController extends Notifier<Preferences> {
       },
       customSeedColorHex: _box.get(_customSeedColorHexKey),
       customImagePath: _box.get(_customImagePathKey),
+      customImageColorsCsv: _box.get(_customImageColorsCsvKey),
     );
   }
 
@@ -187,5 +193,14 @@ class PreferencesController extends Notifier<Preferences> {
       await _box.put(_customImagePathKey, path);
     }
     state = state.copyWith(customImagePath: () => path);
+  }
+
+  Future<void> setCustomImageColorsCsv(String? csv) async {
+    if (csv == null) {
+      await _box.delete(_customImageColorsCsvKey);
+    } else {
+      await _box.put(_customImageColorsCsvKey, csv);
+    }
+    state = state.copyWith(customImageColorsCsv: () => csv);
   }
 }
