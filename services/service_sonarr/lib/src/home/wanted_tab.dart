@@ -28,6 +28,7 @@ class _WantedTabState extends ConsumerState<WantedTab>
     with WidgetsBindingObserver {
   late final TextEditingController _searchController;
   late final FocusNode _searchFocusNode;
+  late final void Function() _resetSearchActive;
 
   double _lastBottomInset = 0;
 
@@ -35,6 +36,9 @@ class _WantedTabState extends ConsumerState<WantedTab>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    final notifier =
+        ref.read(sonarrSearchActiveProvider(widget.instance).notifier);
+    _resetSearchActive = () => notifier.state = false;
     final String initialQuery =
         ref.read(sonarrWantedSearchQueryProvider(widget.instance));
     _searchController = TextEditingController(text: initialQuery);
@@ -43,8 +47,7 @@ class _WantedTabState extends ConsumerState<WantedTab>
 
   @override
   void dispose() {
-    ref.read(sonarrSearchActiveProvider(widget.instance).notifier).state =
-        false;
+    _resetSearchActive();
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     _searchFocusNode.removeListener(_onFocusChange);

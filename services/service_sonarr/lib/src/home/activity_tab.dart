@@ -26,6 +26,7 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
     with WidgetsBindingObserver, TickerProviderStateMixin {
   late final TextEditingController _searchController;
   late final FocusNode _searchFocusNode;
+  late final void Function() _resetSearchActive;
   double _lastBottomInset = 0;
   late final TabController _tabController;
 
@@ -33,6 +34,9 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    final notifier =
+        ref.read(sonarrSearchActiveProvider(widget.instance).notifier);
+    _resetSearchActive = () => notifier.state = false;
     final String initialQuery =
         ref.read(sonarrActivitySearchQueryProvider(widget.instance));
     _searchController = TextEditingController(text: initialQuery);
@@ -49,8 +53,7 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
 
   @override
   void dispose() {
-    ref.read(sonarrSearchActiveProvider(widget.instance).notifier).state =
-        false;
+    _resetSearchActive();
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     _searchFocusNode.removeListener(_onFocusChange);
