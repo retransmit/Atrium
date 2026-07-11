@@ -9,6 +9,7 @@ import 'models/seerr_discover.dart';
 import 'models/seerr_service.dart';
 import 'seerr_media_card.dart';
 import 'seerr_providers.dart';
+import 'seerr_report_issue_sheet.dart';
 import 'seerr_status_badge.dart';
 
 /// TMDB image URL builder shared by this screen's sections, mirroring the
@@ -404,30 +405,44 @@ class _ActionRow extends StatelessWidget {
         ),
         if (canReport) ...<Widget>[
           const SizedBox(width: Insets.sm),
-          Expanded(child: _ReportIssueButton(accent: accent)),
+          Expanded(
+            child: _ReportIssueButton(
+              instance: instance,
+              item: item,
+              accent: accent,
+            ),
+          ),
         ],
       ],
     );
   }
 }
 
-/// Outline button for reporting a playback/quality issue on this item.
-// TODO(seerr-wave-c): replace the snackbar stub with the real issue-report
-// sheet; wave C owns that sheet and swaps it in here.
+/// Outline button for reporting a playback/quality issue on this item;
+/// opens the report-issue sheet over the root navigator. Only rendered when
+/// the item exists in Seerr's media table (`mediaInfo.id` is the internal
+/// media DB id the issue endpoints key on).
 class _ReportIssueButton extends StatelessWidget {
-  const _ReportIssueButton({required this.accent});
+  const _ReportIssueButton({
+    required this.instance,
+    required this.item,
+    required this.accent,
+  });
 
+  final Instance instance;
+  final SeerrDiscoverResult item;
   final ColorScheme accent;
 
   @override
   Widget build(BuildContext context) {
     return OutlinedButton.icon(
       style: OutlinedButton.styleFrom(foregroundColor: accent.primary),
-      onPressed: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Issue reporting coming soon')),
-        );
-      },
+      onPressed: () => showSeerrReportIssueSheet(
+        context,
+        instance: instance,
+        mediaId: item.mediaInfo!.id!,
+        title: item.displayTitle,
+      ),
       icon: const Icon(Icons.flag_outlined),
       label: const Text('Report issue'),
     );

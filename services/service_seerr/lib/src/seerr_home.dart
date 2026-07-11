@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'models/seerr_request.dart';
 import 'seerr_discover_screen.dart';
+import 'seerr_issues_screen.dart';
 import 'seerr_item_detail.dart';
 import 'seerr_media_card.dart';
 import 'seerr_providers.dart';
@@ -19,13 +20,14 @@ class SeerrHome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Column(
         children: <Widget>[
           const TabBar(
             tabs: <Widget>[
               Tab(text: 'Requests', icon: Icon(Icons.playlist_play)),
               Tab(text: 'Discover', icon: Icon(Icons.explore_outlined)),
+              Tab(text: 'Issues', icon: Icon(Icons.report_problem_outlined)),
             ],
           ),
           Expanded(
@@ -33,6 +35,7 @@ class SeerrHome extends StatelessWidget {
               children: <Widget>[
                 _SeerrRequestsTab(instance: instance),
                 SeerrDiscoverScreen(instance: instance),
+                SeerrIssuesScreen(instance: instance),
               ],
             ),
           ),

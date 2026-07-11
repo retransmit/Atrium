@@ -74,4 +74,98 @@ void main() {
     expect(find.text('Action'), findsOneWidget);
     expect(find.text('8.2'), findsOneWidget);
   });
+
+  testWidgets('SeerrIssuesScreen renders an open issue with type and status',
+      (WidgetTester tester) async {
+    final Instance instance = _instance();
+    const SeerrIssue issue = SeerrIssue(
+      id: 1,
+      issueType: 2, // Audio
+      status: 1, // open
+      media: SeerrMedia(id: 10, mediaType: 'movie', tmdbId: 603),
+      createdBy: SeerrUser(displayName: 'lennox'),
+      createdAt: '2026-07-01T10:00:00.000Z',
+    );
+    // No posterPath: keeps the card free of network-image loads.
+    const SeerrDiscoverResult movie = SeerrDiscoverResult(
+      id: 603,
+      mediaType: 'movie',
+      title: 'The Matrix',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: <Override>[
+          seerrIssuesProvider((instance: instance, filter: 'all')).overrideWith(
+            (Ref ref) async => const <SeerrIssue>[issue],
+          ),
+          seerrMediaDetailsProvider(
+            (instance: instance, mediaType: 'movie', tmdbId: 603),
+          ).overrideWith((Ref ref) async => movie),
+        ],
+        child: MaterialApp(
+          theme: AtriumTheme.light(null),
+          home: Scaffold(body: SeerrIssuesScreen(instance: instance)),
+        ),
+      ),
+    );
+    for (int i = 0; i < 4; i++) {
+      await tester.pump();
+    }
+
+    expect(find.text('The Matrix'), findsOneWidget);
+    expect(find.text('Audio'), findsOneWidget);
+    expect(find.text('lennox'), findsOneWidget);
+    // 'Open' also labels a filter chip, so scope the pill assertion.
+    expect(
+      find.descendant(
+        of: find.byType(SeerrIssueStatusPill),
+        matching: find.text('Open'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('SeerrIssueDetailScreen renders the comment thread',
+      (WidgetTester tester) async {
+    final Instance instance = _instance();
+    const SeerrIssue issue = SeerrIssue(
+      id: 7,
+      issueType: 3, // Subtitles
+      status: 2, // resolved
+      createdBy: SeerrUser(displayName: 'lennox'),
+      comments: <SeerrIssueComment>[
+        SeerrIssueComment(
+          id: 1,
+          message: 'Subtitles are out of sync.',
+          user: SeerrUser(displayName: 'morpheus'),
+          createdAt: '2026-07-02T09:30:00.000Z',
+        ),
+      ],
+      createdAt: '2026-07-01T10:00:00.000Z',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: <Override>[
+          seerrIssueDetailProvider((instance: instance, id: 7)).overrideWith(
+            (Ref ref) async => issue,
+          ),
+        ],
+        child: MaterialApp(
+          theme: AtriumTheme.light(null),
+          home: SeerrIssueDetailScreen(instance: instance, issue: issue),
+        ),
+      ),
+    );
+    for (int i = 0; i < 4; i++) {
+      await tester.pump();
+    }
+
+    expect(find.text('Subtitles'), findsOneWidget);
+    expect(find.text('Subtitles are out of sync.'), findsOneWidget);
+    expect(find.text('morpheus'), findsOneWidget);
+    // A resolved issue offers the Reopen action.
+    expect(find.text('Reopen'), findsOneWidget);
+  });
 }
