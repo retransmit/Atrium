@@ -414,8 +414,19 @@ class QbittorrentAppBarActions extends ConsumerWidget {
           ),
         ),
         IconButton(
-          tooltip: 'Clear Selection',
-          icon: const Icon(Icons.close),
+          tooltip: 'Select All',
+          icon: const Icon(Icons.select_all),
+          onPressed: () {
+            final List<QbitTorrent>? torrents = ref.read(qbitTorrentsProvider(instance)).value;
+            if (torrents != null) {
+              ref.read(qbitSelectionProvider(instance).notifier).state =
+                  torrents.map((QbitTorrent t) => t.hash).toSet();
+            }
+          },
+        ),
+        IconButton(
+          tooltip: 'Select None',
+          icon: const Icon(Icons.deselect),
           onPressed: () => ref.invalidate(qbitSelectionProvider(instance)),
         ),
         IconButton(
