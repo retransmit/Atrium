@@ -248,8 +248,14 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
   List<Color> _extractedColors = [];
   int _activeTab = 0;
 
+  // Local state variables for staging selections before clicking Apply
+  bool _paletteEnabled = false;
+  ThemeSource _localSource = ThemeSource.system;
+  String? _localSeedColorHex;
+  String? _localImagePath;
+
   static const List<Color> _presets = [
-    Color(0xFF6750A4), // Violet
+    Color(0xFF6750A4), // Violet (Atrium default)
     Color(0xFF0061A4), // Blue
     Color(0xFF006E1C), // Forest
     Color(0xFFBA1A1A), // Crimson
@@ -263,10 +269,18 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
   void initState() {
     super.initState();
     final prefs = ref.read(preferencesProvider);
-    _activeTab = prefs.themeSource == ThemeSource.preset ? 1 : 0;
     
-    if (prefs.customImagePath != null) {
-      _loadPalette(prefs.customImagePath!);
+    final bool isDefaultPreset = prefs.themeSource == ThemeSource.preset &&
+        (prefs.customSeedColorHex == null || prefs.customSeedColorHex == '6750A4');
+    
+    _paletteEnabled = !isDefaultPreset;
+    _localSource = prefs.themeSource;
+    _localSeedColorHex = prefs.customSeedColorHex ?? '6750A4';
+    _localImagePath = prefs.customImagePath;
+    _activeTab = _localSource == ThemeSource.preset ? 1 : 0;
+    
+    if (_localImagePath != null) {
+      _loadPalette(_localImagePath!);
     }
   }
 
@@ -313,15 +327,18 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
         
         await File(filePath).copy(localPath);
         
-        final controller = ref.read(preferencesProvider.notifier);
-        await controller.setCustomImagePath(localPath);
-        await controller.setThemeSource(ThemeSource.customImage);
+        setState(() {
+          _localImagePath = localPath;
+          _localSource = ThemeSource.customImage;
+        });
         
         await _loadPalette(localPath);
         if (_extractedColors.isNotEmpty) {
           final Color seed = _extractedColors.first;
           final String hex = seed.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
-          await controller.setCustomSeedColorHex(hex);
+          setState(() {
+            _localSeedColorHex = hex;
+          });
         }
       }
     } catch (_) {}
@@ -337,18 +354,16 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
         onTap: () {
           setState(() {
             _activeTab = index;
-          });
-          final controller = ref.read(preferencesProvider.notifier);
-          final prefs = ref.read(preferencesProvider);
-          if (index == 0) {
-            if (prefs.customImagePath != null) {
-              controller.setThemeSource(ThemeSource.customImage);
+            if (index == 0) {
+              if (_localImagePath != null) {
+                _localSource = ThemeSource.customImage;
+              } else {
+                _localSource = ThemeSource.system;
+              }
             } else {
-              controller.setThemeSource(ThemeSource.system);
+              _localSource = ThemeSource.preset;
             }
-          } else {
-            controller.setThemeSource(ThemeSource.preset);
-          }
+          });
         },
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
@@ -397,233 +412,338 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
 
   @override
   Widget build(BuildContext context) {
-    final Preferences prefs = ref.watch(preferencesProvider);
     final PreferencesController controller = ref.read(preferencesProvider.notifier);
     final systemColorScheme = ref.watch(systemColorSchemeProvider);
     final systemLight = systemColorScheme.light;
     final theme = Theme.of(context);
 
+    // Compute color scheme dynamically for interactive phone preview mockup
+    final ColorScheme previewColorScheme;
+    if (!_paletteEnabled) {
+      previewColorScheme = ColorScheme.fromSeed(
+        seedColor: const Color(0xFF6750A4),
+        brightness: theme.brightness,
+      );
+    } else {
+      Color seedColor = const Color(0xFF6750A4);
+      if (_localSource == ThemeSource.system) {
+        final systemScheme = theme.brightness == Brightness.dark
+            ? systemColorScheme.dark
+            : systemColorScheme.light;
+        previewColorScheme = systemScheme ?? ColorScheme.fromSeed(
+          seedColor: seedColor,
+          brightness: theme.brightness,
+        );
+      } else {
+        if (_localSeedColorHex != null) {
+          final int? val = int.tryParse(_localSeedColorHex!, radix: 16);
+          if (val != null) {
+            seedColor = Color(val | 0xFF000000);
+          }
+        }
+        previewColorScheme = ColorScheme.fromSeed(
+          seedColor: seedColor,
+          brightness: theme.brightness,
+        );
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        const _ThemePreview(),
+        _ThemePreview(colorScheme: previewColorScheme),
         const SizedBox(height: Insets.md),
         
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildTabButton(0, 'Wallpaper colours'),
-            const SizedBox(width: Insets.md),
-            _buildTabButton(1, 'Basic colours'),
-          ],
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text(
+            'Colour palette',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          subtitle: const Text('Match colors with your wallpaper or choose a base color'),
+          value: _paletteEnabled,
+          onChanged: (bool value) {
+            setState(() {
+              _paletteEnabled = value;
+              if (value) {
+                if (systemLight != null) {
+                  _localSource = ThemeSource.system;
+                  _activeTab = 0;
+                } else {
+                  _localSource = ThemeSource.preset;
+                  _localSeedColorHex = '6750A4';
+                  _activeTab = 1;
+                }
+              }
+            });
+          },
         ),
-        const SizedBox(height: Insets.md),
         
-        if (_activeTab == 0) ...[
-          if (prefs.customImagePath != null) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    'Wallpaper: ${prefs.customImagePath!.split(Platform.pathSeparator).last}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: _pickImage,
-                  icon: const Icon(Icons.change_circle_outlined, size: 16),
-                  label: const Text('Change'),
-                ),
-              ],
-            ),
-            const SizedBox(height: Insets.sm),
-          ],
-          
-          if (_isExtracting) ...[
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: Insets.md),
-                child: CircularProgressIndicator(),
-              ),
-            ),
-          ] else if (systemLight != null || _extractedColors.isNotEmpty) ...[
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  if (systemLight != null) ...[
-                    Column(
+        AnimatedSize(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          child: _paletteEnabled
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: Insets.md),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _ColorPillStack(
-                          colors: [
-                            systemLight.primary,
-                            systemLight.primaryContainer,
-                            systemLight.secondaryContainer,
-                            systemLight.surfaceContainerHigh,
-                          ],
-                          isSelected: prefs.themeSource == ThemeSource.system,
-                          onTap: () {
-                            controller.setThemeSource(ThemeSource.system);
-                          },
-                        ),
-                        const SizedBox(height: 6),
-                        const Text('System', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        _buildTabButton(0, 'Wallpaper colours'),
+                        const SizedBox(width: Insets.md),
+                        _buildTabButton(1, 'Basic colours'),
                       ],
                     ),
-                    const SizedBox(width: 14),
-                  ],
-                  
-                  ..._extractedColors.map((Color seed) {
-                    final String hex = seed.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
-                    final bool isSelected = prefs.themeSource == ThemeSource.customImage &&
-                        prefs.customSeedColorHex?.toLowerCase() == hex.toLowerCase();
+                    const SizedBox(height: Insets.md),
                     
-                    final ColorScheme previewScheme = ColorScheme.fromSeed(seedColor: seed);
-                    final List<Color> pillColors = [
-                      previewScheme.primary,
-                      previewScheme.primaryContainer,
-                      previewScheme.secondaryContainer,
-                      previewScheme.surfaceContainerHigh,
-                    ];
-                    
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 14.0),
-                      child: Column(
-                        children: [
-                          _ColorPillStack(
-                            colors: pillColors,
-                            isSelected: isSelected,
-                            onTap: () {
-                              controller.setThemeSource(ThemeSource.customImage);
-                              controller.setCustomSeedColorHex(hex);
-                            },
+                    if (_activeTab == 0) ...[
+                      if (_localImagePath != null) ...[
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Wallpaper: ${_localImagePath!.split(Platform.pathSeparator).last}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                            TextButton.icon(
+                              onPressed: _pickImage,
+                              icon: const Icon(Icons.change_circle_outlined, size: 16),
+                              label: const Text('Change'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: Insets.sm),
+                      ],
+                      
+                      if (_isExtracting) ...[
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: Insets.md),
+                            child: CircularProgressIndicator(),
                           ),
-                          const SizedBox(height: 6),
-                          const Text('Dynamic', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        ),
+                      ] else if (systemLight != null || _extractedColors.isNotEmpty) ...[
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              if (systemLight != null) ...[
+                                Column(
+                                  children: [
+                                    _ColorPillStack(
+                                      colors: [
+                                        systemLight.primary,
+                                        systemLight.primaryContainer,
+                                        systemLight.secondaryContainer,
+                                        systemLight.surfaceContainerHigh,
+                                      ],
+                                      isSelected: _localSource == ThemeSource.system,
+                                      onTap: () {
+                                        setState(() {
+                                          _localSource = ThemeSource.system;
+                                        });
+                                      },
+                                    ),
+                                    const SizedBox(height: 6),
+                                    const Text('System', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                                const SizedBox(width: 14),
+                              ],
+                              
+                              ..._extractedColors.map((Color seed) {
+                                final String hex = seed.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
+                                final bool isSelected = _localSource == ThemeSource.customImage &&
+                                    _localSeedColorHex?.toLowerCase() == hex.toLowerCase();
+                                
+                                final ColorScheme previewScheme = ColorScheme.fromSeed(seedColor: seed);
+                                final List<Color> pillColors = [
+                                  previewScheme.primary,
+                                  previewScheme.primaryContainer,
+                                  previewScheme.secondaryContainer,
+                                  previewScheme.surfaceContainerHigh,
+                                ];
+                                
+                                return Padding(
+                                  padding: const EdgeInsets.only(right: 14.0),
+                                  child: Column(
+                                    children: [
+                                      _ColorPillStack(
+                                        colors: pillColors,
+                                        isSelected: isSelected,
+                                        onTap: () {
+                                          setState(() {
+                                            _localSource = ThemeSource.customImage;
+                                            _localSeedColorHex = hex;
+                                          });
+                                        },
+                                      ),
+                                      const SizedBox(height: 6),
+                                      const Text('Dynamic', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
+                      ] else ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(Insets.lg),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerHigh,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: theme.colorScheme.outlineVariant),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(Icons.wallpaper_outlined, size: 40, color: theme.colorScheme.onSurfaceVariant),
+                              const SizedBox(height: Insets.sm),
+                              const Text(
+                                'No custom wallpaper loaded',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(height: Insets.xs),
+                              const Text(
+                                'Upload an image to generate coordinate dynamic color palettes',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(fontSize: 12),
+                              ),
+                              const SizedBox(height: Insets.md),
+                              FilledButton.icon(
+                                onPressed: _pickImage,
+                                icon: const Icon(Icons.upload, size: 18),
+                                label: const Text('Pick Image'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                    
+                    if (_activeTab == 1) ...[
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          ..._presets.map((Color c) {
+                            final String hex = c.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
+                            final bool isSelected = _localSource == ThemeSource.preset &&
+                                _localSeedColorHex?.toLowerCase() == hex.toLowerCase();
+                            
+                            return _buildColorCircle(c, isSelected, () {
+                              setState(() {
+                                _localSource = ThemeSource.preset;
+                                _localSeedColorHex = hex;
+                              });
+                            });
+                          }),
+                          
+                          if (_localSeedColorHex != null && !_presets.any((c) => 
+                              c.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toLowerCase() == 
+                              _localSeedColorHex!.toLowerCase())) ...[
+                            _buildColorCircle(
+                              Color(int.parse(_localSeedColorHex!, radix: 16) | 0xFF000000),
+                              _localSource == ThemeSource.preset,
+                              () {
+                                setState(() {
+                                  _localSource = ThemeSource.preset;
+                                });
+                              },
+                            ),
+                          ],
+                          
+                          GestureDetector(
+                            onTap: () async {
+                              final Color current = _localSeedColorHex != null
+                                  ? Color(int.parse(_localSeedColorHex!, radix: 16) | 0xFF000000)
+                                  : const Color(0xFF6750A4);
+                              
+                              final Color? picked = await showDialog<Color>(
+                                context: context,
+                                builder: (context) => _ColorPickerDialog(initialColor: current),
+                              );
+                              
+                              if (picked != null) {
+                                final String hex = picked.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
+                                setState(() {
+                                  _localSource = ThemeSource.preset;
+                                  _localSeedColorHex = hex;
+                                });
+                              }
+                            },
+                            child: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surfaceContainerHigh,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: theme.colorScheme.outlineVariant,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.add,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
-                    );
-                  }),
-                ],
-              ),
-            ),
-          ] else ...[
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(Insets.lg),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: theme.colorScheme.outlineVariant),
-              ),
-              child: Column(
-                children: [
-                  Icon(Icons.wallpaper_outlined, size: 40, color: theme.colorScheme.onSurfaceVariant),
-                  const SizedBox(height: Insets.sm),
-                  const Text(
-                    'No custom wallpaper loaded',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: Insets.xs),
-                  const Text(
-                    'Upload an image to generate coordinate dynamic color palettes',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12),
-                  ),
-                  const SizedBox(height: Insets.md),
-                  FilledButton.icon(
-                    onPressed: _pickImage,
-                    icon: const Icon(Icons.upload, size: 18),
-                    label: const Text('Pick Image'),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
+                    ],
+                  ],
+                )
+              : const SizedBox.shrink(),
+        ),
         
-        if (_activeTab == 1) ...[
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              ..._presets.map((Color c) {
-                final String hex = c.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
-                final bool isSelected = prefs.themeSource == ThemeSource.preset &&
-                    prefs.customSeedColorHex?.toLowerCase() == hex.toLowerCase();
-                
-                return _buildColorCircle(c, isSelected, () {
-                  controller.setThemeSource(ThemeSource.preset);
-                  controller.setCustomSeedColorHex(hex);
-                });
-              }),
-              
-              if (prefs.customSeedColorHex != null && !_presets.any((c) => 
-                  c.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toLowerCase() == 
-                  prefs.customSeedColorHex!.toLowerCase())) ...[
-                _buildColorCircle(
-                  Color(int.parse(prefs.customSeedColorHex!, radix: 16) | 0xFF000000),
-                  prefs.themeSource == ThemeSource.preset,
-                  () {
-                    controller.setThemeSource(ThemeSource.preset);
-                  },
-                ),
-              ],
-              
-              GestureDetector(
-                onTap: () async {
-                  final Color current = prefs.customSeedColorHex != null
-                      ? Color(int.parse(prefs.customSeedColorHex!, radix: 16) | 0xFF000000)
-                      : const Color(0xFF6750A4);
-                  
-                  final Color? picked = await showDialog<Color>(
-                    context: context,
-                    builder: (context) => _ColorPickerDialog(initialColor: current),
-                  );
-                  
-                  if (picked != null) {
-                    final String hex = picked.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
-                    controller.setThemeSource(ThemeSource.preset);
-                    controller.setCustomSeedColorHex(hex);
-                  }
-                },
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceContainerHigh,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: theme.colorScheme.outlineVariant,
-                      width: 1.5,
-                    ),
+        const SizedBox(height: Insets.lg),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: () async {
+              if (!_paletteEnabled) {
+                await controller.setThemeSource(ThemeSource.preset);
+                await controller.setCustomSeedColorHex('6750A4');
+              } else {
+                await controller.setThemeSource(_localSource);
+                await controller.setCustomSeedColorHex(_localSeedColorHex);
+                await controller.setCustomImagePath(_localImagePath);
+              }
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Theme palette applied successfully!'),
+                    duration: Duration(seconds: 2),
                   ),
-                  child: Icon(
-                    Icons.add,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ],
+                );
+              }
+            },
+            icon: const Icon(Icons.done),
+            label: const Text('Apply'),
           ),
-        ],
+        ),
       ],
     );
   }
 }
 
 class _ThemePreview extends StatelessWidget {
-  const _ThemePreview();
+  const _ThemePreview({required this.colorScheme});
+  final ColorScheme colorScheme;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cs = theme.colorScheme;
+    final cs = colorScheme;
 
     return Container(
       padding: const EdgeInsets.all(Insets.md),
