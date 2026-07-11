@@ -121,6 +121,7 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
   // ── Scroll handling ─────────────────────────────────────────────────────
 
   bool _shouldStart(ScrollNotification n) {
+    if (n.depth != 0) return false;
     if (_phase != _Phase.idle) return false;
     if (n.metrics.pixels > 0.0) return false;
 
@@ -135,6 +136,7 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
   }
 
   bool _handleNotification(ScrollNotification n) {
+    if (n.depth != 0) return false;
     if (_phase == _Phase.refreshing || _phase == _Phase.dismissing) {
       return false;
     }
