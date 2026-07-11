@@ -57,6 +57,13 @@ class AtriumApp extends ConsumerWidget {
 
     return AtriumTheme.withDynamicColor(
       builder: (ColorScheme? lightScheme, ColorScheme? darkScheme) {
+        final systemNotifier = ref.read(systemColorSchemeProvider.notifier);
+        if (systemNotifier.state.light != lightScheme || systemNotifier.state.dark != darkScheme) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            systemNotifier.state = SystemColorSchemeState(lightScheme, darkScheme);
+          });
+        }
+
         final ColorScheme activeLight = prefs.themeSource == ThemeSource.system
             ? (lightScheme ?? ColorScheme.fromSeed(seedColor: AtriumTheme.seed))
             : customLight;

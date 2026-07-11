@@ -1,6 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'preferences.dart';
+
+class SystemColorSchemeState {
+  const SystemColorSchemeState(this.light, this.dark);
+  final ColorScheme? light;
+  final ColorScheme? dark;
+}
+
+/// Stores the platform-detected system color schemes.
+final systemColorSchemeProvider = StateProvider<SystemColorSchemeState>((ref) => const SystemColorSchemeState(null, null));
 
 /// Provider for custom ColorScheme pair generated from preferences seed color.
 final customColorSchemeProvider = Provider<(ColorScheme, ColorScheme)>((ref) {
