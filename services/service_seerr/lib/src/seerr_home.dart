@@ -90,8 +90,8 @@ class _SeerrRequestsTab extends ConsumerWidget {
 }
 
 /// One request as a tonal card: poster + title + requester + color-coded
-/// status pills, with inline approve / decline for pending requests, an
-/// inline delete, and the overflow menu (retry etc.) top-right.
+/// status pills, with inline approve / decline for pending requests and the
+/// overflow menu (retry, delete, etc.) top-right.
 class _RequestTile extends ConsumerStatefulWidget {
   const _RequestTile({required this.instance, required this.request});
 
@@ -181,7 +181,7 @@ class _RequestTileState extends ConsumerState<_RequestTile> {
             mediaStatus: request.media?.status,
             requestStatus: request.status,
             trailing: _actionsMenu(),
-            actions: _inlineActions(context),
+            actions: _inlineActions(),
           ),
         );
       },
@@ -240,35 +240,29 @@ class _RequestTileState extends ConsumerState<_RequestTile> {
     );
   }
 
-  /// Inline actions on the card: approve / decline while pending, plus
-  /// delete.
-  Widget _inlineActions(BuildContext context) {
-    final ColorScheme cs = Theme.of(context).colorScheme;
-    final bool pending = widget.request.status == 1;
+  /// Inline actions on the card: approve / decline while the request is
+  /// pending. Delete is deliberately not inline - a one-tap destructive
+  /// action invites mis-taps, so it stays in the overflow menu only.
+  Widget? _inlineActions() {
+    if (widget.request.status != 1) {
+      return null;
+    }
     return Row(
       children: <Widget>[
-        if (pending) ...<Widget>[
-          Expanded(
-            child: FilledButton.tonalIcon(
-              onPressed: _busy ? null : () => _handleAction('approve'),
-              icon: const Icon(Icons.check, size: 18),
-              label: const Text('Approve'),
-            ),
+        Expanded(
+          child: FilledButton.tonalIcon(
+            onPressed: _busy ? null : () => _handleAction('approve'),
+            icon: const Icon(Icons.check, size: 18),
+            label: const Text('Approve'),
           ),
-          const SizedBox(width: Insets.sm),
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: _busy ? null : () => _handleAction('decline'),
-              icon: const Icon(Icons.close, size: 18),
-              label: const Text('Decline'),
-            ),
+        ),
+        const SizedBox(width: Insets.sm),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: _busy ? null : () => _handleAction('decline'),
+            icon: const Icon(Icons.close, size: 18),
+            label: const Text('Decline'),
           ),
-        ] else
-          const Spacer(),
-        IconButton(
-          tooltip: 'Delete request',
-          onPressed: _busy ? null : () => _handleAction('delete'),
-          icon: Icon(Icons.delete_outline, color: cs.error),
         ),
       ],
     );

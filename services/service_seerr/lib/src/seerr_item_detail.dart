@@ -1,7 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:palette_generator/palette_generator.dart';
 
@@ -110,10 +113,24 @@ class _SeerrItemDetailScreenState extends ConsumerState<SeerrItemDetailScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        // Over the backdrop imagery the back arrow must be white; without a
-        // hero it sits on plain surface and keeps the M3 role color.
-        iconTheme: backdropPath != null
-            ? const IconThemeData(color: Colors.white)
+        // The hero is not pinned, so the back button can end up floating
+        // over pale scrolled content as well as the backdrop: sit the white
+        // arrow on a translucent circular scrim so it stays legible over
+        // both, and force light status-bar icons to match the dark hero
+        // scrim. Without a hero the button sits on plain surface and keeps
+        // the M3 role color and the ambient overlay style.
+        systemOverlayStyle:
+            backdropPath != null ? SystemUiOverlayStyle.light : null,
+        leading: backdropPath != null
+            ? IconButton(
+                tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                onPressed: () => Navigator.maybePop(context),
+                icon: CircleAvatar(
+                  radius: 18,
+                  backgroundColor: Colors.black.withValues(alpha: 0.4),
+                  child: const Icon(Icons.arrow_back, color: Colors.white),
+                ),
+              )
             : null,
       ),
       body: CustomScrollView(
@@ -121,8 +138,15 @@ class _SeerrItemDetailScreenState extends ConsumerState<SeerrItemDetailScreen> {
           SliverToBoxAdapter(
             child: backdropPath != null
                 ? SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.5,
+                    // Half the screen, but never below the 180dp poster plus
+                    // title block: on a landscape phone 50% of the height
+                    // would hard-clip the header.
+                    height: math.max(
+                      MediaQuery.sizeOf(context).height * 0.5,
+                      340,
+                    ),
                     child: Stack(
+                      clipBehavior: Clip.none,
                       children: <Widget>[
                         Positioned.fill(
                           child: CachedNetworkImage(

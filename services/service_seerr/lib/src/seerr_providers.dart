@@ -212,8 +212,8 @@ final seerrIssueDetailProvider =
       return api.getIssue(args.id);
     });
 
-final seerrRecommendationsProvider =
-    FutureProvider.family<List<SeerrDiscoverResult>, SeerrMediaDetailsArgs>((
+final seerrRecommendationsProvider = FutureProvider.autoDispose
+    .family<List<SeerrDiscoverResult>, SeerrMediaDetailsArgs>((
       Ref ref,
       SeerrMediaDetailsArgs args,
     ) async {
@@ -222,8 +222,8 @@ final seerrRecommendationsProvider =
       return api.getRecommendations(args.mediaType, args.tmdbId);
     });
 
-final seerrSimilarProvider =
-    FutureProvider.family<List<SeerrDiscoverResult>, SeerrMediaDetailsArgs>((
+final seerrSimilarProvider = FutureProvider.autoDispose
+    .family<List<SeerrDiscoverResult>, SeerrMediaDetailsArgs>((
       Ref ref,
       SeerrMediaDetailsArgs args,
     ) async {
@@ -233,7 +233,7 @@ final seerrSimilarProvider =
     });
 
 final seerrWatchlistProvider =
-    FutureProvider.family<List<SeerrDiscoverResult>, Instance>((
+    FutureProvider.autoDispose.family<List<SeerrDiscoverResult>, Instance>((
       Ref ref,
       Instance instance,
     ) async {

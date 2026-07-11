@@ -261,10 +261,17 @@ void main() {
       ),
       findsOneWidget,
     );
-    // Pending requests get inline approve / decline alongside delete.
+    // Pending requests get inline approve / decline. Delete is deliberately
+    // not inline (a mis-tap must not destroy a request); it stays in the
+    // overflow menu only.
     expect(find.text('Approve'), findsOneWidget);
     expect(find.text('Decline'), findsOneWidget);
-    expect(find.byTooltip('Delete request'), findsOneWidget);
+    expect(find.byTooltip('Delete request'), findsNothing);
+    await tester.tap(find.byIcon(Icons.more_vert));
+    for (int i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(find.text('Delete'), findsOneWidget);
   });
 
   testWidgets('SeerrDiscoverScreen renders the Watchlist row',

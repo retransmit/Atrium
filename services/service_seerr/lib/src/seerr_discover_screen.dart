@@ -37,8 +37,10 @@ class SeerrDiscoverScreen extends ConsumerWidget {
             title: 'Watchlist',
             provider: seerrWatchlistProvider(instance),
             instance: instance,
-            // Most servers have an empty watchlist; collapse instead of
-            // showing an empty row.
+            // Optional row: most servers have an empty watchlist, and the
+            // fetch can fail outright (expired Plex token, forks without the
+            // endpoint) - collapse instead of showing an empty row or
+            // banner-ing Discover with an error.
             hideWhenEmpty: true,
           ),
           _DiscoverSection(
@@ -118,8 +120,10 @@ class _DiscoverSection extends ConsumerWidget {
   final FutureProvider<List<SeerrDiscoverResult>> provider;
   final Instance instance;
 
-  /// Collapse the whole section (header included) when the row loads empty;
-  /// used for optional rows like the Watchlist.
+  /// Collapse the whole section (header included) unless a non-empty list
+  /// is available; optional rows like the Watchlist degrade like the detail
+  /// screen's Recommendations / Similar rows and render nothing while
+  /// loading, on error, and when empty.
   final bool hideWhenEmpty;
 
   /// Shared row height so every Discover section sizes identically.
@@ -128,7 +132,7 @@ class _DiscoverSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<SeerrDiscoverResult>> items = ref.watch(provider);
-    if (hideWhenEmpty && (items.value?.isEmpty ?? false)) {
+    if (hideWhenEmpty && (items.hasError || (items.value?.isEmpty ?? true))) {
       return const SizedBox.shrink();
     }
 

@@ -167,7 +167,7 @@ class SeerrApi {
   // --- Issues ---
 
   Future<List<SeerrIssue>> getIssues({
-    int take = 50,
+    int take = 100,
     int skip = 0,
     String filter = 'all',
   }) async {
