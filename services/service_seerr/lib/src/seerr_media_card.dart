@@ -196,15 +196,46 @@ class SeerrRequestCard extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final List<Widget> pills = _statusPills();
+    final String? backdrop = item.backdropPath;
+    final bool over = backdrop != null;
+    // Text sits over the darkened backdrop when present, else over the tonal
+    // surface - pick legible colors for each case.
+    final Color titleColor = over ? Colors.white : cs.onSurface;
+    final Color subColor = over ? Colors.white70 : cs.onSurfaceVariant;
 
     return Container(
       decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
+        color: cs.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(20),
       ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: <Widget>[
+          if (backdrop != null)
+            Positioned.fill(
+              child: CachedNetworkImage(
+                imageUrl: _tmdbImage(backdrop, 'w780'),
+                fit: BoxFit.cover,
+                errorWidget: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
+          // Darken left-to-right so the overlaid title/requester stay legible
+          // over the backdrop while the poster on the right shows through.
+          if (over)
+            const Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    stops: <double>[0.0, 0.6, 1.0],
+                    colors: <Color>[
+                      Color(0xE6000000),
+                      Color(0x99000000),
+                      Color(0x59000000),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.all(Insets.md),
             child: Column(
@@ -213,23 +244,6 @@ class SeerrRequestCard extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(Radii.md),
-                      child: SizedBox(
-                        width: 76,
-                        height: 114,
-                        child: item.posterPath != null
-                            ? CachedNetworkImage(
-                                imageUrl:
-                                    _tmdbImage(item.posterPath!, 'w342'),
-                                fit: BoxFit.cover,
-                                errorWidget: (_, __, ___) =>
-                                    _posterFallback(cs),
-                              )
-                            : _posterFallback(cs),
-                      ),
-                    ),
-                    const SizedBox(width: Insets.md),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,7 +252,7 @@ class SeerrRequestCard extends StatelessWidget {
                             Text(
                               item.year!,
                               style: theme.textTheme.labelMedium?.copyWith(
-                                color: cs.onSurfaceVariant,
+                                color: subColor,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -250,6 +264,7 @@ class SeerrRequestCard extends StatelessWidget {
                             child: Text(
                               item.displayTitle,
                               style: theme.textTheme.titleMedium?.copyWith(
+                                color: titleColor,
                                 fontWeight: FontWeight.bold,
                                 height: 1.15,
                               ),
@@ -266,14 +281,14 @@ class SeerrRequestCard extends StatelessWidget {
                                 Icon(
                                   Icons.person_outline,
                                   size: 16,
-                                  color: cs.outline,
+                                  color: subColor,
                                 ),
                                 const SizedBox(width: Insets.xs),
                                 Flexible(
                                   child: Text(
                                     requestedBy!,
                                     style: theme.textTheme.bodySmall
-                                        ?.copyWith(color: cs.outline),
+                                        ?.copyWith(color: subColor),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -285,6 +300,23 @@ class SeerrRequestCard extends StatelessWidget {
                             Wrap(spacing: 6, runSpacing: 4, children: pills),
                           ],
                         ],
+                      ),
+                    ),
+                    const SizedBox(width: Insets.md),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(Radii.md),
+                      child: SizedBox(
+                        width: 76,
+                        height: 114,
+                        child: item.posterPath != null
+                            ? CachedNetworkImage(
+                                imageUrl:
+                                    _tmdbImage(item.posterPath!, 'w342'),
+                                fit: BoxFit.cover,
+                                errorWidget: (_, __, ___) =>
+                                    _posterFallback(cs),
+                              )
+                            : _posterFallback(cs),
                       ),
                     ),
                   ],
