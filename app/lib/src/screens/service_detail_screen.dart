@@ -83,7 +83,7 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
       },
       child: Scaffold(
         key: _scaffoldKey,
-        drawerEdgeDragWidth: 24.0,
+        drawerEdgeDragWidth: MediaQuery.sizeOf(context).width * 0.5,
         drawer: ServicesDrawer(
           instances: ref.watch(activeInstancesProvider),
           profile: ref.watch(activeProfileProvider),

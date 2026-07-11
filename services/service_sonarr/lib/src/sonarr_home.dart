@@ -87,7 +87,7 @@ class SonarrHome extends ConsumerWidget {
     ];
 
     return Scaffold(
-      drawerEdgeDragWidth: 24.0,
+      drawerEdgeDragWidth: drawer != null ? MediaQuery.sizeOf(context).width * 0.5 : null,
       drawer: drawer,
       body: NotificationListener<UserScrollNotification>(
         onNotification: (UserScrollNotification notification) {
