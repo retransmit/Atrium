@@ -68,6 +68,9 @@ class ServiceDetailScreen extends ConsumerWidget {
           instances: ref.watch(activeInstancesProvider),
           profile: ref.watch(activeProfileProvider),
         ),
+        endDrawer: instance.kind == ServiceKind.qbittorrent
+            ? QbittorrentFilterDrawer(instance: instance)
+            : null,
       appBar: AppBar(
         leading: Builder(
           builder: (BuildContext context) {
@@ -189,25 +192,7 @@ class ServiceDetailScreen extends ConsumerWidget {
               ),
             ),
 
-          Consumer(
-            builder: (BuildContext context, WidgetRef ref, Widget? child) {
-              if (instance.kind == ServiceKind.qbittorrent) {
-                final Set<String> selectedHashes =
-                    ref.watch(qbitSelectionProvider(instance));
-                if (selectedHashes.isNotEmpty) {
-                  return const SizedBox.shrink();
-                }
-              }
-              return IconButton(
-                tooltip: 'Edit',
-                icon: const Icon(Icons.edit_outlined),
-                onPressed: () => context.goNamed(
-                  'edit-instance',
-                  pathParameters: <String, String>{'instanceId': instance.id},
-                ),
-              );
-            },
-          ),
+
         ],
       ),
       body: Stack(

@@ -27,6 +27,7 @@ abstract class QbitTorrent with _$QbitTorrent {
     @Default(0) int uploaded,
     /// ETA in seconds; 8640000 means infinity / unknown.
     @Default(8640000) int eta,
+    @JsonKey(name: 'magnet_uri') @Default('') String magnetUri,
     @Default('') String category,
     @Default(0) double ratio,
     @JsonKey(name: 'num_seeds') @Default(0) int numSeeds,

@@ -397,10 +397,22 @@ class QbittorrentAppBarActions extends ConsumerWidget {
     final Set<String> selectedHashes = ref.watch(qbitSelectionProvider(instance));
 
     if (selectedHashes.isEmpty) {
-      return IconButton(
-        tooltip: 'Sort Torrents',
-        icon: const Icon(Icons.sort),
-        onPressed: () => _showSortMenu(context, ref),
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          IconButton(
+            tooltip: 'Filter Torrents',
+            icon: const Icon(Icons.filter_list),
+            onPressed: () {
+              Scaffold.of(context).openEndDrawer();
+            },
+          ),
+          IconButton(
+            tooltip: 'Sort Torrents',
+            icon: const Icon(Icons.sort),
+            onPressed: () => _showSortMenu(context, ref),
+          ),
+        ],
       );
     }
 

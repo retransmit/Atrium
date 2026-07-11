@@ -10,6 +10,7 @@ export 'src/models/qbit_detail.dart';
 export 'src/models/qbit_torrent.dart';
 export 'src/models/qbit_transfer_info.dart';
 export 'src/qbittorrent_client.dart';
+export 'src/qbittorrent_filter_drawer.dart';
 export 'src/qbittorrent_home.dart';
 export 'src/qbittorrent_providers.dart';
 export 'src/torrent_detail_screen.dart';

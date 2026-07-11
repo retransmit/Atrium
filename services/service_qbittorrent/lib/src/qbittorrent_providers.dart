@@ -114,6 +114,9 @@ final qbitSortProvider = StateProvider.family<QbitSortConfig, Instance>((ref, in
   return const QbitSortConfig(field: QbitSortField.addedOn, ascending: false);
 });
 
+final qbitFilterStatusProvider = StateProvider.autoDispose.family<String?, Instance>((ref, instance) => null);
+final qbitFilterCategoryProvider = StateProvider.autoDispose.family<String?, Instance>((ref, instance) => null);
+
 /// All torrents for an instance, sorted by the active [qbitSortProvider].
 /// Polls every [qbitListPollInterval] while watched; stops when the screen
 /// goes away (autoDispose).
@@ -141,12 +144,42 @@ final qbitTorrentsProvider = Provider.autoDispose
   final String searchQuery =
       ref.watch(qbitSearchProvider(instance)).toLowerCase();
 
+  final String? statusFilter = ref.watch(qbitFilterStatusProvider(instance));
+  final String? categoryFilter = ref.watch(qbitFilterCategoryProvider(instance));
+
   return rawAsync.whenData((List<QbitTorrent> raw) {
     final List<QbitTorrent> torrents = List<QbitTorrent>.of(raw);
 
     if (searchQuery.isNotEmpty) {
       torrents.retainWhere(
           (QbitTorrent t) => t.name.toLowerCase().contains(searchQuery),);
+    }
+    
+    if (statusFilter != null && statusFilter != 'all') {
+      torrents.retainWhere((QbitTorrent t) {
+        if (statusFilter == 'active') {
+          return t.state == 'downloading' || t.state == 'uploading' || t.state == 'forcedDL' || t.state == 'forcedUP' || t.state == 'metaDL';
+        } else if (statusFilter == 'downloading') {
+          return t.state == 'downloading' || t.state == 'forcedDL' || t.state == 'metaDL';
+        } else if (statusFilter == 'seeding') {
+          return t.state == 'uploading' || t.state == 'forcedUP';
+        } else if (statusFilter == 'stopped') {
+          return t.state == 'pausedDL' || t.state == 'pausedUP';
+        } else if (statusFilter == 'completed') {
+          return t.progress == 1.0;
+        } else if (statusFilter == 'errored') {
+          return t.state == 'error' || t.state == 'missingFiles';
+        }
+        return true;
+      });
+    }
+
+    if (categoryFilter != null) {
+      if (categoryFilter == 'uncategorized') {
+        torrents.retainWhere((QbitTorrent t) => t.category.isEmpty);
+      } else {
+        torrents.retainWhere((QbitTorrent t) => t.category == categoryFilter);
+      }
     }
 
     torrents.sort((QbitTorrent a, QbitTorrent b) {

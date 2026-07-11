@@ -1,6 +1,7 @@
 import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -35,19 +36,59 @@ class TorrentDetailScreen extends ConsumerWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          bottom: TabBar(
+          actions: <Widget>[
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (String value) async {
+                final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
+                switch (value) {
+                  case 'pause':
+                    await client.pause(<String>[torrent.hash]);
+                    ref.invalidate(qbitRawTorrentsProvider(instance));
+                  case 'resume':
+                    await client.resume(<String>[torrent.hash]);
+                    ref.invalidate(qbitRawTorrentsProvider(instance));
+                  case 'forcestart':
+                    await client.setForceStart(<String>[torrent.hash], value: true);
+                    ref.invalidate(qbitRawTorrentsProvider(instance));
+                  case 'copy_magnet':
+                    final String magnet = torrent.magnetUri.isNotEmpty 
+                        ? torrent.magnetUri 
+                        : 'magnet:?xt=urn:btih:${torrent.hash}&dn=${Uri.encodeComponent(torrent.name)}';
+                    await Clipboard.setData(ClipboardData(text: magnet));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Magnet link copied')));
+                    }
+                  case 'copy_hash':
+                    await Clipboard.setData(ClipboardData(text: torrent.hash));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Torrent hash copied')));
+                    }
+                  case 'recheck':
+                    await client.recheck(<String>[torrent.hash]);
+                    ref.invalidate(qbitRawTorrentsProvider(instance));
+                  case 'reannounce':
+                    await client.reannounce(<String>[torrent.hash]);
+                    ref.invalidate(qbitRawTorrentsProvider(instance));
+                }
+              },
+              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                const PopupMenuItem<String>(value: 'pause', child: Text('Pause')),
+                const PopupMenuItem<String>(value: 'resume', child: Text('Resume')),
+                const PopupMenuItem<String>(value: 'forcestart', child: Text('Force Start')),
+                const PopupMenuDivider(),
+                const PopupMenuItem<String>(value: 'copy_magnet', child: Text('Copy Magnet Link')),
+                const PopupMenuItem<String>(value: 'copy_hash', child: Text('Copy Hash')),
+                const PopupMenuDivider(),
+                const PopupMenuItem<String>(value: 'recheck', child: Text('Force Recheck')),
+                const PopupMenuItem<String>(value: 'reannounce', child: Text('Force Reannounce')),
+              ],
+            ),
+          ],
+          bottom: const TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
-            dividerColor: Colors.transparent,
-            indicatorSize: TabBarIndicatorSize.tab,
-            indicator: BoxDecoration(
-              color: Theme.of(context).colorScheme.secondaryContainer,
-              borderRadius: BorderRadius.circular(50),
-            ),
-            labelColor: Theme.of(context).colorScheme.onSecondaryContainer,
-            unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
-            splashBorderRadius: BorderRadius.circular(50),
-            tabs: const <Widget>[
+            tabs: <Widget>[
               Tab(text: 'Overview'),
               Tab(text: 'Files'),
               Tab(text: 'Trackers'),
@@ -257,6 +298,63 @@ class _OverviewTab extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: Insets.md),
+              Wrap(
+                spacing: 8.0,
+                runSpacing: 8.0,
+                children: <Widget>[
+                  FilledButton.tonalIcon(
+                    icon: const Icon(Icons.pause, size: 18),
+                    label: const Text('Pause'),
+                    onPressed: () async {
+                      final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
+                      await client.pause(<String>[torrent.hash]);
+                      ref.invalidate(qbitRawTorrentsProvider(instance));
+                    },
+                  ),
+                  FilledButton.tonalIcon(
+                    icon: const Icon(Icons.play_arrow, size: 18),
+                    label: const Text('Resume'),
+                    onPressed: () async {
+                      final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
+                      await client.resume(<String>[torrent.hash]);
+                      ref.invalidate(qbitRawTorrentsProvider(instance));
+                    },
+                  ),
+                  FilledButton.tonalIcon(
+                    icon: const Icon(Icons.fast_forward, size: 18),
+                    label: const Text('Force Start'),
+                    onPressed: () async {
+                      final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
+                      await client.setForceStart(<String>[torrent.hash], value: true);
+                      ref.invalidate(qbitRawTorrentsProvider(instance));
+                    },
+                  ),
+                  FilledButton.tonalIcon(
+                    icon: const Icon(Icons.link, size: 18),
+                    label: const Text('Copy Magnet'),
+                    onPressed: () async {
+                      final String magnet = torrent.magnetUri.isNotEmpty 
+                          ? torrent.magnetUri 
+                          : 'magnet:?xt=urn:btih:${torrent.hash}&dn=${Uri.encodeComponent(torrent.name)}';
+                      await Clipboard.setData(ClipboardData(text: magnet));
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Magnet link copied')));
+                      }
+                    },
+                  ),
+                  FilledButton.tonalIcon(
+                    icon: const Icon(Icons.tag, size: 18),
+                    label: const Text('Copy Hash'),
+                    onPressed: () async {
+                      await Clipboard.setData(ClipboardData(text: torrent.hash));
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Torrent hash copied')));
+                      }
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: Insets.md),
               _SectionCard(
                 title: 'Transfer',
                 rows: <(String, String)>[
@@ -381,8 +479,9 @@ class _SectionCard extends StatelessWidget {
 }
 
 class _BuilderNode {
-  _BuilderNode(this.name, this.depth, this.isFile);
+  _BuilderNode(this.name, this.fullPath, this.depth, this.isFile);
   final String name;
+  final String fullPath;
   final int depth;
   final bool isFile;
   int size = 0;
@@ -391,9 +490,10 @@ class _BuilderNode {
   bool isWanted = false;
   final Map<String, _BuilderNode> children = <String, _BuilderNode>{};
 
-  _FileNode toFileNode() {
+  _FileNode toFileNode(bool isCollapsed) {
     return _FileNode(
       name: name,
+      fullPath: fullPath,
       isFile: isFile,
       depth: depth,
       size: size,
@@ -401,6 +501,7 @@ class _BuilderNode {
       progress: size == 0 ? (isWanted ? 0.0 : 1.0) : downloaded / size,
       fileIndices: fileIndices,
       isWanted: isWanted,
+      isCollapsed: isCollapsed,
     );
   }
 }
@@ -408,6 +509,7 @@ class _BuilderNode {
 class _FileNode {
   _FileNode({
     required this.name,
+    required this.fullPath,
     required this.isFile,
     required this.depth,
     required this.size,
@@ -415,9 +517,11 @@ class _FileNode {
     required this.progress,
     required this.fileIndices,
     required this.isWanted,
+    required this.isCollapsed,
   });
 
   final String name;
+  final String fullPath;
   final bool isFile;
   final int depth;
   final int size;
@@ -425,20 +529,23 @@ class _FileNode {
   final double progress;
   final List<int> fileIndices;
   final bool isWanted;
+  final bool isCollapsed;
 }
 
-List<_FileNode> _buildFileTree(List<QbitFile> files) {
-  final _BuilderNode root = _BuilderNode('', -1, false);
+List<_FileNode> _buildFileTree(List<QbitFile> files, Set<String> collapsedPaths) {
+  final _BuilderNode root = _BuilderNode('', '', -1, false);
 
   for (final QbitFile f in files) {
     final List<String> parts = f.name.split('/');
     _BuilderNode current = root;
+    String currentPath = '';
     for (int i = 0; i < parts.length; i++) {
       final String part = parts[i];
       if (part.isEmpty) continue;
+      currentPath = currentPath.isEmpty ? part : '$currentPath/$part';
 
       final bool isFile = i == parts.length - 1;
-      current = current.children.putIfAbsent(part, () => _BuilderNode(part, i, isFile));
+      current = current.children.putIfAbsent(part, () => _BuilderNode(part, currentPath, i, isFile));
 
       current.size += f.size;
       current.downloaded += f.size * f.progress;
@@ -452,7 +559,10 @@ List<_FileNode> _buildFileTree(List<QbitFile> files) {
   final List<_FileNode> flattened = <_FileNode>[];
   void traverse(_BuilderNode node) {
     if (node.depth >= 0) {
-      flattened.add(node.toFileNode());
+      flattened.add(node.toFileNode(collapsedPaths.contains(node.fullPath)));
+    }
+    if (!node.isFile && collapsedPaths.contains(node.fullPath)) {
+      return;
     }
     for (final _BuilderNode child in node.children.values) {
       traverse(child);
@@ -463,25 +573,36 @@ List<_FileNode> _buildFileTree(List<QbitFile> files) {
   return flattened;
 }
 
-class _FilesTab extends ConsumerWidget {
+class _FilesTab extends ConsumerStatefulWidget {
   const _FilesTab({required this.instance, required this.hash});
 
   final Instance instance;
   final String hash;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_FilesTab> createState() => _FilesTabState();
+}
+
+class _FilesTabState extends ConsumerState<_FilesTab> with AutomaticKeepAliveClientMixin {
+  final Set<String> _collapsedPaths = <String>{};
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final AsyncValue<List<QbitFile>> files =
-        ref.watch(qbitFilesProvider((instance, hash)));
+        ref.watch(qbitFilesProvider((widget.instance, widget.hash)));
 
     return M3RefreshIndicator(
       onRefresh: () async =>
-          ref.invalidate(qbitFilesProvider((instance, hash))),
+          ref.invalidate(qbitFilesProvider((widget.instance, widget.hash))),
       child: AsyncValueView<List<QbitFile>>(
         value: files,
-        onRetry: () => ref.invalidate(qbitFilesProvider((instance, hash))),
+        onRetry: () => ref.invalidate(qbitFilesProvider((widget.instance, widget.hash))),
         data: (List<QbitFile> list) {
           if (list.isEmpty) {
             return const EmptyView(
@@ -490,7 +611,7 @@ class _FilesTab extends ConsumerWidget {
               message: 'Metadata not downloaded yet.',
             );
           }
-          final List<_FileNode> nodes = _buildFileTree(list);
+          final List<_FileNode> nodes = _buildFileTree(list, _collapsedPaths);
 
           return ListView.builder(
             padding: const EdgeInsets.symmetric(vertical: Insets.sm),
@@ -498,76 +619,96 @@ class _FilesTab extends ConsumerWidget {
             itemBuilder: (BuildContext context, int index) {
               final _FileNode f = nodes[index];
               final Color barColor = f.isWanted ? cs.primary : cs.outline;
-              return Padding(
-                padding: EdgeInsets.fromLTRB(
-                  Insets.md + f.depth * 16.0,
-                  4,
-                  Insets.sm,
-                  4,
-                ),
-                child: Row(
-                  children: <Widget>[
-                    Container(
-                      width: 36,
-                      height: 36,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: cs.surfaceContainerHighest,
-                        borderRadius: BorderRadius.circular(10),
+              return InkWell(
+                onTap: f.isFile ? null : () {
+                  setState(() {
+                    if (f.isCollapsed) {
+                      _collapsedPaths.remove(f.fullPath);
+                    } else {
+                      _collapsedPaths.add(f.fullPath);
+                    }
+                  });
+                },
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    Insets.md + f.depth * 16.0,
+                    4,
+                    Insets.sm,
+                    4,
+                  ),
+                  child: Row(
+                    children: <Widget>[
+                      if (!f.isFile)
+                        Icon(
+                          f.isCollapsed ? Icons.keyboard_arrow_right : Icons.keyboard_arrow_down,
+                          size: 20,
+                          color: cs.onSurfaceVariant,
+                        )
+                      else
+                        const SizedBox(width: 20),
+                      const SizedBox(width: 4),
+                      Container(
+                        width: 36,
+                        height: 36,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: cs.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          f.isFile
+                              ? Icons.insert_drive_file_outlined
+                              : (f.isCollapsed ? Icons.folder_outlined : Icons.folder_open_outlined),
+                          size: 18,
+                          color: cs.onSurfaceVariant,
+                        ),
                       ),
-                      child: Icon(
-                        f.isFile
-                            ? Icons.insert_drive_file_outlined
-                            : Icons.folder_outlined,
-                        size: 18,
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(width: Insets.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            f.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                          const SizedBox(height: 4),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
-                            child: LinearProgressIndicator(
-                              value: f.progress.clamp(0, 1).toDouble(),
-                              minHeight: 5,
-                              color: barColor,
-                              backgroundColor: cs.surfaceContainerHighest,
+                      const SizedBox(width: Insets.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              f.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyMedium,
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${fmtBytes(f.size)} • ${(f.progress * 100).toStringAsFixed(0)}%',
-                            style: theme.textTheme.labelSmall
-                                ?.copyWith(color: cs.onSurfaceVariant),
-                          ),
-                        ],
+                            const SizedBox(height: 4),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: LinearProgressIndicator(
+                                value: f.progress.clamp(0, 1).toDouble(),
+                                minHeight: 5,
+                                color: barColor,
+                                backgroundColor: cs.surfaceContainerHighest,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${fmtBytes(f.size)} • ${(f.progress * 100).toStringAsFixed(0)}%',
+                              style: theme.textTheme.labelSmall
+                                  ?.copyWith(color: cs.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: Insets.sm),
-                    Checkbox(
-                      value: f.isWanted,
-                      onChanged: (bool? v) async {
-                        final QbittorrentClient client = await ref
-                            .read(qbittorrentClientProvider(instance).future);
-                        await client.setFilePriority(
-                          hash,
-                          f.fileIndices,
-                          (v ?? false) ? 1 : 0,
-                        );
-                        ref.invalidate(qbitFilesProvider((instance, hash)));
-                      },
-                    ),
-                  ],
+                      const SizedBox(width: Insets.sm),
+                      Checkbox(
+                        value: f.isWanted,
+                        onChanged: (bool? v) async {
+                          final QbittorrentClient client = await ref
+                              .read(qbittorrentClientProvider(widget.instance).future);
+                          await client.setFilePriority(
+                            widget.hash,
+                            f.fileIndices,
+                            (v ?? false) ? 1 : 0,
+                          );
+                          ref.invalidate(qbitFilesProvider((widget.instance, widget.hash)));
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
