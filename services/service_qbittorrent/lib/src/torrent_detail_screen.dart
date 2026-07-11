@@ -297,16 +297,19 @@ class _OverviewTab extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: Insets.lg),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 8.0,
+                      alignment: WrapAlignment.center,
                       children: <Widget>[
-                        IconButton(
-                          style: IconButton.styleFrom(
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
                             backgroundColor: actionColor.withValues(alpha: 0.15),
                             foregroundColor: actionColor,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           ),
-                          icon: Icon(isPaused ? Icons.play_arrow : Icons.pause),
-                          tooltip: isPaused ? 'Resume' : 'Pause',
+                          icon: Icon(isPaused ? Icons.play_arrow : Icons.pause, size: 18),
+                          label: Text(isPaused ? 'Resume' : 'Pause'),
                           onPressed: () async {
                             final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
                             if (isPaused) {
@@ -317,24 +320,28 @@ class _OverviewTab extends ConsumerWidget {
                             ref.invalidate(qbitRawTorrentsProvider(instance));
                           },
                         ),
-                        const SizedBox(width: Insets.md),
-                        IconButton(
-                          style: IconButton.styleFrom(
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
                             backgroundColor: actionColor.withValues(alpha: 0.15),
                             foregroundColor: actionColor,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           ),
-                          icon: const Icon(Icons.fast_forward),
-                          tooltip: 'Force Start',
+                          icon: const Icon(Icons.fast_forward, size: 18),
+                          label: const Text('Force Start'),
                           onPressed: () async {
                             final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
                             await client.setForceStart(<String>[torrent.hash], value: true);
                             ref.invalidate(qbitRawTorrentsProvider(instance));
                           },
                         ),
-                        const SizedBox(width: Insets.xl),
-                        IconButton(
-                          icon: const Icon(Icons.link),
-                          tooltip: 'Copy Magnet',
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            backgroundColor: cs.surfaceContainerHighest,
+                            foregroundColor: cs.onSurfaceVariant,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          ),
+                          icon: const Icon(Icons.link, size: 18),
+                          label: const Text('Magnet'),
                           onPressed: () async {
                             final String magnet = torrent.magnetUri.isNotEmpty 
                                 ? torrent.magnetUri 
@@ -345,10 +352,14 @@ class _OverviewTab extends ConsumerWidget {
                             }
                           },
                         ),
-                        const SizedBox(width: Insets.xs),
-                        IconButton(
-                          icon: const Icon(Icons.tag),
-                          tooltip: 'Copy Hash',
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            backgroundColor: cs.surfaceContainerHighest,
+                            foregroundColor: cs.onSurfaceVariant,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          ),
+                          icon: const Icon(Icons.tag, size: 18),
+                          label: const Text('Hash'),
                           onPressed: () async {
                             await Clipboard.setData(ClipboardData(text: torrent.hash));
                             if (context.mounted) {
