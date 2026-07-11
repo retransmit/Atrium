@@ -11,5 +11,6 @@ export 'src/models/seerr_request.dart';
 export 'src/models/seerr_service.dart';
 export 'src/seerr_api.dart';
 export 'src/seerr_home.dart';
+export 'src/seerr_item_detail.dart';
 export 'src/seerr_providers.dart';
 export 'src/seerr_search.dart';
