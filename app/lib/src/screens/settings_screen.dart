@@ -253,6 +253,7 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
   ThemeSource _localSource = ThemeSource.system;
   String? _localSeedColorHex;
   String? _localImagePath;
+  PaletteStyle _localPaletteStyle = PaletteStyle.tonalSpot;
 
   static const List<Color> _presets = [
     Color(0xFF6750A4), // Violet (Atrium default)
@@ -277,6 +278,7 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
     _localSource = prefs.themeSource;
     _localSeedColorHex = prefs.customSeedColorHex ?? '6750A4';
     _localImagePath = prefs.customImagePath;
+    _localPaletteStyle = prefs.paletteStyle;
     _activeTab = _localSource == ThemeSource.preset ? 1 : 0;
     
     if (_localImagePath != null) {
@@ -420,9 +422,10 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
     // Compute color scheme dynamically for interactive phone preview mockup
     final ColorScheme previewColorScheme;
     if (!_paletteEnabled) {
-      previewColorScheme = ColorScheme.fromSeed(
-        seedColor: const Color(0xFF6750A4),
-        brightness: theme.brightness,
+      previewColorScheme = colorSchemeFromSeedAndStyle(
+        const Color(0xFF6750A4),
+        _localPaletteStyle,
+        theme.brightness,
       );
     } else {
       Color seedColor = const Color(0xFF6750A4);
@@ -430,9 +433,10 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
         final systemScheme = theme.brightness == Brightness.dark
             ? systemColorScheme.dark
             : systemColorScheme.light;
-        previewColorScheme = systemScheme ?? ColorScheme.fromSeed(
-          seedColor: seedColor,
-          brightness: theme.brightness,
+        previewColorScheme = systemScheme ?? colorSchemeFromSeedAndStyle(
+          seedColor,
+          _localPaletteStyle,
+          theme.brightness,
         );
       } else {
         if (_localSeedColorHex != null) {
@@ -441,9 +445,10 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
             seedColor = Color(val | 0xFF000000);
           }
         }
-        previewColorScheme = ColorScheme.fromSeed(
-          seedColor: seedColor,
-          brightness: theme.brightness,
+        previewColorScheme = colorSchemeFromSeedAndStyle(
+          seedColor,
+          _localPaletteStyle,
+          theme.brightness,
         );
       }
     }
@@ -494,6 +499,48 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                         const SizedBox(width: Insets.md),
                         _buildTabButton(1, 'Basic colours'),
                       ],
+                    ),
+                    const SizedBox(height: Insets.md),
+
+                    // Palette style selection dropdown
+                    DropdownButtonFormField<PaletteStyle>(
+                      initialValue: _localPaletteStyle,
+                      decoration: InputDecoration(
+                        labelText: 'Palette style',
+                        filled: true,
+                        fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+                        ),
+                      ),
+                      items: PaletteStyle.values.map((style) {
+                        final String label = switch (style) {
+                          PaletteStyle.tonalSpot => 'Tonal Spot',
+                          PaletteStyle.content => 'Content',
+                          PaletteStyle.expressive => 'Expressive',
+                          PaletteStyle.fidelity => 'Fidelity',
+                          PaletteStyle.fruitSalad => 'Fruit Salad',
+                          PaletteStyle.monochrome => 'Monochrome',
+                          PaletteStyle.neutral => 'Neutral',
+                          PaletteStyle.rainbow => 'Rainbow',
+                        };
+                        return DropdownMenuItem<PaletteStyle>(
+                          value: style,
+                          child: Text(label),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _localPaletteStyle = val;
+                          });
+                        }
+                      },
                     ),
                     const SizedBox(height: Insets.md),
                     
@@ -563,7 +610,11 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                                 final bool isSelected = _localSource == ThemeSource.customImage &&
                                     _localSeedColorHex?.toLowerCase() == hex.toLowerCase();
                                 
-                                final ColorScheme previewScheme = ColorScheme.fromSeed(seedColor: seed);
+                                final ColorScheme previewScheme = colorSchemeFromSeedAndStyle(
+                                  seed,
+                                  _localPaletteStyle,
+                                  theme.brightness,
+                                );
                                 final List<Color> pillColors = [
                                   previewScheme.primary,
                                   previewScheme.primaryContainer,
@@ -713,10 +764,12 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
               if (!_paletteEnabled) {
                 await controller.setThemeSource(ThemeSource.preset);
                 await controller.setCustomSeedColorHex('6750A4');
+                await controller.setPaletteStyle(PaletteStyle.tonalSpot);
               } else {
                 await controller.setThemeSource(_localSource);
                 await controller.setCustomSeedColorHex(_localSeedColorHex);
                 await controller.setCustomImagePath(_localImagePath);
+                await controller.setPaletteStyle(_localPaletteStyle);
               }
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(

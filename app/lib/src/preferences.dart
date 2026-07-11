@@ -18,6 +18,17 @@ enum PaletteProfile {
   dominant,
 }
 
+enum PaletteStyle {
+  tonalSpot,
+  content,
+  expressive,
+  fidelity,
+  fruitSalad,
+  monochrome,
+  neutral,
+  rainbow,
+}
+
 /// App-wide, non-secret preferences persisted in the settings Hive box.
 @immutable
 class Preferences {
@@ -27,6 +38,7 @@ class Preferences {
     this.fontFamily,
     this.themeSource = ThemeSource.system,
     this.paletteProfile = PaletteProfile.vibrant,
+    this.paletteStyle = PaletteStyle.tonalSpot,
     this.customSeedColorHex,
     this.customImagePath,
   });
@@ -36,6 +48,7 @@ class Preferences {
   final String? fontFamily;
   final ThemeSource themeSource;
   final PaletteProfile paletteProfile;
+  final PaletteStyle paletteStyle;
   final String? customSeedColorHex;
   final String? customImagePath;
 
@@ -45,6 +58,7 @@ class Preferences {
     String? Function()? fontFamily,
     ThemeSource? themeSource,
     PaletteProfile? paletteProfile,
+    PaletteStyle? paletteStyle,
     String? Function()? customSeedColorHex,
     String? Function()? customImagePath,
   }) =>
@@ -54,6 +68,7 @@ class Preferences {
         fontFamily: fontFamily != null ? fontFamily() : this.fontFamily,
         themeSource: themeSource ?? this.themeSource,
         paletteProfile: paletteProfile ?? this.paletteProfile,
+        paletteStyle: paletteStyle ?? this.paletteStyle,
         customSeedColorHex: customSeedColorHex != null ? customSeedColorHex() : this.customSeedColorHex,
         customImagePath: customImagePath != null ? customImagePath() : this.customImagePath,
       );
@@ -79,6 +94,7 @@ class PreferencesController extends Notifier<Preferences> {
   static const String _paletteProfileKey = 'pref.paletteProfile';
   static const String _customSeedColorHexKey = 'pref.customSeedColorHex';
   static const String _customImagePathKey = 'pref.customImagePath';
+  static const String _paletteStyleKey = 'pref.paletteStyle';
 
   Box<String> get _box => ref.read(settingsBoxProvider);
 
@@ -105,6 +121,16 @@ class PreferencesController extends Notifier<Preferences> {
         'darkMuted' => PaletteProfile.darkMuted,
         'dominant' => PaletteProfile.dominant,
         _ => PaletteProfile.vibrant,
+      },
+      paletteStyle: switch (_box.get(_paletteStyleKey)) {
+        'content' => PaletteStyle.content,
+        'expressive' => PaletteStyle.expressive,
+        'fidelity' => PaletteStyle.fidelity,
+        'fruitSalad' => PaletteStyle.fruitSalad,
+        'monochrome' => PaletteStyle.monochrome,
+        'neutral' => PaletteStyle.neutral,
+        'rainbow' => PaletteStyle.rainbow,
+        _ => PaletteStyle.tonalSpot,
       },
       customSeedColorHex: _box.get(_customSeedColorHexKey),
       customImagePath: _box.get(_customImagePathKey),
@@ -138,6 +164,11 @@ class PreferencesController extends Notifier<Preferences> {
   Future<void> setPaletteProfile(PaletteProfile profile) async {
     await _box.put(_paletteProfileKey, profile.name);
     state = state.copyWith(paletteProfile: profile);
+  }
+
+  Future<void> setPaletteStyle(PaletteStyle style) async {
+    await _box.put(_paletteStyleKey, style.name);
+    state = state.copyWith(paletteStyle: style);
   }
 
   Future<void> setCustomSeedColorHex(String? hex) async {
