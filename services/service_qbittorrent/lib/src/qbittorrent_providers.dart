@@ -117,6 +117,50 @@ final qbitSortProvider = StateProvider.family<QbitSortConfig, Instance>((ref, in
 final qbitFilterStatusProvider = StateProvider.autoDispose.family<String?, Instance>((ref, instance) => null);
 final qbitFilterCategoryProvider = StateProvider.autoDispose.family<String?, Instance>((ref, instance) => null);
 
+/// Whether a torrent belongs to the given status filter bucket.
+///
+/// The buckets align with the friendly-state mapping used by the torrent
+/// list: every derivative state (stalled, queued, checking, forced,
+/// allocating) lands in its Downloading/Seeding bucket, and Stopped covers
+/// both the 4.x paused* and 5.x stopped* state names, so no torrent
+/// vanishes when a filter is active. Shared by the list provider and the
+/// filter drawer counts.
+bool qbitStatusMatches(String status, QbitTorrent t) {
+  switch (status) {
+    case 'active':
+      return t.state == 'downloading' ||
+          t.state == 'uploading' ||
+          t.state == 'forcedDL' ||
+          t.state == 'forcedUP' ||
+          t.state == 'metaDL';
+    case 'downloading':
+      return t.state == 'downloading' ||
+          t.state == 'stalledDL' ||
+          t.state == 'queuedDL' ||
+          t.state == 'checkingDL' ||
+          t.state == 'forcedDL' ||
+          t.state == 'metaDL' ||
+          t.state == 'allocating';
+    case 'seeding':
+      return t.state == 'uploading' ||
+          t.state == 'stalledUP' ||
+          t.state == 'queuedUP' ||
+          t.state == 'checkingUP' ||
+          t.state == 'forcedUP';
+    case 'stopped':
+      return t.state == 'pausedDL' ||
+          t.state == 'pausedUP' ||
+          t.state == 'stoppedDL' ||
+          t.state == 'stoppedUP';
+    case 'completed':
+      return t.progress == 1.0;
+    case 'errored':
+      return t.state == 'error' || t.state == 'missingFiles';
+    default:
+      return true; // 'all'
+  }
+}
+
 /// All torrents for an instance, sorted by the active [qbitSortProvider].
 /// Polls every [qbitListPollInterval] while watched; stops when the screen
 /// goes away (autoDispose).
@@ -156,22 +200,9 @@ final qbitTorrentsProvider = Provider.autoDispose
     }
     
     if (statusFilter != null && statusFilter != 'all') {
-      torrents.retainWhere((QbitTorrent t) {
-        if (statusFilter == 'active') {
-          return t.state == 'downloading' || t.state == 'uploading' || t.state == 'forcedDL' || t.state == 'forcedUP' || t.state == 'metaDL';
-        } else if (statusFilter == 'downloading') {
-          return t.state == 'downloading' || t.state == 'forcedDL' || t.state == 'metaDL';
-        } else if (statusFilter == 'seeding') {
-          return t.state == 'uploading' || t.state == 'forcedUP';
-        } else if (statusFilter == 'stopped') {
-          return t.state == 'pausedDL' || t.state == 'pausedUP';
-        } else if (statusFilter == 'completed') {
-          return t.progress == 1.0;
-        } else if (statusFilter == 'errored') {
-          return t.state == 'error' || t.state == 'missingFiles';
-        }
-        return true;
-      });
+      torrents.retainWhere(
+        (QbitTorrent t) => qbitStatusMatches(statusFilter, t),
+      );
     }
 
     if (categoryFilter != null) {

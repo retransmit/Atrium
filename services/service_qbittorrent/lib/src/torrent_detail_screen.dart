@@ -15,6 +15,11 @@ import 'qbittorrent_providers.dart';
 ///
 /// Pushed from the torrent list. Files can be toggled between "download"
 /// and "skip" (priority 1 - 0) with a checkbox.
+///
+/// Watches the live torrent list and resolves itself by hash so state,
+/// progress and the pause/resume actions track the server; the constructor
+/// snapshot is only the seed/fallback while the list loads (or if the
+/// torrent disappears).
 class TorrentDetailScreen extends ConsumerWidget {
   const TorrentDetailScreen({
     required this.instance,
@@ -27,12 +32,22 @@ class TorrentDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final List<QbitTorrent>? torrents =
+        ref.watch(qbitRawTorrentsProvider(instance)).value;
+    QbitTorrent current = torrent;
+    for (final QbitTorrent t in torrents ?? const <QbitTorrent>[]) {
+      if (t.hash == torrent.hash) {
+        current = t;
+        break;
+      }
+    }
+
     return DefaultTabController(
       length: 4,
       child: Scaffold(
         appBar: AppBar(
           title: Text(
-            torrent.name,
+            current.name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -40,36 +55,48 @@ class TorrentDetailScreen extends ConsumerWidget {
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),
               onSelected: (String value) async {
-                final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
+                final ScaffoldMessengerState messenger =
+                    ScaffoldMessenger.of(context);
                 switch (value) {
-                  case 'pause':
-                    await client.pause(<String>[torrent.hash]);
-                    ref.invalidate(qbitRawTorrentsProvider(instance));
-                  case 'resume':
-                    await client.resume(<String>[torrent.hash]);
-                    ref.invalidate(qbitRawTorrentsProvider(instance));
-                  case 'forcestart':
-                    await client.setForceStart(<String>[torrent.hash], value: true);
-                    ref.invalidate(qbitRawTorrentsProvider(instance));
                   case 'copy_magnet':
-                    final String magnet = torrent.magnetUri.isNotEmpty 
-                        ? torrent.magnetUri 
-                        : 'magnet:?xt=urn:btih:${torrent.hash}&dn=${Uri.encodeComponent(torrent.name)}';
+                    final String magnet = current.magnetUri.isNotEmpty
+                        ? current.magnetUri
+                        : 'magnet:?xt=urn:btih:${current.hash}&dn=${Uri.encodeComponent(current.name)}';
                     await Clipboard.setData(ClipboardData(text: magnet));
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Magnet link copied')));
-                    }
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Magnet link copied')),
+                    );
                   case 'copy_hash':
-                    await Clipboard.setData(ClipboardData(text: torrent.hash));
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Torrent hash copied')));
+                    await Clipboard.setData(ClipboardData(text: current.hash));
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Torrent hash copied')),
+                    );
+                  default:
+                    try {
+                      final QbittorrentClient client = await ref
+                          .read(qbittorrentClientProvider(instance).future);
+                      switch (value) {
+                        case 'pause':
+                          await client.pause(<String>[current.hash]);
+                        case 'resume':
+                          await client.resume(<String>[current.hash]);
+                        case 'forcestart':
+                          await client.setForceStart(
+                            <String>[current.hash],
+                            value: true,
+                          );
+                        case 'recheck':
+                          await client.recheck(<String>[current.hash]);
+                        case 'reannounce':
+                          await client.reannounce(<String>[current.hash]);
+                      }
+                      if (!context.mounted) return;
+                      ref.invalidate(qbitRawTorrentsProvider(instance));
+                    } catch (_) {
+                      messenger.showSnackBar(
+                        const SnackBar(content: Text('Action failed')),
+                      );
                     }
-                  case 'recheck':
-                    await client.recheck(<String>[torrent.hash]);
-                    ref.invalidate(qbitRawTorrentsProvider(instance));
-                  case 'reannounce':
-                    await client.reannounce(<String>[torrent.hash]);
-                    ref.invalidate(qbitRawTorrentsProvider(instance));
                 }
               },
               itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -98,7 +125,7 @@ class TorrentDetailScreen extends ConsumerWidget {
         ),
         body: TabBarView(
           children: <Widget>[
-            _OverviewTab(instance: instance, torrent: torrent),
+            _OverviewTab(instance: instance, torrent: current),
             _FilesTab(instance: instance, hash: torrent.hash),
             _TrackersTab(instance: instance, hash: torrent.hash),
             _PeersTab(instance: instance, hash: torrent.hash),
@@ -312,13 +339,24 @@ class _OverviewTab extends ConsumerWidget {
                           icon: Icon(isPaused ? Icons.play_arrow : Icons.pause, size: 18),
                           label: Text(isPaused ? 'Resume' : 'Pause'),
                           onPressed: () async {
-                            final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
-                            if (isPaused) {
-                              await client.resume(<String>[torrent.hash]);
-                            } else {
-                              await client.pause(<String>[torrent.hash]);
+                            final ScaffoldMessengerState messenger =
+                                ScaffoldMessenger.of(context);
+                            try {
+                              final QbittorrentClient client = await ref.read(
+                                qbittorrentClientProvider(instance).future,
+                              );
+                              if (isPaused) {
+                                await client.resume(<String>[torrent.hash]);
+                              } else {
+                                await client.pause(<String>[torrent.hash]);
+                              }
+                              if (!context.mounted) return;
+                              ref.invalidate(qbitRawTorrentsProvider(instance));
+                            } catch (_) {
+                              messenger.showSnackBar(
+                                const SnackBar(content: Text('Action failed')),
+                              );
                             }
-                            ref.invalidate(qbitRawTorrentsProvider(instance));
                           },
                         ),
                         TextButton.icon(
@@ -330,9 +368,23 @@ class _OverviewTab extends ConsumerWidget {
                           icon: const Icon(Icons.fast_forward, size: 18),
                           label: const Text('Force Start'),
                           onPressed: () async {
-                            final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
-                            await client.setForceStart(<String>[torrent.hash], value: true);
-                            ref.invalidate(qbitRawTorrentsProvider(instance));
+                            final ScaffoldMessengerState messenger =
+                                ScaffoldMessenger.of(context);
+                            try {
+                              final QbittorrentClient client = await ref.read(
+                                qbittorrentClientProvider(instance).future,
+                              );
+                              await client.setForceStart(
+                                <String>[torrent.hash],
+                                value: true,
+                              );
+                              if (!context.mounted) return;
+                              ref.invalidate(qbitRawTorrentsProvider(instance));
+                            } catch (_) {
+                              messenger.showSnackBar(
+                                const SnackBar(content: Text('Action failed')),
+                              );
+                            }
                           },
                         ),
                         TextButton.icon(
@@ -344,13 +396,17 @@ class _OverviewTab extends ConsumerWidget {
                           icon: const Icon(Icons.link, size: 18),
                           label: const Text('Magnet'),
                           onPressed: () async {
-                            final String magnet = torrent.magnetUri.isNotEmpty 
-                                ? torrent.magnetUri 
+                            final ScaffoldMessengerState messenger =
+                                ScaffoldMessenger.of(context);
+                            final String magnet = torrent.magnetUri.isNotEmpty
+                                ? torrent.magnetUri
                                 : 'magnet:?xt=urn:btih:${torrent.hash}&dn=${Uri.encodeComponent(torrent.name)}';
                             await Clipboard.setData(ClipboardData(text: magnet));
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Magnet link copied')));
-                            }
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('Magnet link copied'),
+                              ),
+                            );
                           },
                         ),
                         TextButton.icon(
@@ -362,10 +418,16 @@ class _OverviewTab extends ConsumerWidget {
                           icon: const Icon(Icons.tag, size: 18),
                           label: const Text('Hash'),
                           onPressed: () async {
-                            await Clipboard.setData(ClipboardData(text: torrent.hash));
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Torrent hash copied')));
-                            }
+                            final ScaffoldMessengerState messenger =
+                                ScaffoldMessenger.of(context);
+                            await Clipboard.setData(
+                              ClipboardData(text: torrent.hash),
+                            );
+                            messenger.showSnackBar(
+                              const SnackBar(
+                                content: Text('Torrent hash copied'),
+                              ),
+                            );
                           },
                         ),
                         TextButton.icon(
@@ -420,13 +482,25 @@ class _OverviewTab extends ConsumerWidget {
                                 );
                               },
                             );
-                            if (shouldDeleteFiles != null) {
-                              final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
-                              await client.delete(<String>[torrent.hash], deleteFiles: shouldDeleteFiles);
+                            if (shouldDeleteFiles == null) return;
+                            if (!context.mounted) return;
+                            final ScaffoldMessengerState messenger =
+                                ScaffoldMessenger.of(context);
+                            try {
+                              final QbittorrentClient client = await ref.read(
+                                qbittorrentClientProvider(instance).future,
+                              );
+                              await client.delete(
+                                <String>[torrent.hash],
+                                deleteFiles: shouldDeleteFiles,
+                              );
+                              if (!context.mounted) return;
                               ref.invalidate(qbitRawTorrentsProvider(instance));
-                              if (context.mounted) {
-                                Navigator.of(context).pop();
-                              }
+                              Navigator.of(context).pop();
+                            } catch (_) {
+                              messenger.showSnackBar(
+                                const SnackBar(content: Text('Action failed')),
+                              );
                             }
                           },
                         ),

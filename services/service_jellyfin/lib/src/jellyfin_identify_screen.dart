@@ -1,9 +1,10 @@
+import 'dart:async';
+
 import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'jellyfin_client.dart';
 import 'jellyfin_providers.dart';
 import 'models/jellyfin_item.dart';
 import 'models/jellyfin_remote_search.dart';
@@ -75,9 +76,9 @@ class _JellyfinIdentifyScreenState extends ConsumerState<JellyfinIdentifyScreen>
       }
 
       final info = JellyfinRemoteSearchInfo(
-        Name: _nameController.text.trim(),
-        Year: year,
-        ProviderIds: providerIds.isNotEmpty ? providerIds : null,
+        name: _nameController.text.trim(),
+        year: year,
+        providerIds: providerIds.isNotEmpty ? providerIds : null,
       );
 
       final results = await client.remoteSearch(
@@ -122,13 +123,15 @@ class _JellyfinIdentifyScreenState extends ConsumerState<JellyfinIdentifyScreen>
       ),
     );
 
-    if (replace == null) return;
+    if (replace == null || !mounted) return;
 
     try {
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => const Center(child: CircularProgressIndicator()),
+      unawaited(
+        showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const Center(child: CircularProgressIndicator()),
+        ),
       );
 
       await client.applyRemoteSearch(
@@ -231,17 +234,17 @@ class _JellyfinIdentifyScreenState extends ConsumerState<JellyfinIdentifyScreen>
                 (context, index) {
                   final res = _results![index];
                   return ListTile(
-                    leading: res.ImageUrl != null
+                    leading: res.imageUrl != null
                         ? Image.network(
-                            res.ImageUrl!,
+                            res.imageUrl!,
                             width: 40,
                             height: 60,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => const Icon(Icons.image),
                           )
                         : const Icon(Icons.movie),
-                    title: Text(res.Name ?? 'Unknown'),
-                    subtitle: Text('${res.ProductionYear ?? ''} • ${res.SearchProviderName ?? ''}'),
+                    title: Text(res.name ?? 'Unknown'),
+                    subtitle: Text('${res.productionYear ?? ''} • ${res.searchProviderName ?? ''}'),
                     onTap: () => _apply(res),
                   );
                 },

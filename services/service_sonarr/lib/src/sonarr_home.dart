@@ -1,4 +1,5 @@
 import 'package:core_models/core_models.dart';
+import 'package:core_router/core_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -77,15 +78,6 @@ class SonarrHome extends ConsumerWidget {
     final currentIndex = ref.watch(sonarrActiveTabBarIndexProvider(instance));
     final isNavbarVisible = ref.watch(sonarrBottomNavVisibleProvider(instance));
 
-    final StateProvider<String>? activeSearchProvider =
-        _searchQueryProviderFor(currentIndex);
-    final bool hasSearchToClear = activeSearchProvider != null &&
-        ref.watch(activeSearchProvider).isNotEmpty;
-    final bool hasSelectionToClear = _selectionProvidersFor(currentIndex)
-        .any((provider) => ref.watch(provider).isNotEmpty);
-    final bool hasSomethingToUnwind =
-        hasSearchToClear || hasSelectionToClear || currentIndex != 0;
-
     final List<Widget> tabs = [
       SeriesTab(instance: instance),
       ActivityTab(instance: instance),
@@ -95,7 +87,7 @@ class SonarrHome extends ConsumerWidget {
     ];
 
     return Scaffold(
-      drawerEdgeDragWidth: 60.0,
+      drawerEdgeDragWidth: 24.0,
       drawer: drawer,
       body: NotificationListener<UserScrollNotification>(
         onNotification: (UserScrollNotification notification) {
@@ -137,35 +129,11 @@ class SonarrHome extends ConsumerWidget {
                 }
                 
                 // If nothing to unwind, go back to dashboard.
-                GoRouter.of(context).go('/dashboard');
+                GoRouter.of(context).go(AtriumRoutes.dashboard);
               },
-              child: Stack(
-                children: <Widget>[
-                  Positioned.fill(
-                    child: IndexedStack(
-                      index: currentIndex,
-                      children: tabs,
-                    ),
-                  ),
-                  Positioned(
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: 40,
-                    child: Builder(
-                      builder: (BuildContext innerContext) {
-                        return GestureDetector(
-                          behavior: HitTestBehavior.translucent,
-                          onHorizontalDragUpdate: (DragUpdateDetails details) {
-                            if (details.primaryDelta != null && details.primaryDelta! > 2) {
-                              Scaffold.of(innerContext).openDrawer();
-                            }
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
+              child: IndexedStack(
+                index: currentIndex,
+                children: tabs,
               ),
             );
           },

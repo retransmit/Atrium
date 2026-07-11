@@ -888,8 +888,8 @@ class EmbyClient {
         final Response<dynamic> res = await _dio.post<dynamic>(
           '/Items/RemoteSearch/$type',
           data: EmbyRemoteSearchQuery(
-            SearchInfo: searchInfo,
-            ItemId: itemId,
+            searchInfo: searchInfo,
+            itemId: itemId,
           ).toJson(),
         );
         final List<dynamic> list = res.data as List<dynamic>;
@@ -910,6 +910,8 @@ class EmbyClient {
         );
       });
 
+  /// Queues a non-destructive metadata refresh. ReplaceAll* stays false so
+  /// manual edits and custom images survive; the scan only fills gaps.
   Future<void> refreshMetadata(String itemId) => _guarded(() async {
         await _dio.post<dynamic>(
           '/Items/$itemId/Refresh',
@@ -917,8 +919,8 @@ class EmbyClient {
             'Recursive': true,
             'ImageRefreshMode': 'FullRefresh',
             'MetadataRefreshMode': 'FullRefresh',
-            'ReplaceAllImages': true,
-            'ReplaceAllMetadata': true,
+            'ReplaceAllImages': false,
+            'ReplaceAllMetadata': false,
           },
         );
       });

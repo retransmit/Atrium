@@ -4,7 +4,6 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:palette_generator/palette_generator.dart';
 
 import 'jellyfin_client.dart';
@@ -540,7 +539,9 @@ class JellyfinPosterCard extends ConsumerWidget {
         showModalBottomSheet<void>(
           context: context,
           useRootNavigator: true,
-          builder: (BuildContext context) {
+          // The sheet context only pops the sheet. Post-await work runs
+          // against the card's context/ref, which outlive the sheet.
+          builder: (BuildContext sheetContext) {
             return SafeArea(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -557,7 +558,7 @@ class JellyfinPosterCard extends ConsumerWidget {
                           : 'Mark as Watched',
                     ),
                     onTap: () async {
-                      Navigator.of(context).pop();
+                      Navigator.of(sheetContext).pop();
                       final toggle =
                           ref.read(jellyfinToggleWatchedProvider(instance));
                       await toggle(item.id, !(item.userData?.played == true));
@@ -577,12 +578,13 @@ class JellyfinPosterCard extends ConsumerWidget {
                           : 'Add to Favorites',
                     ),
                     onTap: () async {
-                      Navigator.of(context).pop();
+                      Navigator.of(sheetContext).pop();
                       final JellyfinClient? client =
                           ref.read(jellyfinClientProvider(instance)).value;
                       if (client != null) {
                         final bool isFav = item.userData?.isFavorite == true;
                         await client.markFavorite(item.id, !isFav);
+                        if (!context.mounted) return;
                         // Invalidate to refresh UI
                         ref.invalidate(
                           jellyfinItemDetailsProvider((instance, item.id)),
@@ -594,26 +596,31 @@ class JellyfinPosterCard extends ConsumerWidget {
                       }
                     },
                   ),
-                  ListTile(
-                    leading: const Icon(Icons.search),
-                    title: const Text('Identify'),
-                    onTap: () async {
-                      Navigator.of(context).pop();
-                      final bool? changed = await pushScreen<bool>(
-                        context,
-                        JellyfinIdentifyScreen(
-                          instance: instance,
-                          item: item,
-                        ),
-                      );
-                      if (changed == true && context.mounted) {
-                        ref.invalidate(jellyfinItemDetailsProvider((instance, item.id)));
-                        ref.invalidate(jellyfinItemsProvider);
-                        ref.invalidate(jellyfinNextUpProvider(instance));
-                        ref.invalidate(jellyfinResumeItemsProvider(instance));
-                      }
-                    },
-                  ),
+                  // RemoteSearch only exists for movies and series; episodes
+                  // and music would 404.
+                  if (item.type == 'Movie' || item.type == 'Series')
+                    ListTile(
+                      leading: const Icon(Icons.search),
+                      title: const Text('Identify'),
+                      onTap: () async {
+                        Navigator.of(sheetContext).pop();
+                        final bool? changed = await pushScreen<bool>(
+                          context,
+                          JellyfinIdentifyScreen(
+                            instance: instance,
+                            item: item,
+                          ),
+                        );
+                        if (changed == true && context.mounted) {
+                          ref.invalidate(
+                            jellyfinItemDetailsProvider((instance, item.id)),
+                          );
+                          ref.invalidate(jellyfinItemsProvider);
+                          ref.invalidate(jellyfinNextUpProvider(instance));
+                          ref.invalidate(jellyfinResumeItemsProvider(instance));
+                        }
+                      },
+                    ),
                 ],
               ),
             );
@@ -701,7 +708,7 @@ class JellyfinPosterCard extends ConsumerWidget {
           if (item.seriesName != null)
             Text(
               (item.parentIndexNumber != null && item.indexNumber != null)
-                  ? 'S${item.parentIndexNumber}:E${item.indexNumber} — ${item.name}'
+                  ? 'S${item.parentIndexNumber}:E${item.indexNumber} - ${item.name}'
                   : item.name,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -807,7 +814,9 @@ class JellyfinBannerCard extends ConsumerWidget {
           showModalBottomSheet<void>(
             context: context,
             useRootNavigator: true,
-            builder: (BuildContext context) {
+            // The sheet context only pops the sheet. Post-await work runs
+            // against the card's context/ref, which outlive the sheet.
+            builder: (BuildContext sheetContext) {
               return SafeArea(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -824,7 +833,7 @@ class JellyfinBannerCard extends ConsumerWidget {
                             : 'Mark as Watched',
                       ),
                       onTap: () async {
-                        Navigator.of(context).pop();
+                        Navigator.of(sheetContext).pop();
                         final toggle =
                             ref.read(jellyfinToggleWatchedProvider(instance));
                         await toggle(item.id, !(item.userData?.played == true));
@@ -845,13 +854,14 @@ class JellyfinBannerCard extends ConsumerWidget {
                             : 'Add to Favorites',
                       ),
                       onTap: () async {
-                        Navigator.of(context).pop();
+                        Navigator.of(sheetContext).pop();
                         final JellyfinClient? client =
                             ref.read(jellyfinClientProvider(instance)).value;
                         if (client != null) {
                           try {
                             final bool isFav = item.userData?.isFavorite == true;
                             await client.markFavorite(item.id, !isFav);
+                            if (!context.mounted) return;
                             ref.invalidate(
                               jellyfinItemDetailsProvider((instance, item.id)),
                             );
@@ -865,26 +875,31 @@ class JellyfinBannerCard extends ConsumerWidget {
                         }
                       },
                     ),
-                    ListTile(
-                      leading: const Icon(Icons.search),
-                      title: const Text('Identify'),
-                      onTap: () async {
-                        Navigator.of(context).pop();
-                        final bool? changed = await pushScreen<bool>(
-                          context,
-                          JellyfinIdentifyScreen(
-                            instance: instance,
-                            item: item,
-                          ),
-                        );
-                        if (changed == true && context.mounted) {
-                          ref.invalidate(jellyfinItemDetailsProvider((instance, item.id)));
-                          ref.invalidate(jellyfinItemsProvider);
-                          ref.invalidate(jellyfinNextUpProvider(instance));
-                          ref.invalidate(jellyfinResumeItemsProvider(instance));
-                        }
-                      },
-                    ),
+                    // RemoteSearch only exists for movies and series;
+                    // episodes and music would 404.
+                    if (item.type == 'Movie' || item.type == 'Series')
+                      ListTile(
+                        leading: const Icon(Icons.search),
+                        title: const Text('Identify'),
+                        onTap: () async {
+                          Navigator.of(sheetContext).pop();
+                          final bool? changed = await pushScreen<bool>(
+                            context,
+                            JellyfinIdentifyScreen(
+                              instance: instance,
+                              item: item,
+                            ),
+                          );
+                          if (changed == true && context.mounted) {
+                            ref.invalidate(
+                              jellyfinItemDetailsProvider((instance, item.id)),
+                            );
+                            ref.invalidate(jellyfinItemsProvider);
+                            ref.invalidate(jellyfinNextUpProvider(instance));
+                            ref.invalidate(jellyfinResumeItemsProvider(instance));
+                          }
+                        },
+                      ),
                   ],
                 ),
               );
@@ -1011,7 +1026,7 @@ class JellyfinBannerCard extends ConsumerWidget {
                               Text(
                                 (item.parentIndexNumber != null &&
                                         item.indexNumber != null)
-                                    ? 'S${item.parentIndexNumber}:E${item.indexNumber} — ${item.name}'
+                                    ? 'S${item.parentIndexNumber}:E${item.indexNumber} - ${item.name}'
                                     : item.name,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,

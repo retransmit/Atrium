@@ -22,7 +22,7 @@ import 'dashboard_screen.dart';
 
 /// Routes an instance to its service-specific screen, dispatching on
 /// [ServiceKind]. The switch is exhaustive - every service has a UI module.
-class ServiceDetailScreen extends ConsumerWidget {
+class ServiceDetailScreen extends ConsumerStatefulWidget {
   const ServiceDetailScreen({
     required this.kindName,
     required this.instanceId,
@@ -33,8 +33,17 @@ class ServiceDetailScreen extends ConsumerWidget {
   final String instanceId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final Instance? instance = ref.watch(instanceByIdProvider(instanceId));
+  ConsumerState<ServiceDetailScreen> createState() =>
+      _ServiceDetailScreenState();
+}
+
+class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  @override
+  Widget build(BuildContext context) {
+    final Instance? instance =
+        ref.watch(instanceByIdProvider(widget.instanceId));
     if (instance == null) {
       return const _NotFound();
     }
@@ -60,10 +69,21 @@ class ServiceDetailScreen extends ConsumerWidget {
       canPop: false,
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (didPop) return;
+        // A back press while a drawer is open only closes that drawer.
+        final ScaffoldState? scaffold = _scaffoldKey.currentState;
+        if (scaffold?.isDrawerOpen ?? false) {
+          scaffold!.closeDrawer();
+          return;
+        }
+        if (scaffold?.isEndDrawerOpen ?? false) {
+          scaffold!.closeEndDrawer();
+          return;
+        }
         context.goNamed(AtriumRoutes.dashboardName);
       },
       child: Scaffold(
-        drawerEdgeDragWidth: 60.0,
+        key: _scaffoldKey,
+        drawerEdgeDragWidth: 24.0,
         drawer: ServicesDrawer(
           instances: ref.watch(activeInstancesProvider),
           profile: ref.watch(activeProfileProvider),
@@ -195,29 +215,7 @@ class ServiceDetailScreen extends ConsumerWidget {
 
         ],
       ),
-      body: Stack(
-        children: <Widget>[
-          Positioned.fill(child: _bodyFor(instance)),
-          Positioned(
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: 40,
-            child: Builder(
-              builder: (BuildContext innerContext) {
-                return GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onHorizontalDragUpdate: (DragUpdateDetails details) {
-                    if (details.primaryDelta != null && details.primaryDelta! > 2) {
-                      Scaffold.of(innerContext).openDrawer();
-                    }
-                  },
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+      body: _bodyFor(instance),
     ));
   }
 
@@ -245,11 +243,27 @@ class _NotFound extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(),
-      body: const ErrorView(
-        title: 'Service not found',
-        message: 'This instance may have been deleted.',
+    // The service route is top-level, so there is nothing beneath it to pop
+    // to; route back presses to the dashboard instead of backgrounding the
+    // app.
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (didPop) return;
+        context.goNamed(AtriumRoutes.dashboardName);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            tooltip: 'Back',
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.goNamed(AtriumRoutes.dashboardName),
+          ),
+        ),
+        body: const ErrorView(
+          title: 'Service not found',
+          message: 'This instance may have been deleted.',
+        ),
       ),
     );
   }

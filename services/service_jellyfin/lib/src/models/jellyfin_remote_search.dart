@@ -1,98 +1,51 @@
-class JellyfinRemoteSearchResult {
-  const JellyfinRemoteSearchResult({
-    this.Name,
-    this.ProviderIds,
-    this.ProductionYear,
-    this.IndexNumber,
-    this.IndexNumberEnd,
-    this.ParentIndexNumber,
-    this.PremiereDate,
-    this.ImageUrl,
-    this.SearchProviderName,
-    this.Overview,
-  });
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-  final String? Name;
-  final Map<String, dynamic>? ProviderIds;
-  final int? ProductionYear;
-  final int? IndexNumber;
-  final int? IndexNumberEnd;
-  final int? ParentIndexNumber;
-  final String? PremiereDate;
-  final String? ImageUrl;
-  final String? SearchProviderName;
-  final String? Overview;
+part 'jellyfin_remote_search.freezed.dart';
+part 'jellyfin_remote_search.g.dart';
 
-  factory JellyfinRemoteSearchResult.fromJson(Map<String, dynamic> json) {
-    return JellyfinRemoteSearchResult(
-      Name: json['Name'] as String?,
-      ProviderIds: json['ProviderIds'] as Map<String, dynamic>?,
-      ProductionYear: json['ProductionYear'] as int?,
-      IndexNumber: json['IndexNumber'] as int?,
-      IndexNumberEnd: json['IndexNumberEnd'] as int?,
-      ParentIndexNumber: json['ParentIndexNumber'] as int?,
-      PremiereDate: json['PremiereDate'] as String?,
-      ImageUrl: json['ImageUrl'] as String?,
-      SearchProviderName: json['SearchProviderName'] as String?,
-      Overview: json['Overview'] as String?,
-    );
-  }
+/// One provider match from `POST /Items/RemoteSearch/{type}`.
+@freezed
+abstract class JellyfinRemoteSearchResult with _$JellyfinRemoteSearchResult {
+  const factory JellyfinRemoteSearchResult({
+    @JsonKey(name: 'Name') String? name,
+    @JsonKey(name: 'ProviderIds') Map<String, dynamic>? providerIds,
+    @JsonKey(name: 'ProductionYear') int? productionYear,
+    @JsonKey(name: 'IndexNumber') int? indexNumber,
+    @JsonKey(name: 'IndexNumberEnd') int? indexNumberEnd,
+    @JsonKey(name: 'ParentIndexNumber') int? parentIndexNumber,
+    @JsonKey(name: 'PremiereDate') String? premiereDate,
+    @JsonKey(name: 'ImageUrl') String? imageUrl,
+    @JsonKey(name: 'SearchProviderName') String? searchProviderName,
+    @JsonKey(name: 'Overview') String? overview,
+  }) = _JellyfinRemoteSearchResult;
 
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      if (Name != null) 'Name': Name,
-      if (ProviderIds != null) 'ProviderIds': ProviderIds,
-      if (ProductionYear != null) 'ProductionYear': ProductionYear,
-      if (IndexNumber != null) 'IndexNumber': IndexNumber,
-      if (IndexNumberEnd != null) 'IndexNumberEnd': IndexNumberEnd,
-      if (ParentIndexNumber != null) 'ParentIndexNumber': ParentIndexNumber,
-      if (PremiereDate != null) 'PremiereDate': PremiereDate,
-      if (ImageUrl != null) 'ImageUrl': ImageUrl,
-      if (SearchProviderName != null) 'SearchProviderName': SearchProviderName,
-      if (Overview != null) 'Overview': Overview,
-    };
-  }
+  factory JellyfinRemoteSearchResult.fromJson(Map<String, dynamic> json) =>
+      _$JellyfinRemoteSearchResultFromJson(json);
 }
 
-class JellyfinRemoteSearchQuery {
-  const JellyfinRemoteSearchQuery({
-    required this.SearchInfo,
-    required this.ItemId,
-  });
+/// Request body for `POST /Items/RemoteSearch/{type}`.
+@freezed
+abstract class JellyfinRemoteSearchQuery with _$JellyfinRemoteSearchQuery {
+  const factory JellyfinRemoteSearchQuery({
+    @JsonKey(name: 'SearchInfo') required JellyfinRemoteSearchInfo searchInfo,
+    @JsonKey(name: 'ItemId') required String itemId,
+  }) = _JellyfinRemoteSearchQuery;
 
-  final JellyfinRemoteSearchInfo SearchInfo;
-  final String ItemId;
-
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'SearchInfo': SearchInfo.toJson(),
-      'ItemId': ItemId,
-    };
-  }
+  factory JellyfinRemoteSearchQuery.fromJson(Map<String, dynamic> json) =>
+      _$JellyfinRemoteSearchQueryFromJson(json);
 }
 
-class JellyfinRemoteSearchInfo {
-  const JellyfinRemoteSearchInfo({
-    required this.Name,
-    this.Year,
-    this.ProviderIds,
-    this.IndexNumber,
-    this.ParentIndexNumber,
-  });
+/// The user-editable search criteria inside [JellyfinRemoteSearchQuery].
+@freezed
+abstract class JellyfinRemoteSearchInfo with _$JellyfinRemoteSearchInfo {
+  const factory JellyfinRemoteSearchInfo({
+    @JsonKey(name: 'Name') required String name,
+    @JsonKey(name: 'Year') int? year,
+    @JsonKey(name: 'ProviderIds') Map<String, dynamic>? providerIds,
+    @JsonKey(name: 'IndexNumber') int? indexNumber,
+    @JsonKey(name: 'ParentIndexNumber') int? parentIndexNumber,
+  }) = _JellyfinRemoteSearchInfo;
 
-  final String Name;
-  final int? Year;
-  final Map<String, dynamic>? ProviderIds;
-  final int? IndexNumber;
-  final int? ParentIndexNumber;
-
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'Name': Name,
-      if (Year != null) 'Year': Year,
-      if (ProviderIds != null) 'ProviderIds': ProviderIds,
-      if (IndexNumber != null) 'IndexNumber': IndexNumber,
-      if (ParentIndexNumber != null) 'ParentIndexNumber': ParentIndexNumber,
-    };
-  }
+  factory JellyfinRemoteSearchInfo.fromJson(Map<String, dynamic> json) =>
+      _$JellyfinRemoteSearchInfoFromJson(json);
 }

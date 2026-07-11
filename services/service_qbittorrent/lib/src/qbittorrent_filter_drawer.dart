@@ -18,22 +18,9 @@ class QbittorrentFilterDrawer extends ConsumerWidget {
     final AsyncValue<List<QbitTorrent>> rawTorrentsAsync = ref.watch(qbitRawTorrentsProvider(instance));
 
     int getStatusCount(String status, List<QbitTorrent> torrents) {
-      return torrents.where((t) {
-        if (status == 'active') {
-          return t.state == 'downloading' || t.state == 'uploading' || t.state == 'forcedDL' || t.state == 'forcedUP' || t.state == 'metaDL';
-        } else if (status == 'downloading') {
-          return t.state == 'downloading' || t.state == 'forcedDL' || t.state == 'metaDL';
-        } else if (status == 'seeding') {
-          return t.state == 'uploading' || t.state == 'forcedUP';
-        } else if (status == 'stopped') {
-          return t.state == 'pausedDL' || t.state == 'pausedUP';
-        } else if (status == 'completed') {
-          return t.progress == 1.0;
-        } else if (status == 'errored') {
-          return t.state == 'error' || t.state == 'missingFiles';
-        }
-        return true; // all
-      }).length;
+      return torrents
+          .where((QbitTorrent t) => qbitStatusMatches(status, t))
+          .length;
     }
 
     int getCategoryCount(String category, List<QbitTorrent> torrents) {

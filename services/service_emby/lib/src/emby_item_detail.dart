@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
@@ -108,12 +110,14 @@ class EmbyItemDetailScreen extends ConsumerWidget {
                       }
                     }
                   } else if (choice == 'backdrop') {
-                    pushScreen<void>(
-                      context,
-                      EmbyRemoteImagesScreen(
-                        instance: instance,
-                        itemId: itemId,
-                        imageType: 'Backdrop',
+                    unawaited(
+                      pushScreen<void>(
+                        context,
+                        EmbyRemoteImagesScreen(
+                          instance: instance,
+                          itemId: itemId,
+                          imageType: 'Backdrop',
+                        ),
                       ),
                     );
                   }

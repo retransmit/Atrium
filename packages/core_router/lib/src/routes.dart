@@ -31,8 +31,9 @@ abstract final class AtriumRoutes {
   static const String profilesName = 'profiles';
 
   /// Service detail route, parameterized by service kind and instance id -
-  /// e.g. `/dashboard/service/sonarr/9f3b...`. Each service module renders
-  /// its own screen for the matched kind.
+  /// e.g. `/service/sonarr/9f3b...` (a top-level route, not nested under the
+  /// dashboard branch). Each service module renders its own screen for the
+  /// matched kind.
   static const String service = '/service/:kind/:instanceId';
   static const String serviceName = 'service';
 

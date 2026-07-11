@@ -1,98 +1,51 @@
-class EmbyRemoteSearchResult {
-  const EmbyRemoteSearchResult({
-    this.Name,
-    this.ProviderIds,
-    this.ProductionYear,
-    this.IndexNumber,
-    this.IndexNumberEnd,
-    this.ParentIndexNumber,
-    this.PremiereDate,
-    this.ImageUrl,
-    this.SearchProviderName,
-    this.Overview,
-  });
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-  final String? Name;
-  final Map<String, dynamic>? ProviderIds;
-  final int? ProductionYear;
-  final int? IndexNumber;
-  final int? IndexNumberEnd;
-  final int? ParentIndexNumber;
-  final String? PremiereDate;
-  final String? ImageUrl;
-  final String? SearchProviderName;
-  final String? Overview;
+part 'emby_remote_search.freezed.dart';
+part 'emby_remote_search.g.dart';
 
-  factory EmbyRemoteSearchResult.fromJson(Map<String, dynamic> json) {
-    return EmbyRemoteSearchResult(
-      Name: json['Name'] as String?,
-      ProviderIds: json['ProviderIds'] as Map<String, dynamic>?,
-      ProductionYear: json['ProductionYear'] as int?,
-      IndexNumber: json['IndexNumber'] as int?,
-      IndexNumberEnd: json['IndexNumberEnd'] as int?,
-      ParentIndexNumber: json['ParentIndexNumber'] as int?,
-      PremiereDate: json['PremiereDate'] as String?,
-      ImageUrl: json['ImageUrl'] as String?,
-      SearchProviderName: json['SearchProviderName'] as String?,
-      Overview: json['Overview'] as String?,
-    );
-  }
+/// One provider match from `POST /Items/RemoteSearch/{type}`.
+@freezed
+abstract class EmbyRemoteSearchResult with _$EmbyRemoteSearchResult {
+  const factory EmbyRemoteSearchResult({
+    @JsonKey(name: 'Name') String? name,
+    @JsonKey(name: 'ProviderIds') Map<String, dynamic>? providerIds,
+    @JsonKey(name: 'ProductionYear') int? productionYear,
+    @JsonKey(name: 'IndexNumber') int? indexNumber,
+    @JsonKey(name: 'IndexNumberEnd') int? indexNumberEnd,
+    @JsonKey(name: 'ParentIndexNumber') int? parentIndexNumber,
+    @JsonKey(name: 'PremiereDate') String? premiereDate,
+    @JsonKey(name: 'ImageUrl') String? imageUrl,
+    @JsonKey(name: 'SearchProviderName') String? searchProviderName,
+    @JsonKey(name: 'Overview') String? overview,
+  }) = _EmbyRemoteSearchResult;
 
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      if (Name != null) 'Name': Name,
-      if (ProviderIds != null) 'ProviderIds': ProviderIds,
-      if (ProductionYear != null) 'ProductionYear': ProductionYear,
-      if (IndexNumber != null) 'IndexNumber': IndexNumber,
-      if (IndexNumberEnd != null) 'IndexNumberEnd': IndexNumberEnd,
-      if (ParentIndexNumber != null) 'ParentIndexNumber': ParentIndexNumber,
-      if (PremiereDate != null) 'PremiereDate': PremiereDate,
-      if (ImageUrl != null) 'ImageUrl': ImageUrl,
-      if (SearchProviderName != null) 'SearchProviderName': SearchProviderName,
-      if (Overview != null) 'Overview': Overview,
-    };
-  }
+  factory EmbyRemoteSearchResult.fromJson(Map<String, dynamic> json) =>
+      _$EmbyRemoteSearchResultFromJson(json);
 }
 
-class EmbyRemoteSearchQuery {
-  const EmbyRemoteSearchQuery({
-    required this.SearchInfo,
-    required this.ItemId,
-  });
+/// Request body for `POST /Items/RemoteSearch/{type}`.
+@freezed
+abstract class EmbyRemoteSearchQuery with _$EmbyRemoteSearchQuery {
+  const factory EmbyRemoteSearchQuery({
+    @JsonKey(name: 'SearchInfo') required EmbyRemoteSearchInfo searchInfo,
+    @JsonKey(name: 'ItemId') required String itemId,
+  }) = _EmbyRemoteSearchQuery;
 
-  final EmbyRemoteSearchInfo SearchInfo;
-  final String ItemId;
-
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'SearchInfo': SearchInfo.toJson(),
-      'ItemId': ItemId,
-    };
-  }
+  factory EmbyRemoteSearchQuery.fromJson(Map<String, dynamic> json) =>
+      _$EmbyRemoteSearchQueryFromJson(json);
 }
 
-class EmbyRemoteSearchInfo {
-  const EmbyRemoteSearchInfo({
-    required this.Name,
-    this.Year,
-    this.ProviderIds,
-    this.IndexNumber,
-    this.ParentIndexNumber,
-  });
+/// The user-editable search criteria inside [EmbyRemoteSearchQuery].
+@freezed
+abstract class EmbyRemoteSearchInfo with _$EmbyRemoteSearchInfo {
+  const factory EmbyRemoteSearchInfo({
+    @JsonKey(name: 'Name') required String name,
+    @JsonKey(name: 'Year') int? year,
+    @JsonKey(name: 'ProviderIds') Map<String, dynamic>? providerIds,
+    @JsonKey(name: 'IndexNumber') int? indexNumber,
+    @JsonKey(name: 'ParentIndexNumber') int? parentIndexNumber,
+  }) = _EmbyRemoteSearchInfo;
 
-  final String Name;
-  final int? Year;
-  final Map<String, dynamic>? ProviderIds;
-  final int? IndexNumber;
-  final int? ParentIndexNumber;
-
-  Map<String, dynamic> toJson() {
-    return <String, dynamic>{
-      'Name': Name,
-      if (Year != null) 'Year': Year,
-      if (ProviderIds != null) 'ProviderIds': ProviderIds,
-      if (IndexNumber != null) 'IndexNumber': IndexNumber,
-      if (ParentIndexNumber != null) 'ParentIndexNumber': ParentIndexNumber,
-    };
-  }
+  factory EmbyRemoteSearchInfo.fromJson(Map<String, dynamic> json) =>
+      _$EmbyRemoteSearchInfoFromJson(json);
 }
