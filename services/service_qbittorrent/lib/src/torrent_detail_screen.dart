@@ -368,6 +368,68 @@ class _OverviewTab extends ConsumerWidget {
                             }
                           },
                         ),
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            backgroundColor: cs.errorContainer,
+                            foregroundColor: cs.onErrorContainer,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          ),
+                          icon: const Icon(Icons.delete, size: 18),
+                          label: const Text('Delete'),
+                          onPressed: () async {
+                            final bool? shouldDeleteFiles = await showDialog<bool>(
+                              context: context,
+                              builder: (BuildContext context) {
+                                bool deleteFiles = false;
+                                return StatefulBuilder(
+                                  builder: (BuildContext context, StateSetter setState) {
+                                    return AlertDialog(
+                                      title: const Text('Delete Torrent'),
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          const Text('Are you sure you want to delete this torrent?'),
+                                          const SizedBox(height: 16),
+                                          CheckboxListTile(
+                                            value: deleteFiles,
+                                            onChanged: (bool? val) {
+                                              if (val != null) {
+                                                setState(() => deleteFiles = val);
+                                              }
+                                            },
+                                            title: const Text('Also delete files'),
+                                            contentPadding: EdgeInsets.zero,
+                                            controlAffinity: ListTileControlAffinity.leading,
+                                          ),
+                                        ],
+                                      ),
+                                      actions: <Widget>[
+                                        TextButton(
+                                          onPressed: () => Navigator.of(context).pop(),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        TextButton(
+                                          onPressed: () => Navigator.of(context).pop(deleteFiles),
+                                          style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+                                          child: const Text('Delete'),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                );
+                              },
+                            );
+                            if (shouldDeleteFiles != null) {
+                              final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
+                              await client.delete(<String>[torrent.hash], deleteFiles: shouldDeleteFiles);
+                              ref.invalidate(qbitRawTorrentsProvider(instance));
+                              if (context.mounted) {
+                                Navigator.of(context).pop();
+                              }
+                            }
+                          },
+                        ),
                       ],
                     ),
                     ),
