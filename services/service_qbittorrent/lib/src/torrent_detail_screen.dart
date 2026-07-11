@@ -185,6 +185,8 @@ class _OverviewTab extends ConsumerWidget {
     final AsyncValue<QbitTorrentProperties> props =
         ref.watch(qbitPropertiesProvider((instance, torrent.hash)));
     final Color accent = _accent(torrent.state, cs);
+    final Color actionColor = accent == cs.outline ? cs.primary : accent;
+    final bool isPaused = torrent.state.contains('paused') || torrent.state.contains('stopped');
     final double progress = torrent.progress.clamp(0, 1).toDouble();
 
     return M3RefreshIndicator(
@@ -300,36 +302,26 @@ class _OverviewTab extends ConsumerWidget {
                       children: <Widget>[
                         IconButton(
                           style: IconButton.styleFrom(
-                            backgroundColor: accent.withValues(alpha: 0.15),
-                            foregroundColor: accent,
+                            backgroundColor: actionColor.withValues(alpha: 0.15),
+                            foregroundColor: actionColor,
                           ),
-                          icon: const Icon(Icons.pause),
-                          tooltip: 'Pause',
+                          icon: Icon(isPaused ? Icons.play_arrow : Icons.pause),
+                          tooltip: isPaused ? 'Resume' : 'Pause',
                           onPressed: () async {
                             final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
-                            await client.pause(<String>[torrent.hash]);
+                            if (isPaused) {
+                              await client.resume(<String>[torrent.hash]);
+                            } else {
+                              await client.pause(<String>[torrent.hash]);
+                            }
                             ref.invalidate(qbitRawTorrentsProvider(instance));
                           },
                         ),
                         const SizedBox(width: Insets.md),
                         IconButton(
                           style: IconButton.styleFrom(
-                            backgroundColor: accent.withValues(alpha: 0.15),
-                            foregroundColor: accent,
-                          ),
-                          icon: const Icon(Icons.play_arrow),
-                          tooltip: 'Resume',
-                          onPressed: () async {
-                            final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
-                            await client.resume(<String>[torrent.hash]);
-                            ref.invalidate(qbitRawTorrentsProvider(instance));
-                          },
-                        ),
-                        const SizedBox(width: Insets.md),
-                        IconButton(
-                          style: IconButton.styleFrom(
-                            backgroundColor: accent.withValues(alpha: 0.15),
-                            foregroundColor: accent,
+                            backgroundColor: actionColor.withValues(alpha: 0.15),
+                            foregroundColor: actionColor,
                           ),
                           icon: const Icon(Icons.fast_forward),
                           tooltip: 'Force Start',
