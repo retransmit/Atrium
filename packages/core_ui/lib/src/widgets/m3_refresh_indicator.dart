@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-
 import 'package:flutter/material.dart';
 import 'package:m3_expressive/m3_expressive.dart';
 import 'package:m3_expressive/material_shapes.dart';
@@ -40,7 +39,7 @@ class M3RefreshIndicator extends StatefulWidget {
   /// Diameter of the indicator circle. Defaults to 56.
   final double indicatorSize;
 
-  /// Pull distance in pixels required to trigger refresh. Defaults to 80.
+  /// Pull distance in pixels required to trigger refresh. Defaults to 140.
   final double triggerDistance;
 
   /// Circle background color.
@@ -73,11 +72,11 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
     with TickerProviderStateMixin {
   _Phase _phase = _Phase.idle;
 
-  double _dragPixels = 0;
+  double _dragPixels = 0.0;
   bool _isPulling = false;
 
   // Rotation accumulated during the drag (radians)
-  double _dragRotation = 0;
+  double _dragRotation = 0.0;
 
   // Loading animation — cycles through the loading shape sequence
   late final AnimationController _loadCtrl;
@@ -149,7 +148,7 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
       return false;
     }
 
-    if (_phase == _Phase.dragging) {
+    if (_phase == _Phase.dragging || _phase == _Phase.armed) {
       if (n is ScrollUpdateNotification) {
         if (n.metrics.pixels > 0.0) {
           _isPulling = false;
@@ -160,10 +159,18 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
             _onPull(-delta);
           }
         }
+        if (_phase == _Phase.armed && n.dragDetails == null) {
+          // iOS release during overscroll
+          _beginRefresh();
+        }
       } else if (n is OverscrollNotification) {
         _onPull(-n.overscroll);
       } else if (n is ScrollEndNotification) {
-        _releasePull();
+        if (_phase == _Phase.armed) {
+          _beginRefresh();
+        } else {
+          _dismiss();
+        }
       }
     }
     return false;
@@ -174,7 +181,6 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
 
     if (!_isPulling) {
       _isPulling = true;
-      setState(() => _phase = _Phase.dragging);
     }
 
     // Apply rubber-banding resistance only to positive delta (pulling down further)
@@ -190,28 +196,26 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
 
     _dragRotation += delta * 0.016;
 
+    final nextPhase = _dragPixels >= widget.triggerDistance
+        ? _Phase.armed
+        : _Phase.dragging;
+
     if (_dragPixels <= 0 && delta < 0) {
       _isPulling = false;
       _dismiss();
     } else {
-      setState(() {});
-    }
-  }
-
-  void _releasePull() {
-    _isPulling = false;
-    if (_phase != _Phase.dragging) return;
-    final progress = (_dragPixels / widget.triggerDistance).clamp(0.0, 1.0);
-    if (progress >= 1.0) {
-      _beginRefresh();
-    } else {
-      _dismiss();
+      if (_phase != nextPhase) {
+        setState(() => _phase = nextPhase);
+      } else {
+        setState(() {});
+      }
     }
   }
 
   // ── Phases ───────────────────────────────────────────────────────────────
 
   Future<void> _beginRefresh() async {
+    _isPulling = false;
     setState(() {
       _phase = _Phase.refreshing;
       _loadIndex = 0;
@@ -235,6 +239,7 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
   }
 
   void _dismiss() {
+    _isPulling = false;
     setState(() => _phase = _Phase.dismissing);
     _loadCtrl.stop();
     _dismissCtrl.forward().then((_) {
@@ -242,8 +247,8 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
       _dismissCtrl.reset();
       setState(() {
         _phase = _Phase.idle;
-        _dragPixels = 0;
-        _dragRotation = 0;
+        _dragPixels = 0.0;
+        _dragRotation = 0.0;
         _loadIndex = 0;
       });
     });
@@ -263,6 +268,7 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
       case _Phase.idle:
         return -(size + 8); // fully hidden above
       case _Phase.dragging:
+      case _Phase.armed:
       // Move down with the finger from fully hidden to resting position
         final travel = size + 8 + restingTop;
         return -(size + 8) + _dragProgress * travel;
@@ -320,7 +326,7 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
                 double morphT;
                 double angle;
 
-                if (_phase == _Phase.dragging) {
+                if (_phase == _Phase.dragging || _phase == _Phase.armed) {
                   final (a, b, t) = _dragBlend();
                   shapeA = a;
                   shapeB = b;
@@ -382,4 +388,4 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
   }
 }
 
-enum _Phase { idle, dragging, refreshing, dismissing }
+enum _Phase { idle, dragging, armed, refreshing, dismissing }
