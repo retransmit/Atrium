@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 
 import 'models/seerr_counts.dart';
 import 'models/seerr_discover.dart';
+import 'models/seerr_issue.dart';
 import 'models/seerr_request.dart';
 import 'models/seerr_service.dart';
 
@@ -163,6 +164,76 @@ class SeerrApi {
     }
   }
 
+  // --- Issues ---
+
+  Future<List<SeerrIssue>> getIssues({
+    int take = 100,
+    int skip = 0,
+    String filter = 'all',
+  }) async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>(
+        '$_base/issue',
+        queryParameters: <String, dynamic>{
+          'take': take,
+          'skip': skip,
+          'sort': 'added',
+          'filter': filter,
+        },
+      );
+      return SeerrIssuePage.fromJson(resp.data as Map<String, dynamic>)
+          .results;
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<SeerrIssue> getIssue(int id) async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/issue/$id');
+      return SeerrIssue.fromJson(resp.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// [mediaId] is the internal Seerr media DB id ([SeerrMedia.id]), not the
+  /// TMDB id.
+  Future<SeerrIssue> createIssue({
+    required int issueType,
+    required String message,
+    required int mediaId,
+  }) async {
+    try {
+      final Response<dynamic> resp = await _dio.post<dynamic>(
+        '$_base/issue',
+        data: <String, dynamic>{
+          'issueType': issueType,
+          'message': message,
+          'mediaId': mediaId,
+        },
+      );
+      return SeerrIssue.fromJson(resp.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<void> addIssueComment(int issueId, String message) async {
+    try {
+      await _dio.post<dynamic>(
+        '$_base/issue/$issueId/comment',
+        data: <String, dynamic>{'message': message},
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<void> setIssueStatus(int issueId, {required bool resolved}) =>
+      _post('$_base/issue/$issueId/${resolved ? 'resolved' : 'open'}');
+
   // --- Seerr / Discover Endpoints ---
 
   Future<SeerrDiscoverResult> getMediaDetails(String mediaType, int tmdbId) async {
@@ -266,6 +337,59 @@ class SeerrApi {
     try {
       final Response<dynamic> resp = await _dio.get<dynamic>('$_base/discover/trending');
       return SeerrDiscoverPage.fromJson(resp.data as Map<String, dynamic>).results;
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<List<SeerrDiscoverResult>> getRecommendations(
+    String mediaType,
+    int tmdbId,
+  ) async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/$mediaType/$tmdbId/recommendations');
+      return SeerrDiscoverPage.fromJson(resp.data as Map<String, dynamic>)
+          .results;
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<List<SeerrDiscoverResult>> getSimilar(
+    String mediaType,
+    int tmdbId,
+  ) async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/$mediaType/$tmdbId/similar');
+      return SeerrDiscoverPage.fromJson(resp.data as Map<String, dynamic>)
+          .results;
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// The signed-in user's watchlist.
+  ///
+  /// Watchlist entries can come back in a Plex-flavoured shape carrying a
+  /// `tmdbId` but no TMDB `id`, so entries are normalised before parsing and
+  /// anything with no usable id is dropped instead of failing the whole page.
+  Future<List<SeerrDiscoverResult>> getWatchlist() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/discover/watchlist');
+      final Map<String, dynamic> data = resp.data as Map<String, dynamic>;
+      final List<dynamic> raw =
+          (data['results'] as List<dynamic>?) ?? <dynamic>[];
+      final List<Map<String, dynamic>> results = <Map<String, dynamic>>[];
+      for (final dynamic e in raw) {
+        if (e is! Map<String, dynamic>) continue;
+        e['id'] ??= e['tmdbId'];
+        if (e['id'] != null) results.add(e);
+      }
+      data['results'] = results;
+      return SeerrDiscoverPage.fromJson(data).results;
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }

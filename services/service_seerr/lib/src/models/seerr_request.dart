@@ -40,6 +40,8 @@ abstract class SeerrRequest with _$SeerrRequest {
 @freezed
 abstract class SeerrMedia with _$SeerrMedia {
   const factory SeerrMedia({
+    /// Internal Seerr media DB id (what the issue endpoints key on).
+    @JsonKey(name: 'id') int? id,
     @Default('') String mediaType,
     int? tmdbId,
     @Default(1) int status,
