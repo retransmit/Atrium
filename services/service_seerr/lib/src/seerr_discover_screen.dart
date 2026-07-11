@@ -6,9 +6,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models/seerr_discover.dart';
 import 'seerr_genre_screen.dart';
 import 'seerr_item_detail.dart';
+import 'seerr_media_card.dart';
 import 'seerr_providers.dart';
-import 'seerr_status_badge.dart';
 
+/// The Discover tab: Watchlist / Trending / Popular / Upcoming rows plus the
+/// genre chip rows, each a horizontal list of shared tonal media cards under
+/// a consistent bold header.
 class SeerrDiscoverScreen extends ConsumerWidget {
   const SeerrDiscoverScreen({required this.instance, super.key});
 
@@ -18,17 +21,57 @@ class SeerrDiscoverScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return M3RefreshIndicator(
       onRefresh: () async {
+        ref.invalidate(seerrWatchlistProvider(instance));
         ref.invalidate(seerrTrendingProvider(instance));
+        ref.invalidate(seerrDiscoverMoviesProvider(instance));
+        ref.invalidate(seerrDiscoverTvProvider(instance));
         ref.invalidate(seerrUpcomingMoviesProvider(instance));
         ref.invalidate(seerrUpcomingTvProvider(instance));
+        ref.invalidate(seerrMovieGenresProvider(instance));
+        ref.invalidate(seerrTvGenresProvider(instance));
       },
       child: ListView(
         padding: const EdgeInsets.symmetric(vertical: Insets.lg),
         children: <Widget>[
+          _DiscoverSection(
+            title: 'Watchlist',
+            provider: seerrWatchlistProvider(instance),
+            instance: instance,
+            // Optional row: most servers have an empty watchlist, and the
+            // fetch can fail outright (expired Plex token, forks without the
+            // endpoint) - collapse instead of showing an empty row or
+            // banner-ing Discover with an error.
+            hideWhenEmpty: true,
+          ),
+          _DiscoverSection(
+            title: 'Trending',
+            provider: seerrTrendingProvider(instance),
+            instance: instance,
+          ),
+          _DiscoverSection(
+            title: 'Popular Movies',
+            provider: seerrDiscoverMoviesProvider(instance),
+            instance: instance,
+          ),
+          _DiscoverSection(
+            title: 'Upcoming Movies',
+            provider: seerrUpcomingMoviesProvider(instance),
+            instance: instance,
+          ),
           _GenreSection(
             title: 'Movie Genres',
             isMovie: true,
             provider: seerrMovieGenresProvider(instance),
+            instance: instance,
+          ),
+          _DiscoverSection(
+            title: 'Popular TV Shows',
+            provider: seerrDiscoverTvProvider(instance),
+            instance: instance,
+          ),
+          _DiscoverSection(
+            title: 'Upcoming TV Shows',
+            provider: seerrUpcomingTvProvider(instance),
             instance: instance,
           ),
           _GenreSection(
@@ -37,52 +80,69 @@ class SeerrDiscoverScreen extends ConsumerWidget {
             provider: seerrTvGenresProvider(instance),
             instance: instance,
           ),
-
-          _DiscoverSection(
-            title: 'Trending',
-            provider: seerrTrendingProvider(instance),
-            instance: instance,
-          ),
-          _DiscoverSection(
-            title: 'Upcoming Movies',
-            provider: seerrUpcomingMoviesProvider(instance),
-            instance: instance,
-          ),
-          _DiscoverSection(
-            title: 'Upcoming TV Shows',
-            provider: seerrUpcomingTvProvider(instance),
-            instance: instance,
-          ),
         ],
       ),
     );
   }
 }
 
+/// Bold section header shared by every Discover row so the media rows and the
+/// genre chip rows read as one system.
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: Insets.pageH,
+      child: Text(
+        title,
+        style: Theme.of(context)
+            .textTheme
+            .titleLarge
+            ?.copyWith(fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+}
+
 class _DiscoverSection extends ConsumerWidget {
-  const _DiscoverSection({required this.title, required this.provider, required this.instance});
+  const _DiscoverSection({
+    required this.title,
+    required this.provider,
+    required this.instance,
+    this.hideWhenEmpty = false,
+  });
 
   final String title;
   final FutureProvider<List<SeerrDiscoverResult>> provider;
   final Instance instance;
 
+  /// Collapse the whole section (header included) unless a non-empty list
+  /// is available; optional rows like the Watchlist degrade like the detail
+  /// screen's Recommendations / Similar rows and render nothing while
+  /// loading, on error, and when empty.
+  final bool hideWhenEmpty;
+
+  /// Shared row height so every Discover section sizes identically.
+  static const double _rowHeight = 250;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<SeerrDiscoverResult>> items = ref.watch(provider);
+    if (hideWhenEmpty && (items.hasError || (items.value?.isEmpty ?? true))) {
+      return const SizedBox.shrink();
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Padding(
-          padding: Insets.pageH,
-          child: Text(
-            title,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-          ),
-        ),
+        _SectionHeader(title: title),
         const SizedBox(height: Insets.sm),
         SizedBox(
-          height: 250,
+          height: _rowHeight,
           child: AsyncValueView<List<SeerrDiscoverResult>>(
             value: items,
             onRetry: () => ref.invalidate(provider),
@@ -96,82 +156,17 @@ class _DiscoverSection extends ConsumerWidget {
                 itemCount: list.length,
                 itemBuilder: (BuildContext context, int index) {
                   final SeerrDiscoverResult item = list[index];
-                  return Container(
-                    width: 128,
-                    margin: const EdgeInsets.only(right: Insets.md),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Expanded(
-                          child: Material(
-                            color:
-                                Theme.of(context).colorScheme.surfaceContainerHigh,
-                            borderRadius: BorderRadius.circular(16),
-                            clipBehavior: Clip.antiAlias,
-                            child: InkWell(
-                              onTap: () => pushScreen<void>(
-                                context,
-                                SeerrItemDetailScreen(
-                                  instance: instance,
-                                  item: item,
-                                ),
-                              ),
-                              child: Stack(
-                                fit: StackFit.expand,
-                                children: <Widget>[
-                                  item.posterPath != null
-                                      ? Image.network(
-                                          'https://image.tmdb.org/t/p/w500${item.posterPath}',
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) =>
-                                              const _Placeholder(),
-                                        )
-                                      : const _Placeholder(),
-                                  Positioned(
-                                    top: 6,
-                                    right: 6,
-                                    child: SeerrStatusBadge(
-                                      status: item.mediaInfo?.status,
-                                    ),
-                                  ),
-                                  if (item.voteAverage != null &&
-                                      item.voteAverage! > 0)
-                                    Positioned(
-                                      bottom: 6,
-                                      left: 6,
-                                      child:
-                                          _RatingBadge(value: item.voteAverage!),
-                                    ),
-                                ],
-                              ),
-                            ),
-                          ),
+                  return Padding(
+                    padding: const EdgeInsets.only(right: Insets.md),
+                    child: SeerrMediaCard(
+                      item: item,
+                      onTap: () => pushScreen<void>(
+                        context,
+                        SeerrItemDetailScreen(
+                          instance: instance,
+                          item: item,
                         ),
-                        const SizedBox(height: Insets.sm),
-                        Text(
-                          item.displayTitle,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        if (item.displayDate != null)
-                          Text(
-                            item.displayDate!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                ),
-                          ),
-                      ],
+                      ),
                     ),
                   );
                 },
@@ -181,51 +176,6 @@ class _DiscoverSection extends ConsumerWidget {
         ),
         const SizedBox(height: Insets.lg),
       ],
-    );
-  }
-}
-
-class _Placeholder extends StatelessWidget {
-  const _Placeholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: const Center(child: Icon(Icons.movie_outlined)),
-    );
-  }
-}
-
-/// A small rating pill (star + score) overlaid on a poster.
-class _RatingBadge extends StatelessWidget {
-  const _RatingBadge({required this.value});
-
-  final double value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          const Icon(Icons.star, size: 11, color: Colors.amber),
-          const SizedBox(width: 3),
-          Text(
-            value.toStringAsFixed(1),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 10.5,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -250,14 +200,8 @@ class _GenreSection extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Padding(
-          padding: Insets.pageH,
-          child: Text(
-            title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-          ),
-        ),
-        const SizedBox(height: Insets.xs),
+        _SectionHeader(title: title),
+        const SizedBox(height: Insets.sm),
         SizedBox(
           height: 48,
           child: AsyncValueView<List<SeerrGenre>>(
@@ -275,7 +219,9 @@ class _GenreSection extends ConsumerWidget {
                     padding: const EdgeInsets.only(right: Insets.sm),
                     child: ActionChip(
                       avatar: Icon(
-                        isMovie ? Icons.movie_filter_outlined : Icons.live_tv_outlined,
+                        isMovie
+                            ? Icons.movie_filter_outlined
+                            : Icons.live_tv_outlined,
                         size: 16,
                       ),
                       label: Text(genre.name),

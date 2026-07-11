@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'models/seerr_counts.dart';
 import 'models/seerr_discover.dart';
+import 'models/seerr_issue.dart';
 import 'models/seerr_request.dart';
 import 'models/seerr_service.dart';
 import 'seerr_api.dart';
@@ -174,4 +175,68 @@ final seerrServerDetailsProvider = FutureProvider.autoDispose
       final SeerrApi api =
           await ref.watch(seerrApiProvider(args.instance).future);
       return api.getServerDetails(args.mediaType, args.serverId);
+    });
+
+typedef SeerrIssuesArgs = ({Instance instance, String filter});
+
+/// Reported issues ('all' / 'open' / 'resolved'), polled every 10s while
+/// watched.
+final seerrIssuesProvider =
+    FutureProvider.autoDispose.family<List<SeerrIssue>, SeerrIssuesArgs>((
+      Ref ref,
+      SeerrIssuesArgs args,
+    ) async {
+      final SeerrApi api =
+          await ref.watch(seerrApiProvider(args.instance).future);
+
+      final link = ref.keepAlive();
+      final timer = Timer(const Duration(seconds: 10), () {
+        link.close();
+        ref.invalidateSelf();
+      });
+      ref.onDispose(timer.cancel);
+
+      return api.getIssues(filter: args.filter);
+    });
+
+typedef SeerrIssueDetailArgs = ({Instance instance, int id});
+
+/// One issue with its comment thread.
+final seerrIssueDetailProvider =
+    FutureProvider.autoDispose.family<SeerrIssue, SeerrIssueDetailArgs>((
+      Ref ref,
+      SeerrIssueDetailArgs args,
+    ) async {
+      final SeerrApi api =
+          await ref.watch(seerrApiProvider(args.instance).future);
+      return api.getIssue(args.id);
+    });
+
+final seerrRecommendationsProvider = FutureProvider.autoDispose
+    .family<List<SeerrDiscoverResult>, SeerrMediaDetailsArgs>((
+      Ref ref,
+      SeerrMediaDetailsArgs args,
+    ) async {
+      final SeerrApi api =
+          await ref.watch(seerrApiProvider(args.instance).future);
+      return api.getRecommendations(args.mediaType, args.tmdbId);
+    });
+
+final seerrSimilarProvider = FutureProvider.autoDispose
+    .family<List<SeerrDiscoverResult>, SeerrMediaDetailsArgs>((
+      Ref ref,
+      SeerrMediaDetailsArgs args,
+    ) async {
+      final SeerrApi api =
+          await ref.watch(seerrApiProvider(args.instance).future);
+      return api.getSimilar(args.mediaType, args.tmdbId);
+    });
+
+final seerrWatchlistProvider =
+    FutureProvider.autoDispose.family<List<SeerrDiscoverResult>, Instance>((
+      Ref ref,
+      Instance instance,
+    ) async {
+      final SeerrApi api = await ref.watch(seerrApiProvider(instance).future);
+      return api.getWatchlist();
     });

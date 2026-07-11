@@ -1,169 +1,141 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 
 import 'models/seerr_discover.dart';
+import 'seerr_status_badge.dart';
 
-/// The shared media card used on the Seerr detail screen and as the Requests-
-/// tab tiles: a tall poster on the left, then title, metadata pills, a
-/// prominent status/action, and rating. Styled to match the Sonarr module card.
+/// TMDB image URL builder, mirroring the module's existing construction
+/// (posters at `w342`).
+String _tmdbImage(String path, String size) =>
+    'https://image.tmdb.org/t/p/$size$path';
+
+/// The shared tonal poster card used by the Discover rows: a rounded poster
+/// with the availability badge and rating overlaid, then the title and date
+/// below. Designed to sit inside a fixed-height horizontal row.
 class SeerrMediaCard extends StatelessWidget {
   const SeerrMediaCard({
     required this.item,
-    this.requestedBy,
-    this.action,
-    this.trailing,
+    this.onTap,
+    this.width = 128,
     super.key,
   });
 
   final SeerrDiscoverResult item;
 
-  /// Optional "Requested by X" subtitle (used on the Requests tab).
-  final String? requestedBy;
+  /// Tap handler (usually a push to the item detail screen).
+  final VoidCallback? onTap;
 
-  /// The prominent status/action slot (the request button, or a status row).
-  final Widget? action;
-
-  /// Optional top-right widget (e.g. the request actions menu).
-  final Widget? trailing;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final String? runtimeLabel = item.isMovie
-        ? (item.runtime != null && item.runtime! > 0
-            ? _fmtRuntime(item.runtime!)
-            : null)
-        : (item.numberOfEpisodes != null && item.numberOfEpisodes! > 0
-            ? '${item.numberOfEpisodes} eps'
-            : null);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
+    return SizedBox(
+      width: width,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.all(Insets.md),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 180),
-              child: IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+          Expanded(
+            child: Material(
+              color: theme.colorScheme.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(Radii.lg),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: onTap,
+                child: Stack(
+                  fit: StackFit.expand,
                   children: <Widget>[
-                    SizedBox(
-                      width: 120,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: item.posterPath != null
-                            ? Image.network(
-                                'https://image.tmdb.org/t/p/w342${item.posterPath}',
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
-                                    _posterFallback(theme),
-                              )
-                            : _posterFallback(theme),
-                      ),
+                    if (item.posterPath != null)
+                      CachedNetworkImage(
+                        imageUrl: _tmdbImage(item.posterPath!, 'w342'),
+                        fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => const _PosterFallback(),
+                      )
+                    else
+                      const _PosterFallback(),
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: SeerrStatusBadge(status: item.mediaInfo?.status),
                     ),
-                    const SizedBox(width: Insets.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Padding(
-                            // keep the title clear of the trailing menu
-                            padding: EdgeInsets.only(
-                              right: trailing != null ? 28 : 0,
-                            ),
-                            child: Text(
-                              item.displayTitle,
-                              style: theme.textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                height: 1.1,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (requestedBy != null && requestedBy!.isNotEmpty)
-                            ...<Widget>[
-                              const SizedBox(height: 4),
-                              Text(
-                                'Requested by $requestedBy',
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  color: theme.colorScheme.outline,
-                                ),
-                              ),
-                            ],
-                          const SizedBox(height: Insets.sm),
-                          Wrap(
-                            spacing: Insets.sm,
-                            runSpacing: Insets.xs,
-                            children: <Widget>[
-                              if (item.year != null)
-                                SeerrInfoPill(label: item.year!),
-                              SeerrInfoPill(label: item.isMovie ? 'Movie' : 'TV'),
-                              if (item.status != null &&
-                                  item.status!.isNotEmpty)
-                                SeerrInfoPill(label: item.status!),
-                              if (runtimeLabel != null)
-                                SeerrInfoPill(label: runtimeLabel),
-                            ],
-                          ),
-                          if (action != null) ...<Widget>[
-                            const SizedBox(height: Insets.md),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: action,
-                            ),
-                          ],
-                          const Spacer(),
-                          if (item.voteAverage != null &&
-                              item.voteAverage! > 0) ...<Widget>[
-                            const SizedBox(height: Insets.sm),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: <Widget>[
-                                const Icon(Icons.star,
-                                    color: Colors.amber, size: 18,),
-                                const SizedBox(width: 4),
-                                Text(
-                                  item.voteAverage!.toStringAsFixed(1),
-                                  style: theme.textTheme.titleMedium,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ],
+                    if (item.voteAverage != null && item.voteAverage! > 0)
+                      Positioned(
+                        bottom: 6,
+                        left: 6,
+                        child: _RatingBadge(value: item.voteAverage!),
                       ),
-                    ),
                   ],
                 ),
               ),
             ),
           ),
-          if (trailing != null)
-            Positioned(top: 0, right: 0, child: trailing!),
+          const SizedBox(height: Insets.sm),
+          Text(
+            item.displayTitle,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyMedium
+                ?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          if (item.displayDate != null)
+            Text(
+              item.displayDate!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
         ],
       ),
     );
   }
+}
 
-  Widget _posterFallback(ThemeData theme) => ColoredBox(
-        color: theme.colorScheme.surfaceContainerHighest,
-        child: const Center(child: Icon(Icons.image_not_supported)),
-      );
+class _PosterFallback extends StatelessWidget {
+  const _PosterFallback();
 
-  String _fmtRuntime(int minutes) {
-    final int h = minutes ~/ 60;
-    final int m = minutes % 60;
-    if (h > 0) {
-      return m == 0 ? '${h}h' : '${h}h ${m}m';
-    }
-    return '${m}m';
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: const Center(child: Icon(Icons.movie_outlined)),
+    );
+  }
+}
+
+/// Small rating pill (star + score) overlaid on a poster; white-on-scrim per
+/// the over-imagery rules.
+class _RatingBadge extends StatelessWidget {
+  const _RatingBadge({required this.value});
+
+  final double value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          const Icon(Icons.star, size: 11, color: Colors.amber),
+          const SizedBox(width: 3),
+          Text(
+            value.toStringAsFixed(1),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -187,9 +159,9 @@ class SeerrInfoPill extends StatelessWidget {
   }
 }
 
-/// The Requests-tab card: a darkened backdrop banner fills the card, with the
-/// year / title / requester / status overlaid on the left and the poster on
-/// the right. Modeled on the Jellyseerr "Recent Requests" cards.
+/// The Requests-tab tile: a tonal card with the poster on the left, the
+/// title / requester / color-coded status pills beside it, and an optional
+/// inline [actions] row (approve / decline / delete) underneath.
 class SeerrRequestCard extends StatelessWidget {
   const SeerrRequestCard({
     required this.item,
@@ -197,34 +169,43 @@ class SeerrRequestCard extends StatelessWidget {
     this.mediaStatus,
     this.requestStatus,
     this.trailing,
+    this.actions,
     super.key,
   });
 
   final SeerrDiscoverResult item;
 
-  /// "Requested by X" name, shown next to an avatar.
+  /// Requester display name, shown next to a person icon.
   final String? requestedBy;
 
-  /// Seerr media (download) status: 2 pending, 3 processing, 4 partial,
-  /// 5 available.
+  /// Seerr media (download) status: 2 requested, 3 processing, 4 partially
+  /// available, 5 available.
   final int? mediaStatus;
 
-  /// Request approval status: 1 pending, 2 approved, 3 declined, 4 failed,
-  /// 5 completed.
+  /// Request approval status: 1 pending, 2 approved, 3 declined, 4 failed.
   final int? requestStatus;
 
   /// Optional top-right widget (the request actions menu).
   final Widget? trailing;
 
+  /// Optional inline actions row rendered below the poster + info.
+  final Widget? actions;
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final String? backdrop = item.backdropPath;
+    final ColorScheme cs = theme.colorScheme;
     final List<Widget> pills = _statusPills();
+    final String? backdrop = item.backdropPath;
+    final bool over = backdrop != null;
+    // Text sits over the darkened backdrop when present, else over the tonal
+    // surface - pick legible colors for each case.
+    final Color titleColor = over ? Colors.white : cs.onSurface;
+    final Color subColor = over ? Colors.white70 : cs.onSurfaceVariant;
 
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHigh,
+        color: cs.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(20),
       ),
       clipBehavior: Clip.antiAlias,
@@ -232,59 +213,60 @@ class SeerrRequestCard extends StatelessWidget {
         children: <Widget>[
           if (backdrop != null)
             Positioned.fill(
-              child: Image.network(
-                'https://image.tmdb.org/t/p/w780$backdrop',
+              child: CachedNetworkImage(
+                imageUrl: _tmdbImage(backdrop, 'w780'),
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                errorWidget: (_, __, ___) => const SizedBox.shrink(),
               ),
             ),
-          // Darken left-to-right so the overlaid text stays legible.
-          const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  stops: <double>[0.0, 0.6, 1.0],
-                  colors: <Color>[
-                    Color(0xE6000000), // black 90%
-                    Color(0x99000000), // black 60%
-                    Color(0x59000000), // black 35%
-                  ],
+          // Darken left-to-right so the overlaid title/requester stay legible
+          // over the backdrop while the poster on the right shows through.
+          if (over)
+            const Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    stops: <double>[0.0, 0.6, 1.0],
+                    colors: <Color>[
+                      Color(0xE6000000),
+                      Color(0x99000000),
+                      Color(0x59000000),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
           Padding(
             padding: const EdgeInsets.all(Insets.md),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: 150),
-              child: IntrinsicHeight(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
                         children: <Widget>[
                           if (item.year != null)
                             Text(
                               item.year!,
-                              style: theme.textTheme.labelLarge?.copyWith(
-                                color: Colors.white70,
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: subColor,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                          const SizedBox(height: 2),
                           Padding(
+                            // keep the title clear of the trailing menu
                             padding: EdgeInsets.only(
-                              right: trailing != null ? 28 : 0,
+                              right: trailing != null ? 32 : 0,
                             ),
                             child: Text(
                               item.displayTitle,
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                color: Colors.white,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: titleColor,
                                 fontWeight: FontWeight.bold,
-                                height: 1.1,
+                                height: 1.15,
                               ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
@@ -292,25 +274,21 @@ class SeerrRequestCard extends StatelessWidget {
                           ),
                           if (requestedBy != null &&
                               requestedBy!.isNotEmpty) ...<Widget>[
-                            const SizedBox(height: Insets.sm),
+                            const SizedBox(height: Insets.xs),
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: <Widget>[
-                                const CircleAvatar(
-                                  radius: 11,
-                                  backgroundColor: Colors.white24,
-                                  child: Icon(
-                                    Icons.person,
-                                    size: 14,
-                                    color: Colors.white,
-                                  ),
+                                Icon(
+                                  Icons.person_outline,
+                                  size: 16,
+                                  color: subColor,
                                 ),
-                                const SizedBox(width: 6),
+                                const SizedBox(width: Insets.xs),
                                 Flexible(
                                   child: Text(
                                     requestedBy!,
-                                    style: theme.textTheme.bodyMedium
-                                        ?.copyWith(color: Colors.white),
+                                    style: theme.textTheme.bodySmall
+                                        ?.copyWith(color: subColor),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
@@ -325,88 +303,54 @@ class SeerrRequestCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: Insets.md),
-                    SizedBox(
-                      width: 108,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(Radii.md),
+                      child: SizedBox(
+                        width: 76,
+                        height: 114,
                         child: item.posterPath != null
-                            ? Image.network(
-                                'https://image.tmdb.org/t/p/w342${item.posterPath}',
+                            ? CachedNetworkImage(
+                                imageUrl:
+                                    _tmdbImage(item.posterPath!, 'w342'),
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) =>
-                                    _posterFallback(theme),
+                                errorWidget: (_, __, ___) =>
+                                    _posterFallback(cs),
                               )
-                            : _posterFallback(theme),
+                            : _posterFallback(cs),
                       ),
                     ),
                   ],
                 ),
-              ),
+                if (actions != null) ...<Widget>[
+                  const SizedBox(height: Insets.sm),
+                  actions!,
+                ],
+              ],
             ),
           ),
-          if (trailing != null) Positioned(top: 0, right: 0, child: trailing!),
+          if (trailing != null)
+            Positioned(top: 4, right: 4, child: trailing!),
         ],
       ),
     );
   }
 
-  Widget _posterFallback(ThemeData theme) => ColoredBox(
-        color: theme.colorScheme.surfaceContainerHighest,
+  Widget _posterFallback(ColorScheme cs) => ColoredBox(
+        color: cs.surfaceContainerHighest,
         child: const Center(child: Icon(Icons.image_not_supported)),
       );
 
   List<Widget> _statusPills() {
     final List<Widget> pills = <Widget>[];
-    final (Color, IconData, String)? avail = switch (mediaStatus) {
-      5 => (const Color(0xFF22C55E), Icons.check_circle, 'Available'),
-      4 => (
-          const Color(0xFF14B8A6),
-          Icons.check_circle_outline,
-          'Partially Available',
-        ),
-      3 => (const Color(0xFF3B82F6), Icons.downloading, 'Processing'),
-      2 => (const Color(0xFFF59E0B), Icons.hourglass_top, 'Pending'),
-      _ => null,
-    };
-    if (avail != null) {
-      pills.add(_pill(avail.$3, avail.$1, avail.$2));
+    final SeerrStatusStyle? media = seerrMediaStatusStyle(mediaStatus);
+    if (media != null) {
+      pills.add(SeerrStatusPill(style: media));
     }
-    // Approval state, only when it adds information beyond availability.
-    final (Color, IconData, String)? appr = switch (requestStatus) {
-      1 => (const Color(0xFFF97316), Icons.pending, 'Pending Approval'),
-      3 => (const Color(0xFFEF4444), Icons.cancel, 'Declined'),
-      4 => (const Color(0xFFEF4444), Icons.error_outline, 'Failed'),
-      2 => pills.isEmpty
-          ? (const Color(0xFF22C55E), Icons.check_circle, 'Approved')
-          : null,
-      _ => null,
-    };
-    if (appr != null) {
-      pills.add(_pill(appr.$3, appr.$1, appr.$2));
+    final SeerrStatusStyle? approval = seerrRequestStatusStyle(requestStatus);
+    // 'Approved' only adds information when no availability pill is shown.
+    if (approval != null && !(requestStatus == 2 && media != null)) {
+      pills.add(SeerrStatusPill(style: approval));
     }
     return pills;
   }
-
-  Widget _pill(String label, Color color, IconData icon) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Icon(icon, size: 14, color: Colors.white),
-            const SizedBox(width: 5),
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 12.5,
-              ),
-            ),
-          ],
-        ),
-      );
 }
