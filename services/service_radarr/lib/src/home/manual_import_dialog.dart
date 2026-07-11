@@ -158,11 +158,12 @@ class __ManualImportSetupDialogState
       return;
     }
 
-    // Dismiss the setup dialog and open mapping screen
-    Navigator.pop(context);
+    // Dismiss the setup dialog and open the mapping screen on the root
+    // navigator (captured before the pop) so the full-screen route survives
+    // shell rebuilds and does not depend on the just-popped dialog's context.
+    nav.pop();
 
-    unawaited(Navigator.push<void>(
-      context,
+    unawaited(nav.push<void>(
       MaterialPageRoute<void>(
         builder: (BuildContext context) => _ManualImportMappingScreen(
           instance: widget.instance,
