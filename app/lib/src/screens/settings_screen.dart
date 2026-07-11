@@ -628,27 +628,74 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
               
               if (_activeTab == 2) ...[
                 if (_localImagePath != null) ...[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Wallpaper: ${_localImagePath!.split(Platform.pathSeparator).last}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: previewColorScheme.onSurfaceVariant,
-                          ),
+                  Container(
+                    height: 100,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      image: DecorationImage(
+                        image: FileImage(File(_localImagePath!)),
+                        fit: BoxFit.cover,
+                      ),
+                      border: Border.all(
+                        color: previewColorScheme.outlineVariant,
+                        width: 1.5,
+                      ),
+                    ),
+                    alignment: Alignment.bottomCenter,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.7),
+                            Colors.black.withValues(alpha: 0.0),
+                          ],
+                        ),
+                        borderRadius: const BorderRadius.only(
+                          bottomLeft: Radius.circular(14),
+                          bottomRight: Radius.circular(14),
                         ),
                       ),
-                      TextButton.icon(
-                        onPressed: _pickImage,
-                        icon: Icon(Icons.change_circle_outlined, size: 16, color: previewColorScheme.primary),
-                        label: Text('Change', style: TextStyle(color: previewColorScheme.primary)),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _localImagePath!.split(Platform.pathSeparator).last,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: TextButton.icon(
+                              onPressed: _pickImage,
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.white,
+                                minimumSize: Size.zero,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              icon: const Icon(Icons.change_circle_outlined, size: 14),
+                              label: const Text('Change', style: TextStyle(fontSize: 11)),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                  const SizedBox(height: Insets.sm),
+                  const SizedBox(height: Insets.md),
                 ],
                 
                 if (_isExtracting) ...[
