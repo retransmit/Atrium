@@ -7,6 +7,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import 'emby_client.dart';
 import 'emby_deep_link.dart';
+import 'emby_identify_screen.dart';
 import 'emby_providers.dart';
 import 'emby_remote_images_screen.dart';
 import 'emby_season_screen.dart';
@@ -76,18 +77,62 @@ class EmbyItemDetailScreen extends ConsumerWidget {
               },
             ),
             if (itemAsync.value!.type != 'Episode')
-              IconButton(
-                icon: const Icon(Icons.wallpaper),
-                tooltip: 'Change Backdrop',
-                onPressed: () {
-                  pushScreen<void>(
-                    context,
-                    EmbyRemoteImagesScreen(
-                      instance: instance,
-                      itemId: itemId,
-                      imageType: 'Backdrop',
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                onSelected: (String choice) async {
+                  if (choice == 'identify') {
+                    final bool? changed = await pushScreen<bool>(
+                      context,
+                      EmbyIdentifyScreen(
+                        instance: instance,
+                        item: itemAsync.value!,
+                      ),
+                    );
+                    if (changed == true && context.mounted) {
+                      ref.invalidate(embyItemDetailsProvider((instance, itemId)));
+                    }
+                  } else if (choice == 'refresh') {
+                    try {
+                      await ref.read(embyClientProvider(instance)).value?.refreshMetadata(itemId);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Refresh queued')),
+                        );
+                        ref.invalidate(embyItemDetailsProvider((instance, itemId)));
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Failed to refresh: $e')),
+                        );
+                      }
+                    }
+                  } else if (choice == 'backdrop') {
+                    pushScreen<void>(
+                      context,
+                      EmbyRemoteImagesScreen(
+                        instance: instance,
+                        itemId: itemId,
+                        imageType: 'Backdrop',
+                      ),
+                    );
+                  }
+                },
+                itemBuilder: (BuildContext context) {
+                  return const <PopupMenuEntry<String>>[
+                    PopupMenuItem<String>(
+                      value: 'identify',
+                      child: Text('Identify'),
                     ),
-                  );
+                    PopupMenuItem<String>(
+                      value: 'refresh',
+                      child: Text('Refresh Metadata'),
+                    ),
+                    PopupMenuItem<String>(
+                      value: 'backdrop',
+                      child: Text('Change Backdrop'),
+                    ),
+                  ];
                 },
               ),
           ],

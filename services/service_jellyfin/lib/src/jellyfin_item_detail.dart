@@ -7,6 +7,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import 'jellyfin_client.dart';
 import 'jellyfin_deep_link.dart';
+import 'jellyfin_identify_screen.dart';
 import 'jellyfin_providers.dart';
 import 'jellyfin_remote_images_screen.dart';
 import 'jellyfin_season_screen.dart';
@@ -69,18 +70,62 @@ class JellyfinItemDetailScreen extends ConsumerWidget {
               },
             ),
             if (itemAsync.value!.type != 'Episode')
-              IconButton(
-                icon: const Icon(Icons.wallpaper),
-                tooltip: 'Change Backdrop',
-                onPressed: () {
-                  pushScreen<void>(
-                    context,
-                    JellyfinRemoteImagesScreen(
-                      instance: instance,
-                      itemId: itemId,
-                      imageType: 'Backdrop',
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                onSelected: (String choice) async {
+                  if (choice == 'identify') {
+                    final bool? changed = await pushScreen<bool>(
+                      context,
+                      JellyfinIdentifyScreen(
+                        instance: instance,
+                        item: itemAsync.value!,
+                      ),
+                    );
+                    if (changed == true && context.mounted) {
+                      ref.invalidate(jellyfinItemDetailsProvider((instance, itemId)));
+                    }
+                  } else if (choice == 'refresh') {
+                    try {
+                      await ref.read(jellyfinClientProvider(instance)).value?.refreshMetadata(itemId);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Refresh queued')),
+                        );
+                        ref.invalidate(jellyfinItemDetailsProvider((instance, itemId)));
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Failed to refresh: $e')),
+                        );
+                      }
+                    }
+                  } else if (choice == 'backdrop') {
+                    pushScreen<void>(
+                      context,
+                      JellyfinRemoteImagesScreen(
+                        instance: instance,
+                        itemId: itemId,
+                        imageType: 'Backdrop',
+                      ),
+                    );
+                  }
+                },
+                itemBuilder: (BuildContext context) {
+                  return const <PopupMenuEntry<String>>[
+                    PopupMenuItem<String>(
+                      value: 'identify',
+                      child: Text('Identify'),
                     ),
-                  );
+                    PopupMenuItem<String>(
+                      value: 'refresh',
+                      child: Text('Refresh Metadata'),
+                    ),
+                    PopupMenuItem<String>(
+                      value: 'backdrop',
+                      child: Text('Change Backdrop'),
+                    ),
+                  ];
                 },
               ),
           ],

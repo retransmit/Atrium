@@ -4,9 +4,11 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:palette_generator/palette_generator.dart';
 
 import 'jellyfin_client.dart';
+import 'jellyfin_identify_screen.dart';
 import 'jellyfin_item_detail.dart';
 import 'jellyfin_music_screens.dart';
 import 'jellyfin_providers.dart';
@@ -592,6 +594,26 @@ class JellyfinPosterCard extends ConsumerWidget {
                       }
                     },
                   ),
+                  ListTile(
+                    leading: const Icon(Icons.search),
+                    title: const Text('Identify'),
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      final bool? changed = await pushScreen<bool>(
+                        context,
+                        JellyfinIdentifyScreen(
+                          instance: instance,
+                          item: item,
+                        ),
+                      );
+                      if (changed == true && context.mounted) {
+                        ref.invalidate(jellyfinItemDetailsProvider((instance, item.id)));
+                        ref.invalidate(jellyfinItemsProvider);
+                        ref.invalidate(jellyfinNextUpProvider(instance));
+                        ref.invalidate(jellyfinResumeItemsProvider(instance));
+                      }
+                    },
+                  ),
                 ],
               ),
             );
@@ -827,12 +849,36 @@ class JellyfinBannerCard extends ConsumerWidget {
                         final JellyfinClient? client =
                             ref.read(jellyfinClientProvider(instance)).value;
                         if (client != null) {
-                          final bool isFav = item.userData?.isFavorite == true;
-                          await client.markFavorite(item.id, !isFav);
-                          ref.invalidate(
-                            jellyfinItemDetailsProvider((instance, item.id)),
-                          );
-                          ref.invalidate(jellyfinFavoritesProvider(instance));
+                          try {
+                            final bool isFav = item.userData?.isFavorite == true;
+                            await client.markFavorite(item.id, !isFav);
+                            ref.invalidate(
+                              jellyfinItemDetailsProvider((instance, item.id)),
+                            );
+                            ref.invalidate(jellyfinFavoritesProvider(instance));
+                            ref.invalidate(jellyfinItemsProvider);
+                            ref.invalidate(jellyfinNextUpProvider(instance));
+                            ref.invalidate(jellyfinResumeItemsProvider(instance));
+                          } catch (_) {
+                            // Action failed; no revert needed.
+                          }
+                        }
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.search),
+                      title: const Text('Identify'),
+                      onTap: () async {
+                        Navigator.of(context).pop();
+                        final bool? changed = await pushScreen<bool>(
+                          context,
+                          JellyfinIdentifyScreen(
+                            instance: instance,
+                            item: item,
+                          ),
+                        );
+                        if (changed == true && context.mounted) {
+                          ref.invalidate(jellyfinItemDetailsProvider((instance, item.id)));
                           ref.invalidate(jellyfinItemsProvider);
                           ref.invalidate(jellyfinNextUpProvider(instance));
                           ref.invalidate(jellyfinResumeItemsProvider(instance));

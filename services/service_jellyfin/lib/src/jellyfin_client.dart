@@ -7,6 +7,7 @@ import 'package:dio/io.dart';
 import 'models/jellyfin_auth.dart';
 import 'models/jellyfin_item.dart';
 import 'models/jellyfin_remote_image.dart';
+import 'models/jellyfin_remote_search.dart';
 import 'models/jellyfin_session.dart';
 import 'models/jellyfin_view.dart';
 
@@ -902,4 +903,48 @@ class JellyfinClient {
       throw NetworkException.fromDio(e);
     }
   }
+
+  Future<List<JellyfinRemoteSearchResult>> remoteSearch(
+    String itemId,
+    String type,
+    JellyfinRemoteSearchInfo searchInfo,
+  ) =>
+      _guarded(() async {
+        final Response<dynamic> res = await _dio.post<dynamic>(
+          '/Items/RemoteSearch/$type',
+          data: JellyfinRemoteSearchQuery(
+            SearchInfo: searchInfo,
+            ItemId: itemId,
+          ).toJson(),
+        );
+        final List<dynamic> list = res.data as List<dynamic>;
+        return list
+            .map((dynamic e) => JellyfinRemoteSearchResult.fromJson(e as Map<String, dynamic>))
+            .toList();
+      });
+
+  Future<void> applyRemoteSearch(
+    String itemId,
+    JellyfinRemoteSearchResult result, {
+    bool replaceAllImages = true,
+  }) =>
+      _guarded(() async {
+        await _dio.post<dynamic>(
+          '/Items/RemoteSearch/Apply/$itemId?ReplaceAllImages=$replaceAllImages',
+          data: result.toJson(),
+        );
+      });
+
+  Future<void> refreshMetadata(String itemId) => _guarded(() async {
+        await _dio.post<dynamic>(
+          '/Items/$itemId/Refresh',
+          queryParameters: <String, dynamic>{
+            'Recursive': true,
+            'ImageRefreshMode': 'FullRefresh',
+            'MetadataRefreshMode': 'FullRefresh',
+            'ReplaceAllImages': true,
+            'ReplaceAllMetadata': true,
+          },
+        );
+      });
 }

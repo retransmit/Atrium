@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:palette_generator/palette_generator.dart';
 
 import 'emby_client.dart';
+import 'emby_identify_screen.dart';
 import 'emby_item_detail.dart';
 import 'emby_music_screens.dart';
 import 'emby_providers.dart';
@@ -597,6 +599,52 @@ class EmbyPosterCard extends ConsumerWidget {
                       }
                     },
                   ),
+                  ListTile(
+                    leading: const Icon(Icons.search),
+                    title: const Text('Identify'),
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      final bool? changed = await pushScreen<bool>(
+                        context,
+                        EmbyIdentifyScreen(
+                          instance: instance,
+                          item: item,
+                        ),
+                      );
+                      if (changed == true && context.mounted) {
+                        ref.invalidate(embyItemDetailsProvider((instance, item.id)));
+                        ref.invalidate(embyItemsProvider);
+                        ref.invalidate(embyNextUpProvider(instance));
+                        ref.invalidate(embyResumeItemsProvider(instance));
+                      }
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.refresh),
+                    title: const Text('Refresh Metadata'),
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      final EmbyClient? client =
+                          ref.read(embyClientProvider(instance)).value;
+                      if (client != null) {
+                        try {
+                          await client.refreshMetadata(item.id);
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Refresh queued')),
+                            );
+                            ref.invalidate(embyItemDetailsProvider((instance, item.id)));
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Failed to refresh: $e')),
+                            );
+                          }
+                        }
+                      }
+                    },
+                  ),
                 ],
               ),
             );
@@ -854,6 +902,26 @@ class EmbyBannerCard extends ConsumerWidget {
                           } catch (_) {
                             // Action failed; no revert needed.
                           }
+                        }
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.search),
+                      title: const Text('Identify'),
+                      onTap: () async {
+                        Navigator.of(context).pop();
+                        final bool? changed = await pushScreen<bool>(
+                          context,
+                          EmbyIdentifyScreen(
+                            instance: instance,
+                            item: item,
+                          ),
+                        );
+                        if (changed == true && context.mounted) {
+                          ref.invalidate(embyItemDetailsProvider((instance, item.id)));
+                          ref.invalidate(embyItemsProvider);
+                          ref.invalidate(embyNextUpProvider(instance));
+                          ref.invalidate(embyResumeItemsProvider(instance));
                         }
                       },
                     ),

@@ -8,6 +8,7 @@ import 'package:dio/io.dart';
 import 'models/emby_auth.dart';
 import 'models/emby_item.dart';
 import 'models/emby_remote_image.dart';
+import 'models/emby_remote_search.dart';
 import 'models/emby_session.dart';
 import 'models/emby_view.dart';
 
@@ -877,4 +878,48 @@ class EmbyClient {
       throw NetworkException.fromDio(e);
     }
   }
+
+  Future<List<EmbyRemoteSearchResult>> remoteSearch(
+    String itemId,
+    String type,
+    EmbyRemoteSearchInfo searchInfo,
+  ) =>
+      _guarded(() async {
+        final Response<dynamic> res = await _dio.post<dynamic>(
+          '/Items/RemoteSearch/$type',
+          data: EmbyRemoteSearchQuery(
+            SearchInfo: searchInfo,
+            ItemId: itemId,
+          ).toJson(),
+        );
+        final List<dynamic> list = res.data as List<dynamic>;
+        return list
+            .map((dynamic e) => EmbyRemoteSearchResult.fromJson(e as Map<String, dynamic>))
+            .toList();
+      });
+
+  Future<void> applyRemoteSearch(
+    String itemId,
+    EmbyRemoteSearchResult result, {
+    bool replaceAllImages = true,
+  }) =>
+      _guarded(() async {
+        await _dio.post<dynamic>(
+          '/Items/RemoteSearch/Apply/$itemId?ReplaceAllImages=$replaceAllImages',
+          data: result.toJson(),
+        );
+      });
+
+  Future<void> refreshMetadata(String itemId) => _guarded(() async {
+        await _dio.post<dynamic>(
+          '/Items/$itemId/Refresh',
+          queryParameters: <String, dynamic>{
+            'Recursive': true,
+            'ImageRefreshMode': 'FullRefresh',
+            'MetadataRefreshMode': 'FullRefresh',
+            'ReplaceAllImages': true,
+            'ReplaceAllMetadata': true,
+          },
+        );
+      });
 }
