@@ -88,7 +88,7 @@ class RadarrHome extends ConsumerWidget {
     ];
 
     return Scaffold(
-      drawerEdgeDragWidth: drawer != null ? MediaQuery.sizeOf(context).width * 0.5 : null,
+      drawerEdgeDragWidth: drawer != null ? MediaQuery.sizeOf(context).width * 0.15 : null,
       drawer: drawer,
       body: NotificationListener<UserScrollNotification>(
         onNotification: (UserScrollNotification notification) {
