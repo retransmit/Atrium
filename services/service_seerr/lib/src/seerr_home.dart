@@ -3,7 +3,9 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'models/seerr_discover.dart';
 import 'models/seerr_request.dart';
+import 'seerr_api.dart';
 import 'seerr_discover_screen.dart';
 import 'seerr_issues_screen.dart';
 import 'seerr_item_detail.dart';
@@ -87,95 +89,28 @@ class _SeerrRequestsTab extends ConsumerWidget {
   }
 }
 
-class _RequestTile extends ConsumerWidget {
+/// One request as a tonal card: poster + title + requester + color-coded
+/// status pills, with inline approve / decline for pending requests, an
+/// inline delete, and the overflow menu (retry etc.) top-right.
+class _RequestTile extends ConsumerStatefulWidget {
   const _RequestTile({required this.instance, required this.request});
 
   final Instance instance;
   final SeerrRequest request;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final mediaType = request.media?.mediaType ?? request.type;
-    final tmdbId = request.media?.tmdbId;
-
-    if (mediaType.isEmpty || tmdbId == null) {
-      return Card(
-        child: ListTile(
-          title: Text('Unknown Request #${request.id}'),
-          subtitle: Text('Status: ${_statusString(request.status)}'),
-        ),
-      );
-    }
-
-    final detailsAsync = ref.watch(seerrMediaDetailsProvider((
-      instance: instance,
-      mediaType: mediaType,
-      tmdbId: tmdbId,
-    ),),);
-
-    return detailsAsync.when(
-      data: (item) {
-        return InkWell(
-          onTap: () => pushScreen<void>(
-            context,
-            SeerrItemDetailScreen(instance: instance, item: item),
-          ),
-          borderRadius: BorderRadius.circular(20),
-          child: SeerrRequestCard(
-            item: item,
-            requestedBy: request.requestedBy?.displayName,
-            mediaStatus: request.media?.status,
-            requestStatus: request.status,
-            trailing: _RequestActionsMenu(
-              instance: instance,
-              request: request,
-            ),
-          ),
-        );
-      },
-      loading: () => const SizedBox(
-        height: 180,
-        child: Center(child: ExpressiveProgressIndicator()),
-      ),
-      error: (_, __) => ListTile(
-        title: Text('Request #${request.id}'),
-        subtitle: Text('Status: ${_statusString(request.status)}'),
-        trailing: const Icon(Icons.error, color: Colors.red),
-      ),
-    );
-  }
-
-  String _statusString(int status) {
-    switch (status) {
-      case 1:
-        return 'Pending';
-      case 2:
-        return 'Approved';
-      case 3:
-        return 'Declined';
-      default:
-        return 'Unknown ($status)';
-    }
-  }
+  ConsumerState<_RequestTile> createState() => _RequestTileState();
 }
 
-class _RequestActionsMenu extends ConsumerStatefulWidget {
-  const _RequestActionsMenu({required this.instance, required this.request});
-  
-  final Instance instance;
-  final SeerrRequest request;
-
-  @override
-  ConsumerState<_RequestActionsMenu> createState() => _RequestActionsMenuState();
-}
-
-class _RequestActionsMenuState extends ConsumerState<_RequestActionsMenu> {
-  bool _isLoading = false;
+class _RequestTileState extends ConsumerState<_RequestTile> {
+  bool _busy = false;
 
   Future<void> _handleAction(String action) async {
-    setState(() => _isLoading = true);
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    setState(() => _busy = true);
     try {
-      final api = await ref.read(seerrApiProvider(widget.instance).future);
+      final SeerrApi api =
+          await ref.read(seerrApiProvider(widget.instance).future);
       switch (action) {
         case 'approve':
           await api.approve(widget.request.id);
@@ -190,29 +125,82 @@ class _RequestActionsMenuState extends ConsumerState<_RequestActionsMenu> {
           await api.retryRequest(widget.request.id);
           break;
       }
-      ref.invalidate(seerrRequestsProvider(widget.instance));
-      ref.invalidate(seerrRequestCountsProvider(widget.instance));
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ref.invalidate(seerrRequestsProvider(widget.instance));
+        ref.invalidate(seerrRequestCountsProvider(widget.instance));
+        messenger.showSnackBar(
           const SnackBar(content: Text('Action successful')),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           SnackBar(content: Text('Action failed: $e')),
         );
       }
     } finally {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() => _busy = false);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
+    final SeerrRequest request = widget.request;
+    final String mediaType = request.media?.mediaType ?? request.type;
+    final int? tmdbId = request.media?.tmdbId;
+
+    if (mediaType.isEmpty || tmdbId == null) {
+      return Card(
+        child: ListTile(
+          title: Text('Unknown Request #${request.id}'),
+          subtitle: Text('Status: ${_statusString(request.status)}'),
+        ),
+      );
+    }
+
+    final AsyncValue<SeerrDiscoverResult> detailsAsync =
+        ref.watch(seerrMediaDetailsProvider((
+      instance: widget.instance,
+      mediaType: mediaType,
+      tmdbId: tmdbId,
+    ),),);
+
+    return detailsAsync.when(
+      data: (SeerrDiscoverResult item) {
+        return InkWell(
+          onTap: () => pushScreen<void>(
+            context,
+            SeerrItemDetailScreen(instance: widget.instance, item: item),
+          ),
+          borderRadius: BorderRadius.circular(20),
+          child: SeerrRequestCard(
+            item: item,
+            requestedBy: request.requestedBy?.displayName,
+            mediaStatus: request.media?.status,
+            requestStatus: request.status,
+            trailing: _actionsMenu(),
+            actions: _inlineActions(context),
+          ),
+        );
+      },
+      loading: () => const SizedBox(
+        height: 180,
+        child: Center(child: ExpressiveProgressIndicator()),
+      ),
+      error: (_, __) => ListTile(
+        title: Text('Request #${request.id}'),
+        subtitle: Text('Status: ${_statusString(request.status)}'),
+        trailing: Icon(Icons.error, color: Theme.of(context).colorScheme.error),
+      ),
+    );
+  }
+
+  /// The overflow menu keeps every request action reachable (approve /
+  /// decline while pending, retry, delete).
+  Widget _actionsMenu() {
+    if (_busy) {
       return const Padding(
         padding: EdgeInsets.all(12.0),
         child: SizedBox(
@@ -223,7 +211,7 @@ class _RequestActionsMenuState extends ConsumerState<_RequestActionsMenu> {
       );
     }
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert, color: Colors.white),
+      icon: const Icon(Icons.more_vert),
       onSelected: _handleAction,
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
         if (widget.request.status == 1) ...<PopupMenuEntry<String>>[
@@ -241,11 +229,61 @@ class _RequestActionsMenuState extends ConsumerState<_RequestActionsMenu> {
           child: Text('Retry'),
         ),
         const PopupMenuDivider(),
-        const PopupMenuItem<String>(
+        PopupMenuItem<String>(
           value: 'delete',
-          child: Text('Delete', style: TextStyle(color: Colors.red)),
+          child: Text(
+            'Delete',
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
         ),
       ],
     );
+  }
+
+  /// Inline actions on the card: approve / decline while pending, plus
+  /// delete.
+  Widget _inlineActions(BuildContext context) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    final bool pending = widget.request.status == 1;
+    return Row(
+      children: <Widget>[
+        if (pending) ...<Widget>[
+          Expanded(
+            child: FilledButton.tonalIcon(
+              onPressed: _busy ? null : () => _handleAction('approve'),
+              icon: const Icon(Icons.check, size: 18),
+              label: const Text('Approve'),
+            ),
+          ),
+          const SizedBox(width: Insets.sm),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: _busy ? null : () => _handleAction('decline'),
+              icon: const Icon(Icons.close, size: 18),
+              label: const Text('Decline'),
+            ),
+          ),
+        ] else
+          const Spacer(),
+        IconButton(
+          tooltip: 'Delete request',
+          onPressed: _busy ? null : () => _handleAction('delete'),
+          icon: Icon(Icons.delete_outline, color: cs.error),
+        ),
+      ],
+    );
+  }
+
+  String _statusString(int status) {
+    switch (status) {
+      case 1:
+        return 'Pending';
+      case 2:
+        return 'Approved';
+      case 3:
+        return 'Declined';
+      default:
+        return 'Unknown ($status)';
+    }
   }
 }

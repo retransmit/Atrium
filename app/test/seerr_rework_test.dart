@@ -168,4 +168,161 @@ void main() {
     // A resolved issue offers the Reopen action.
     expect(find.text('Reopen'), findsOneWidget);
   });
+
+  testWidgets('SeerrMediaCard shows the Available pill from mediaInfo.status',
+      (WidgetTester tester) async {
+    // No posterPath: keeps the card free of network-image loads.
+    const SeerrDiscoverResult item = SeerrDiscoverResult(
+      id: 603,
+      mediaType: 'movie',
+      title: 'The Matrix',
+      releaseDate: '1999-03-30',
+      voteAverage: 8.2,
+      mediaInfo: SeerrMedia(mediaType: 'movie', tmdbId: 603, status: 5),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AtriumTheme.light(null),
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              height: 250,
+              child: SeerrMediaCard(item: item),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('The Matrix'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(SeerrStatusBadge),
+        matching: find.text('Available'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Request tile renders color-coded status pills and inline actions',
+      (WidgetTester tester) async {
+    final Instance instance = _instance();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: <Override>[
+          seerrRequestsProvider(instance).overrideWith(
+            (Ref ref) async => const <SeerrRequest>[
+              SeerrRequest(
+                id: 1,
+                status: 1, // pending approval
+                type: 'movie',
+                media: SeerrMedia(mediaType: 'movie', tmdbId: 603, status: 3),
+                requestedBy: SeerrUser(displayName: 'Bob'),
+              ),
+            ],
+          ),
+          // The request tile resolves the title from Seerr's media details.
+          seerrMediaDetailsProvider(
+            (instance: instance, mediaType: 'movie', tmdbId: 603),
+          ).overrideWith(
+            (Ref ref) async => const SeerrDiscoverResult(
+              id: 603,
+              mediaType: 'movie',
+              title: 'The Matrix',
+            ),
+          ),
+        ],
+        child: MaterialApp(
+          theme: AtriumTheme.light(null),
+          home: Scaffold(body: SeerrHome(instance: instance)),
+        ),
+      ),
+    );
+    for (int i = 0; i < 4; i++) {
+      await tester.pump();
+    }
+
+    expect(find.text('The Matrix'), findsOneWidget);
+    expect(find.text('Bob'), findsOneWidget);
+    // Media status 3 -> Processing pill; request status 1 -> Pending pill.
+    expect(
+      find.descendant(
+        of: find.byType(SeerrStatusPill),
+        matching: find.text('Processing'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(SeerrStatusPill),
+        matching: find.text('Pending'),
+      ),
+      findsOneWidget,
+    );
+    // Pending requests get inline approve / decline alongside delete.
+    expect(find.text('Approve'), findsOneWidget);
+    expect(find.text('Decline'), findsOneWidget);
+    expect(find.byTooltip('Delete request'), findsOneWidget);
+  });
+
+  testWidgets('SeerrDiscoverScreen renders the Watchlist row',
+      (WidgetTester tester) async {
+    // Tall viewport so the lazy vertical list builds the first few rows
+    // (Watchlist, Trending, Popular Movies) in one frame.
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final Instance instance = _instance();
+    // No posterPath: keeps the row free of network-image loads.
+    const List<SeerrDiscoverResult> watchlist = <SeerrDiscoverResult>[
+      SeerrDiscoverResult(id: 603, mediaType: 'movie', title: 'The Matrix'),
+    ];
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: <Override>[
+          seerrWatchlistProvider(instance).overrideWith(
+            (Ref ref) async => watchlist,
+          ),
+          seerrTrendingProvider(instance).overrideWith(
+            (Ref ref) async => const <SeerrDiscoverResult>[],
+          ),
+          seerrDiscoverMoviesProvider(instance).overrideWith(
+            (Ref ref) async => const <SeerrDiscoverResult>[],
+          ),
+          seerrDiscoverTvProvider(instance).overrideWith(
+            (Ref ref) async => const <SeerrDiscoverResult>[],
+          ),
+          seerrUpcomingMoviesProvider(instance).overrideWith(
+            (Ref ref) async => const <SeerrDiscoverResult>[],
+          ),
+          seerrUpcomingTvProvider(instance).overrideWith(
+            (Ref ref) async => const <SeerrDiscoverResult>[],
+          ),
+          seerrMovieGenresProvider(instance).overrideWith(
+            (Ref ref) async => const <SeerrGenre>[],
+          ),
+          seerrTvGenresProvider(instance).overrideWith(
+            (Ref ref) async => const <SeerrGenre>[],
+          ),
+        ],
+        child: MaterialApp(
+          theme: AtriumTheme.light(null),
+          home: Scaffold(body: SeerrDiscoverScreen(instance: instance)),
+        ),
+      ),
+    );
+    for (int i = 0; i < 4; i++) {
+      await tester.pump();
+    }
+
+    expect(find.text('Watchlist'), findsOneWidget);
+    expect(find.text('The Matrix'), findsOneWidget);
+    // The Popular rows are wired with the same bold-header sections.
+    expect(find.text('Popular Movies'), findsOneWidget);
+  });
 }
