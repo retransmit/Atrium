@@ -6,6 +6,7 @@
 library;
 
 export 'src/models/seerr_discover.dart';
+export 'src/models/seerr_issue.dart';
 export 'src/models/seerr_request.dart';
 export 'src/models/seerr_service.dart';
 export 'src/seerr_api.dart';

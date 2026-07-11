@@ -46,6 +46,8 @@ abstract class SeerrDiscoverResult with _$SeerrDiscoverResult {
     /// TV total episode count.
     int? numberOfEpisodes,
     @Default(<SeerrGenre>[]) List<SeerrGenre> genres,
+    /// Inline cast credits (returned by GET /{movie|tv}/{id}).
+    @JsonKey(name: 'credits') SeerrCredits? credits,
   }) = _SeerrDiscoverResult;
 
   factory SeerrDiscoverResult.fromJson(Map<String, dynamic> json) =>
@@ -75,4 +77,28 @@ abstract class SeerrGenre with _$SeerrGenre {
 
   factory SeerrGenre.fromJson(Map<String, dynamic> json) =>
       _$SeerrGenreFromJson(json);
+}
+
+/// Cast credits embedded in a media-detail response.
+@freezed
+abstract class SeerrCredits with _$SeerrCredits {
+  const factory SeerrCredits({
+    @Default(<SeerrCastMember>[]) List<SeerrCastMember> cast,
+  }) = _SeerrCredits;
+
+  factory SeerrCredits.fromJson(Map<String, dynamic> json) =>
+      _$SeerrCreditsFromJson(json);
+}
+
+@freezed
+abstract class SeerrCastMember with _$SeerrCastMember {
+  const factory SeerrCastMember({
+    required int id,
+    @Default('') String name,
+    String? character,
+    String? profilePath,
+  }) = _SeerrCastMember;
+
+  factory SeerrCastMember.fromJson(Map<String, dynamic> json) =>
+      _$SeerrCastMemberFromJson(json);
 }
