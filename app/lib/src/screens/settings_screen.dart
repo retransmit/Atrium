@@ -632,10 +632,11 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                     height: 100,
                     width: double.infinity,
                     decoration: BoxDecoration(
+                      color: previewColorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(16),
                       image: DecorationImage(
                         image: FileImage(File(_localImagePath!)),
-                        fit: BoxFit.cover,
+                        fit: BoxFit.contain,
                       ),
                       border: Border.all(
                         color: previewColorScheme.outlineVariant,
