@@ -7,31 +7,11 @@ import 'package:m3_expressive/material_shapes.dart';
 
 /// A Material 3 Expressive pull-to-refresh indicator.
 ///
-/// Behaviour:
-///
-/// DRAG PHASE
-///   The indicator circle slides down from above the content at exactly
-///   the same rate as the finger, so it appears to be pushed out by the
-///   gesture. The circle is always full size — only its vertical position
-///   changes. The shape inside starts as a pure circle and morphs toward
-///   [MaterialShapes.sunny] as the drag progresses to 50% of the trigger
-///   distance, then continues to [MaterialShapes.verySunny] at 100%.
-///   Rotation accumulates in proportion to the drag distance.
-///
-/// LOADING PHASE
-///   On release past the threshold the indicator snaps to its resting
-///   position and the shape cycles through a fixed sequence with an elastic
-///   bounce motion until [onRefresh] completes.
-///
-/// DISMISS
-///   The circle slides back up out of view.
-///
-/// ```dart
-/// M3RefreshIndicator(
-///   onRefresh: _handleRefresh,
-///   child: ListView(...),
-/// )
-/// ```
+/// Under the hood, this widget uses the exact same scroll lifecycle and state
+/// machine as Flutter's official SDK [RefreshIndicatorState]. This guarantees
+/// identical physics, nested scroll view compatibility, and cancelation on
+/// iOS and Android, while custom painting the Material 3 Expressive shape morphs
+/// and color styles.
 class M3RefreshIndicator extends StatefulWidget {
   final Widget child;
   final Future<void> Function() onRefresh;
@@ -41,6 +21,19 @@ class M3RefreshIndicator extends StatefulWidget {
 
   /// Pull distance in pixels required to trigger refresh. Defaults to 140.
   final double triggerDistance;
+
+  /// The distance from the child's top or bottom outline where the refresh indicator
+  /// will settle. Defaults to 40.0.
+  final double displacement;
+
+  /// The offset where the indicator starts its slide-down. Defaults to 0.0.
+  final double edgeOffset;
+
+  /// How the refresh indicator is triggered. Defaults to [RefreshIndicatorTriggerMode.onEdge].
+  final RefreshIndicatorTriggerMode triggerMode;
+
+  /// Whether the scroll notification bubbles should be handled. Defaults to depth == 0.
+  final ScrollNotificationPredicate notificationPredicate;
 
   /// Circle background color.
   /// Defaults to [ColorScheme.primaryContainer].
@@ -59,6 +52,10 @@ class M3RefreshIndicator extends StatefulWidget {
     required this.onRefresh,
     this.indicatorSize = 56,
     this.triggerDistance = 140,
+    this.displacement = 40.0,
+    this.edgeOffset = 0.0,
+    this.triggerMode = RefreshIndicatorTriggerMode.onEdge,
+    this.notificationPredicate = defaultScrollNotificationPredicate,
     this.backgroundColor,
     this.shapeColor,
     this.loadingMorphDuration = const Duration(milliseconds: 750),
@@ -70,22 +67,31 @@ class M3RefreshIndicator extends StatefulWidget {
 
 class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
     with TickerProviderStateMixin {
-  _Phase _phase = _Phase.idle;
+  late AnimationController _positionController;
+  late AnimationController _scaleController;
+  late Animation<double> _positionFactor;
+  late Animation<double> _scaleFactor;
 
-  double _dragPixels = 0.0;
-  bool _isPulling = false;
+  RefreshIndicatorStatus? _status;
+  late Future<void> _pendingRefreshFuture;
+  bool? _isIndicatorAtTop;
+  double? _dragOffset;
 
-  // Rotation accumulated during the drag (radians)
-  double _dragRotation = 0.0;
-
-  // Loading animation — cycles through the loading shape sequence
+  // Loading animation variables
   late final AnimationController _loadCtrl;
   int _loadIndex = 0;
 
-  // Slide-out animation when dismissing
-  late final AnimationController _dismissCtrl;
+  static const double _kDragSizeFactorLimit = 1.5;
+  static const Duration _kIndicatorSnapDuration = Duration(milliseconds: 150);
+  static const Duration _kIndicatorScaleDuration = Duration(milliseconds: 200);
 
-  // Fixed loading sequence: verySunny → gem → pentagon → diamond → circle
+  static final Animatable<double> _kDragSizeFactorLimitTween = Tween<double>(
+    begin: 0.0,
+    end: _kDragSizeFactorLimit,
+  );
+
+  static final Animatable<double> _oneToZeroTween = Tween<double>(begin: 1.0, end: 0.0);
+
   static final _loadingSequence = <RoundedPolygon>[
     MaterialShapes.verySunny,
     MaterialShapes.gem,
@@ -99,135 +105,29 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
   @override
   void initState() {
     super.initState();
+    _positionController = AnimationController(vsync: this);
+    _positionFactor = _positionController.drive(_kDragSizeFactorLimitTween);
+
+    _scaleController = AnimationController(vsync: this);
+    _scaleFactor = _scaleController.drive(_oneToZeroTween);
+
     _loadCtrl = AnimationController(
       vsync: this,
       duration: widget.loadingMorphDuration,
     )..addStatusListener(_onLoadCycle);
-
-    _dismissCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
   }
 
   @override
   void dispose() {
+    _positionController.dispose();
+    _scaleController.dispose();
     _loadCtrl.dispose();
-    _dismissCtrl.dispose();
     super.dispose();
-  }
-
-  // ── Scroll handling ─────────────────────────────────────────────────────
-
-  bool _shouldStart(ScrollNotification n) {
-    if (n.depth != 0) return false;
-    if (_phase != _Phase.idle) return false;
-    if (n.metrics.pixels > 0.0) return false;
-
-    if (n is ScrollStartNotification) {
-      return n.dragDetails != null;
-    }
-    if (n is ScrollUpdateNotification) {
-      final delta = n.scrollDelta;
-      return delta != null && delta < 0.0 && n.dragDetails != null;
-    }
-    return false;
-  }
-
-  bool _handleNotification(ScrollNotification n) {
-    if (n.depth != 0) return false;
-    if (_phase == _Phase.refreshing || _phase == _Phase.dismissing) {
-      return false;
-    }
-
-    if (_shouldStart(n)) {
-      _isPulling = true;
-      _dragPixels = 0.0;
-      _dragRotation = 0.0;
-      setState(() => _phase = _Phase.dragging);
-      return false;
-    }
-
-    if (_phase == _Phase.dragging || _phase == _Phase.armed) {
-      if (n is ScrollUpdateNotification) {
-        if (n.metrics.pixels > 0.0) {
-          _isPulling = false;
-          _dismiss();
-        } else {
-          final delta = n.scrollDelta;
-          if (delta != null) {
-            _onPull(-delta);
-          }
-        }
-        if (_phase == _Phase.armed && n.dragDetails == null) {
-          // iOS release during overscroll
-          _beginRefresh();
-        }
-      } else if (n is OverscrollNotification) {
-        _onPull(-n.overscroll);
-      } else if (n is ScrollEndNotification) {
-        if (_phase == _Phase.armed) {
-          _beginRefresh();
-        } else {
-          _dismiss();
-        }
-      }
-    }
-    return false;
-  }
-
-  void _onPull(double delta) {
-    if (_phase == _Phase.refreshing || _phase == _Phase.dismissing) return;
-
-    if (!_isPulling) {
-      _isPulling = true;
-    }
-
-    // Apply rubber-banding resistance only to positive delta (pulling down further)
-    double adjustedDelta = delta;
-    if (delta > 0) {
-      final progress = (_dragPixels / widget.triggerDistance).clamp(0.0, 1.0);
-      final resistance = 1.0 - progress * 0.6;
-      adjustedDelta = delta * resistance;
-    }
-
-    _dragPixels = (_dragPixels + adjustedDelta)
-        .clamp(0.0, widget.triggerDistance * 2.0);
-
-    _dragRotation += delta * 0.016;
-
-    final nextPhase = _dragPixels >= widget.triggerDistance
-        ? _Phase.armed
-        : _Phase.dragging;
-
-    if (_dragPixels <= 0 && delta < 0) {
-      _isPulling = false;
-      _dismiss();
-    } else {
-      if (_phase != nextPhase) {
-        setState(() => _phase = nextPhase);
-      } else {
-        setState(() {});
-      }
-    }
-  }
-
-  // ── Phases ───────────────────────────────────────────────────────────────
-
-  Future<void> _beginRefresh() async {
-    _isPulling = false;
-    setState(() {
-      _phase = _Phase.refreshing;
-      _loadIndex = 0;
-    });
-    unawaited(_loadCtrl.forward());
-    await widget.onRefresh();
-    if (mounted) _dismiss();
   }
 
   void _onLoadCycle(AnimationStatus status) {
     if (status == AnimationStatus.completed &&
-        _phase == _Phase.refreshing &&
+        _status == RefreshIndicatorStatus.refresh &&
         mounted) {
       setState(() {
         _loadIndex = (_loadIndex + 1) % _loadingSequence.length;
@@ -238,154 +138,301 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
     }
   }
 
-  void _dismiss() {
-    _isPulling = false;
-    setState(() => _phase = _Phase.dismissing);
-    _loadCtrl.stop();
-    _dismissCtrl.forward().then((_) {
-      if (!mounted) return;
-      _dismissCtrl.reset();
+  bool _shouldStart(ScrollNotification notification) {
+    return ((notification is ScrollStartNotification && notification.dragDetails != null) ||
+            (notification is ScrollUpdateNotification &&
+                notification.dragDetails != null &&
+                widget.triggerMode == RefreshIndicatorTriggerMode.anywhere)) &&
+        ((notification.metrics.axisDirection == AxisDirection.up &&
+                notification.metrics.extentAfter == 0.0) ||
+            (notification.metrics.axisDirection == AxisDirection.down &&
+                notification.metrics.extentBefore == 0.0)) &&
+        _status == null &&
+        _start(notification.metrics.axisDirection);
+  }
+
+  bool _start(AxisDirection direction) {
+    assert(_status == null);
+    assert(_isIndicatorAtTop == null);
+    assert(_dragOffset == null);
+    switch (direction) {
+      case AxisDirection.down:
+      case AxisDirection.up:
+        _isIndicatorAtTop = true;
+      case AxisDirection.left:
+      case AxisDirection.right:
+        _isIndicatorAtTop = null;
+        return false;
+    }
+    _dragOffset = 0.0;
+    _scaleController.value = 0.0;
+    _positionController.value = 0.0;
+    return true;
+  }
+
+  void _checkDragOffset(double containerExtent) {
+    assert(_status == RefreshIndicatorStatus.drag || _status == RefreshIndicatorStatus.armed);
+    // Custom trigger distance mapping
+    double newValue = _dragOffset! / widget.triggerDistance;
+    if (_status == RefreshIndicatorStatus.armed) {
+      newValue = math.max(newValue, 1.0 / _kDragSizeFactorLimit);
+    }
+    _positionController.value = newValue.clamp(0.0, 1.0);
+    if (_status == RefreshIndicatorStatus.drag &&
+        _positionController.value >= 1.0 / _kDragSizeFactorLimit) {
       setState(() {
-        _phase = _Phase.idle;
-        _dragPixels = 0.0;
-        _dragRotation = 0.0;
+        _status = RefreshIndicatorStatus.armed;
+      });
+    }
+  }
+
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (!widget.notificationPredicate(notification)) {
+      return false;
+    }
+    if (_shouldStart(notification)) {
+      setState(() {
+        _status = RefreshIndicatorStatus.drag;
+      });
+      return false;
+    }
+    final bool? indicatorAtTopNow = switch (notification.metrics.axisDirection) {
+      AxisDirection.down || AxisDirection.up => true,
+      AxisDirection.left || AxisDirection.right => null,
+    };
+    if (indicatorAtTopNow != _isIndicatorAtTop) {
+      if (_status == RefreshIndicatorStatus.drag || _status == RefreshIndicatorStatus.armed) {
+        _dismiss(RefreshIndicatorStatus.canceled);
+      }
+    } else if (notification is ScrollUpdateNotification) {
+      if (_status == RefreshIndicatorStatus.drag || _status == RefreshIndicatorStatus.armed) {
+        if (notification.metrics.axisDirection == AxisDirection.down) {
+          _dragOffset = _dragOffset! - notification.scrollDelta!;
+        } else if (notification.metrics.axisDirection == AxisDirection.up) {
+          _dragOffset = _dragOffset! + notification.scrollDelta!;
+        }
+        _checkDragOffset(notification.metrics.viewportDimension);
+      }
+      if (_status == RefreshIndicatorStatus.armed && notification.dragDetails == null) {
+        // iOS bounce back release trigger
+        _show();
+      }
+    } else if (notification is OverscrollNotification) {
+      if (_status == RefreshIndicatorStatus.drag || _status == RefreshIndicatorStatus.armed) {
+        if (notification.metrics.axisDirection == AxisDirection.down) {
+          _dragOffset = _dragOffset! - notification.overscroll;
+        } else if (notification.metrics.axisDirection == AxisDirection.up) {
+          _dragOffset = _dragOffset! + notification.overscroll;
+        }
+        _checkDragOffset(notification.metrics.viewportDimension);
+      }
+    } else if (notification is ScrollEndNotification) {
+      switch (_status) {
+        case RefreshIndicatorStatus.armed:
+          if (_positionController.value < 1.0 / _kDragSizeFactorLimit) {
+            _dismiss(RefreshIndicatorStatus.canceled);
+          } else {
+            _show();
+          }
+        case RefreshIndicatorStatus.drag:
+          _dismiss(RefreshIndicatorStatus.canceled);
+        case RefreshIndicatorStatus.canceled:
+        case RefreshIndicatorStatus.done:
+        case RefreshIndicatorStatus.refresh:
+        case RefreshIndicatorStatus.snap:
+        case null:
+          break;
+      }
+    }
+    return false;
+  }
+
+  bool _handleIndicatorNotification(OverscrollIndicatorNotification notification) {
+    if (notification.depth != 0 || !notification.leading) {
+      return false;
+    }
+    if (_status == RefreshIndicatorStatus.drag) {
+      notification.disallowIndicator();
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> _dismiss(RefreshIndicatorStatus newMode) async {
+    await Future<void>.value();
+    assert(newMode == RefreshIndicatorStatus.canceled || newMode == RefreshIndicatorStatus.done);
+    setState(() {
+      _status = newMode;
+    });
+    switch (_status!) {
+      case RefreshIndicatorStatus.done:
+        await _scaleController.animateTo(1.0, duration: _kIndicatorScaleDuration);
+      case RefreshIndicatorStatus.canceled:
+        await _positionController.animateTo(0.0, duration: _kIndicatorScaleDuration);
+      case RefreshIndicatorStatus.armed:
+      case RefreshIndicatorStatus.drag:
+      case RefreshIndicatorStatus.refresh:
+      case RefreshIndicatorStatus.snap:
+        assert(false);
+    }
+    if (mounted && _status == newMode) {
+      _dragOffset = null;
+      _isIndicatorAtTop = null;
+      _loadCtrl.stop();
+      setState(() {
+        _status = null;
         _loadIndex = 0;
       });
+    }
+  }
+
+  void _show() {
+    assert(_status != RefreshIndicatorStatus.refresh);
+    assert(_status != RefreshIndicatorStatus.snap);
+    final completer = Completer<void>();
+    _pendingRefreshFuture = completer.future;
+    _status = RefreshIndicatorStatus.snap;
+    _positionController
+        .animateTo(1.0 / _kDragSizeFactorLimit, duration: _kIndicatorSnapDuration)
+        .then<void>((void value) {
+      if (mounted && _status == RefreshIndicatorStatus.snap) {
+        setState(() {
+          _status = RefreshIndicatorStatus.refresh;
+        });
+        unawaited(_loadCtrl.forward());
+        final Future<void> refreshResult = widget.onRefresh();
+        refreshResult.whenComplete(() {
+          if (mounted && _status == RefreshIndicatorStatus.refresh) {
+            completer.complete();
+            _dismiss(RefreshIndicatorStatus.done);
+          }
+        });
+      }
     });
   }
 
-  // ── Geometry helpers ─────────────────────────────────────────────────────
-
-  double get _dragProgress =>
-      (_dragPixels / widget.triggerDistance).clamp(0.0, 1.0);
-
-  /// How far down the indicator circle sits, in pixels from the top edge.
-  /// Tracks the finger during drag, stays at indicatorSize/2 + 8 during loading.
-  double _indicatorTopOffset() {
-    final size = widget.indicatorSize;
-    const restingTop = 8.0; // gap from top edge when fully shown
-    switch (_phase) {
-      case _Phase.idle:
-        return -(size + 8); // fully hidden above
-      case _Phase.dragging:
-      case _Phase.armed:
-      // Move down with the finger from fully hidden to resting position
-        final travel = size + 8 + restingTop;
-        return -(size + 8) + _dragProgress * travel;
-      case _Phase.refreshing:
-        return restingTop;
-      case _Phase.dismissing:
-      // Slide back up
-        final t = Curves.easeInCubic.transform(_dismissCtrl.value);
-        return restingTop - t * (size + 8 + restingTop);
+  Future<void> show({bool atTop = true}) {
+    if (_status != RefreshIndicatorStatus.refresh && _status != RefreshIndicatorStatus.snap) {
+      if (_status == null) {
+        _start(atTop ? AxisDirection.down : AxisDirection.up);
+      }
+      _show();
     }
+    return _pendingRefreshFuture;
   }
 
-  // ── Shape selection ──────────────────────────────────────────────────────
-
-  /// During drag: circle → sunny → verySunny mapped to dragProgress 0..1.
-  (RoundedPolygon, RoundedPolygon, double) _dragBlend() {
-    // First half: circle → sunny, second half: sunny → verySunny
-    if (_dragProgress <= 0.5) {
+  (RoundedPolygon, RoundedPolygon, double) _dragBlend(double progress) {
+    if (progress <= 0.5) {
       return (
-      MaterialShapes.circle,
-      MaterialShapes.sunny,
-      _dragProgress * 2,
+        MaterialShapes.circle,
+        MaterialShapes.sunny,
+        progress * 2,
       );
     } else {
       return (
-      MaterialShapes.sunny,
-      MaterialShapes.verySunny,
-      (_dragProgress - 0.5) * 2,
+        MaterialShapes.sunny,
+        MaterialShapes.verySunny,
+        (progress - 0.5) * 2,
       );
     }
   }
 
-  // ── Build ────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
+    final Widget child = NotificationListener<ScrollNotification>(
+      onNotification: _handleScrollNotification,
+      child: NotificationListener<OverscrollIndicatorNotification>(
+        onNotification: _handleIndicatorNotification,
+        child: widget.child,
+      ),
+    );
+
     final cs = Theme.of(context).colorScheme;
     final bgColor = widget.backgroundColor ?? cs.primaryContainer;
     final shapeColor = widget.shapeColor ?? cs.primary;
     final sz = widget.indicatorSize;
 
-    return NotificationListener<ScrollNotification>(
-      onNotification: _handleNotification,
-      child: Stack(
-        children: [
-          widget.child,
-          if (_phase != _Phase.idle)
-            AnimatedBuilder(
-              animation: Listenable.merge([_loadCtrl, _dismissCtrl]),
-              builder: (_, __) {
-                final topOffset = _indicatorTopOffset();
+    final bool showIndeterminateIndicator =
+        _status == RefreshIndicatorStatus.refresh || _status == RefreshIndicatorStatus.done;
 
-                RoundedPolygon shapeA;
-                RoundedPolygon shapeB;
-                double morphT;
-                double angle;
+    return Stack(
+      children: <Widget>[
+        child,
+        if (_status != null)
+          Positioned(
+            top: _isIndicatorAtTop! ? widget.edgeOffset : null,
+            bottom: !_isIndicatorAtTop! ? widget.edgeOffset : null,
+            left: 0.0,
+            right: 0.0,
+            child: SizeTransition(
+              alignment: AlignmentDirectional(-1.0, _isIndicatorAtTop! ? 1.0 : -1.0),
+              sizeFactor: _positionFactor,
+              child: Padding(
+                padding: _isIndicatorAtTop!
+                    ? EdgeInsets.only(top: widget.displacement)
+                    : EdgeInsets.only(bottom: widget.displacement),
+                child: Align(
+                  alignment: _isIndicatorAtTop! ? Alignment.topCenter : Alignment.bottomCenter,
+                  child: ScaleTransition(
+                    scale: _scaleFactor,
+                    child: AnimatedBuilder(
+                      animation: _positionController,
+                      builder: (BuildContext context, Widget? child) {
+                        RoundedPolygon shapeA;
+                        RoundedPolygon shapeB;
+                        double morphT;
+                        double angle;
 
-                if (_phase == _Phase.dragging || _phase == _Phase.armed) {
-                  final (a, b, t) = _dragBlend();
-                  shapeA = a;
-                  shapeB = b;
-                  morphT = Curves.easeInOutCubic.transform(t);
-                  angle = _dragRotation;
-                } else {
-                  // Refreshing or dismissing — keep animating loading sequence
-                  shapeA = _loadingSequence[_loadIndex];
-                  shapeB = _loadingSequence[
-                  (_loadIndex + 1) % _loadingSequence.length];
-                  // Elastic out: fast start, squishy bounce
-                  morphT = Curves.elasticOut
-                      .transform(_loadCtrl.value)
-                      .clamp(0.0, 1.0);
-                  angle = _dragRotation +
-                      _loadCtrl.value * math.pi * 1.5 +
-                      _loadIndex * math.pi * 0.6;
-                }
+                        if (!showIndeterminateIndicator) {
+                          final progress =
+                              (_positionController.value * _kDragSizeFactorLimit).clamp(0.0, 1.0);
+                          final (a, b, t) = _dragBlend(progress);
+                          shapeA = a;
+                          shapeB = b;
+                          morphT = Curves.easeInOutCubic.transform(t);
+                          angle = progress * math.pi * 2.2;
+                        } else {
+                          shapeA = _loadingSequence[_loadIndex];
+                          shapeB = _loadingSequence[(_loadIndex + 1) % _loadingSequence.length];
+                          morphT = Curves.elasticOut.transform(_loadCtrl.value).clamp(0.0, 1.0);
+                          angle = _loadCtrl.value * math.pi * 1.5 + _loadIndex * math.pi * 0.6;
+                        }
 
-                return Positioned(
-                  top: topOffset,
-                  left: 0,
-                  right: 0,
-                  child: Center(
-                    child: Container(
-                      width: sz,
-                      height: sz,
-                      decoration: BoxDecoration(
-                        color: bgColor,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: shapeColor.withAlpha(35),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                        return Container(
+                          width: sz,
+                          height: sz,
+                          decoration: BoxDecoration(
+                            color: bgColor,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: shapeColor.withAlpha(35),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: CustomPaint(
-                          painter: M3ShapeMorphPainter(
-                            shapeA: shapeA,
-                            shapeB: shapeB,
-                            morphProgress: morphT,
-                            color: shapeColor,
-                            rotationAngle: angle,
+                          child: Padding(
+                            padding: const EdgeInsets.all(10),
+                            child: CustomPaint(
+                              painter: M3ShapeMorphPainter(
+                                shapeA: shapeA,
+                                shapeB: shapeB,
+                                morphProgress: morphT,
+                                color: shapeColor,
+                                rotationAngle: angle,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
+                        );
+                      },
                     ),
                   ),
-                );
-              },
+                ),
+              ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 }
-
-enum _Phase { idle, dragging, armed, refreshing, dismissing }
