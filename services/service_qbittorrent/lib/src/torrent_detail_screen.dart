@@ -294,65 +294,65 @@ class _OverviewTab extends ConsumerWidget {
                         ],
                       ],
                     ),
+                    const SizedBox(height: Insets.lg),
+                    Wrap(
+                      spacing: 8.0,
+                      runSpacing: 8.0,
+                      children: <Widget>[
+                        FilledButton.tonalIcon(
+                          icon: const Icon(Icons.pause, size: 18),
+                          label: const Text('Pause'),
+                          onPressed: () async {
+                            final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
+                            await client.pause(<String>[torrent.hash]);
+                            ref.invalidate(qbitRawTorrentsProvider(instance));
+                          },
+                        ),
+                        FilledButton.tonalIcon(
+                          icon: const Icon(Icons.play_arrow, size: 18),
+                          label: const Text('Resume'),
+                          onPressed: () async {
+                            final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
+                            await client.resume(<String>[torrent.hash]);
+                            ref.invalidate(qbitRawTorrentsProvider(instance));
+                          },
+                        ),
+                        FilledButton.tonalIcon(
+                          icon: const Icon(Icons.fast_forward, size: 18),
+                          label: const Text('Force Start'),
+                          onPressed: () async {
+                            final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
+                            await client.setForceStart(<String>[torrent.hash], value: true);
+                            ref.invalidate(qbitRawTorrentsProvider(instance));
+                          },
+                        ),
+                        FilledButton.tonalIcon(
+                          icon: const Icon(Icons.link, size: 18),
+                          label: const Text('Copy Magnet'),
+                          onPressed: () async {
+                            final String magnet = torrent.magnetUri.isNotEmpty 
+                                ? torrent.magnetUri 
+                                : 'magnet:?xt=urn:btih:${torrent.hash}&dn=${Uri.encodeComponent(torrent.name)}';
+                            await Clipboard.setData(ClipboardData(text: magnet));
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Magnet link copied')));
+                            }
+                          },
+                        ),
+                        FilledButton.tonalIcon(
+                          icon: const Icon(Icons.tag, size: 18),
+                          label: const Text('Copy Hash'),
+                          onPressed: () async {
+                            await Clipboard.setData(ClipboardData(text: torrent.hash));
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Torrent hash copied')));
+                            }
+                          },
+                        ),
+                      ],
+                    ),
                   ],
                 ),
-              ),
-              const SizedBox(height: Insets.md),
-              Wrap(
-                spacing: 8.0,
-                runSpacing: 8.0,
-                children: <Widget>[
-                  FilledButton.tonalIcon(
-                    icon: const Icon(Icons.pause, size: 18),
-                    label: const Text('Pause'),
-                    onPressed: () async {
-                      final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
-                      await client.pause(<String>[torrent.hash]);
-                      ref.invalidate(qbitRawTorrentsProvider(instance));
-                    },
-                  ),
-                  FilledButton.tonalIcon(
-                    icon: const Icon(Icons.play_arrow, size: 18),
-                    label: const Text('Resume'),
-                    onPressed: () async {
-                      final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
-                      await client.resume(<String>[torrent.hash]);
-                      ref.invalidate(qbitRawTorrentsProvider(instance));
-                    },
-                  ),
-                  FilledButton.tonalIcon(
-                    icon: const Icon(Icons.fast_forward, size: 18),
-                    label: const Text('Force Start'),
-                    onPressed: () async {
-                      final QbittorrentClient client = await ref.read(qbittorrentClientProvider(instance).future);
-                      await client.setForceStart(<String>[torrent.hash], value: true);
-                      ref.invalidate(qbitRawTorrentsProvider(instance));
-                    },
-                  ),
-                  FilledButton.tonalIcon(
-                    icon: const Icon(Icons.link, size: 18),
-                    label: const Text('Copy Magnet'),
-                    onPressed: () async {
-                      final String magnet = torrent.magnetUri.isNotEmpty 
-                          ? torrent.magnetUri 
-                          : 'magnet:?xt=urn:btih:${torrent.hash}&dn=${Uri.encodeComponent(torrent.name)}';
-                      await Clipboard.setData(ClipboardData(text: magnet));
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Magnet link copied')));
-                      }
-                    },
-                  ),
-                  FilledButton.tonalIcon(
-                    icon: const Icon(Icons.tag, size: 18),
-                    label: const Text('Copy Hash'),
-                    onPressed: () async {
-                      await Clipboard.setData(ClipboardData(text: torrent.hash));
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Torrent hash copied')));
-                      }
-                    },
-                  ),
-                ],
               ),
               const SizedBox(height: Insets.md),
               _SectionCard(
