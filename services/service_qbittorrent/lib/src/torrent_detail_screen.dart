@@ -298,7 +298,11 @@ class _OverviewTab extends ConsumerWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: <Widget>[
-                        IconButton.filledTonal(
+                        IconButton(
+                          style: IconButton.styleFrom(
+                            backgroundColor: accent.withValues(alpha: 0.15),
+                            foregroundColor: accent,
+                          ),
                           icon: const Icon(Icons.pause),
                           tooltip: 'Pause',
                           onPressed: () async {
@@ -308,7 +312,11 @@ class _OverviewTab extends ConsumerWidget {
                           },
                         ),
                         const SizedBox(width: Insets.md),
-                        IconButton.filledTonal(
+                        IconButton(
+                          style: IconButton.styleFrom(
+                            backgroundColor: accent.withValues(alpha: 0.15),
+                            foregroundColor: accent,
+                          ),
                           icon: const Icon(Icons.play_arrow),
                           tooltip: 'Resume',
                           onPressed: () async {
@@ -318,7 +326,11 @@ class _OverviewTab extends ConsumerWidget {
                           },
                         ),
                         const SizedBox(width: Insets.md),
-                        IconButton.filledTonal(
+                        IconButton(
+                          style: IconButton.styleFrom(
+                            backgroundColor: accent.withValues(alpha: 0.15),
+                            foregroundColor: accent,
+                          ),
                           icon: const Icon(Icons.fast_forward),
                           tooltip: 'Force Start',
                           onPressed: () async {
