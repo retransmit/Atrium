@@ -33,10 +33,10 @@ abstract final class AtriumRoutes {
   /// Service detail route, parameterized by service kind and instance id -
   /// e.g. `/dashboard/service/sonarr/9f3b...`. Each service module renders
   /// its own screen for the matched kind.
-  static const String service = 'service/:kind/:instanceId';
+  static const String service = '/service/:kind/:instanceId';
   static const String serviceName = 'service';
 
-  /// Builds the path to a service detail screen under the dashboard branch.
+  /// Builds the path to a service detail screen.
   static String servicePath(String kind, String instanceId) =>
-      '$dashboard/service/$kind/$instanceId';
+      '/service/$kind/$instanceId';
 }

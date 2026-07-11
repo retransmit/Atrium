@@ -4,6 +4,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:core_router/core_router.dart';
 import 'package:service_bazarr/service_bazarr.dart';
 import 'package:service_emby/service_emby.dart';
 import 'package:service_jellyfin/service_jellyfin.dart';
@@ -55,11 +56,18 @@ class ServiceDetailScreen extends ConsumerWidget {
         ),
       );
     }
-    return Scaffold(
-      drawer: ServicesDrawer(
-        instances: ref.watch(activeInstancesProvider),
-        profile: ref.watch(activeProfileProvider),
-      ),
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (didPop) return;
+        context.goNamed(AtriumRoutes.dashboardName);
+      },
+      child: Scaffold(
+        drawerEdgeDragWidth: 60.0,
+        drawer: ServicesDrawer(
+          instances: ref.watch(activeInstancesProvider),
+          profile: ref.watch(activeProfileProvider),
+        ),
       appBar: AppBar(
         leading: Builder(
           builder: (BuildContext context) {
@@ -202,8 +210,30 @@ class ServiceDetailScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: _bodyFor(instance),
-    );
+      body: Stack(
+        children: <Widget>[
+          Positioned.fill(child: _bodyFor(instance)),
+          Positioned(
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 40,
+            child: Builder(
+              builder: (BuildContext innerContext) {
+                return GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onHorizontalDragUpdate: (DragUpdateDetails details) {
+                    if (details.primaryDelta != null && details.primaryDelta! > 2) {
+                      Scaffold.of(innerContext).openDrawer();
+                    }
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    ));
   }
 
   Widget _bodyFor(Instance instance) {

@@ -24,6 +24,19 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
     navigatorKey: _rootNavigatorKey,
     initialLocation: AtriumRoutes.dashboard,
     routes: <RouteBase>[
+      GoRoute(
+        path: AtriumRoutes.service,
+        parentNavigatorKey: _rootNavigatorKey,
+        name: AtriumRoutes.serviceName,
+        pageBuilder: (BuildContext context, GoRouterState state) =>
+            NoTransitionPage<void>(
+          key: state.pageKey,
+          child: ServiceDetailScreen(
+            kindName: state.pathParameters['kind'] ?? '',
+            instanceId: state.pathParameters['instanceId'] ?? '',
+          ),
+        ),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (
           BuildContext context,
@@ -71,16 +84,6 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
                     name: AtriumRoutes.profilesName,
                     builder: (BuildContext context, GoRouterState state) =>
                         const ProfilesScreen(),
-                  ),
-                  GoRoute(
-                    path: AtriumRoutes.service,
-                    parentNavigatorKey: _rootNavigatorKey,
-                    name: AtriumRoutes.serviceName,
-                    builder: (BuildContext context, GoRouterState state) =>
-                        ServiceDetailScreen(
-                      kindName: state.pathParameters['kind'] ?? '',
-                      instanceId: state.pathParameters['instanceId'] ?? '',
-                    ),
                   ),
                 ],
               ),

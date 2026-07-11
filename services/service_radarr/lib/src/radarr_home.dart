@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:go_router/go_router.dart';
 
 import '../service_radarr.dart';
 import 'home/activity_tab.dart';
@@ -95,6 +96,7 @@ class RadarrHome extends ConsumerWidget {
     ];
 
     return Scaffold(
+      drawerEdgeDragWidth: 60.0,
       drawer: drawer,
       body: NotificationListener<UserScrollNotification>(
         onNotification: (UserScrollNotification notification) {
@@ -113,7 +115,7 @@ class RadarrHome extends ConsumerWidget {
         child: Builder(
           builder: (BuildContext context) {
             return PopScope<Object?>(
-              canPop: !hasSomethingToUnwind,
+              canPop: false,
               onPopInvokedWithResult: (bool didPop, Object? result) {
                 if (didPop) return;
 
@@ -132,11 +134,39 @@ class RadarrHome extends ConsumerWidget {
                   ref
                       .read(radarrActiveTabBarIndexProvider(instance).notifier)
                       .state = 0;
+                  return;
                 }
+
+                // If nothing to unwind, go back to dashboard.
+                GoRouter.of(context).go('/dashboard');
               },
-              child: IndexedStack(
-                index: currentIndex,
-                children: tabs,
+              child: Stack(
+                children: <Widget>[
+                  Positioned.fill(
+                    child: IndexedStack(
+                      index: currentIndex,
+                      children: tabs,
+                    ),
+                  ),
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: 40,
+                    child: Builder(
+                      builder: (BuildContext innerContext) {
+                        return GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onHorizontalDragUpdate: (DragUpdateDetails details) {
+                            if (details.primaryDelta != null && details.primaryDelta! > 2) {
+                              Scaffold.of(innerContext).openDrawer();
+                            }
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
             );
           },
