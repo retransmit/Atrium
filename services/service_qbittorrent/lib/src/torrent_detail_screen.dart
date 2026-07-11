@@ -370,8 +370,8 @@ class _OverviewTab extends ConsumerWidget {
                         ),
                         TextButton.icon(
                           style: TextButton.styleFrom(
-                            backgroundColor: cs.errorContainer,
-                            foregroundColor: cs.onErrorContainer,
+                            backgroundColor: cs.surfaceContainerHighest,
+                            foregroundColor: cs.onSurfaceVariant,
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           ),
                           icon: const Icon(Icons.delete, size: 18),
