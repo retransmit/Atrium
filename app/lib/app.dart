@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'src/custom_theme_providers.dart';
 import 'src/preferences.dart';
 import 'src/router.dart';
 
@@ -51,13 +52,23 @@ class AtriumApp extends ConsumerWidget {
       } catch (_) {}
     }
 
+    final Preferences prefs = ref.watch(preferencesProvider);
+    final (ColorScheme customLight, ColorScheme customDark) = ref.watch(customColorSchemeProvider);
+
     return AtriumTheme.withDynamicColor(
       builder: (ColorScheme? lightScheme, ColorScheme? darkScheme) {
+        final ColorScheme activeLight = prefs.themeSource == ThemeSource.system
+            ? (lightScheme ?? ColorScheme.fromSeed(seedColor: AtriumTheme.seed))
+            : customLight;
+        final ColorScheme activeDark = prefs.themeSource == ThemeSource.system
+            ? (darkScheme ?? ColorScheme.fromSeed(seedColor: AtriumTheme.seed, brightness: Brightness.dark))
+            : customDark;
+
         return MaterialApp.router(
           title: 'Atrium',
           debugShowCheckedModeBanner: false,
-          theme: AtriumTheme.light(lightScheme, fontFamily: resolvedFontFamily),
-          darkTheme: AtriumTheme.dark(darkScheme, fontFamily: resolvedFontFamily),
+          theme: AtriumTheme.light(activeLight, fontFamily: resolvedFontFamily),
+          darkTheme: AtriumTheme.dark(activeDark, fontFamily: resolvedFontFamily),
           themeMode: themeMode,
           routerConfig: router,
           // Overlay the opt-in biometric lock above every route.

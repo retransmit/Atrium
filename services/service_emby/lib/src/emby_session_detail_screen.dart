@@ -6,7 +6,7 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:palette_generator/palette_generator.dart';
+import 'package:palette_generator_plus/palette_generator_plus.dart';
 
 import 'emby_client.dart';
 import 'emby_providers.dart';
