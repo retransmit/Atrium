@@ -248,7 +248,7 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
   List<Color> _extractedColors = [];
   int _activeTab = 0;
 
-  // Local state variables for staging selections before clicking Apply
+  // Local state variables for staging selections
   ThemeSource _localSource = ThemeSource.system;
   String? _localSeedColorHex;
   String? _localImagePath;
@@ -298,7 +298,7 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
           size: const Size(200, 200),
           timeout: Duration.zero,
         );
-        final List<Color> colors = <Color>{
+        final List<Color> rawColors = <Color>{
           if (palette.vibrantColor?.color != null) palette.vibrantColor!.color,
           if (palette.lightVibrantColor?.color != null) palette.lightVibrantColor!.color,
           if (palette.darkVibrantColor?.color != null) palette.darkVibrantColor!.color,
@@ -307,9 +307,31 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
           if (palette.darkMutedColor?.color != null) palette.darkMutedColor!.color,
           if (palette.dominantColor?.color != null) palette.dominantColor!.color,
         }.toList();
+
+        // Filter out colors that are visually too similar to each other
+        final List<Color> distinctColors = [];
+        for (final color in rawColors) {
+          final hsl = HSLColor.fromColor(color);
+          bool isDuplicate = false;
+          for (final existing in distinctColors) {
+            final existingHsl = HSLColor.fromColor(existing);
+            final hueDiff = (hsl.hue - existingHsl.hue).abs();
+            final minHueDiff = hueDiff > 180 ? 360 - hueDiff : hueDiff;
+            final satDiff = (hsl.saturation - existingHsl.saturation).abs();
+            final lightDiff = (hsl.lightness - existingHsl.lightness).abs();
+            
+            if (minHueDiff < 30.0 && satDiff < 0.2 && lightDiff < 0.2) {
+              isDuplicate = true;
+              break;
+            }
+          }
+          if (!isDuplicate) {
+            distinctColors.add(color);
+          }
+        }
         
         setState(() {
-          _extractedColors = colors;
+          _extractedColors = distinctColors;
         });
       }
     } catch (_) {}
@@ -337,6 +359,10 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
           _activeTab = 2;
         });
         
+        final controller = ref.read(preferencesProvider.notifier);
+        await controller.setThemeSource(ThemeSource.customImage);
+        await controller.setCustomImagePath(localPath);
+
         await _loadPalette(localPath);
         if (_extractedColors.isNotEmpty) {
           final Color seed = _extractedColors.first;
@@ -344,19 +370,19 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
           setState(() {
             _localSeedColorHex = hex;
           });
+          await controller.setCustomSeedColorHex(hex);
         }
       }
     } catch (_) {}
   }
 
-  Widget _buildTabButton(int index, String label) {
+  Widget _buildTabButton(int index, String label, ColorScheme cs) {
     final isSelected = _activeTab == index;
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
     
     return Expanded(
       child: GestureDetector(
-        onTap: () {
+        onTap: () async {
+          final controller = ref.read(preferencesProvider.notifier);
           setState(() {
             _activeTab = index;
             if (index == 0) {
@@ -367,6 +393,17 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
               _localSource = ThemeSource.customImage;
             }
           });
+
+          if (index == 0) {
+            await controller.setThemeSource(ThemeSource.system);
+          } else if (index == 1) {
+            await controller.setThemeSource(ThemeSource.preset);
+            await controller.setCustomSeedColorHex(_localSeedColorHex);
+          } else {
+            await controller.setThemeSource(ThemeSource.customImage);
+            await controller.setCustomSeedColorHex(_localSeedColorHex);
+            await controller.setCustomImagePath(_localImagePath);
+          }
         },
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
@@ -425,7 +462,7 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
     final systemLight = systemColorScheme.light;
     final theme = Theme.of(context);
 
-    // Compute color scheme dynamically for interactive phone preview mockup
+    // Compute preview color scheme
     final ColorScheme previewColorScheme;
     Color seedColor = const Color(0xFF6750A4);
     
@@ -455,37 +492,41 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        _ThemePreview(colorScheme: previewColorScheme),
+        _ThemePalettePreviewGrid(colorScheme: previewColorScheme),
         const SizedBox(height: Insets.md),
         
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildTabButton(0, 'System'),
+            _buildTabButton(0, 'System', previewColorScheme),
             const SizedBox(width: 6),
-            _buildTabButton(1, 'Basic colours'),
+            _buildTabButton(1, 'Basic colours', previewColorScheme),
             const SizedBox(width: 6),
-            _buildTabButton(2, 'Image'),
+            _buildTabButton(2, 'Image', previewColorScheme),
           ],
         ),
         const SizedBox(height: Insets.md),
 
-        // Palette style selection dropdown (shared for basic & image extraction types)
         if (_activeTab != 0) ...[
           DropdownButtonFormField<PaletteStyle>(
             initialValue: _localPaletteStyle,
             decoration: InputDecoration(
               labelText: 'Palette style',
               filled: true,
-              fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              fillColor: previewColorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+                borderSide: BorderSide(color: previewColorScheme.outlineVariant),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+                borderSide: BorderSide(color: previewColorScheme.outlineVariant),
               ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: previewColorScheme.primary, width: 2),
+              ),
+              labelStyle: TextStyle(color: previewColorScheme.onSurfaceVariant),
             ),
             items: PaletteStyle.values.map((style) {
               final String label = switch (style) {
@@ -503,11 +544,12 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                 child: Text(label),
               );
             }).toList(),
-            onChanged: (val) {
+            onChanged: (val) async {
               if (val != null) {
                 setState(() {
                   _localPaletteStyle = val;
                 });
+                await controller.setPaletteStyle(val);
               }
             },
           ),
@@ -523,20 +565,20 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
               if (_activeTab == 0)
                 Card(
                   elevation: 0,
-                  color: theme.colorScheme.surfaceContainerHigh,
+                  color: previewColorScheme.surfaceContainerHigh,
                   child: Padding(
                     padding: const EdgeInsets.all(Insets.md),
                     child: Row(
                       children: [
-                        Icon(Icons.android, color: theme.colorScheme.primary, size: 28),
+                        Icon(Icons.android, color: previewColorScheme.primary, size: 28),
                         const SizedBox(width: Insets.md),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'System Wallpaper Colors',
-                                style: TextStyle(fontWeight: FontWeight.bold),
+                                style: TextStyle(fontWeight: FontWeight.bold, color: previewColorScheme.onSurface),
                               ),
                               const SizedBox(height: 2),
                               Text(
@@ -545,7 +587,7 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                                     : 'Dynamic colors unavailable. Using default theme.',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: theme.colorScheme.onSurfaceVariant,
+                                  color: previewColorScheme.onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -567,14 +609,14 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
+                            color: previewColorScheme.onSurfaceVariant,
                           ),
                         ),
                       ),
                       TextButton.icon(
                         onPressed: _pickImage,
-                        icon: const Icon(Icons.change_circle_outlined, size: 16),
-                        label: const Text('Change'),
+                        icon: Icon(Icons.change_circle_outlined, size: 16, color: previewColorScheme.primary),
+                        label: Text('Change', style: TextStyle(color: previewColorScheme.primary)),
                       ),
                     ],
                   ),
@@ -591,44 +633,45 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                 ] else if (_extractedColors.isNotEmpty) ...[
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: _extractedColors.map((Color seed) {
-                        final String hex = seed.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
-                        final bool isSelected = _localSource == ThemeSource.customImage &&
-                            _localSeedColorHex?.toLowerCase() == hex.toLowerCase();
-                        
-                        final ColorScheme previewScheme = colorSchemeFromSeedAndStyle(
-                          seed,
-                          _localPaletteStyle,
-                          theme.brightness,
-                        );
-                        final List<Color> pillColors = [
-                          previewScheme.primary,
-                          previewScheme.primaryContainer,
-                          previewScheme.secondaryContainer,
-                          previewScheme.surfaceContainerHigh,
-                        ];
-                        
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 14.0, bottom: 4.0),
-                          child: Column(
-                            children: [
-                              _ColorPillStack(
-                                colors: pillColors,
-                                isSelected: isSelected,
-                                onTap: () {
-                                  setState(() {
-                                    _localSource = ThemeSource.customImage;
-                                    _localSeedColorHex = hex;
-                                  });
-                                },
-                              ),
-                              const SizedBox(height: 6),
-                              const Text('Dynamic', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                        );
-                      }).toList(),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      child: Row(
+                        children: _extractedColors.map((Color seed) {
+                          final String hex = seed.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
+                          final bool isSelected = _localSource == ThemeSource.customImage &&
+                              _localSeedColorHex?.toLowerCase() == hex.toLowerCase();
+                          
+                          final ColorScheme previewScheme = colorSchemeFromSeedAndStyle(
+                            seed,
+                            _localPaletteStyle,
+                            theme.brightness,
+                          );
+                          final List<Color> pillColors = [
+                            previewScheme.primary,
+                            previewScheme.primaryContainer,
+                            previewScheme.secondaryContainer,
+                            previewScheme.surfaceContainerHigh,
+                          ];
+                          
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 14.0),
+                            child: _ColorPillStack(
+                              colors: pillColors,
+                              isSelected: isSelected,
+                              activeColorScheme: previewColorScheme,
+                              onTap: () async {
+                                setState(() {
+                                  _localSource = ThemeSource.customImage;
+                                  _localSeedColorHex = hex;
+                                });
+                                await controller.setThemeSource(ThemeSource.customImage);
+                                await controller.setCustomSeedColorHex(hex);
+                                await controller.setCustomImagePath(_localImagePath);
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
                     ),
                   ),
                 ] else ...[
@@ -636,27 +679,31 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(Insets.lg),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHigh,
+                      color: previewColorScheme.surfaceContainerHigh,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: theme.colorScheme.outlineVariant),
+                      border: Border.all(color: previewColorScheme.outlineVariant),
                     ),
                     child: Column(
                       children: [
-                        Icon(Icons.wallpaper_outlined, size: 40, color: theme.colorScheme.onSurfaceVariant),
+                        Icon(Icons.wallpaper_outlined, size: 40, color: previewColorScheme.onSurfaceVariant),
                         const SizedBox(height: Insets.sm),
-                        const Text(
+                        Text(
                           'No custom wallpaper loaded',
-                          style: TextStyle(fontWeight: FontWeight.w600),
+                          style: TextStyle(fontWeight: FontWeight.w600, color: previewColorScheme.onSurface),
                         ),
                         const SizedBox(height: Insets.xs),
-                        const Text(
+                        Text(
                           'Upload an image to generate dynamic color palettes',
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 12),
+                          style: TextStyle(fontSize: 12, color: previewColorScheme.onSurfaceVariant),
                         ),
                         const SizedBox(height: Insets.md),
                         FilledButton.icon(
                           onPressed: _pickImage,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: previewColorScheme.primary,
+                            foregroundColor: previewColorScheme.onPrimary,
+                          ),
                           icon: const Icon(Icons.upload, size: 18),
                           label: const Text('Pick Image'),
                         ),
@@ -676,11 +723,13 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                       final bool isSelected = _localSource == ThemeSource.preset &&
                           _localSeedColorHex?.toLowerCase() == hex.toLowerCase();
                       
-                      return _buildColorCircle(c, isSelected, () {
+                      return _buildColorCircle(c, isSelected, () async {
                         setState(() {
                           _localSource = ThemeSource.preset;
                           _localSeedColorHex = hex;
                         });
+                        await controller.setThemeSource(ThemeSource.preset);
+                        await controller.setCustomSeedColorHex(hex);
                       });
                     }),
                     
@@ -690,10 +739,11 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                       _buildColorCircle(
                         Color(int.parse(_localSeedColorHex!, radix: 16) | 0xFF000000),
                         _localSource == ThemeSource.preset,
-                        () {
+                        () async {
                           setState(() {
                             _localSource = ThemeSource.preset;
                           });
+                          await controller.setThemeSource(ThemeSource.preset);
                         },
                       ),
                     ],
@@ -715,22 +765,24 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                             _localSource = ThemeSource.preset;
                             _localSeedColorHex = hex;
                           });
+                          await controller.setThemeSource(ThemeSource.preset);
+                          await controller.setCustomSeedColorHex(hex);
                         }
                       },
                       child: Container(
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHigh,
+                          color: previewColorScheme.surfaceContainerHigh,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: theme.colorScheme.outlineVariant,
+                            color: previewColorScheme.outlineVariant,
                             width: 1.5,
                           ),
                         ),
                         child: Icon(
                           Icons.add,
-                          color: theme.colorScheme.onSurfaceVariant,
+                          color: previewColorScheme.onSurfaceVariant,
                         ),
                       ),
                     ),
@@ -740,174 +792,102 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
             ],
           ),
         ),
-        
-        const SizedBox(height: Insets.lg),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton.icon(
-            onPressed: () async {
-              if (_activeTab == 0) {
-                await controller.setThemeSource(ThemeSource.system);
-              } else if (_activeTab == 1) {
-                await controller.setThemeSource(ThemeSource.preset);
-                await controller.setCustomSeedColorHex(_localSeedColorHex);
-              } else {
-                await controller.setThemeSource(ThemeSource.customImage);
-                await controller.setCustomSeedColorHex(_localSeedColorHex);
-                await controller.setCustomImagePath(_localImagePath);
-              }
-              await controller.setPaletteStyle(_localPaletteStyle);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Theme palette applied successfully!'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-              }
-            },
-            icon: const Icon(Icons.done),
-            label: const Text('Apply'),
-          ),
-        ),
       ],
     );
   }
 }
 
-class _ThemePreview extends StatelessWidget {
-  const _ThemePreview({required this.colorScheme});
+class _ThemePalettePreviewGrid extends StatelessWidget {
+  const _ThemePalettePreviewGrid({required this.colorScheme});
   final ColorScheme colorScheme;
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = colorScheme;
-
+  Widget _buildSwatch(String label, Color bg, Color fg) {
     return Container(
-      padding: const EdgeInsets.all(Insets.md),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: cs.outlineVariant, width: 2),
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: fg.withValues(alpha: 0.15),
+          width: 1,
+        ),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '12:00',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: cs.onSurface,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Row(
-                children: [
-                  Icon(Icons.wifi, size: 14, color: cs.onSurface),
-                  const SizedBox(width: 4),
-                  Icon(Icons.battery_full, size: 14, color: cs.onSurface),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: Insets.md),
-          Container(
-            padding: const EdgeInsets.all(Insets.md),
-            decoration: BoxDecoration(
-              color: cs.primaryContainer,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.wb_cloudy_outlined, size: 32, color: cs.onPrimaryContainer),
-                const SizedBox(width: Insets.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Cloudy • 21°C',
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: cs.onPrimaryContainer,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        'Atrium Theme',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: cs.onPrimaryContainer,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: fg,
             ),
           ),
-          const SizedBox(height: Insets.md),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildQS(cs.primary, cs.onPrimary, Icons.wifi, 'Internet'),
-              _buildQS(cs.primary, cs.onPrimary, Icons.bluetooth, 'Bluetooth'),
-              _buildQS(cs.surfaceContainerHigh, cs.onSurfaceVariant, Icons.do_not_disturb_on, 'DND'),
-              _buildQS(cs.surfaceContainerHigh, cs.onSurfaceVariant, Icons.flashlight_on, 'Torch'),
-            ],
-          ),
-          const SizedBox(height: Insets.md),
-          Row(
-            children: [
-              Icon(Icons.light_mode, size: 16, color: cs.onSurfaceVariant),
-              const SizedBox(width: Insets.xs),
-              Expanded(
-                child: Container(
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: cs.surfaceContainerHigh,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: FractionallySizedBox(
-                      widthFactor: 0.7,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: cs.primary,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          const SizedBox(height: 2),
+          Text(
+            '#${bg.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}',
+            style: TextStyle(
+              fontSize: 9,
+              fontFamily: 'JetBrainsMono Nerd Font',
+              color: fg.withValues(alpha: 0.7),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildQS(Color bg, Color fg, IconData icon, String label) {
-    return Column(
-      children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: bg,
-            shape: BoxShape.circle,
+  @override
+  Widget build(BuildContext context) {
+    final cs = colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(Insets.md),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: cs.outlineVariant, width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.palette_outlined, color: cs.primary, size: 20),
+              const SizedBox(width: Insets.xs),
+              Text(
+                'Palette Preview',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                  color: cs.onSurface,
+                ),
+              ),
+            ],
           ),
-          child: Icon(icon, color: fg, size: 20),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-        ),
-      ],
+          const SizedBox(height: Insets.md),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            childAspectRatio: 2.3,
+            children: [
+              _buildSwatch('Primary', cs.primary, cs.onPrimary),
+              _buildSwatch('Primary Container', cs.primaryContainer, cs.onPrimaryContainer),
+              _buildSwatch('Secondary', cs.secondary, cs.onSecondary),
+              _buildSwatch('Secondary Container', cs.secondaryContainer, cs.onSecondaryContainer),
+              _buildSwatch('Tertiary', cs.tertiary, cs.onTertiary),
+              _buildSwatch('Tertiary Container', cs.tertiaryContainer, cs.onTertiaryContainer),
+              _buildSwatch('Surface', cs.surface, cs.onSurface),
+              _buildSwatch('Surface Container High', cs.surfaceContainerHigh, cs.onSurfaceVariant),
+              _buildSwatch('Outline', cs.outline, cs.surface),
+              _buildSwatch('Inverse Primary', cs.inversePrimary, cs.primary),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -916,11 +896,13 @@ class _ColorPillStack extends StatelessWidget {
   const _ColorPillStack({
     required this.colors,
     required this.isSelected,
+    required this.activeColorScheme,
     required this.onTap,
   });
 
   final List<Color> colors;
   final bool isSelected;
+  final ColorScheme activeColorScheme;
   final VoidCallback onTap;
 
   @override
@@ -931,19 +913,19 @@ class _ColorPillStack extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Container(
-            width: 50,
-            height: 90,
+            width: 54,
+            height: 96,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(25),
+              borderRadius: BorderRadius.circular(27),
               border: Border.all(
                 color: isSelected
-                    ? Theme.of(context).colorScheme.primary
+                    ? activeColorScheme.primary
                     : Colors.transparent,
-                width: 3,
+                width: 3.5,
               ),
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(23),
               child: Column(
                 children: [
                   Expanded(child: Container(color: colors[0])),
@@ -956,16 +938,21 @@ class _ColorPillStack extends StatelessWidget {
           ),
           if (isSelected)
             Positioned(
+              bottom: 8,
               child: Container(
-                padding: const EdgeInsets.all(2),
+                padding: const EdgeInsets.all(3),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary,
+                  color: activeColorScheme.primary,
                   shape: BoxShape.circle,
+                  border: Border.all(
+                    color: colors[3],
+                    width: 1.5,
+                  ),
                 ),
                 child: Icon(
                   Icons.check,
-                  size: 16,
-                  color: Theme.of(context).colorScheme.onPrimary,
+                  size: 14,
+                  color: activeColorScheme.onPrimary,
                 ),
               ),
             ),
