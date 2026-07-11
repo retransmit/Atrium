@@ -59,7 +59,7 @@ class M3RefreshIndicator extends StatefulWidget {
     required this.child,
     required this.onRefresh,
     this.indicatorSize = 56,
-    this.triggerDistance = 80,
+    this.triggerDistance = 140,
     this.backgroundColor,
     this.shapeColor,
     this.loadingMorphDuration = const Duration(milliseconds: 750),
@@ -125,16 +125,43 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
       return false;
     }
 
-    if (n is OverscrollNotification && n.overscroll < 0) {
-      if (n.dragDetails != null) {
-        _onPull(-n.overscroll);
+    if (n is ScrollStartNotification && n.dragDetails != null) {
+      if (n.metrics.pixels <= 0) {
+        _isPulling = true;
+        _dragPixels = 0;
+        _dragRotation = 0;
+        setState(() => _phase = _Phase.dragging);
       }
     } else if (n is ScrollUpdateNotification) {
-      final delta = n.scrollDelta;
-      if (delta != null && n.metrics.pixels <= 0 && delta < 0) {
-        if (n.dragDetails != null) {
+      if (_phase == _Phase.dragging) {
+        final delta = n.scrollDelta;
+        if (delta != null) {
+          if (n.metrics.pixels > 0) {
+            _isPulling = false;
+            _dismiss();
+          } else {
+            _onPull(-delta);
+          }
+        }
+      } else if (!_isPulling && n.dragDetails != null && n.metrics.pixels <= 0) {
+        final delta = n.scrollDelta;
+        if (delta != null && delta < 0) {
+          _isPulling = true;
+          _dragPixels = 0;
+          _dragRotation = 0;
+          setState(() => _phase = _Phase.dragging);
           _onPull(-delta);
         }
+      }
+    } else if (n is OverscrollNotification) {
+      if (_phase == _Phase.dragging) {
+        _onPull(-n.overscroll);
+      } else if (!_isPulling && n.dragDetails != null) {
+        _isPulling = true;
+        _dragPixels = 0;
+        _dragRotation = 0;
+        setState(() => _phase = _Phase.dragging);
+        _onPull(-n.overscroll);
       }
     } else if (n is ScrollEndNotification && _isPulling) {
       _releasePull();
@@ -142,7 +169,7 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
     return false;
   }
 
-  void _onPull(double positiveDelta) {
+  void _onPull(double delta) {
     if (_phase == _Phase.refreshing || _phase == _Phase.dismissing) return;
 
     if (!_isPulling) {
@@ -150,16 +177,25 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
       setState(() => _phase = _Phase.dragging);
     }
 
-    // Rubber-band: full speed to trigger, 40% beyond
-    final progress = (_dragPixels / widget.triggerDistance).clamp(0.0, 1.0);
-    final resistance = 1.0 - progress * 0.6;
-    _dragPixels = (_dragPixels + positiveDelta * resistance)
-        .clamp(0.0, widget.triggerDistance * 1.6);
+    // Apply rubber-banding resistance only to positive delta (pulling down further)
+    double adjustedDelta = delta;
+    if (delta > 0) {
+      final progress = (_dragPixels / widget.triggerDistance).clamp(0.0, 1.0);
+      final resistance = 1.0 - progress * 0.6;
+      adjustedDelta = delta * resistance;
+    }
 
-    // Rotation proportional to pixels dragged
-    _dragRotation += positiveDelta * 0.016;
+    _dragPixels = (_dragPixels + adjustedDelta)
+        .clamp(0.0, widget.triggerDistance * 2.0);
 
-    setState(() {});
+    _dragRotation += delta * 0.016;
+
+    if (_dragPixels <= 0 && delta < 0) {
+      _isPulling = false;
+      _dismiss();
+    } else {
+      setState(() {});
+    }
   }
 
   void _releasePull() {
