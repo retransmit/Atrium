@@ -628,73 +628,75 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
               
               if (_activeTab == 2) ...[
                 if (_localImagePath != null) ...[
-                  Container(
-                    height: 100,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: previewColorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(16),
-                      image: DecorationImage(
-                        image: FileImage(File(_localImagePath!)),
-                        fit: BoxFit.contain,
-                      ),
-                      border: Border.all(
-                        color: previewColorScheme.outlineVariant,
-                        width: 1.5,
-                      ),
-                    ),
-                    alignment: Alignment.bottomCenter,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.7),
-                            Colors.black.withValues(alpha: 0.0),
-                          ],
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Wallpaper thumbnail with original aspect ratio
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: previewColorScheme.outlineVariant,
+                            width: 1.5,
+                          ),
                         ),
-                        borderRadius: const BorderRadius.only(
-                          bottomLeft: Radius.circular(14),
-                          bottomRight: Radius.circular(14),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              _localImagePath!.split(Platform.pathSeparator).last,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: Container(
+                            constraints: const BoxConstraints(
+                              maxHeight: 120,
+                              maxWidth: 90,
+                            ),
+                            color: previewColorScheme.surfaceContainerHighest,
+                            child: Image.file(
+                              File(_localImagePath!),
+                              fit: BoxFit.contain,
                             ),
                           ),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      const SizedBox(width: Insets.md),
+                      // Details and change button on the right
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Active Wallpaper',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                                color: previewColorScheme.onSurfaceVariant,
+                              ),
                             ),
-                            child: TextButton.icon(
+                            const SizedBox(height: 4),
+                            Text(
+                              _localImagePath!.split(Platform.pathSeparator).last,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: previewColorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: Insets.sm),
+                            FilledButton.icon(
                               onPressed: _pickImage,
-                              style: TextButton.styleFrom(
-                                foregroundColor: Colors.white,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: previewColorScheme.primary,
+                                foregroundColor: previewColorScheme.onPrimary,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                 minimumSize: Size.zero,
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
-                              icon: const Icon(Icons.change_circle_outlined, size: 14),
-                              label: const Text('Change', style: TextStyle(fontSize: 11)),
+                              icon: const Icon(Icons.change_circle_outlined, size: 16),
+                              label: const Text('Change', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                   const SizedBox(height: Insets.md),
                 ],
