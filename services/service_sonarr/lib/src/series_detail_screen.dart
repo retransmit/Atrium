@@ -62,7 +62,9 @@ class _SeriesDetailBody extends ConsumerStatefulWidget {
 }
 
 class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
-  int? _selectedSeasonFilter;
+  final Set<int> _expandedSeasons = {};
+  final Map<int, GlobalKey> _seasonKeys = {};
+  final GlobalKey _seasonsHeaderKey = GlobalKey();
 
   Future<void> _refresh(BuildContext context) async {
     try {
@@ -112,64 +114,77 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
       child: CustomScrollView(
         slivers: <Widget>[
           // -- AppBar --
-          SliverAppBar(
-            expandedHeight: 250,
-            pinned: true,
-            stretch: true,
-            backgroundColor: cs.surface,
-            surfaceTintColor: cs.surfaceTint,
-            leading: Center(
-              child: Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.black.withValues(alpha: 0.35),
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back, size: 20, color: Colors.white),
-                  onPressed: () => Navigator.maybePop(context),
-                  padding: EdgeInsets.zero,
-                ),
-              ),
-            ),
-            actions: <Widget>[
-              Center(
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  margin: const EdgeInsets.only(right: 16),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.black.withValues(alpha: 0.35),
-                  ),
-                  child: _OverflowMenu(
-                    instance: widget.instance,
-                    series: widget.series,
-                    onRefreshed: _invalidateProviders,
+          SliverLayoutBuilder(
+            builder: (BuildContext context, constraints) {
+              const double expandedHeight = 250.0;
+              final double scrollOffset = constraints.scrollOffset;
+              final double progress = (scrollOffset / (expandedHeight - kToolbarHeight)).clamp(0.0, 1.0);
+
+              final Color titleColor = Color.lerp(Colors.white, cs.onSurface, progress)!;
+              final Color iconColor = Color.lerp(Colors.white, cs.onSurface, progress)!;
+              final double bubbleOpacity = 1.0 - progress;
+
+              return SliverAppBar(
+                expandedHeight: expandedHeight,
+                pinned: true,
+                stretch: true,
+                backgroundColor: cs.surface,
+                surfaceTintColor: cs.surfaceTint,
+                leading: Center(
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black.withValues(alpha: 0.35 * bubbleOpacity),
+                    ),
+                    child: IconButton(
+                      icon: Icon(Icons.arrow_back, size: 20, color: iconColor),
+                      onPressed: () => Navigator.maybePop(context),
+                      padding: EdgeInsets.zero,
+                    ),
                   ),
                 ),
-              ),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              centerTitle: false,
-              titlePadding: const EdgeInsetsDirectional.only(
-                start: 56,
-                bottom: 16,
-                end: 16,
-              ),
-              title: Text(
-                widget.series.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 18,
-                  color: cs.onSurface,
+                actions: <Widget>[
+                  Center(
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      margin: const EdgeInsets.only(right: 16),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.black.withValues(alpha: 0.35 * bubbleOpacity),
+                      ),
+                      child: _OverflowMenu(
+                        instance: widget.instance,
+                        series: widget.series,
+                        onRefreshed: _invalidateProviders,
+                        iconColor: iconColor,
+                      ),
+                    ),
+                  ),
+                ],
+                flexibleSpace: FlexibleSpaceBar(
+                  centerTitle: false,
+                  titlePadding: const EdgeInsetsDirectional.only(
+                    start: 56,
+                    bottom: 16,
+                    end: 16,
+                  ),
+                  title: Text(
+                    widget.series.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                      color: titleColor,
+                    ),
+                  ),
+                  background: _Backdrop(fanartUrl: fanartUrl),
                 ),
-              ),
-              background: _Backdrop(fanartUrl: fanartUrl),
-            ),
+              );
+            },
           ),
 
           // -- Content --
@@ -249,6 +264,7 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
                 // Season & Episodes header
                 Text(
                   'Seasons & Episodes',
+                  key: _seasonsHeaderKey,
                   style: theme.textTheme.titleMedium
                       ?.copyWith(fontWeight: FontWeight.bold),
                 ),
@@ -262,6 +278,10 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
                     final List<int> sortedSeasons = episodesBySeason.keys.toList()
                       ..sort((a, b) => b.compareTo(a)); // newest first
 
+                    for (final seasonNum in sortedSeasons) {
+                      _seasonKeys.putIfAbsent(seasonNum, GlobalKey.new);
+                    }
+
                     return [
                       if (sortedSeasons.isNotEmpty) ...[
                         SingleChildScrollView(
@@ -269,14 +289,15 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
                           padding: const EdgeInsets.symmetric(vertical: Insets.xs),
                           child: Row(
                             children: [
-                              ChoiceChip(
+                              ActionChip(
                                 label: const Text('All'),
-                                selected: _selectedSeasonFilter == null,
-                                onSelected: (selected) {
-                                  if (selected) {
-                                    setState(() {
-                                      _selectedSeasonFilter = null;
-                                    });
+                                onPressed: () {
+                                  if (_seasonsHeaderKey.currentContext != null) {
+                                    Scrollable.ensureVisible(
+                                      _seasonsHeaderKey.currentContext!,
+                                      duration: const Duration(milliseconds: 500),
+                                      curve: Curves.easeInOut,
+                                    );
                                   }
                                 },
                               ),
@@ -284,15 +305,24 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
                                 final label = seasonNum == 0 ? 'Specials' : 'Season $seasonNum';
                                 return Padding(
                                   padding: const EdgeInsets.only(left: Insets.xs),
-                                  child: ChoiceChip(
+                                  child: ActionChip(
                                     label: Text(label),
-                                    selected: _selectedSeasonFilter == seasonNum,
-                                    onSelected: (selected) {
-                                      if (selected) {
+                                    onPressed: () {
+                                      if (!_expandedSeasons.contains(seasonNum)) {
                                         setState(() {
-                                          _selectedSeasonFilter = seasonNum;
+                                          _expandedSeasons.add(seasonNum);
                                         });
                                       }
+                                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                                        final key = _seasonKeys[seasonNum];
+                                        if (key?.currentContext != null) {
+                                          Scrollable.ensureVisible(
+                                            key!.currentContext!,
+                                            duration: const Duration(milliseconds: 500),
+                                            curve: Curves.easeInOut,
+                                          );
+                                        }
+                                      });
                                     },
                                   ),
                                 );
@@ -302,7 +332,9 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
                         ),
                         const SizedBox(height: Insets.md),
                       ],
-                      ..._buildSeasonCards(context, episodesBySeason, sortedSeasons),
+                      Column(
+                        children: _buildSeasonCards(context, episodesBySeason, sortedSeasons),
+                      ),
                     ];
                   },
                   loading: () => <Widget>[
@@ -353,26 +385,32 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
     Map<int, List<SonarrEpisode>> episodesBySeason,
     List<int> sortedSeasons,
   ) {
-    final List<int> visibleSeasons = _selectedSeasonFilter != null
-        ? [_selectedSeasonFilter!]
-        : sortedSeasons;
-
-    return visibleSeasons.map((int seasonNum) {
+    return sortedSeasons.map((int seasonNum) {
       final List<SonarrEpisode> seasonEpisodes = episodesBySeason[seasonNum]!
         ..sort((a, b) => b.episodeNumber.compareTo(a.episodeNumber));
 
-      // Get per-season stats from the series model if available
       final SonarrSeason? seasonMeta = widget.series.seasons
           .firstWhereOrNull((s) => s.seasonNumber == seasonNum);
 
       return Padding(
         padding: const EdgeInsets.only(bottom: Insets.md),
         child: _SeasonCard(
+          key: _seasonKeys[seasonNum],
           instance: widget.instance,
           series: widget.series,
           seasonNumber: seasonNum,
           episodes: seasonEpisodes,
           seasonMeta: seasonMeta,
+          isExpanded: _expandedSeasons.contains(seasonNum),
+          onToggleExpand: (expanded) {
+            setState(() {
+              if (expanded) {
+                _expandedSeasons.add(seasonNum);
+              } else {
+                _expandedSeasons.remove(seasonNum);
+              }
+            });
+          },
           onRefreshed: () => _refresh(context),
         ),
       );
@@ -881,13 +919,16 @@ class _InfoRow extends StatelessWidget {
 // Season Card — expandable card with progress bar
 // ---------------------------------------------------------------------------
 
-class _SeasonCard extends ConsumerStatefulWidget {
+class _SeasonCard extends ConsumerWidget {
   const _SeasonCard({
+    super.key,
     required this.instance,
     required this.series,
     required this.seasonNumber,
     required this.episodes,
     required this.seasonMeta,
+    required this.isExpanded,
+    required this.onToggleExpand,
     required this.onRefreshed,
   });
 
@@ -896,26 +937,21 @@ class _SeasonCard extends ConsumerStatefulWidget {
   final int seasonNumber;
   final List<SonarrEpisode> episodes;
   final SonarrSeason? seasonMeta;
+  final bool isExpanded;
+  final ValueChanged<bool> onToggleExpand;
   final VoidCallback onRefreshed;
 
   @override
-  ConsumerState<_SeasonCard> createState() => _SeasonCardState();
-}
-
-class _SeasonCardState extends ConsumerState<_SeasonCard> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
 
-    final int downloaded = widget.episodes.where((e) => e.hasFile).length;
-    final int total = widget.episodes.length;
+    final int downloaded = episodes.where((e) => e.hasFile).length;
+    final int total = episodes.length;
     final double progress = total > 0 ? downloaded / total : 0.0;
-    final bool isMonitored = widget.seasonMeta?.monitored ?? false;
+    final bool isMonitored = seasonMeta?.monitored ?? false;
 
-    final double seasonSizeBytes = widget.episodes
+    final double seasonSizeBytes = episodes
         .where((e) => e.hasFile)
         .map((e) => (e.episodeFile?['size'] as num?)?.toDouble() ?? 0.0)
         .sum;
@@ -937,7 +973,7 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
         children: <Widget>[
           // Header
           InkWell(
-            onTap: () => setState(() => _expanded = !_expanded),
+            onTap: () => onToggleExpand(!isExpanded),
             borderRadius: BorderRadius.circular(Radii.lg),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(
@@ -956,7 +992,7 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
                       color: isMonitored ? cs.primary : cs.outline,
                     ),
                     tooltip: isMonitored ? 'Unmonitor Season' : 'Monitor Season',
-                    onPressed: () => _toggleSeasonMonitoring(context, isMonitored),
+                    onPressed: () => _toggleSeasonMonitoring(context, ref, isMonitored),
                     visualDensity: VisualDensity.compact,
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(
@@ -972,9 +1008,9 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Text(
-                          widget.seasonNumber == 0
+                          seasonNumber == 0
                               ? 'Specials'
-                              : 'Season ${widget.seasonNumber}',
+                              : 'Season $seasonNumber',
                           style: theme.textTheme.titleSmall
                               ?.copyWith(fontWeight: FontWeight.bold),
                         ),
@@ -1010,7 +1046,7 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
 
                   // Expand indicator
                   AnimatedRotation(
-                    turns: _expanded ? 0.5 : 0,
+                    turns: isExpanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 200),
                     child: const Icon(Icons.expand_more, size: 24),
                   ),
@@ -1041,7 +1077,7 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           onPressed: () =>
-                              _searchSeason(context, widget.seasonNumber),
+                              _searchSeason(context, ref, seasonNumber),
                         ),
                       ),
                       const SizedBox(width: Insets.xs),
@@ -1056,7 +1092,7 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
                           ),
                           onPressed: () => _openSeasonInteractiveSearch(
                             context,
-                            widget.seasonNumber,
+                            seasonNumber,
                           ),
                         ),
                       ),
@@ -1071,7 +1107,7 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            onPressed: () => _confirmDeleteSeasonFiles(context),
+                            onPressed: () => _confirmDeleteSeasonFiles(context, ref),
                           ),
                         ),
                       ],
@@ -1082,16 +1118,16 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
                   height: 1,
                   color: cs.outlineVariant.withValues(alpha: 0.3),
                 ),
-                ...widget.episodes.map(
+                ...episodes.map(
                   (SonarrEpisode episode) => _EpisodeRow(
-                    instance: widget.instance,
-                    series: widget.series,
+                    instance: instance,
+                    series: series,
                     episode: episode,
                   ),
                 ),
               ],
             ),
-            crossFadeState: _expanded
+            crossFadeState: isExpanded
                 ? CrossFadeState.showSecond
                 : CrossFadeState.showFirst,
             duration: const Duration(milliseconds: 250),
@@ -1101,15 +1137,15 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
     );
   }
 
-  Future<void> _toggleSeasonMonitoring(BuildContext context, bool currentMonitored) async {
+  Future<void> _toggleSeasonMonitoring(BuildContext context, WidgetRef ref, bool currentMonitored) async {
     try {
-      final api = await ref.read(sonarrApiProvider(widget.instance).future);
-      final raw = await api.getSeriesRaw(widget.series.id);
+      final api = await ref.read(sonarrApiProvider(instance).future);
+      final raw = await api.getSeriesRaw(series.id);
       
       final List<dynamic> seasons = raw['seasons'] as List<dynamic>;
       for (final dynamic s in seasons) {
         final Map<String, dynamic> season = s as Map<String, dynamic>;
-        if (season['seasonNumber'] == widget.seasonNumber) {
+        if (season['seasonNumber'] == seasonNumber) {
           season['monitored'] = !currentMonitored;
           break;
         }
@@ -1118,16 +1154,16 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
       await api.updateSeriesRaw(raw);
 
       if (!context.mounted) return;
-      ref.invalidate(sonarrSeriesByIdProvider((widget.instance, widget.series.id)));
-      ref.invalidate(sonarrSeriesProvider(widget.instance));
-      widget.onRefreshed();
+      ref.invalidate(sonarrSeriesByIdProvider((instance, series.id)));
+      ref.invalidate(sonarrSeriesProvider(instance));
+      onRefreshed();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             !currentMonitored
-                ? 'Season ${widget.seasonNumber} monitored.'
-                : 'Season ${widget.seasonNumber} unmonitored.',
+                ? 'Season $seasonNumber monitored.'
+                : 'Season $seasonNumber unmonitored.',
           ),
         ),
       );
@@ -1140,14 +1176,14 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
     }
   }
 
-  Future<void> _confirmDeleteSeasonFiles(BuildContext context) async {
+  Future<void> _confirmDeleteSeasonFiles(BuildContext context, WidgetRef ref) async {
     final theme = Theme.of(context);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Delete Season ${widget.seasonNumber} Files'),
+        title: Text('Delete Season $seasonNumber Files'),
         content: Text(
-          'Are you sure you want to delete all episode files for Season ${widget.seasonNumber}? This will delete the files from disk and cannot be undone.',
+          'Are you sure you want to delete all episode files for Season $seasonNumber? This will delete the files from disk and cannot be undone.',
         ),
         actions: <Widget>[
           TextButton(
@@ -1179,13 +1215,13 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
       int deletedCount = 0;
       int failedCount = 0;
 
-      final fileIds = widget.episodes
+      final fileIds = episodes
           .where((e) => e.hasFile && e.episodeFileId != null)
           .map((e) => e.episodeFileId!)
           .toList();
 
       try {
-        final api = await ref.read(sonarrApiProvider(widget.instance).future);
+        final api = await ref.read(sonarrApiProvider(instance).future);
         for (final fileId in fileIds) {
           try {
             await api.deleteEpisodeFile(fileId);
@@ -1204,10 +1240,10 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
       }
 
       if (!context.mounted) return;
-      ref.invalidate(sonarrEpisodesProvider((widget.instance, widget.series.id)));
-      ref.invalidate(sonarrSeriesByIdProvider((widget.instance, widget.series.id)));
-      ref.invalidate(sonarrSeriesProvider(widget.instance));
-      widget.onRefreshed();
+      ref.invalidate(sonarrEpisodesProvider((instance, series.id)));
+      ref.invalidate(sonarrSeriesByIdProvider((instance, series.id)));
+      ref.invalidate(sonarrSeriesProvider(instance));
+      onRefreshed();
 
       if (context.mounted) {
         if (failedCount == 0) {
@@ -1227,12 +1263,12 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
     }
   }
 
-  Future<void> _searchSeason(BuildContext context, int seasonNum) async {
+  Future<void> _searchSeason(BuildContext context, WidgetRef ref, int seasonNum) async {
     try {
-      final api = await ref.read(sonarrApiProvider(widget.instance).future);
+      final api = await ref.read(sonarrApiProvider(instance).future);
       await api.runCommand(<String, dynamic>{
         'name': 'SeasonSearch',
-        'seriesId': widget.series.id,
+        'seriesId': series.id,
         'seasonNumber': seasonNum,
       });
       if (context.mounted) {
@@ -1253,8 +1289,8 @@ class _SeasonCardState extends ConsumerState<_SeasonCard> {
     pushScreen<void>(
       context,
       SonarrReleaseSearchScreen(
-        instance: widget.instance,
-        series: widget.series,
+        instance: instance,
+        series: series,
         seasonNumber: seasonNum,
       ),
     );
@@ -1662,16 +1698,18 @@ class _OverflowMenu extends ConsumerWidget {
     required this.instance,
     required this.series,
     required this.onRefreshed,
+    required this.iconColor,
   });
 
   final Instance instance;
   final SonarrSeries series;
   final VoidCallback onRefreshed;
+  final Color iconColor;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert, color: Colors.white),
+      icon: Icon(Icons.more_vert, color: iconColor),
       onSelected: (String value) => _handleAction(context, ref, value),
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
         const PopupMenuItem<String>(
