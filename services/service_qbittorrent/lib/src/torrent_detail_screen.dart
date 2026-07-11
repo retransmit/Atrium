@@ -297,7 +297,8 @@ class _OverviewTab extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: Insets.lg),
-                    Wrap(
+                    Center(
+                      child: Wrap(
                       spacing: 8.0,
                       runSpacing: 8.0,
                       alignment: WrapAlignment.center,
@@ -368,6 +369,7 @@ class _OverviewTab extends ConsumerWidget {
                           },
                         ),
                       ],
+                    ),
                     ),
                   ],
                 ),
