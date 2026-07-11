@@ -120,51 +120,49 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
 
   // ── Scroll handling ─────────────────────────────────────────────────────
 
+  bool _shouldStart(ScrollNotification n) {
+    if (_phase != _Phase.idle) return false;
+    if (n.metrics.pixels > 0.0) return false;
+
+    if (n is ScrollStartNotification) {
+      return n.dragDetails != null;
+    }
+    if (n is ScrollUpdateNotification) {
+      final delta = n.scrollDelta;
+      return delta != null && delta < 0.0 && n.dragDetails != null;
+    }
+    return false;
+  }
+
   bool _handleNotification(ScrollNotification n) {
     if (_phase == _Phase.refreshing || _phase == _Phase.dismissing) {
       return false;
     }
 
-    if (n is ScrollStartNotification && n.dragDetails != null) {
-      if (n.metrics.pixels <= 0) {
-        _isPulling = true;
-        _dragPixels = 0;
-        _dragRotation = 0;
-        setState(() => _phase = _Phase.dragging);
-      }
-    } else if (n is ScrollUpdateNotification) {
-      if (_phase == _Phase.dragging) {
-        final delta = n.scrollDelta;
-        if (delta != null) {
-          if (n.metrics.pixels > 0) {
-            _isPulling = false;
-            _dismiss();
-          } else {
+    if (_shouldStart(n)) {
+      _isPulling = true;
+      _dragPixels = 0.0;
+      _dragRotation = 0.0;
+      setState(() => _phase = _Phase.dragging);
+      return false;
+    }
+
+    if (_phase == _Phase.dragging) {
+      if (n is ScrollUpdateNotification) {
+        if (n.metrics.pixels > 0.0) {
+          _isPulling = false;
+          _dismiss();
+        } else {
+          final delta = n.scrollDelta;
+          if (delta != null) {
             _onPull(-delta);
           }
         }
-      } else if (!_isPulling && n.dragDetails != null && n.metrics.pixels <= 0) {
-        final delta = n.scrollDelta;
-        if (delta != null && delta < 0) {
-          _isPulling = true;
-          _dragPixels = 0;
-          _dragRotation = 0;
-          setState(() => _phase = _Phase.dragging);
-          _onPull(-delta);
-        }
-      }
-    } else if (n is OverscrollNotification) {
-      if (_phase == _Phase.dragging) {
+      } else if (n is OverscrollNotification) {
         _onPull(-n.overscroll);
-      } else if (!_isPulling && n.dragDetails != null) {
-        _isPulling = true;
-        _dragPixels = 0;
-        _dragRotation = 0;
-        setState(() => _phase = _Phase.dragging);
-        _onPull(-n.overscroll);
+      } else if (n is ScrollEndNotification) {
+        _releasePull();
       }
-    } else if (n is ScrollEndNotification && _isPulling) {
-      _releasePull();
     }
     return false;
   }
