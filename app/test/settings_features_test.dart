@@ -105,7 +105,16 @@ void main() {
       const SettingsScreen(),
     );
 
-    expect(find.text('Wake-on-LAN'), findsOneWidget);
+    // The Network section sits below Appearance / Theme Styling / Font /
+    // Security, so scroll the settings list until it is on screen.
+    final Finder wol = find.text('Wake-on-LAN');
+    await tester.scrollUntilVisible(
+      wol,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(wol, findsOneWidget);
     expect(find.text('1 device configured'), findsOneWidget);
     expect(find.text('Custom Headers'), findsOneWidget);
   });

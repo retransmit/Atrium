@@ -23,12 +23,16 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
   late final TextEditingController _searchController;
   late final ScrollController _scrollController;
   late final FocusNode _searchFocusNode;
+  late final void Function() _resetSearchActive;
   double _lastBottomInset = 0;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    final notifier =
+        ref.read(sonarrSearchActiveProvider(widget.instance).notifier);
+    _resetSearchActive = () => notifier.state = false;
     final String initialQuery =
         ref.read(sonarrSearchQueryProvider(widget.instance));
     _searchController = TextEditingController(text: initialQuery);
@@ -38,8 +42,7 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
 
   @override
   void dispose() {
-    ref.read(sonarrSearchActiveProvider(widget.instance).notifier).state =
-        false;
+    _resetSearchActive();
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     _scrollController.removeListener(_onScroll);

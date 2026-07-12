@@ -7,8 +7,6 @@ library;
 
 // M3 pull-to-refresh from m3_expressive, surfaced through core_ui so modules
 // use it without each taking a direct m3_expressive dependency.
-export 'package:m3_expressive/m3_expressive.dart' show M3RefreshIndicator;
-
 export 'src/design_tokens.dart';
 export 'src/navigation.dart';
 export 'src/performance_logger.dart';
@@ -17,7 +15,9 @@ export 'src/theme.dart';
 export 'src/widgets/async_value_view.dart';
 export 'src/widgets/expressive_progress_indicator.dart';
 export 'src/widgets/expressive_slider.dart';
+export 'src/widgets/m3_refresh_indicator.dart';
 export 'src/widgets/overview_box.dart';
 export 'src/widgets/service_tile.dart';
 export 'src/widgets/state_views.dart';
 export 'src/widgets/status_chip.dart';
+

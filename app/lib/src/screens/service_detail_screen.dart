@@ -83,7 +83,9 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
       },
       child: Scaffold(
         key: _scaffoldKey,
-        drawerEdgeDragWidth: 24.0,
+        // Fixed narrow edge zone so it does not eat the horizontal-scroll
+        // gesture on the media-server poster/resume rows hosted here.
+        drawerEdgeDragWidth: 32,
         drawer: ServicesDrawer(
           instances: ref.watch(activeInstancesProvider),
           profile: ref.watch(activeProfileProvider),

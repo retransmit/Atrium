@@ -24,12 +24,16 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
   late final TextEditingController _searchController;
   late final ScrollController _scrollController;
   late final FocusNode _searchFocusNode;
+  late final void Function() _resetSearchActive;
   double _lastBottomInset = 0;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    final notifier =
+        ref.read(radarrSearchActiveProvider(widget.instance).notifier);
+    _resetSearchActive = () => notifier.state = false;
     final String initialQuery =
         ref.read(radarrSearchQueryProvider(widget.instance));
     _searchController = TextEditingController(text: initialQuery);
@@ -39,8 +43,7 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
 
   @override
   void dispose() {
-    ref.read(radarrSearchActiveProvider(widget.instance).notifier).state =
-        false;
+    _resetSearchActive();
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     _scrollController.removeListener(_onScroll);

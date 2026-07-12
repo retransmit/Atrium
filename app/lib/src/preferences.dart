@@ -2,6 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_ce/hive.dart';
 
+enum ThemeSource {
+  system,
+  preset,
+  customImage,
+}
+
+enum PaletteStyle {
+  tonalSpot,
+  content,
+  expressive,
+  fidelity,
+  fruitSalad,
+  monochrome,
+  neutral,
+  rainbow,
+}
+
 /// App-wide, non-secret preferences persisted in the settings Hive box.
 @immutable
 class Preferences {
@@ -9,21 +26,41 @@ class Preferences {
     this.themeMode = ThemeMode.system,
     this.biometricEnabled = false,
     this.fontFamily,
+    this.themeSource = ThemeSource.system,
+    this.paletteStyle = PaletteStyle.tonalSpot,
+    this.customSeedColorHex,
+    this.customImagePath,
+    this.customImageColorsCsv,
   });
 
   final ThemeMode themeMode;
   final bool biometricEnabled;
   final String? fontFamily;
+  final ThemeSource themeSource;
+  final PaletteStyle paletteStyle;
+  final String? customSeedColorHex;
+  final String? customImagePath;
+  final String? customImageColorsCsv;
 
   Preferences copyWith({
     ThemeMode? themeMode,
     bool? biometricEnabled,
-    String? fontFamily,
+    String? Function()? fontFamily,
+    ThemeSource? themeSource,
+    PaletteStyle? paletteStyle,
+    String? Function()? customSeedColorHex,
+    String? Function()? customImagePath,
+    String? Function()? customImageColorsCsv,
   }) =>
       Preferences(
         themeMode: themeMode ?? this.themeMode,
         biometricEnabled: biometricEnabled ?? this.biometricEnabled,
-        fontFamily: fontFamily ?? this.fontFamily,
+        fontFamily: fontFamily != null ? fontFamily() : this.fontFamily,
+        themeSource: themeSource ?? this.themeSource,
+        paletteStyle: paletteStyle ?? this.paletteStyle,
+        customSeedColorHex: customSeedColorHex != null ? customSeedColorHex() : this.customSeedColorHex,
+        customImagePath: customImagePath != null ? customImagePath() : this.customImagePath,
+        customImageColorsCsv: customImageColorsCsv != null ? customImageColorsCsv() : this.customImageColorsCsv,
       );
 }
 
@@ -43,6 +80,11 @@ class PreferencesController extends Notifier<Preferences> {
   static const String _themeKey = 'pref.themeMode';
   static const String _biometricKey = 'pref.biometricEnabled';
   static const String _fontFamilyKey = 'pref.fontFamily';
+  static const String _themeSourceKey = 'pref.themeSource';
+  static const String _customSeedColorHexKey = 'pref.customSeedColorHex';
+  static const String _customImagePathKey = 'pref.customImagePath';
+  static const String _customImageColorsCsvKey = 'pref.customImageColorsCsv';
+  static const String _paletteStyleKey = 'pref.paletteStyle';
 
   Box<String> get _box => ref.read(settingsBoxProvider);
 
@@ -56,6 +98,24 @@ class PreferencesController extends Notifier<Preferences> {
       },
       biometricEnabled: _box.get(_biometricKey) == 'true',
       fontFamily: _box.get(_fontFamilyKey),
+      themeSource: switch (_box.get(_themeSourceKey)) {
+        'preset' => ThemeSource.preset,
+        'customImage' => ThemeSource.customImage,
+        _ => ThemeSource.system,
+      },
+      paletteStyle: switch (_box.get(_paletteStyleKey)) {
+        'content' => PaletteStyle.content,
+        'expressive' => PaletteStyle.expressive,
+        'fidelity' => PaletteStyle.fidelity,
+        'fruitSalad' => PaletteStyle.fruitSalad,
+        'monochrome' => PaletteStyle.monochrome,
+        'neutral' => PaletteStyle.neutral,
+        'rainbow' => PaletteStyle.rainbow,
+        _ => PaletteStyle.tonalSpot,
+      },
+      customSeedColorHex: _box.get(_customSeedColorHexKey),
+      customImagePath: _box.get(_customImagePathKey),
+      customImageColorsCsv: _box.get(_customImageColorsCsvKey),
     );
   }
 
@@ -75,13 +135,43 @@ class PreferencesController extends Notifier<Preferences> {
     } else {
       await _box.put(_fontFamilyKey, fontFamily);
     }
-    // We explicitly allow passing null to copyWith to clear the font, but our
-    // copyWith above doesn't support clearing if it falls back to this.fontFamily.
-    // Let's replace the whole state directly.
-    state = Preferences(
-      themeMode: state.themeMode,
-      biometricEnabled: state.biometricEnabled,
-      fontFamily: fontFamily,
-    );
+    state = state.copyWith(fontFamily: () => fontFamily);
+  }
+
+  Future<void> setThemeSource(ThemeSource source) async {
+    await _box.put(_themeSourceKey, source.name);
+    state = state.copyWith(themeSource: source);
+  }
+
+  Future<void> setPaletteStyle(PaletteStyle style) async {
+    await _box.put(_paletteStyleKey, style.name);
+    state = state.copyWith(paletteStyle: style);
+  }
+
+  Future<void> setCustomSeedColorHex(String? hex) async {
+    if (hex == null) {
+      await _box.delete(_customSeedColorHexKey);
+    } else {
+      await _box.put(_customSeedColorHexKey, hex);
+    }
+    state = state.copyWith(customSeedColorHex: () => hex);
+  }
+
+  Future<void> setCustomImagePath(String? path) async {
+    if (path == null) {
+      await _box.delete(_customImagePathKey);
+    } else {
+      await _box.put(_customImagePathKey, path);
+    }
+    state = state.copyWith(customImagePath: () => path);
+  }
+
+  Future<void> setCustomImageColorsCsv(String? csv) async {
+    if (csv == null) {
+      await _box.delete(_customImageColorsCsvKey);
+    } else {
+      await _box.put(_customImageColorsCsvKey, csv);
+    }
+    state = state.copyWith(customImageColorsCsv: () => csv);
   }
 }
