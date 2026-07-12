@@ -301,107 +301,131 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
   }
 
   Future<void> _loadPalette(String path) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     setState(() => _isExtracting = true);
     try {
       final File file = File(path);
-      if (await file.exists()) {
-        final PaletteGenerator palette = await PaletteGenerator.fromImageProvider(
-          FileImage(file),
-          size: const Size(200, 200),
-          timeout: Duration.zero,
-        );
-        final List<Color> rawColors = <Color>{
-          if (palette.vibrantColor?.color != null) palette.vibrantColor!.color,
-          if (palette.lightVibrantColor?.color != null) palette.lightVibrantColor!.color,
-          if (palette.darkVibrantColor?.color != null) palette.darkVibrantColor!.color,
-          if (palette.mutedColor?.color != null) palette.mutedColor!.color,
-          if (palette.lightMutedColor?.color != null) palette.lightMutedColor!.color,
-          if (palette.darkMutedColor?.color != null) palette.darkMutedColor!.color,
-          if (palette.dominantColor?.color != null) palette.dominantColor!.color,
-        }.toList();
+      if (!await file.exists()) {
+        return;
+      }
+      final PaletteGenerator palette = await PaletteGenerator.fromImageProvider(
+        FileImage(file),
+        size: const Size(200, 200),
+        timeout: Duration.zero,
+      );
+      final List<Color> rawColors = <Color>{
+        if (palette.vibrantColor?.color != null) palette.vibrantColor!.color,
+        if (palette.lightVibrantColor?.color != null) palette.lightVibrantColor!.color,
+        if (palette.darkVibrantColor?.color != null) palette.darkVibrantColor!.color,
+        if (palette.mutedColor?.color != null) palette.mutedColor!.color,
+        if (palette.lightMutedColor?.color != null) palette.lightMutedColor!.color,
+        if (palette.darkMutedColor?.color != null) palette.darkMutedColor!.color,
+        if (palette.dominantColor?.color != null) palette.dominantColor!.color,
+      }.toList();
 
-        // Filter out colors that are visually too similar to each other
-        final List<Color> distinctColors = [];
-        for (final color in rawColors) {
-          final hsl = HSLColor.fromColor(color);
-          bool isDuplicate = false;
-          for (final existing in distinctColors) {
-            final existingHsl = HSLColor.fromColor(existing);
-            final hueDiff = (hsl.hue - existingHsl.hue).abs();
-            final minHueDiff = hueDiff > 180 ? 360 - hueDiff : hueDiff;
-            final satDiff = (hsl.saturation - existingHsl.saturation).abs();
-            final lightDiff = (hsl.lightness - existingHsl.lightness).abs();
-            
-            if (minHueDiff < 30.0 && satDiff < 0.2 && lightDiff < 0.2) {
-              isDuplicate = true;
-              break;
-            }
-          }
-          if (!isDuplicate) {
-            distinctColors.add(color);
+      // Filter out colors that are visually too similar to each other
+      final List<Color> distinctColors = [];
+      for (final color in rawColors) {
+        final hsl = HSLColor.fromColor(color);
+        bool isDuplicate = false;
+        for (final existing in distinctColors) {
+          final existingHsl = HSLColor.fromColor(existing);
+          final hueDiff = (hsl.hue - existingHsl.hue).abs();
+          final minHueDiff = hueDiff > 180 ? 360 - hueDiff : hueDiff;
+          final satDiff = (hsl.saturation - existingHsl.saturation).abs();
+          final lightDiff = (hsl.lightness - existingHsl.lightness).abs();
+
+          if (minHueDiff < 30.0 && satDiff < 0.2 && lightDiff < 0.2) {
+            isDuplicate = true;
+            break;
           }
         }
-        
-        setState(() {
-          _extractedColors = distinctColors;
-        });
-
-        // Store colors to prevent recalculation when reloading page
-        final csv = distinctColors
-            .map((c) => c.toARGB32().toRadixString(16).padLeft(8, '0').substring(2))
-            .join(',');
-        await ref.read(preferencesProvider.notifier).setCustomImageColorsCsv(csv);
+        if (!isDuplicate) {
+          distinctColors.add(color);
+        }
       }
-    } catch (_) {}
-    setState(() => _isExtracting = false);
+
+      // Store colors to prevent recalculation when reloading page
+      final csv = distinctColors
+          .map((c) => c.toARGB32().toRadixString(16).padLeft(8, '0').substring(2))
+          .join(',');
+
+      if (!mounted) return;
+      setState(() {
+        _extractedColors = distinctColors;
+      });
+      await ref.read(preferencesProvider.notifier).setCustomImageColorsCsv(csv);
+    } catch (_) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not read that image')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isExtracting = false);
+      }
+    }
   }
 
   Future<void> _pickImage() async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     try {
       final FilePickerResult? result = await FilePicker.pickFiles(
         type: FileType.image,
       );
-      if (result != null && result.files.single.path != null) {
-        final String filePath = result.files.single.path!;
-        final String originalName = result.files.single.name;
-        final Directory appDir = await getApplicationSupportDirectory();
-        
-        // Preserve the original name in the copied wallpaper path
-        final String localPath = '${appDir.path}/$originalName';
-        
-        // If a different custom image was previously stored, clean it up
-        if (_localImagePath != null && _localImagePath != localPath) {
-          try {
-            final oldFile = File(_localImagePath!);
-            if (await oldFile.exists()) {
-              await oldFile.delete();
-            }
-          } catch (_) {}
-        }
-        
-        await File(filePath).copy(localPath);
-        
-        setState(() {
-          _localImagePath = localPath;
-          _localSource = ThemeSource.customImage;
-          _activeTab = 2;
-        });
-        
-        final controller = ref.read(preferencesProvider.notifier);
-        await controller.setThemeSource(ThemeSource.customImage);
-        await controller.setCustomImagePath(localPath);
-
-        await _loadPalette(localPath);
-        if (_extractedColors.isNotEmpty) {
-          final Color seed = _extractedColors.first;
-          final String hex = seed.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
-          setState(() {
-            _localSeedColorHex = hex;
-          });
-          await controller.setCustomSeedColorHex(hex);
-        }
+      if (result == null || result.files.single.path == null) {
+        return;
       }
-    } catch (_) {}
+      final String filePath = result.files.single.path!;
+      final String originalName = result.files.single.name;
+      final Directory appDir = await getApplicationSupportDirectory();
+
+      // Preserve the original name in the copied wallpaper path
+      final String localPath = '${appDir.path}/$originalName';
+
+      // Copy the new image into app storage FIRST so a failed copy never
+      // leaves prefs pointing at a file we already deleted.
+      await File(filePath).copy(localPath);
+
+      // Only after the copy succeeds, clean up a previously stored image.
+      final String? previousPath = _localImagePath;
+      if (previousPath != null && previousPath != localPath) {
+        try {
+          final oldFile = File(previousPath);
+          if (await oldFile.exists()) {
+            await oldFile.delete();
+          }
+        } catch (_) {}
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _localImagePath = localPath;
+        _localSource = ThemeSource.customImage;
+        _activeTab = 2;
+      });
+
+      final controller = ref.read(preferencesProvider.notifier);
+      await controller.setThemeSource(ThemeSource.customImage);
+      await controller.setCustomImagePath(localPath);
+      if (!mounted) return;
+
+      await _loadPalette(localPath);
+      if (!mounted) return;
+      if (_extractedColors.isNotEmpty) {
+        final Color seed = _extractedColors.first;
+        final String hex = seed.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
+        setState(() {
+          _localSeedColorHex = hex;
+        });
+        await controller.setCustomSeedColorHex(hex);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not read that image')),
+      );
+    }
   }
 
   Widget _buildTabButton(int index, String label, ColorScheme cs) {
@@ -651,6 +675,12 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                             child: Image.file(
                               File(_localImagePath!),
                               fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) => Center(
+                                child: Icon(
+                                  Icons.broken_image_outlined,
+                                  color: previewColorScheme.onSurfaceVariant,
+                                ),
+                              ),
                             ),
                           ),
                         ),

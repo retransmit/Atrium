@@ -120,7 +120,14 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
               final double scrollOffset = constraints.scrollOffset;
               final double progress = (scrollOffset / (expandedHeight - kToolbarHeight)).clamp(0.0, 1.0);
 
-              final Color titleColor = Color.lerp(Colors.white, cs.onSurface, progress)!;
+              // The expanded title sits over the backdrop's bottom band, which
+              // the scrim fades to opaque cs.surface (a light surface with no
+              // fanart), so a white title is invisible in light mode. Keep the
+              // title on onSurface throughout - legible over the surface when
+              // expanded and over the collapsed toolbar. The icons keep the
+              // white->onSurface lerp because their 0.35-alpha bubbles plus the
+              // top scrim back them over the image when expanded.
+              final Color titleColor = cs.onSurface;
               final Color iconColor = Color.lerp(Colors.white, cs.onSurface, progress)!;
               final double bubbleOpacity = 1.0 - progress;
 

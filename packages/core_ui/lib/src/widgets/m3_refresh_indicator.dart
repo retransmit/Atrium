@@ -365,7 +365,7 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
             left: 0.0,
             right: 0.0,
             child: SizeTransition(
-              alignment: AlignmentDirectional(-1.0, _isIndicatorAtTop! ? 1.0 : -1.0),
+              axisAlignment: _isIndicatorAtTop! ? 1.0 : -1.0,
               sizeFactor: _positionFactor,
               child: Padding(
                 padding: _isIndicatorAtTop!

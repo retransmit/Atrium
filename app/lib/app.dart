@@ -52,7 +52,8 @@ class AtriumApp extends ConsumerWidget {
       } catch (_) {}
     }
 
-    final Preferences prefs = ref.watch(preferencesProvider);
+    final ThemeSource themeSource = ref
+        .watch(preferencesProvider.select((Preferences p) => p.themeSource));
     final (ColorScheme customLight, ColorScheme customDark) = ref.watch(customColorSchemeProvider);
 
     return AtriumTheme.withDynamicColor(
@@ -64,10 +65,10 @@ class AtriumApp extends ConsumerWidget {
           });
         }
 
-        final ColorScheme activeLight = prefs.themeSource == ThemeSource.system
+        final ColorScheme activeLight = themeSource == ThemeSource.system
             ? (lightScheme ?? ColorScheme.fromSeed(seedColor: AtriumTheme.seed))
             : customLight;
-        final ColorScheme activeDark = prefs.themeSource == ThemeSource.system
+        final ColorScheme activeDark = themeSource == ThemeSource.system
             ? (darkScheme ?? ColorScheme.fromSeed(seedColor: AtriumTheme.seed, brightness: Brightness.dark))
             : customDark;
 
