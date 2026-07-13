@@ -28,6 +28,7 @@ class QbittorrentClient {
     required CookieJar cookies,
     required this.username,
     required this.password,
+    this.apiKey,
   })  : _dio = dio,
         _cookies = cookies;
 
@@ -35,6 +36,13 @@ class QbittorrentClient {
   final CookieJar _cookies;
   final String username;
   final String password;
+
+  /// qBittorrent 5.2+ API key (`qbt_…`). When set it is sent as
+  /// `Authorization: Bearer <key>` and the cookie login flow is skipped
+  /// entirely (the key is stateless and cannot use the auth endpoints).
+  final String? apiKey;
+
+  bool get _usesApiKey => apiKey != null && apiKey!.isNotEmpty;
   bool _loggedIn = false;
 
   /// Builds a client with a cookie-aware Dio pointed at [baseUrl].
@@ -43,17 +51,22 @@ class QbittorrentClient {
     required String username,
     required String password,
     required bool allowSelfSigned,
+    String? apiKey,
     Map<String, String> customHeaders = const <String, String>{},
   }) {
     final String baseUrlStr = baseUrl.toString();
     final String normalizedBaseUrl = baseUrlStr.endsWith('/') ? baseUrlStr : '$baseUrlStr/';
     final CookieJar cookies = CookieJar();
+    final Map<String, dynamic> headers = <String, dynamic>{
+      'Referer': normalizedBaseUrl,
+      if (apiKey != null && apiKey.isNotEmpty) 'Authorization': 'Bearer $apiKey',
+    };
     final Dio dio = Dio(
       BaseOptions(
         baseUrl: normalizedBaseUrl,
         connectTimeout: const Duration(seconds: 10),
         receiveTimeout: const Duration(seconds: 30),
-        headers: <String, dynamic>{'Referer': normalizedBaseUrl},
+        headers: headers,
       ),
     );
     // User-configured headers ride alongside the Referer above (a user
@@ -72,6 +85,7 @@ class QbittorrentClient {
       cookies: cookies,
       username: username,
       password: password,
+      apiKey: apiKey,
     );
   }
 
@@ -448,13 +462,23 @@ class QbittorrentClient {
 
   /// Ensures a session exists, runs [call], and re-logins once on a 403.
   Future<T> _guarded<T>(Future<T> Function() call) async {
-    if (!_loggedIn) {
+    // API-key auth is stateless: no login round-trip, and a 403 means the key
+    // itself was rejected (re-login is impossible - keys can't use the auth
+    // endpoints), so surface a clear error instead of retrying.
+    if (!_usesApiKey && !_loggedIn) {
       await login();
     }
     try {
       return await call();
     } on DioException catch (e) {
       if (e.response?.statusCode == 403) {
+        if (_usesApiKey) {
+          throw const NetworkAuthException(
+            'qBittorrent rejected the API key. Check it in qBittorrent 5.2+ '
+            'Web UI settings (sent as Authorization: Bearer), or rotate the '
+            'key and re-enter it.',
+          );
+        }
         _loggedIn = false;
         await login();
         try {

@@ -126,6 +126,11 @@ class GlancesApi {
         totalSeconds: totalSeconds,
       );
 
+      // GPU is optional: many servers have no GPU and the plugin may be
+      // absent (a 404). Fetch it on its own so a missing endpoint can never
+      // break the core stats above.
+      final List<GlancesGpu> gpus = await _getGpus();
+
       return GlancesStats(
         cpu: GlancesCpu(
           physicalCores: physCores,
@@ -139,9 +144,34 @@ class GlancesApi {
         network: network,
         disks: disks,
         uptime: uptime,
+        gpus: gpus,
       );
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Glances `/gpu` returns a list of GPUs with `proc` (utilisation %), `mem`
+  /// (memory %), `temperature` and `name`. Returns an empty list on any error
+  /// (no GPU, plugin disabled, older server) so the core stats never fail.
+  Future<List<GlancesGpu>> _getGpus() async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>('api/4/gpu');
+      final dynamic data = resp.data;
+      if (data is! List) {
+        return const <GlancesGpu>[];
+      }
+      return data.map((dynamic g) {
+        final Map<String, dynamic> map = g as Map<String, dynamic>;
+        return GlancesGpu(
+          name: map['name'] as String? ?? 'GPU',
+          proc: (map['proc'] as num?)?.toDouble() ?? 0.0,
+          mem: (map['mem'] as num?)?.toDouble() ?? 0.0,
+          temp: (map['temperature'] as num?)?.toDouble() ?? 0.0,
+        );
+      }).toList();
+    } catch (_) {
+      return const <GlancesGpu>[];
     }
   }
 }

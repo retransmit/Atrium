@@ -34,12 +34,16 @@ final qbittorrentClientProvider =
       final ConnectionResolver resolver =
           ref.watch(connectionResolverProvider);
       final Uri baseUrl = await resolver.resolve(instance);
-      final (String username, String password) = switch (instance.auth) {
+      final (String username, String password, String? apiKey) =
+          switch (instance.auth) {
         InstanceAuthCookie(:final String username, :final String password) => (
             username,
             password,
+            null,
           ),
-        _ => ('', ''),
+        // qBittorrent 5.2+ stateless key auth (Authorization: Bearer).
+        InstanceAuthApiKey(:final String apiKey) => ('', '', apiKey),
+        _ => ('', '', null),
       };
       final Map<String, String> customHeaders = mergeHeaders(
         ref.watch(globalHeadersProvider),
@@ -49,6 +53,7 @@ final qbittorrentClientProvider =
         baseUrl: baseUrl,
         username: username,
         password: password,
+        apiKey: apiKey,
         allowSelfSigned: instance.allowSelfSignedCerts,
         customHeaders: customHeaders,
       );
