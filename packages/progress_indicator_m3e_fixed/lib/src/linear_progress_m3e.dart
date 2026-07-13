@@ -161,12 +161,16 @@ class _LinearPainter extends CustomPainter {
     // Track occupies the remaining segment to the right of the active,
     // leaving a fixed inter-stroke gap. For indeterminate, fill full width.
     final double activeEndX = value == null ? right : (left + width * p);
-    final double trackStartX =
-        value == null ? left : math.min(right, activeEndX + spec.gap + spec.trackHeight);
+    final double trackStartX = value == null
+        ? left
+        : math.min(right, activeEndX + spec.gap + spec.trackHeight);
 
     if (!waveOnly) {
-      canvas.drawLine(Offset(trackStartX, trackCy), Offset(right, trackCy),
-          base..color = track,);
+      canvas.drawLine(
+        Offset(trackStartX, trackCy),
+        Offset(right, trackCy),
+        base..color = track,
+      );
     }
 
     // --- Active lane ---
@@ -191,30 +195,38 @@ class _LinearPainter extends CustomPainter {
       path.lineTo(end, y);
 
       canvas.drawPath(
-          path,
-          base
-            ..color = active
-            ..strokeWidth = spec.trackHeight,);
+        path,
+        base
+          ..color = active
+          ..strokeWidth = spec.trackHeight,
+      );
 
       // end dot: accent at far right end of the track (shared baseline)
       if (!waveOnly) {
         final dotCenterX = math.max(left, right - spec.dotOffset);
-        canvas.drawCircle(Offset(dotCenterX, trackCy), spec.dotDiameter / 2,
-            Paint()..color = active,);
+        canvas.drawCircle(
+          Offset(dotCenterX, trackCy),
+          spec.dotDiameter / 2,
+          Paint()..color = active,
+        );
       }
     } else {
       // flat active pill + end dot
       final start = left;
       final end = value == null ? right : (left + width * p);
       canvas.drawLine(
-          Offset(start, activeCy),
-          Offset(end, activeCy),
-          base
-            ..color = active
-            ..strokeWidth = spec.trackHeight,);
+        Offset(start, activeCy),
+        Offset(end, activeCy),
+        base
+          ..color = active
+          ..strokeWidth = spec.trackHeight,
+      );
       final dotCenterX = math.max(left, right - spec.dotOffset);
-      canvas.drawCircle(Offset(dotCenterX, trackCy), spec.dotDiameter / 2,
-          Paint()..color = active,);
+      canvas.drawCircle(
+        Offset(dotCenterX, trackCy),
+        spec.dotDiameter / 2,
+        Paint()..color = active,
+      );
     }
   }
 
