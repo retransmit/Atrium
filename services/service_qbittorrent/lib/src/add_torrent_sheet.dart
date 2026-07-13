@@ -5,6 +5,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'qbittorrent_client.dart';
 import 'qbittorrent_providers.dart';
@@ -150,7 +151,6 @@ class _AddTorrentSheetState extends ConsumerState<AddTorrentSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-
             if (_mode == AddTorrentMode.link)
               TextField(
                 controller: _links,
@@ -191,7 +191,9 @@ class _AddTorrentSheetState extends ConsumerState<AddTorrentSheet> {
                 ],
                 onChanged: (String? v) => setState(() => _category = v),
               ),
-              loading: () => const LinearProgressIndicator(),
+              loading: () => const LinearProgressIndicatorM3E(
+                shape: ProgressM3EShape.flat,
+              ),
               error: (_, __) => const SizedBox.shrink(),
             ),
             const SizedBox(height: Insets.sm),
@@ -225,8 +227,7 @@ class _AddTorrentSheetState extends ConsumerState<AddTorrentSheet> {
       ),
       actions: <Widget>[
         TextButton(
-          onPressed:
-              _busy ? null : () => Navigator.of(context).pop(false),
+          onPressed: _busy ? null : () => Navigator.of(context).pop(false),
           child: const Text('Cancel'),
         ),
         FilledButton.icon(

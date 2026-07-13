@@ -8,6 +8,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:palette_generator_plus/palette_generator_plus.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'models/plex_session.dart';
 import 'plex_api.dart';
@@ -313,7 +314,8 @@ class _PlexSessionDetailScreenState
                             child: Container(
                               clipBehavior: Clip.antiAlias,
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.surfaceContainerHighest,
+                                color:
+                                    theme.colorScheme.surfaceContainerHighest,
                                 borderRadius: Radii.card,
                                 boxShadow: <BoxShadow>[
                                   BoxShadow(
@@ -415,8 +417,7 @@ class _PlexSessionDetailScreenState
                             _isDragging = true;
                             _dragPct = v;
                           }),
-                          onChanged: (double v) =>
-                              setState(() => _dragPct = v),
+                          onChanged: (double v) => setState(() => _dragPct = v),
                           onChangeEnd: (double v) {
                             setState(() => _isDragging = false);
                             final int? duration = session.duration;
@@ -436,12 +437,11 @@ class _PlexSessionDetailScreenState
                             const EdgeInsets.symmetric(horizontal: Insets.md),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
+                          child: LinearProgressIndicatorM3E(
+                            shape: ProgressM3EShape.flat,
                             value: session.progress,
-                            minHeight: 6,
-                            color: theme.colorScheme.primary,
-                            backgroundColor:
-                                Colors.white.withValues(alpha: 0.2),
+                            activeColor: theme.colorScheme.primary,
+                            trackColor: Colors.white.withValues(alpha: 0.2),
                           ),
                         ),
                       ),

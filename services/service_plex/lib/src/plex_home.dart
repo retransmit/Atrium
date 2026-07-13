@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'models/plex_models.dart';
 import 'models/plex_session.dart';
@@ -214,10 +215,9 @@ class _ItemsGridState extends ConsumerState<_ItemsGrid> {
   /// blocked. Once loaded, `.value` keeps the last-known genres through a
   /// later refresh error rather than dropping the strip.
   Widget _genreStrip() {
-    final List<PlexGenreDir> genres = ref
-            .watch(plexGenresProvider((widget.instance, widget.id)))
-            .value ??
-        const <PlexGenreDir>[];
+    final List<PlexGenreDir> genres =
+        ref.watch(plexGenresProvider((widget.instance, widget.id))).value ??
+            const <PlexGenreDir>[];
     if (genres.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -500,7 +500,8 @@ class _NowStreamingSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final List<PlexSession> sessions =
-        ref.watch(plexSessionsProvider(instance)).value ?? const <PlexSession>[];
+        ref.watch(plexSessionsProvider(instance)).value ??
+            const <PlexSession>[];
     if (sessions.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -576,7 +577,8 @@ class _SessionCard extends ConsumerWidget {
         child: InkWell(
           onTap: () => pushScreen<void>(
             context,
-            PlexSessionDetailScreen(instance: instance, initialSession: session),
+            PlexSessionDetailScreen(
+                instance: instance, initialSession: session,),
           ),
           child: Stack(
             fit: StackFit.expand,
@@ -660,10 +662,10 @@ class _SessionCard extends ConsumerWidget {
               ),
               Align(
                 alignment: Alignment.bottomCenter,
-                child: LinearProgressIndicator(
+                child: LinearProgressIndicatorM3E(
+                  shape: ProgressM3EShape.flat,
                   value: session.progress,
-                  minHeight: 4,
-                  backgroundColor: Colors.white.withValues(alpha: 0.25),
+                  trackColor: Colors.white.withValues(alpha: 0.25),
                 ),
               ),
             ],
@@ -821,11 +823,10 @@ class PlexPosterCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
-    final double progress = (item.viewOffset != null &&
-            item.duration != null &&
-            item.duration! > 0)
-        ? item.viewOffset! / item.duration!
-        : 0;
+    final double progress =
+        (item.viewOffset != null && item.duration != null && item.duration! > 0)
+            ? item.viewOffset! / item.duration!
+            : 0;
     final bool isEpisode = item.grandparentTitle != null;
 
     return InkWell(
@@ -888,11 +889,10 @@ class PlexPosterCard extends ConsumerWidget {
                           padding: const EdgeInsets.all(Insets.sm),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(6),
-                            child: LinearProgressIndicator(
+                            child: LinearProgressIndicatorM3E(
+                              shape: ProgressM3EShape.flat,
                               value: progress.clamp(0, 1),
-                              minHeight: 6,
-                              backgroundColor:
-                                  Colors.black.withValues(alpha: 0.5),
+                              trackColor: Colors.black.withValues(alpha: 0.5),
                             ),
                           ),
                         ),
@@ -938,9 +938,8 @@ class PlexPosterCard extends ConsumerWidget {
   }
 
   Widget _poster(ThemeData theme) {
-    final bool isMusic = item.type == 'album' ||
-        item.type == 'artist' ||
-        item.type == 'track';
+    final bool isMusic =
+        item.type == 'album' || item.type == 'artist' || item.type == 'track';
     final Widget fallback = Container(
       color: theme.colorScheme.surfaceContainerHighest,
       child: Icon(

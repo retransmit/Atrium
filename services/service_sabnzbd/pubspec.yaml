@@ -21,6 +21,7 @@ dependencies:
   intl: ^0.20.1
   json_annotation: ^4.9.0
   meta: ^1.16.0
+  progress_indicator_m3e:
 
 dev_dependencies:
   build_runner: ^2.4.13

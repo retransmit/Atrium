@@ -7,6 +7,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'models/tautulli_activity.dart';
 import 'models/tautulli_models.dart';
@@ -194,8 +195,8 @@ class _StatTile extends StatelessWidget {
           value,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.titleLarge
-              ?.copyWith(fontWeight: FontWeight.w700),
+          style:
+              theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 2),
         Text(
@@ -332,8 +333,8 @@ class _SessionCard extends StatelessWidget {
                                       session.friendlyName,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: theme.textTheme.labelMedium
-                                          ?.copyWith(
+                                      style:
+                                          theme.textTheme.labelMedium?.copyWith(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -401,13 +402,13 @@ class _SessionCard extends StatelessWidget {
                 bottom: 0,
                 left: 0,
                 right: 0,
-                child: LinearProgressIndicator(
+                child: LinearProgressIndicatorM3E(
+                  shape: ProgressM3EShape.flat,
                   value: pct.clamp(0, 1),
-                  minHeight: 5,
-                  color: playing
+                  activeColor: playing
                       ? theme.colorScheme.primary
                       : theme.colorScheme.outline,
-                  backgroundColor: Colors.white.withValues(alpha: 0.15),
+                  trackColor: Colors.white.withValues(alpha: 0.15),
                 ),
               ),
             ],
@@ -510,14 +511,16 @@ class _SessionSheetState extends ConsumerState<_SessionSheet> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                _Poster(url: api?.imageUrl(s.posterThumb), width: 64, height: 96),
+                _Poster(
+                    url: api?.imageUrl(s.posterThumb), width: 64, height: 96,),
                 const SizedBox(width: Insets.md),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(s.fullTitle, style: theme.textTheme.titleMedium),
-                      if (s.episodeLabel.isNotEmpty || s.year.isNotEmpty) ...<Widget>[
+                      if (s.episodeLabel.isNotEmpty ||
+                          s.year.isNotEmpty) ...<Widget>[
                         const SizedBox(height: Insets.xs),
                         Text(
                           <String>[
@@ -862,9 +865,8 @@ class _StatsTab extends ConsumerWidget {
         value: stats,
         onRetry: () => ref.invalidate(tautulliHomeStatsProvider(instance)),
         data: (List<TautulliHomeStat> all) {
-          final List<TautulliHomeStat> sections = all
-              .where((TautulliHomeStat s) => s.rows.isNotEmpty)
-              .toList();
+          final List<TautulliHomeStat> sections =
+              all.where((TautulliHomeStat s) => s.rows.isNotEmpty).toList();
           if (sections.isEmpty) {
             return const EmptyView(
               icon: Icons.bar_chart,
@@ -976,10 +978,10 @@ class _StatSection extends StatelessWidget {
                             const SizedBox(height: 4),
                             ClipRRect(
                               borderRadius: BorderRadius.circular(8),
-                              child: LinearProgressIndicator(
+                              child: LinearProgressIndicatorM3E(
+                                shape: ProgressM3EShape.flat,
                                 value: (metric(row) / maxMetric).clamp(0, 1),
-                                minHeight: 6,
-                                backgroundColor:
+                                trackColor:
                                     theme.colorScheme.surfaceContainerHighest,
                               ),
                             ),
@@ -1041,8 +1043,11 @@ class _StatLeading extends StatelessWidget {
       return CircleAvatar(
         radius: 17,
         backgroundColor: theme.colorScheme.surfaceContainerHighest,
-        child: Icon(Icons.devices_outlined,
-            size: 18, color: theme.colorScheme.onSurfaceVariant,),
+        child: Icon(
+          Icons.devices_outlined,
+          size: 18,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
       );
     }
     return _Poster(url: api?.imageUrl(row.posterThumb), width: 34, height: 51);

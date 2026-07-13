@@ -3,6 +3,7 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'models/plex_models.dart';
 import 'plex_api.dart';
@@ -81,9 +82,9 @@ class PlexSeasonCard extends StatelessWidget {
                       const SizedBox(height: Insets.sm),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(6),
-                        child: LinearProgressIndicator(
+                        child: LinearProgressIndicatorM3E(
+                          shape: ProgressM3EShape.flat,
                           value: progress,
-                          minHeight: 6,
                         ),
                       ),
                     ],
@@ -123,7 +124,8 @@ class PlexSeasonCard extends StatelessWidget {
 /// a trailing toggle that scrobbles/unscrobbles the episode on the server.
 /// Tapping a row opens the episode detail screen.
 class PlexEpisodeList extends ConsumerWidget {
-  const PlexEpisodeList({required this.instance, required this.season, super.key});
+  const PlexEpisodeList(
+      {required this.instance, required this.season, super.key,});
 
   final Instance instance;
   final PlexMetadata season;
@@ -137,8 +139,8 @@ class PlexEpisodeList extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: Text(season.title)),
       body: M3RefreshIndicator(
-        onRefresh: () async => ref
-            .invalidate(plexChildrenProvider((instance, season.ratingKey))),
+        onRefresh: () async =>
+            ref.invalidate(plexChildrenProvider((instance, season.ratingKey))),
         child: AsyncValueView<List<PlexMetadata>>(
           value: episodes,
           onRetry: () => ref
@@ -185,10 +187,9 @@ class _EpisodeTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
     final bool watched = episode.viewCount > 0;
-    final String label =
-        (episode.parentIndex != null && episode.index != null)
-            ? 'S${episode.parentIndex}E${episode.index} - ${episode.title}'
-            : episode.title;
+    final String label = (episode.parentIndex != null && episode.index != null)
+        ? 'S${episode.parentIndex}E${episode.index} - ${episode.title}'
+        : episode.title;
     final int minutes =
         episode.duration != null ? episode.duration! ~/ 60000 : 0;
 
