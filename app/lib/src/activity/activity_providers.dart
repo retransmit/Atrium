@@ -26,6 +26,7 @@ class ActivityStream {
     this.userName,
     this.userAvatarUrl,
     this.imageUrl,
+    this.posterUrl,
     this.detailChip,
     this.onOpenBuilder,
   });
@@ -43,6 +44,7 @@ class ActivityStream {
 
   /// Backdrop preferred, poster fallback.
   final String? imageUrl;
+  final String? posterUrl;
 
   /// Playback progress, 0-1.
   final double progress;
@@ -146,8 +148,7 @@ final activityStreamsProvider =
         collect(
           instance,
           ref.watch(plexSessionsProvider(instance)),
-          (List<PlexSession> sessions) =>
-              _plexStreams(ref, instance, sessions),
+          (List<PlexSession> sessions) => _plexStreams(ref, instance, sessions),
         );
       case ServiceKind.jellyfin:
         collect(
@@ -309,6 +310,7 @@ List<ActivityStream> _plexStreams(
         userName: (s.user?.title ?? '').isEmpty ? null : s.user!.title,
         userAvatarUrl: api?.imageUrl(s.user?.thumb),
         imageUrl: api?.imageUrl(s.art ?? s.thumb),
+        posterUrl: api?.imageUrl(s.thumb),
         progress: s.progress,
         paused: s.player?.state == 'paused',
         detailChip: s.decisionLabel,
@@ -342,6 +344,7 @@ List<ActivityStream> _jellyfinStreams(
             : (s.device.isEmpty ? null : s.device),
         userName: s.user.isEmpty ? null : s.user,
         imageUrl: s.backdropUrl ?? s.posterUrl,
+        posterUrl: s.posterUrl,
         progress: (s.progressPercent / 100).clamp(0.0, 1.0),
         paused: s.status.toLowerCase() == 'paused',
         onOpenBuilder: (BuildContext _) => jf.JellyfinSessionDetailScreen(
@@ -368,6 +371,7 @@ List<ActivityStream> _embyStreams(
             : (s.device.isEmpty ? null : s.device),
         userName: s.user.isEmpty ? null : s.user,
         imageUrl: s.backdropUrl ?? s.posterUrl,
+        posterUrl: s.posterUrl,
         progress: (s.progressPercent / 100).clamp(0.0, 1.0),
         paused: s.status.toLowerCase() == 'paused',
         onOpenBuilder: (BuildContext _) => emby.EmbySessionDetailScreen(
@@ -398,6 +402,7 @@ List<ActivityStream> _tautulliStreams(
         userAvatarUrl: api?.imageUrl(s.userThumb, fallback: 'art'),
         imageUrl: api?.imageUrl(s.art, width: 800, fallback: 'art') ??
             api?.imageUrl(s.posterThumb),
+        posterUrl: api?.imageUrl(s.posterThumb),
         progress: (s.progressPercent / 100).clamp(0.0, 1.0),
         paused: s.state.toLowerCase() == 'paused',
         detailChip: _decisionLabel(s.transcodeDecision),
@@ -498,8 +503,7 @@ List<ActivityDownload> _sabDownloads(Instance instance, SabQueue queue) {
         instance: instance,
         sourceKind: instance.kind,
         title: slot.filename,
-        progress:
-            ((int.tryParse(slot.percentage) ?? 0) / 100).clamp(0.0, 1.0),
+        progress: ((int.tryParse(slot.percentage) ?? 0) / 100).clamp(0.0, 1.0),
         eta: slot.timeleft.isEmpty ? null : slot.timeleft,
         status: slot.status.isEmpty ? 'Queued' : _capitalized(slot.status),
       ),

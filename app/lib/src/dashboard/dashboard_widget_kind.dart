@@ -39,22 +39,31 @@ extension DashboardWidgetKindX on DashboardWidgetKind {
   /// Service kinds whose presence makes this widget "configured". The health
   /// widget is configured whenever ANY instance exists.
   List<ServiceKind> get serviceKinds => switch (this) {
-        DashboardWidgetKind.downloads =>
-          const <ServiceKind>[ServiceKind.qbittorrent, ServiceKind.sabnzbd],
+        DashboardWidgetKind.downloads => const <ServiceKind>[
+            ServiceKind.qbittorrent,
+            ServiceKind.sabnzbd
+          ],
         DashboardWidgetKind.streams => const <ServiceKind>[
             ServiceKind.tautulli,
             ServiceKind.jellyfin,
             ServiceKind.emby,
           ],
-        DashboardWidgetKind.upcoming =>
-          const <ServiceKind>[ServiceKind.sonarr, ServiceKind.radarr],
-        DashboardWidgetKind.recentlyAdded =>
-          const <ServiceKind>[ServiceKind.sonarr, ServiceKind.radarr],
+        DashboardWidgetKind.upcoming => const <ServiceKind>[
+            ServiceKind.sonarr,
+            ServiceKind.radarr
+          ],
+        DashboardWidgetKind.recentlyAdded => const <ServiceKind>[
+            ServiceKind.sonarr,
+            ServiceKind.radarr
+          ],
         DashboardWidgetKind.health => ServiceKind.values,
         DashboardWidgetKind.requests => const <ServiceKind>[ServiceKind.seerr],
-        DashboardWidgetKind.serverInfo =>
-          const <ServiceKind>[ServiceKind.glances],
-        DashboardWidgetKind.diskSpace =>
-          const <ServiceKind>[ServiceKind.sabnzbd, ServiceKind.glances],
+        DashboardWidgetKind.serverInfo => const <ServiceKind>[
+            ServiceKind.glances
+          ],
+        DashboardWidgetKind.diskSpace => const <ServiceKind>[
+            ServiceKind.sabnzbd,
+            ServiceKind.glances
+          ],
       };
 }

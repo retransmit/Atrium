@@ -87,16 +87,13 @@ class ProwlarrProviderScreen extends ConsumerWidget {
               itemBuilder: (BuildContext context, int i) {
                 final Map<String, dynamic> m = items[i];
                 final String name = (m['name'] as String?) ?? 'Unknown';
-                final String impl =
-                    (m['implementationName'] as String?) ?? '';
+                final String impl = (m['implementationName'] as String?) ?? '';
                 final bool hasEnable = m.containsKey('enable');
                 final bool enabled = m['enable'] == true;
                 return ListTile(
                   leading: hasEnable
                       ? Icon(
-                          enabled
-                              ? Icons.check_circle
-                              : Icons.cancel_outlined,
+                          enabled ? Icons.check_circle : Icons.cancel_outlined,
                           color: enabled
                               ? Colors.green
                               : Theme.of(context).colorScheme.outline,
@@ -207,7 +204,8 @@ class _ProviderFormScreenState extends ConsumerState<_ProviderFormScreen> {
         (source['implementationName'] as String?) ??
         '';
     _fields = ((source['fields'] as List<dynamic>?) ?? <dynamic>[])
-        .map((dynamic f) => Map<String, dynamic>.from(f as Map<dynamic, dynamic>))
+        .map((dynamic f) =>
+            Map<String, dynamic>.from(f as Map<dynamic, dynamic>))
         .toList();
   }
 
@@ -351,8 +349,7 @@ class _ProviderFormScreenState extends ConsumerState<_ProviderFormScreen> {
 
   Widget _buildForm(BuildContext context) {
     final String impl = (_selected!['implementationName'] as String?) ?? '';
-    final String title =
-        _isEdit ? 'Edit ${_nameController.text}' : 'Add $impl';
+    final String title = _isEdit ? 'Edit ${_nameController.text}' : 'Add $impl';
 
     final List<Map<String, dynamic>> visibleFields =
         _fields.where((Map<String, dynamic> f) {
@@ -365,9 +362,9 @@ class _ProviderFormScreenState extends ConsumerState<_ProviderFormScreen> {
       return true;
     }).toList();
 
-    final List<Widget> topLevel = _cfg.topLevel
-            ?.call(context, _selected!, () => setState(() {})) ??
-        const <Widget>[];
+    final List<Widget> topLevel =
+        _cfg.topLevel?.call(context, _selected!, () => setState(() {})) ??
+            const <Widget>[];
 
     return Scaffold(
       appBar: AppBar(

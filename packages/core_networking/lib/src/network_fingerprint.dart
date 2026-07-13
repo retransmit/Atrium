@@ -25,10 +25,8 @@ class NetworkFingerprint {
     if (transports.isEmpty) {
       return 'net:none';
     }
-    final List<String> names = transports
-        .map((ConnectivityResult t) => t.name)
-        .toList()
-      ..sort();
+    final List<String> names =
+        transports.map((ConnectivityResult t) => t.name).toList()..sort();
     return 'net:${names.join(',')}';
   }
 

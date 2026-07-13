@@ -155,7 +155,9 @@ final ProwlarrProviderConfig _downloadClientConfig = ProwlarrProviderConfig(
   title: 'Download Clients',
   resourceLabel: 'download client',
   icon: Icons.download_outlined,
-  topLevel: (BuildContext context, Map<String, dynamic> raw, VoidCallback onChanged) => <Widget>[
+  topLevel: (BuildContext context, Map<String, dynamic> raw,
+          VoidCallback onChanged) =>
+      <Widget>[
     ProwlarrSwitchTile(
       label: 'Enabled',
       value: raw['enable'] != false,
@@ -178,7 +180,8 @@ final ProwlarrProviderConfig _notificationConfig = ProwlarrProviderConfig(
   title: 'Notifications',
   resourceLabel: 'notification',
   icon: Icons.notifications_outlined,
-  topLevel: (BuildContext context, Map<String, dynamic> raw, VoidCallback onChanged) {
+  topLevel:
+      (BuildContext context, Map<String, dynamic> raw, VoidCallback onChanged) {
     Widget? event(String supportKey, String valueKey, String label) {
       if (raw[supportKey] != true) {
         return null;
@@ -223,7 +226,9 @@ final ProwlarrProviderConfig _indexerProxyConfig = ProwlarrProviderConfig(
   title: 'Indexer Proxies',
   resourceLabel: 'indexer proxy',
   icon: Icons.vpn_lock_outlined,
-  topLevel: (BuildContext context, Map<String, dynamic> raw, VoidCallback onChanged) => <Widget>[
+  topLevel: (BuildContext context, Map<String, dynamic> raw,
+          VoidCallback onChanged) =>
+      <Widget>[
     if (raw['supportsOnHealthIssue'] == true)
       ProwlarrSwitchTile(
         label: 'On Health Issue',

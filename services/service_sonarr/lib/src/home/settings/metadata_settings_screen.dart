@@ -15,13 +15,17 @@ class MetadataSettingsScreen extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _showMetadataEditorDialog(
-      BuildContext context, WidgetRef ref, Map<String, dynamic> metadata,) async {
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> metadata,
+  ) async {
     final fields = (metadata['fields'] as List<dynamic>?)
             ?.map((dynamic f) => f as Map<String, dynamic>)
             .toList() ??
         [];
 
-    final enableController = ValueNotifier<bool>(metadata['enable'] as bool? ?? false);
+    final enableController =
+        ValueNotifier<bool>(metadata['enable'] as bool? ?? false);
 
     await showDialog<void>(
       context: context,
@@ -58,20 +62,24 @@ class MetadataSettingsScreen extends ConsumerWidget {
 
                             await api.updateMetadataConfig(payload);
 
-                            ref.invalidate(sonarrMetadataConfigsProvider(instance));
+                            ref.invalidate(
+                                sonarrMetadataConfigsProvider(instance));
                             if (context.mounted) {
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                    content: Text('Metadata consumer updated!'),),
+                                  content: Text('Metadata consumer updated!'),
+                                ),
                               );
                             }
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                    content: Text(
-                                        'Failed to save metadata consumer: $e',),),
+                                  content: Text(
+                                    'Failed to save metadata consumer: $e',
+                                  ),
+                                ),
                               );
                             }
                           }
@@ -91,7 +99,8 @@ class MetadataSettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final metadataListAsync = ref.watch(sonarrMetadataConfigsProvider(instance));
+    final metadataListAsync =
+        ref.watch(sonarrMetadataConfigsProvider(instance));
 
     return Scaffold(
       appBar: AppBar(
@@ -102,7 +111,8 @@ class MetadataSettingsScreen extends ConsumerWidget {
         error: (err, stack) => Center(child: Text('Error: $err')),
         data: (configs) {
           if (configs.isEmpty) {
-            return const Center(child: Text('No metadata consumers configured.'));
+            return const Center(
+                child: Text('No metadata consumers configured.'));
           }
 
           return ListView.builder(
@@ -140,7 +150,8 @@ class MetadataSettingsScreen extends ConsumerWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  subtitle: Text('$implementation • Status: ${isEnabled ? 'Enabled' : 'Disabled'}'),
+                  subtitle: Text(
+                      '$implementation • Status: ${isEnabled ? 'Enabled' : 'Disabled'}'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -153,13 +164,16 @@ class MetadataSettingsScreen extends ConsumerWidget {
                             final payload = Map<String, dynamic>.from(metadata);
                             payload['enable'] = val;
                             await api.updateMetadataConfig(payload);
-                            ref.invalidate(sonarrMetadataConfigsProvider(instance));
+                            ref.invalidate(
+                                sonarrMetadataConfigsProvider(instance));
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                    content: Text(
-                                        'Failed to update metadata status: $e',),),
+                                  content: Text(
+                                    'Failed to update metadata status: $e',
+                                  ),
+                                ),
                               );
                             }
                           }

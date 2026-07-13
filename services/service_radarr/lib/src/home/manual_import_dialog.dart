@@ -16,13 +16,15 @@ void showManualImportFlow(
   WidgetRef ref,
   Instance instance,
 ) {
-  unawaited(showDialog<void>(
-    context: context,
-    barrierDismissible: false,
-    builder: (BuildContext context) => _ManualImportSetupDialog(
-      instance: instance,
+  unawaited(
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) => _ManualImportSetupDialog(
+        instance: instance,
+      ),
     ),
-  ),);
+  );
 }
 
 class _ManualImportSetupDialog extends ConsumerStatefulWidget {
@@ -67,9 +69,8 @@ class __ManualImportSetupDialogState
       setState(() {
         _pathController.text = selectedPath;
       });
-      ref
-          .read(radarrManualImportPathProvider(widget.instance).notifier)
-          .state = selectedPath;
+      ref.read(radarrManualImportPathProvider(widget.instance).notifier).state =
+          selectedPath;
     }
   }
 
@@ -86,37 +87,39 @@ class __ManualImportSetupDialogState
 
     // Show loading overlay
     final NavigatorState nav = Navigator.of(context, rootNavigator: true);
-    unawaited(showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) => PopScope<Object?>(
-        canPop: false,
-        child: Center(
-          child: Card(
-            margin: const EdgeInsets.symmetric(horizontal: 32),
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  const ExpressiveProgressIndicator(),
-                  const SizedBox(height: 16),
-                  const Text('Scanning files...'),
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () {
-                      cancelToken.cancel('User cancelled scan');
-                      nav.pop();
-                    },
-                    child: const Text('Cancel'),
-                  ),
-                ],
+    unawaited(
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext dialogContext) => PopScope<Object?>(
+          canPop: false,
+          child: Center(
+            child: Card(
+              margin: const EdgeInsets.symmetric(horizontal: 32),
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    const ExpressiveProgressIndicator(),
+                    const SizedBox(height: 16),
+                    const Text('Scanning files...'),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: () {
+                        cancelToken.cancel('User cancelled scan');
+                        nav.pop();
+                      },
+                      child: const Text('Cancel'),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
-    ),);
+    );
 
     List<dynamic> scanResults;
     try {
@@ -146,7 +149,8 @@ class __ManualImportSetupDialogState
         context: context,
         builder: (BuildContext context) => AlertDialog(
           title: const Text('No Files Found'),
-          content: Text('No videos were found in "$folder" that are eligible for import.'),
+          content: Text(
+              'No videos were found in "$folder" that are eligible for import.'),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -163,15 +167,17 @@ class __ManualImportSetupDialogState
     // shell rebuilds and does not depend on the just-popped dialog's context.
     nav.pop();
 
-    unawaited(nav.push<void>(
-      MaterialPageRoute<void>(
-        builder: (BuildContext context) => _ManualImportMappingScreen(
-          instance: widget.instance,
-          folderPath: folder,
-          initialFiles: scanResults,
+    unawaited(
+      nav.push<void>(
+        MaterialPageRoute<void>(
+          builder: (BuildContext context) => _ManualImportMappingScreen(
+            instance: widget.instance,
+            folderPath: folder,
+            initialFiles: scanResults,
+          ),
         ),
       ),
-    ),);
+    );
   }
 
   @override
@@ -199,7 +205,8 @@ class __ManualImportSetupDialogState
                     ),
                     onChanged: (String val) {
                       ref
-                          .read(radarrManualImportPathProvider(widget.instance).notifier)
+                          .read(radarrManualImportPathProvider(widget.instance)
+                              .notifier)
                           .state = val;
                     },
                   ),
@@ -232,7 +239,8 @@ class __ManualImportSetupDialogState
               onChanged: (String? val) {
                 if (val != null) {
                   ref
-                      .read(radarrManualImportModeProvider(widget.instance).notifier)
+                      .read(radarrManualImportModeProvider(widget.instance)
+                          .notifier)
                       .state = val;
                 }
               },
@@ -245,7 +253,8 @@ class __ManualImportSetupDialogState
               value: filterExisting,
               onChanged: (bool val) {
                 ref
-                    .read(radarrManualImportFilterProvider(widget.instance).notifier)
+                    .read(radarrManualImportFilterProvider(widget.instance)
+                        .notifier)
                     .state = val;
               },
             ),
@@ -390,7 +399,8 @@ class __DirectoryBrowserDialogState
                     if (segments.isNotEmpty && !isWindows)
                       Text('/', style: theme.textTheme.bodyMedium),
                     for (int i = 0; i < segments.length; i++) ...<Widget>[
-                      if (i > 0) Text(separator, style: theme.textTheme.bodyMedium),
+                      if (i > 0)
+                        Text(separator, style: theme.textTheme.bodyMedium),
                       TextButton(
                         style: TextButton.styleFrom(
                           minimumSize: Size.zero,
@@ -401,7 +411,8 @@ class __DirectoryBrowserDialogState
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         onPressed: () {
-                          final List<String> subSegments = segments.sublist(0, i + 1);
+                          final List<String> subSegments =
+                              segments.sublist(0, i + 1);
                           final String target = isWindows
                               ? subSegments.join('\\')
                               : '/${subSegments.join('/')}';
@@ -462,7 +473,8 @@ class __DirectoryBrowserDialogState
                       : _directories.isEmpty
                           ? const Center(child: Text('No directories found.'))
                           : ListView.builder(
-                              itemCount: _directories.length + (segments.isNotEmpty ? 1 : 0),
+                              itemCount: _directories.length +
+                                  (segments.isNotEmpty ? 1 : 0),
                               itemBuilder: (BuildContext context, int index) {
                                 if (segments.isNotEmpty && index == 0) {
                                   return ListTile(
@@ -472,15 +484,20 @@ class __DirectoryBrowserDialogState
                                   );
                                 }
 
-                                final int dataIndex = segments.isNotEmpty ? index - 1 : index;
-                                final dir = _directories[dataIndex] as Map<String, dynamic>;
-                                final String name = (dir['name'] as String?) ?? 'Unknown';
-                                final String fullPath = (dir['path'] as String?) ?? '';
+                                final int dataIndex =
+                                    segments.isNotEmpty ? index - 1 : index;
+                                final dir = _directories[dataIndex]
+                                    as Map<String, dynamic>;
+                                final String name =
+                                    (dir['name'] as String?) ?? 'Unknown';
+                                final String fullPath =
+                                    (dir['path'] as String?) ?? '';
 
                                 return ListTile(
                                   leading: const Icon(Icons.folder),
                                   title: Text(name),
-                                  trailing: const Icon(Icons.chevron_right, size: 16),
+                                  trailing:
+                                      const Icon(Icons.chevron_right, size: 16),
                                   onTap: () {
                                     _navigateTo(fullPath);
                                   },
@@ -497,7 +514,8 @@ class __DirectoryBrowserDialogState
           child: const Text('Cancel'),
         ),
         FilledButton(
-          onPressed: _loading ? null : () => Navigator.pop(context, _currentPath),
+          onPressed:
+              _loading ? null : () => Navigator.pop(context, _currentPath),
           child: const Text('Select Folder'),
         ),
       ],
@@ -558,29 +576,31 @@ class __ManualImportMappingScreenState
     final f = _files[index] as Map<String, dynamic>;
 
     final NavigatorState nav = Navigator.of(context, rootNavigator: true);
-    unawaited(showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) => const PopScope<Object?>(
-        canPop: false,
-        child: Center(
-          child: Card(
-            margin: EdgeInsets.symmetric(horizontal: 32),
-            child: Padding(
-              padding: EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  ExpressiveProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Loading library movies...'),
-                ],
+    unawaited(
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext dialogContext) => const PopScope<Object?>(
+          canPop: false,
+          child: Center(
+            child: Card(
+              margin: EdgeInsets.symmetric(horizontal: 32),
+              child: Padding(
+                padding: EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    ExpressiveProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text('Loading library movies...'),
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
-    ),);
+    );
 
     try {
       final api = await ref.read(radarrApiProvider(widget.instance).future);
@@ -618,7 +638,8 @@ class __ManualImportMappingScreenState
   Future<void> _executeImport() async {
     if (_selectedPaths.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one file to import.')),
+        const SnackBar(
+            content: Text('Please select at least one file to import.')),
       );
       return;
     }
@@ -633,7 +654,9 @@ class __ManualImportMappingScreenState
       final List<Map<String, dynamic>> payload = <Map<String, dynamic>>[];
 
       for (final String path in _selectedPaths) {
-        final f = _files.firstWhere((x) => (x as Map<String, dynamic>)['path'] == path) as Map<String, dynamic>;
+        final f = _files
+                .firstWhere((x) => (x as Map<String, dynamic>)['path'] == path)
+            as Map<String, dynamic>;
         final movie = f['movie'] as Map<String, dynamic>?;
 
         if (movie == null) continue;
@@ -719,10 +742,12 @@ class __ManualImportMappingScreenState
                     itemBuilder: (BuildContext context, int index) {
                       final f = _files[index] as Map<String, dynamic>;
                       final String pathStr = (f['path'] as String?) ?? '';
-                      final String relativePath = (f['relativePath'] as String?) ?? pathStr;
+                      final String relativePath =
+                          (f['relativePath'] as String?) ?? pathStr;
                       final int bytes = (f['size'] as int?) ?? 0;
                       final movie = f['movie'] as Map<String, dynamic>?;
-                      final List<dynamic>? rejections = f['rejections'] as List<dynamic>?;
+                      final List<dynamic>? rejections =
+                          f['rejections'] as List<dynamic>?;
                       final bool isSelected = _selectedPaths.contains(pathStr);
 
                       String qName = 'Unknown Quality';
@@ -743,7 +768,8 @@ class __ManualImportMappingScreenState
                           side: BorderSide(
                             color: isSelected
                                 ? theme.colorScheme.primary
-                                : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                                : theme.colorScheme.outlineVariant
+                                    .withValues(alpha: 0.5),
                             width: isSelected ? 2.0 : 1.0,
                           ),
                           borderRadius: BorderRadius.circular(12),
@@ -771,11 +797,13 @@ class __ManualImportMappingScreenState
                                   ),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: <Widget>[
                                         Text(
                                           relativePath,
-                                          style: theme.textTheme.bodyMedium?.copyWith(
+                                          style: theme.textTheme.bodyMedium
+                                              ?.copyWith(
                                             fontWeight: FontWeight.bold,
                                           ),
                                           maxLines: 2,
@@ -784,8 +812,10 @@ class __ManualImportMappingScreenState
                                         const SizedBox(height: 2),
                                         Text(
                                           '${_formatSize(bytes)} • $qName',
-                                          style: theme.textTheme.bodySmall?.copyWith(
-                                            color: theme.colorScheme.onSurfaceVariant,
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                            color: theme
+                                                .colorScheme.onSurfaceVariant,
                                           ),
                                         ),
                                       ],
@@ -794,15 +824,18 @@ class __ManualImportMappingScreenState
                                 ],
                               ),
                               const Divider(height: 16),
-                              if (rejections != null && rejections.isNotEmpty) ...<Widget>[
+                              if (rejections != null &&
+                                  rejections.isNotEmpty) ...<Widget>[
                                 Container(
                                   padding: const EdgeInsets.all(8),
                                   margin: const EdgeInsets.only(bottom: 12),
                                   decoration: BoxDecoration(
-                                    color: theme.colorScheme.errorContainer.withValues(alpha: 0.2),
+                                    color: theme.colorScheme.errorContainer
+                                        .withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                      color: theme.colorScheme.error.withValues(alpha: 0.4),
+                                      color: theme.colorScheme.error
+                                          .withValues(alpha: 0.4),
                                     ),
                                   ),
                                   child: Row(
@@ -819,8 +852,10 @@ class __ManualImportMappingScreenState
                                               .cast<Map<String, dynamic>>()
                                               .map((r) => r['reason'] as String)
                                               .join(', '),
-                                          style: theme.textTheme.bodySmall?.copyWith(
-                                            color: theme.colorScheme.onErrorContainer,
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                            color: theme
+                                                .colorScheme.onErrorContainer,
                                           ),
                                         ),
                                       ),
@@ -833,14 +868,16 @@ class __ManualImportMappingScreenState
                                 runSpacing: 8,
                                 children: <Widget>[
                                   ActionChip(
-                                    avatar: const Icon(Icons.movie_outlined, size: 14),
+                                    avatar: const Icon(Icons.movie_outlined,
+                                        size: 14),
                                     label: Text(
                                       movie != null
                                           ? (movie['title'] as String)
                                           : 'Select Movie',
                                     ),
                                     backgroundColor: movie == null
-                                        ? theme.colorScheme.errorContainer.withValues(alpha: 0.3)
+                                        ? theme.colorScheme.errorContainer
+                                            .withValues(alpha: 0.3)
                                         : null,
                                     onPressed: () => _selectMovieForFile(index),
                                   ),
@@ -859,7 +896,8 @@ class __ManualImportMappingScreenState
               color: theme.colorScheme.surfaceContainer,
               border: Border(
                 top: BorderSide(
-                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                  color:
+                      theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
                 ),
               ),
             ),
@@ -950,7 +988,8 @@ class _MoviePickerDialogState extends State<_MoviePickerDialog> {
                   final RadarrMovie m = _filtered[index];
                   return ListTile(
                     title: Text(m.title),
-                    subtitle: Text('${m.studio ?? 'Unknown'} • ${m.year ?? ''}'),
+                    subtitle:
+                        Text('${m.studio ?? 'Unknown'} • ${m.year ?? ''}'),
                     onTap: () {
                       Navigator.pop(context, m);
                     },

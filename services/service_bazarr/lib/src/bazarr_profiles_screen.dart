@@ -116,7 +116,8 @@ class BazarrProfilesScreen extends ConsumerWidget {
     try {
       final BazarrApi api = await ref.read(bazarrApiProvider(instance).future);
       await api.setProfiles(
-        all.where((BazarrLanguageProfile x) => x.profileId != p.profileId)
+        all
+            .where((BazarrLanguageProfile x) => x.profileId != p.profileId)
             .toList(),
       );
       ref.invalidate(bazarrProfilesProvider(instance));
@@ -156,7 +157,8 @@ class _BazarrProfileEditScreenState
   void initState() {
     super.initState();
     _name = TextEditingController(text: widget.existing?.name ?? '');
-    for (final BazarrProfileItem it in widget.existing?.items ?? const <BazarrProfileItem>[]) {
+    for (final BazarrProfileItem it
+        in widget.existing?.items ?? const <BazarrProfileItem>[]) {
       _langs.add(it.language);
     }
   }

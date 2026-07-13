@@ -93,7 +93,8 @@ class _MediaManagementSettingsScreenState
     _renameMovies = naming['renameMovies'] as bool? ?? false;
     _replaceIllegalCharacters =
         naming['replaceIllegalCharacters'] as bool? ?? false;
-    _colonReplacementFormat = naming['colonReplacementFormat'] as String? ?? 'smart';
+    _colonReplacementFormat =
+        naming['colonReplacementFormat'] as String? ?? 'smart';
 
     _standardMovieFormatController.text =
         (naming['standardMovieFormat'] as String?) ?? '';
@@ -110,7 +111,7 @@ class _MediaManagementSettingsScreenState
     _enableMediaInfo = mediaMgmt['enableMediaInfo'] as bool? ?? false;
     _minimumFreeSpaceController.text =
         (mediaMgmt['minimumFreeSpaceWhenImporting'] as int? ?? 0).toString();
-    
+
     _autoUnmonitorPreviouslyDownloadedMovies =
         mediaMgmt['autoUnmonitorPreviouslyDownloadedMovies'] as bool? ?? false;
     _skipFreeSpaceCheckWhenImporting =
@@ -202,7 +203,8 @@ class _MediaManagementSettingsScreenState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final namingConfigAsync = ref.watch(radarrNamingConfigProvider(widget.instance));
+    final namingConfigAsync =
+        ref.watch(radarrNamingConfigProvider(widget.instance));
     final mediaMgmtConfigAsync =
         ref.watch(radarrMediaManagementConfigProvider(widget.instance));
 
@@ -228,11 +230,13 @@ class _MediaManagementSettingsScreenState
       ),
       body: namingConfigAsync.when(
         loading: () => const Center(child: ExpressiveProgressIndicator()),
-        error: (err, _) => Center(child: Text('Error loading naming settings: $err')),
+        error: (err, _) =>
+            Center(child: Text('Error loading naming settings: $err')),
         data: (naming) {
           return mediaMgmtConfigAsync.when(
             loading: () => const Center(child: ExpressiveProgressIndicator()),
-            error: (err, _) => Center(child: Text('Error loading media management: $err')),
+            error: (err, _) =>
+                Center(child: Text('Error loading media management: $err')),
             data: (mediaMgmt) {
               _initializeValues(naming, mediaMgmt);
 
@@ -246,7 +250,8 @@ class _MediaManagementSettingsScreenState
                       color: theme.colorScheme.surfaceContainerLow,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(color: theme.colorScheme.outlineVariant),
+                        side:
+                            BorderSide(color: theme.colorScheme.outlineVariant),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(Insets.md),
@@ -263,7 +268,8 @@ class _MediaManagementSettingsScreenState
                               contentPadding: EdgeInsets.zero,
                               title: const Text('Rename Movies'),
                               value: _renameMovies,
-                              onChanged: (val) => setState(() => _renameMovies = val),
+                              onChanged: (val) =>
+                                  setState(() => _renameMovies = val),
                             ),
                             if (_renameMovies) ...[
                               const SizedBox(height: Insets.md),
@@ -287,8 +293,8 @@ class _MediaManagementSettingsScreenState
                                 contentPadding: EdgeInsets.zero,
                                 title: const Text('Replace Illegal Characters'),
                                 value: _replaceIllegalCharacters,
-                                onChanged: (val) =>
-                                    setState(() => _replaceIllegalCharacters = val),
+                                onChanged: (val) => setState(
+                                    () => _replaceIllegalCharacters = val),
                               ),
                               if (_replaceIllegalCharacters) ...[
                                 const SizedBox(height: Insets.md),
@@ -317,12 +323,14 @@ class _MediaManagementSettingsScreenState
                                     ),
                                     DropdownMenuItem(
                                       value: 'smart',
-                                      child: Text('Smart (Replace with Dash or Space Dash)'),
+                                      child: Text(
+                                          'Smart (Replace with Dash or Space Dash)'),
                                     ),
                                   ],
                                   onChanged: (val) {
                                     if (val != null) {
-                                      setState(() => _colonReplacementFormat = val);
+                                      setState(
+                                          () => _colonReplacementFormat = val);
                                     }
                                   },
                                 ),
@@ -338,7 +346,8 @@ class _MediaManagementSettingsScreenState
                       color: theme.colorScheme.surfaceContainerLow,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(color: theme.colorScheme.outlineVariant),
+                        side:
+                            BorderSide(color: theme.colorScheme.outlineVariant),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(Insets.md),
@@ -355,8 +364,8 @@ class _MediaManagementSettingsScreenState
                               contentPadding: EdgeInsets.zero,
                               title: const Text('Create Empty Movie Folders'),
                               value: _createEmptyMovieFolders,
-                              onChanged: (val) =>
-                                  setState(() => _createEmptyMovieFolders = val),
+                              onChanged: (val) => setState(
+                                  () => _createEmptyMovieFolders = val),
                             ),
                             SwitchListTile(
                               contentPadding: EdgeInsets.zero,
@@ -367,7 +376,8 @@ class _MediaManagementSettingsScreenState
                             ),
                             SwitchListTile(
                               contentPadding: EdgeInsets.zero,
-                              title: const Text('Use Hardlinks instead of Copy'),
+                              title:
+                                  const Text('Use Hardlinks instead of Copy'),
                               value: _copyUsingHardlinks,
                               onChanged: (val) =>
                                   setState(() => _copyUsingHardlinks = val),
@@ -400,7 +410,8 @@ class _MediaManagementSettingsScreenState
                       color: theme.colorScheme.surfaceContainerLow,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(color: theme.colorScheme.outlineVariant),
+                        side:
+                            BorderSide(color: theme.colorScheme.outlineVariant),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(Insets.md),

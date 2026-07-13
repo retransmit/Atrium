@@ -36,8 +36,7 @@ class BazarrMovieDetailScreen extends ConsumerWidget {
           IconButton(
             tooltip: 'Search subtitles',
             icon: const Icon(Icons.subtitles_outlined),
-            onPressed: () =>
-                Navigator.of(context, rootNavigator: true).push(
+            onPressed: () => Navigator.of(context, rootNavigator: true).push(
               MaterialPageRoute<void>(
                 builder: (_) => BazarrSubtitleSearchScreen(
                   instance: instance,
@@ -324,8 +323,8 @@ class _MutedLine extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     return Text(
       text,
-      style: theme.textTheme.bodySmall
-          ?.copyWith(color: theme.colorScheme.outline),
+      style:
+          theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
     );
   }
 }

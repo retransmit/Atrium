@@ -48,6 +48,7 @@ dependencies:
   service_tautulli:
   url_launcher: ^6.3.2
   google_fonts: ^8.1.0
+  palette_generator: ^0.3.3+7
 dev_dependencies:
   flutter_launcher_icons: ^0.14.3
   flutter_lints: ^6.0.0

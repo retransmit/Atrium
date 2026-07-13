@@ -26,8 +26,10 @@ class ProgressWithLabelM3E extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           CircularProgressIndicatorM3E(value: value, size: size),
-          Text('${(value * 100).round()}%',
-              style: textStyle ?? Theme.of(context).textTheme.labelMedium,),
+          Text(
+            '${(value * 100).round()}%',
+            style: textStyle ?? Theme.of(context).textTheme.labelMedium,
+          ),
         ],
       ),
     );

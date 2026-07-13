@@ -122,9 +122,8 @@ class _WakeOnLanScreenState extends ConsumerState<WakeOnLanScreen> {
     if (profile == null) {
       return;
     }
-    final List<WolDevice> next = profile.wolDevices
-        .where((WolDevice d) => d.id != device.id)
-        .toList();
+    final List<WolDevice> next =
+        profile.wolDevices.where((WolDevice d) => d.id != device.id).toList();
     await ref
         .read(profileListProvider.notifier)
         .updateProfile(profile.copyWith(wolDevices: next));

@@ -91,16 +91,21 @@ class EmbyItemDetailScreen extends ConsumerWidget {
                       ),
                     );
                     if (changed == true && context.mounted) {
-                      ref.invalidate(embyItemDetailsProvider((instance, itemId)));
+                      ref.invalidate(
+                          embyItemDetailsProvider((instance, itemId)));
                     }
                   } else if (choice == 'refresh') {
                     try {
-                      await ref.read(embyClientProvider(instance)).value?.refreshMetadata(itemId);
+                      await ref
+                          .read(embyClientProvider(instance))
+                          .value
+                          ?.refreshMetadata(itemId);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Refresh queued')),
                         );
-                        ref.invalidate(embyItemDetailsProvider((instance, itemId)));
+                        ref.invalidate(
+                            embyItemDetailsProvider((instance, itemId)));
                       }
                     } catch (e) {
                       if (context.mounted) {
@@ -230,7 +235,9 @@ class EmbyItemDetailScreen extends ConsumerWidget {
                       children: item.genres.map((String g) {
                         return Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4,),
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Theme.of(context)
                                 .colorScheme

@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../service_radarr.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 class ActivityTab extends ConsumerStatefulWidget {
   const ActivityTab({required this.instance, super.key});
@@ -41,8 +42,11 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
-        ref.read(radarrQueueSelectionProvider(widget.instance).notifier).state = {};
-        ref.read(radarrBlocklistSelectionProvider(widget.instance).notifier).state = {};
+        ref.read(radarrQueueSelectionProvider(widget.instance).notifier).state =
+            {};
+        ref
+            .read(radarrBlocklistSelectionProvider(widget.instance).notifier)
+            .state = {};
         setState(() {});
       }
     });
@@ -88,8 +92,10 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final grouped = ref.watch(radarrActivityGroupedProvider(widget.instance));
-    final queueSelection = ref.watch(radarrQueueSelectionProvider(widget.instance));
-    final blocklistSelection = ref.watch(radarrBlocklistSelectionProvider(widget.instance));
+    final queueSelection =
+        ref.watch(radarrQueueSelectionProvider(widget.instance));
+    final blocklistSelection =
+        ref.watch(radarrBlocklistSelectionProvider(widget.instance));
     final activeSelection = _tabController.index == 0
         ? queueSelection
         : _tabController.index == 2
@@ -116,13 +122,20 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
               selectedIds: activeSelection,
               isQueue: _tabController.index == 0,
               onClear: () {
-                ref.read(radarrQueueSelectionProvider(widget.instance).notifier).state = {};
-                ref.read(radarrBlocklistSelectionProvider(widget.instance).notifier).state = {};
+                ref
+                    .read(
+                        radarrQueueSelectionProvider(widget.instance).notifier)
+                    .state = {};
+                ref
+                    .read(radarrBlocklistSelectionProvider(widget.instance)
+                        .notifier)
+                    .state = {};
               },
             )
           : null,
       body: NestedScrollView(
-        headerSliverBuilder: (BuildContext innerContext, bool innerBoxIsScrolled) {
+        headerSliverBuilder:
+            (BuildContext innerContext, bool innerBoxIsScrolled) {
           return <Widget>[
             SliverAppBar(
               floating: true,
@@ -138,8 +151,15 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
                   ? IconButton(
                       icon: const Icon(Icons.close),
                       onPressed: () {
-                        ref.read(radarrQueueSelectionProvider(widget.instance).notifier).state = {};
-                        ref.read(radarrBlocklistSelectionProvider(widget.instance).notifier).state = {};
+                        ref
+                            .read(radarrQueueSelectionProvider(widget.instance)
+                                .notifier)
+                            .state = {};
+                        ref
+                            .read(radarrBlocklistSelectionProvider(
+                                    widget.instance)
+                                .notifier)
+                            .state = {};
                       },
                     )
                   : IconButton(
@@ -156,55 +176,59 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
                       ),
                     )
                   : SearchBar(
-                focusNode: _searchFocusNode,
-                controller: _searchController,
-                hintText: 'Search activity...',
-                onTapOutside: (event) {
-                  if (_searchFocusNode.hasFocus) {
-                    _searchFocusNode.unfocus();
-                  }
-                },
-                elevation: const WidgetStatePropertyAll<double>(0),
-                backgroundColor: WidgetStatePropertyAll<Color>(
-                  theme.colorScheme.surfaceContainerHigh,
-                ),
-                trailing: <Widget>[
-                  if (_searchController.text.isNotEmpty)
-                    IconButton(
-                      icon: const Icon(Icons.clear),
-                      onPressed: () {
-                        setState(() {
-                          _searchController.clear();
-                        });
+                      focusNode: _searchFocusNode,
+                      controller: _searchController,
+                      hintText: 'Search activity...',
+                      onTapOutside: (event) {
+                        if (_searchFocusNode.hasFocus) {
+                          _searchFocusNode.unfocus();
+                        }
+                      },
+                      elevation: const WidgetStatePropertyAll<double>(0),
+                      backgroundColor: WidgetStatePropertyAll<Color>(
+                        theme.colorScheme.surfaceContainerHigh,
+                      ),
+                      trailing: <Widget>[
+                        if (_searchController.text.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              setState(() {
+                                _searchController.clear();
+                              });
+                              ref
+                                  .read(
+                                    radarrActivitySearchQueryProvider(
+                                      widget.instance,
+                                    ).notifier,
+                                  )
+                                  .state = '';
+                              _updateSearchActiveState();
+                            },
+                          ),
+                      ],
+                      onChanged: (String value) {
+                        setState(() {});
                         ref
                             .read(
-                              radarrActivitySearchQueryProvider(
-                                widget.instance,
-                              ).notifier,
+                              radarrActivitySearchQueryProvider(widget.instance)
+                                  .notifier,
                             )
-                            .state = '';
+                            .state = value;
                         _updateSearchActiveState();
                       },
                     ),
-                ],
-                onChanged: (String value) {
-                  setState(() {});
-                  ref
-                      .read(
-                        radarrActivitySearchQueryProvider(widget.instance)
-                            .notifier,
-                      )
-                      .state = value;
-                  _updateSearchActiveState();
-                },
-              ),
               actions: <Widget>[
                 if (!isSelecting) ...[
                   IconButton(
                     icon: Icon(
-                      grouped ? Icons.format_list_bulleted : Icons.group_work_outlined,
+                      grouped
+                          ? Icons.format_list_bulleted
+                          : Icons.group_work_outlined,
                     ),
-                    tooltip: grouped ? 'Switch to plain list' : 'Switch to grouped view',
+                    tooltip: grouped
+                        ? 'Switch to plain list'
+                        : 'Switch to grouped view',
                     onPressed: () {
                       ref
                           .read(
@@ -259,14 +283,17 @@ class _QueueView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final queueAsync = ref.watch(radarrQueueProvider(instance));
-    final searchQuery = ref.watch(radarrActivitySearchQueryProvider(instance)).toLowerCase();
+    final searchQuery =
+        ref.watch(radarrActivitySearchQueryProvider(instance)).toLowerCase();
 
     return queueAsync.when(
       data: (List<RadarrQueueItem> items) {
         final filteredItems = items.where((item) {
           if (searchQuery.isEmpty) return true;
-          final titleMatch = item.title?.toLowerCase().contains(searchQuery) ?? false;
-          final movieMatch = item.movie?.title.toLowerCase().contains(searchQuery) ?? false;
+          final titleMatch =
+              item.title?.toLowerCase().contains(searchQuery) ?? false;
+          final movieMatch =
+              item.movie?.title.toLowerCase().contains(searchQuery) ?? false;
           return titleMatch || movieMatch;
         }).toList();
 
@@ -336,7 +363,8 @@ class _QueueCard extends ConsumerWidget {
 
     String? posterUrl;
     if (item.movie?.images != null && api != null) {
-      final img = item.movie!.images.firstWhereOrNull((i) => i.coverType == 'poster');
+      final img =
+          item.movie!.images.firstWhereOrNull((i) => i.coverType == 'poster');
       if (img != null) {
         posterUrl = api.posterUrl(img);
       }
@@ -360,7 +388,8 @@ class _QueueCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         onTap: () {
           if (selection.isNotEmpty) {
-            final notifier = ref.read(radarrQueueSelectionProvider(instance).notifier);
+            final notifier =
+                ref.read(radarrQueueSelectionProvider(instance).notifier);
             if (isSelected) {
               notifier.state = selection.where((id) => id != item.id).toSet();
             } else {
@@ -371,7 +400,8 @@ class _QueueCard extends ConsumerWidget {
           }
         },
         onLongPress: () {
-          final notifier = ref.read(radarrQueueSelectionProvider(instance).notifier);
+          final notifier =
+              ref.read(radarrQueueSelectionProvider(instance).notifier);
           if (isSelected) {
             notifier.state = selection.where((id) => id != item.id).toSet();
           } else {
@@ -433,10 +463,12 @@ class _QueueCard extends ConsumerWidget {
                         Expanded(
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(4),
-                            child: LinearProgressIndicator(
+                            child: LinearProgressIndicatorM3E(
+                              shape: ProgressM3EShape.flat,
                               value: progress,
-                              backgroundColor: theme.colorScheme.surfaceContainerHighest,
-                              color: item.status == 'warning'
+                              trackColor:
+                                  theme.colorScheme.surfaceContainerHighest,
+                              activeColor: item.status == 'warning'
                                   ? theme.colorScheme.error
                                   : theme.colorScheme.primary,
                             ),
@@ -461,7 +493,8 @@ class _QueueCard extends ConsumerWidget {
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
-                        if (item.timeleft != null && item.timeleft != '00:00:00')
+                        if (item.timeleft != null &&
+                            item.timeleft != '00:00:00')
                           Text(
                             'ETA: ${item.timeleft}',
                             style: theme.textTheme.bodySmall?.copyWith(
@@ -546,10 +579,12 @@ class _QueueCard extends ConsumerWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
           title: Text(
             'Queue Details',
-            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            style: theme.textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.bold),
           ),
           content: SingleChildScrollView(
             child: Column(
@@ -559,11 +594,17 @@ class _QueueCard extends ConsumerWidget {
                 _DetailRow(label: 'Title', value: i.title ?? 'No title'),
                 _DetailRow(label: 'Movie', value: i.movie?.title ?? 'Unknown'),
                 _DetailRow(label: 'Status', value: i.status ?? 'Unknown'),
-                _DetailRow(label: 'Tracked State', value: i.trackedDownloadState ?? 'None'),
-                _DetailRow(label: 'Download Client', value: i.downloadClient ?? 'Unknown'),
-                _DetailRow(label: 'Download ID', value: i.downloadId ?? 'Unknown'),
+                _DetailRow(
+                    label: 'Tracked State',
+                    value: i.trackedDownloadState ?? 'None'),
+                _DetailRow(
+                    label: 'Download Client',
+                    value: i.downloadClient ?? 'Unknown'),
+                _DetailRow(
+                    label: 'Download ID', value: i.downloadId ?? 'Unknown'),
                 _DetailRow(label: 'Indexer', value: i.indexer ?? 'Unknown'),
-                _DetailRow(label: 'Output Path', value: i.outputPath ?? 'Unknown'),
+                _DetailRow(
+                    label: 'Output Path', value: i.outputPath ?? 'Unknown'),
               ],
             ),
           ),
@@ -671,14 +712,17 @@ class _HistoryView extends ConsumerWidget {
     final theme = Theme.of(context);
     final historyAsync = ref.watch(radarrHistoryProvider(instance));
     final grouped = ref.watch(radarrActivityGroupedProvider(instance));
-    final searchQuery = ref.watch(radarrActivitySearchQueryProvider(instance)).toLowerCase();
+    final searchQuery =
+        ref.watch(radarrActivitySearchQueryProvider(instance)).toLowerCase();
 
     return historyAsync.when(
       data: (List<RadarrHistoryItem> items) {
         final filteredItems = items.where((item) {
           if (searchQuery.isEmpty) return true;
-          final titleMatch = item.sourceTitle?.toLowerCase().contains(searchQuery) ?? false;
-          final movieMatch = item.movie?.title.toLowerCase().contains(searchQuery) ?? false;
+          final titleMatch =
+              item.sourceTitle?.toLowerCase().contains(searchQuery) ?? false;
+          final movieMatch =
+              item.movie?.title.toLowerCase().contains(searchQuery) ?? false;
           return titleMatch || movieMatch;
         }).toList();
 
@@ -705,7 +749,8 @@ class _HistoryView extends ConsumerWidget {
         }
 
         if (grouped) {
-          final groupedMap = groupBy(filteredItems, (RadarrHistoryItem item) => item.movie?.id ?? 0);
+          final groupedMap = groupBy(
+              filteredItems, (RadarrHistoryItem item) => item.movie?.id ?? 0);
           final keys = groupedMap.keys.toList();
           return ListView.builder(
             padding: const EdgeInsets.all(Insets.md),
@@ -796,35 +841,38 @@ void _showHistoryDetails(
 
   void addRow(List<Widget> rows, String label, String? value) {
     if (value == null || value.isEmpty) return;
-    rows.add(Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 140,
-            child: Text(
-              label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+    rows.add(
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 140,
+              child: Text(
+                label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w500,
+            Expanded(
+              child: Text(
+                value,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),);
+    );
   }
 
   final date = DateTime.tryParse(item.date ?? '')?.toLocal();
-  final formattedDate = date != null ? DateFormat.yMMMd().add_jm().format(date) : null;
+  final formattedDate =
+      date != null ? DateFormat.yMMMd().add_jm().format(date) : null;
 
   final rows = <Widget>[];
   addRow(rows, 'Movie', item.movie?.title);
@@ -840,8 +888,7 @@ void _showHistoryDetails(
     });
   }
 
-  final bool canMarkFailed =
-      (item.eventType ?? '').toLowerCase() == 'grabbed';
+  final bool canMarkFailed = (item.eventType ?? '').toLowerCase() == 'grabbed';
 
   showModalBottomSheet<void>(
     context: context,
@@ -871,7 +918,8 @@ void _showHistoryDetails(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Text(
               'History Details',
-              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(height: 12),
@@ -894,8 +942,8 @@ void _showHistoryDetails(
                           ScaffoldMessenger.of(context);
                       Navigator.of(ctx).pop();
                       try {
-                        final api = await ref
-                            .read(radarrApiProvider(instance).future);
+                        final api =
+                            await ref.read(radarrApiProvider(instance).future);
                         await api.failHistoryItem(item.id);
                         if (!context.mounted) return;
                         ref.invalidate(radarrHistoryProvider(instance));
@@ -937,7 +985,8 @@ Future<void> _confirmDeleteBlocklistItem(
     context: context,
     builder: (context) => AlertDialog(
       title: const Text('Delete from Blocklist?'),
-      content: const Text('Are you sure you want to remove this entry from your blocklist?'),
+      content: const Text(
+          'Are you sure you want to remove this entry from your blocklist?'),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
@@ -984,14 +1033,16 @@ class _HistoryCard extends ConsumerWidget {
 
     String? posterUrl;
     if (item.movie?.images != null && api != null) {
-      final img = item.movie!.images.firstWhereOrNull((i) => i.coverType == 'poster');
+      final img =
+          item.movie!.images.firstWhereOrNull((i) => i.coverType == 'poster');
       if (img != null) {
         posterUrl = api.posterUrl(img);
       }
     }
 
     final date = DateTime.tryParse(item.date ?? '')?.toLocal();
-    final String formattedDate = date != null ? DateFormat.yMMMd().add_jm().format(date) : '';
+    final String formattedDate =
+        date != null ? DateFormat.yMMMd().add_jm().format(date) : '';
 
     return Card(
       elevation: 0,
@@ -1133,7 +1184,8 @@ class _GroupedHistoryCard extends ConsumerStatefulWidget {
   final List<RadarrHistoryItem> items;
 
   @override
-  ConsumerState<_GroupedHistoryCard> createState() => _GroupedHistoryCardState();
+  ConsumerState<_GroupedHistoryCard> createState() =>
+      _GroupedHistoryCardState();
 }
 
 class _GroupedHistoryCardState extends ConsumerState<_GroupedHistoryCard> {
@@ -1146,7 +1198,8 @@ class _GroupedHistoryCardState extends ConsumerState<_GroupedHistoryCard> {
 
     String? posterUrl;
     if (widget.movie?.images != null && api != null) {
-      final img = widget.movie!.images.firstWhereOrNull((i) => i.coverType == 'poster');
+      final img =
+          widget.movie!.images.firstWhereOrNull((i) => i.coverType == 'poster');
       if (img != null) {
         posterUrl = api.posterUrl(img);
       }
@@ -1187,11 +1240,14 @@ class _GroupedHistoryCardState extends ConsumerState<_GroupedHistoryCard> {
                               imageUrl: posterUrl,
                               fit: BoxFit.cover,
                               placeholder: (context, url) => Container(
-                                color: theme.colorScheme.surfaceContainerHighest,
+                                color:
+                                    theme.colorScheme.surfaceContainerHighest,
                               ),
                               errorWidget: (context, url, err) => Container(
-                                color: theme.colorScheme.surfaceContainerHighest,
-                                child: const Icon(Icons.movie_outlined, size: 18),
+                                color:
+                                    theme.colorScheme.surfaceContainerHighest,
+                                child:
+                                    const Icon(Icons.movie_outlined, size: 18),
                               ),
                             )
                           : Container(
@@ -1225,7 +1281,8 @@ class _GroupedHistoryCardState extends ConsumerState<_GroupedHistoryCard> {
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.primaryContainer,
                       borderRadius: BorderRadius.circular(10),
@@ -1258,7 +1315,9 @@ class _GroupedHistoryCardState extends ConsumerState<_GroupedHistoryCard> {
                 itemBuilder: (context, index) {
                   final item = widget.items[index];
                   final date = DateTime.tryParse(item.date ?? '')?.toLocal();
-                  final String formattedDate = date != null ? DateFormat.yMMMd().add_jm().format(date) : '';
+                  final String formattedDate = date != null
+                      ? DateFormat.yMMMd().add_jm().format(date)
+                      : '';
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     child: Row(
@@ -1290,7 +1349,8 @@ class _GroupedHistoryCardState extends ConsumerState<_GroupedHistoryCard> {
                         ),
                         IconButton(
                           icon: const Icon(Icons.info_outline, size: 20),
-                          onPressed: () => _showHistoryDetails(context, ref, widget.instance, item),
+                          onPressed: () => _showHistoryDetails(
+                              context, ref, widget.instance, item),
                         ),
                       ],
                     ),
@@ -1315,14 +1375,17 @@ class _BlocklistView extends ConsumerWidget {
     final theme = Theme.of(context);
     final blocklistAsync = ref.watch(radarrBlocklistProvider(instance));
     final grouped = ref.watch(radarrActivityGroupedProvider(instance));
-    final searchQuery = ref.watch(radarrActivitySearchQueryProvider(instance)).toLowerCase();
+    final searchQuery =
+        ref.watch(radarrActivitySearchQueryProvider(instance)).toLowerCase();
 
     return blocklistAsync.when(
       data: (List<RadarrBlocklistItem> items) {
         final filteredItems = items.where((item) {
           if (searchQuery.isEmpty) return true;
-          final titleMatch = item.sourceTitle?.toLowerCase().contains(searchQuery) ?? false;
-          final movieMatch = item.movie?.title.toLowerCase().contains(searchQuery) ?? false;
+          final titleMatch =
+              item.sourceTitle?.toLowerCase().contains(searchQuery) ?? false;
+          final movieMatch =
+              item.movie?.title.toLowerCase().contains(searchQuery) ?? false;
           return titleMatch || movieMatch;
         }).toList();
 
@@ -1349,7 +1412,8 @@ class _BlocklistView extends ConsumerWidget {
         }
 
         if (grouped) {
-          final groupedMap = groupBy(filteredItems, (RadarrBlocklistItem item) => item.movie?.id ?? 0);
+          final groupedMap = groupBy(
+              filteredItems, (RadarrBlocklistItem item) => item.movie?.id ?? 0);
           final keys = groupedMap.keys.toList();
           return ListView.builder(
             padding: const EdgeInsets.all(Insets.md),
@@ -1406,7 +1470,8 @@ class _BlocklistCard extends ConsumerWidget {
 
     String? posterUrl;
     if (item.movie?.images != null && api != null) {
-      final img = item.movie!.images.firstWhereOrNull((i) => i.coverType == 'poster');
+      final img =
+          item.movie!.images.firstWhereOrNull((i) => i.coverType == 'poster');
       if (img != null) {
         posterUrl = api.posterUrl(img);
       }
@@ -1430,7 +1495,8 @@ class _BlocklistCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         onTap: () {
           if (selection.isNotEmpty) {
-            final notifier = ref.read(radarrBlocklistSelectionProvider(instance).notifier);
+            final notifier =
+                ref.read(radarrBlocklistSelectionProvider(instance).notifier);
             if (isSelected) {
               notifier.state = selection.where((id) => id != item.id).toSet();
             } else {
@@ -1439,7 +1505,8 @@ class _BlocklistCard extends ConsumerWidget {
           }
         },
         onLongPress: () {
-          final notifier = ref.read(radarrBlocklistSelectionProvider(instance).notifier);
+          final notifier =
+              ref.read(radarrBlocklistSelectionProvider(instance).notifier);
           if (isSelected) {
             notifier.state = selection.where((id) => id != item.id).toSet();
           } else {
@@ -1532,7 +1599,8 @@ class _BlocklistCard extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete from Blocklist?'),
-        content: const Text('Are you sure you want to remove this entry from your blocklist?'),
+        content: const Text(
+            'Are you sure you want to remove this entry from your blocklist?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -1572,7 +1640,8 @@ class _GroupedBlocklistCard extends ConsumerStatefulWidget {
   final List<RadarrBlocklistItem> items;
 
   @override
-  ConsumerState<_GroupedBlocklistCard> createState() => _GroupedBlocklistCardState();
+  ConsumerState<_GroupedBlocklistCard> createState() =>
+      _GroupedBlocklistCardState();
 }
 
 class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
@@ -1582,15 +1651,18 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final api = ref.watch(radarrApiProvider(widget.instance)).value;
-    final selection = ref.watch(radarrBlocklistSelectionProvider(widget.instance));
+    final selection =
+        ref.watch(radarrBlocklistSelectionProvider(widget.instance));
     final isSelecting = selection.isNotEmpty;
     final groupIds = widget.items.map((i) => i.id).toList();
     final isGroupSelected = groupIds.every(selection.contains);
 
     void toggleGroupSelection() {
-      final notifier = ref.read(radarrBlocklistSelectionProvider(widget.instance).notifier);
+      final notifier =
+          ref.read(radarrBlocklistSelectionProvider(widget.instance).notifier);
       if (isGroupSelected) {
-        notifier.state = selection.where((id) => !groupIds.contains(id)).toSet();
+        notifier.state =
+            selection.where((id) => !groupIds.contains(id)).toSet();
       } else {
         notifier.state = {...selection, ...groupIds};
       }
@@ -1598,7 +1670,8 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
 
     String? posterUrl;
     if (widget.movie?.images != null && api != null) {
-      final img = widget.movie!.images.firstWhereOrNull((i) => i.coverType == 'poster');
+      final img =
+          widget.movie!.images.firstWhereOrNull((i) => i.coverType == 'poster');
       if (img != null) {
         posterUrl = api.posterUrl(img);
       }
@@ -1649,20 +1722,26 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
                                   imageUrl: posterUrl,
                                   fit: BoxFit.cover,
                                   placeholder: (context, url) => Container(
-                                    color: theme.colorScheme.surfaceContainerHighest,
+                                    color: theme
+                                        .colorScheme.surfaceContainerHighest,
                                   ),
                                   errorWidget: (context, url, err) => Container(
-                                    color: theme.colorScheme.surfaceContainerHighest,
-                                    child: const Icon(Icons.movie_outlined, size: 18),
+                                    color: theme
+                                        .colorScheme.surfaceContainerHighest,
+                                    child: const Icon(Icons.movie_outlined,
+                                        size: 18),
                                   ),
                                 )
                               : Container(
-                                  color: theme.colorScheme.surfaceContainerHighest,
-                                  child: const Icon(Icons.movie_outlined, size: 18),
+                                  color:
+                                      theme.colorScheme.surfaceContainerHighest,
+                                  child: const Icon(Icons.movie_outlined,
+                                      size: 18),
                                 ),
                           if (isGroupSelected)
                             Container(
-                              color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                              color: theme.colorScheme.primary
+                                  .withValues(alpha: 0.25),
                               child: Center(
                                 child: Container(
                                   padding: const EdgeInsets.all(3),
@@ -1707,7 +1786,8 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.errorContainer,
                       borderRadius: BorderRadius.circular(10),
@@ -1742,9 +1822,12 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
                   final isItemSelected = selection.contains(item.id);
 
                   void toggleItemSelection() {
-                    final notifier = ref.read(radarrBlocklistSelectionProvider(widget.instance).notifier);
+                    final notifier = ref.read(
+                        radarrBlocklistSelectionProvider(widget.instance)
+                            .notifier);
                     if (isItemSelected) {
-                      notifier.state = selection.where((id) => id != item.id).toSet();
+                      notifier.state =
+                          selection.where((id) => id != item.id).toSet();
                     } else {
                       notifier.state = {...selection, item.id};
                     }
@@ -1780,7 +1863,8 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              if (item.message != null && item.message!.isNotEmpty) ...[
+                              if (item.message != null &&
+                                  item.message!.isNotEmpty) ...[
                                 const SizedBox(height: 2),
                                 Text(
                                   item.message!,
@@ -1802,7 +1886,8 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
                               color: theme.colorScheme.error,
                               size: 20,
                             ),
-                            onPressed: () => _confirmDeleteBlocklistItem(context, ref, widget.instance, item),
+                            onPressed: () => _confirmDeleteBlocklistItem(
+                                context, ref, widget.instance, item),
                           ),
                       ],
                     ),
@@ -1908,7 +1993,8 @@ class _ActivityBulkActionsBar extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Are you sure you want to cancel the selected downloads?'),
+              const Text(
+                  'Are you sure you want to cancel the selected downloads?'),
               CheckboxListTile(
                 title: const Text('Add releases to blocklist'),
                 value: blocklist,
@@ -1953,7 +2039,8 @@ class _ActivityBulkActionsBar extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Remove ${selectedIds.length} Entries?'),
-        content: const Text('Are you sure you want to remove the selected entries from the blocklist?'),
+        content: const Text(
+            'Are you sure you want to remove the selected entries from the blocklist?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -2042,7 +2129,8 @@ class _QueueBulkGrabDialog extends ConsumerWidget {
             Navigator.pop(context); // pop dialog
 
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Forced grab successfully triggered')),
+              const SnackBar(
+                  content: Text('Forced grab successfully triggered')),
             );
           },
           child: const Text('Force Grab'),

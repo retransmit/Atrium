@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../sonarr_api.dart';
 import '../sonarr_providers.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 class SystemTab extends ConsumerStatefulWidget {
   const SystemTab({required this.instance, super.key});
@@ -249,35 +250,23 @@ class _StatusTab extends ConsumerWidget {
 
           // ── About / Status ──
           statusAsync.when(
-            loading: () =>
-                const Center(child: ExpressiveProgressIndicator()),
+            loading: () => const Center(child: ExpressiveProgressIndicator()),
             error: (Object err, _) => _sectionError('Status', err),
             data: (Map<String, dynamic> s) {
-              final String version =
-                  s['version'] as String? ?? 'Unknown';
-              final String branch =
-                  s['branch'] as String? ?? 'Unknown';
-              final String osName =
-                  s['osName'] as String? ?? 'Unknown';
-              final String osVersion =
-                  s['osVersion'] as String? ?? '';
-              final String runtimeName =
-                  s['runtimeName'] as String? ?? '';
+              final String version = s['version'] as String? ?? 'Unknown';
+              final String branch = s['branch'] as String? ?? 'Unknown';
+              final String osName = s['osName'] as String? ?? 'Unknown';
+              final String osVersion = s['osVersion'] as String? ?? '';
+              final String runtimeName = s['runtimeName'] as String? ?? '';
               final String runtimeVersion =
                   s['runtimeVersion'] as String? ?? '';
               final bool isDocker = s['isDocker'] as bool? ?? false;
-              final String packageAuthor =
-                  s['packageAuthor'] as String? ?? '';
-              final String dbType =
-                  s['databaseType'] as String? ?? '';
-              final String dbVersion =
-                  s['databaseVersion'] as String? ?? '';
-              final String startTimeStr =
-                  s['startTime'] as String? ?? '';
-              final String appData =
-                  s['appData'] as String? ?? '';
-              final String startupPath =
-                  s['startupPath'] as String? ?? '';
+              final String packageAuthor = s['packageAuthor'] as String? ?? '';
+              final String dbType = s['databaseType'] as String? ?? '';
+              final String dbVersion = s['databaseVersion'] as String? ?? '';
+              final String startTimeStr = s['startTime'] as String? ?? '';
+              final String appData = s['appData'] as String? ?? '';
+              final String startupPath = s['startupPath'] as String? ?? '';
 
               String uptimeText = '';
               if (startTimeStr.isNotEmpty) {
@@ -289,8 +278,7 @@ class _StatusTab extends ConsumerWidget {
                   uptimeText =
                       '${uptime.inDays}d ${uptime.inHours % 24}h ${uptime.inMinutes % 60}m';
                 } else if (uptime.inHours > 0) {
-                  uptimeText =
-                      '${uptime.inHours}h ${uptime.inMinutes % 60}m';
+                  uptimeText = '${uptime.inHours}h ${uptime.inMinutes % 60}m';
                 } else {
                   uptimeText = '${uptime.inMinutes}m';
                 }
@@ -383,8 +371,7 @@ class _StatusTab extends ConsumerWidget {
                 children: <Widget>[
                   _sectionHeader(theme, 'Disk Space'),
                   ...disks.map(
-                    (Map<String, dynamic> d) =>
-                        _DiskSpaceCard(disk: d),
+                    (Map<String, dynamic> d) => _DiskSpaceCard(disk: d),
                   ),
                 ],
               );
@@ -547,8 +534,7 @@ class _DiskSpaceCard extends StatelessWidget {
     final int freeSpace = disk['freeSpace'] as int? ?? 0;
     final int totalSpace = disk['totalSpace'] as int? ?? 1;
     final int usedSpace = totalSpace - freeSpace;
-    final double usedPercent =
-        totalSpace > 0 ? usedSpace / totalSpace : 0.0;
+    final double usedPercent = totalSpace > 0 ? usedSpace / totalSpace : 0.0;
 
     return Card(
       margin: const EdgeInsets.only(bottom: Insets.sm),
@@ -592,17 +578,13 @@ class _DiskSpaceCard extends StatelessWidget {
             const SizedBox(height: Insets.sm),
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: usedPercent,
-                minHeight: 8,
-                backgroundColor:
-                    theme.colorScheme.surfaceContainerHighest,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  usedPercent > 0.9
+              child: LinearProgressIndicatorM3E(
+                  shape: ProgressM3EShape.flat,
+                  value: usedPercent,
+                  trackColor: theme.colorScheme.surfaceContainerHighest,
+                  activeColor: usedPercent > 0.9
                       ? theme.colorScheme.error
-                      : theme.colorScheme.primary,
-                ),
-              ),
+                      : theme.colorScheme.primary),
             ),
             const SizedBox(height: Insets.xs),
             Text(
@@ -643,8 +625,7 @@ class _TasksTab extends ConsumerWidget {
     String taskName,
   ) async {
     try {
-      final SonarrApi api =
-          await ref.read(sonarrApiProvider(instance).future);
+      final SonarrApi api = await ref.read(sonarrApiProvider(instance).future);
       await api.runCommand(<String, dynamic>{'name': taskName});
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -674,10 +655,8 @@ class _TasksTab extends ConsumerWidget {
         await ref.read(sonarrTasksProvider(instance).future);
       },
       child: tasksAsync.when(
-        loading: () =>
-            const Center(child: ExpressiveProgressIndicator()),
-        error: (Object err, _) =>
-            Center(child: Text('Error: $err')),
+        loading: () => const Center(child: ExpressiveProgressIndicator()),
+        error: (Object err, _) => Center(child: Text('Error: $err')),
         data: (List<Map<String, dynamic>> tasks) {
           if (tasks.isEmpty) {
             return const Center(child: Text('No scheduled tasks.'));
@@ -688,24 +667,16 @@ class _TasksTab extends ConsumerWidget {
             itemCount: tasks.length,
             itemBuilder: (BuildContext context, int index) {
               final Map<String, dynamic> task = tasks[index];
-              final String name =
-                  task['name'] as String? ?? 'Task';
-              final String taskName =
-                  task['taskName'] as String? ?? '';
-              final int interval =
-                  task['interval'] as int? ?? 0;
-              final String lastExecStr =
-                  task['lastExecution'] as String? ?? '';
-              final String nextExecStr =
-                  task['nextExecution'] as String? ?? '';
-              final String lastDuration =
-                  task['lastDuration'] as String? ?? '';
+              final String name = task['name'] as String? ?? 'Task';
+              final String taskName = task['taskName'] as String? ?? '';
+              final int interval = task['interval'] as int? ?? 0;
+              final String lastExecStr = task['lastExecution'] as String? ?? '';
+              final String nextExecStr = task['nextExecution'] as String? ?? '';
+              final String lastDuration = task['lastDuration'] as String? ?? '';
 
               final String intervalText = _formatInterval(interval);
-              final String lastExecText =
-                  _formatRelativeTime(lastExecStr);
-              final String nextExecText =
-                  _formatRelativeTime(nextExecStr);
+              final String lastExecText = _formatRelativeTime(lastExecStr);
+              final String nextExecText = _formatRelativeTime(nextExecStr);
 
               return Card(
                 margin: const EdgeInsets.only(bottom: Insets.sm),
@@ -748,8 +719,7 @@ class _TasksTab extends ConsumerWidget {
                   trailing: IconButton(
                     icon: const Icon(Icons.play_arrow_outlined),
                     tooltip: 'Run now',
-                    onPressed: () =>
-                        _runTask(context, ref, taskName),
+                    onPressed: () => _runTask(context, ref, taskName),
                   ),
                 ),
               );
@@ -826,10 +796,8 @@ class _UpdatesTab extends ConsumerWidget {
         await ref.read(sonarrUpdatesProvider(instance).future);
       },
       child: updatesAsync.when(
-        loading: () =>
-            const Center(child: ExpressiveProgressIndicator()),
-        error: (Object err, _) =>
-            Center(child: Text('Error: $err')),
+        loading: () => const Center(child: ExpressiveProgressIndicator()),
+        error: (Object err, _) => Center(child: Text('Error: $err')),
         data: (List<Map<String, dynamic>> updates) {
           if (updates.isEmpty) {
             return const Center(
@@ -863,21 +831,18 @@ class _UpdateCard extends StatelessWidget {
     final String branch = update['branch'] as String? ?? '';
     final bool installed = update['installed'] as bool? ?? false;
     final bool latest = update['latest'] as bool? ?? false;
-    final String releaseDateStr =
-        update['releaseDate'] as String? ?? '';
+    final String releaseDateStr = update['releaseDate'] as String? ?? '';
     final Map<String, dynamic>? changes =
         update['changes'] as Map<String, dynamic>?;
 
-    final List<String> newItems =
-        (changes?['new'] as List<dynamic>?)
-                ?.map((dynamic e) => e as String)
-                .toList() ??
-            <String>[];
-    final List<String> fixedItems =
-        (changes?['fixed'] as List<dynamic>?)
-                ?.map((dynamic e) => e as String)
-                .toList() ??
-            <String>[];
+    final List<String> newItems = (changes?['new'] as List<dynamic>?)
+            ?.map((dynamic e) => e as String)
+            .toList() ??
+        <String>[];
+    final List<String> fixedItems = (changes?['fixed'] as List<dynamic>?)
+            ?.map((dynamic e) => e as String)
+            .toList() ??
+        <String>[];
 
     String releaseDateText = '';
     if (releaseDateStr.isNotEmpty) {
@@ -891,9 +856,8 @@ class _UpdateCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: Insets.md),
       elevation: 0,
-      color: installed
-          ? theme.colorScheme.primaryContainer.withAlpha(50)
-          : null,
+      color:
+          installed ? theme.colorScheme.primaryContainer.withAlpha(50) : null,
       shape: RoundedRectangleBorder(
         side: BorderSide(
           color: installed
@@ -925,23 +889,19 @@ class _UpdateCard extends StatelessWidget {
                       color: theme.colorScheme.onPrimaryContainer,
                       fontWeight: FontWeight.bold,
                     ),
-                    materialTapTargetSize:
-                        MaterialTapTargetSize.shrinkWrap,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     visualDensity: VisualDensity.compact,
                     side: BorderSide.none,
                   ),
                 if (latest && !installed)
                   Chip(
                     label: const Text('Latest'),
-                    backgroundColor:
-                        theme.colorScheme.tertiary.withAlpha(30),
-                    labelStyle:
-                        theme.textTheme.labelSmall?.copyWith(
+                    backgroundColor: theme.colorScheme.tertiary.withAlpha(30),
+                    labelStyle: theme.textTheme.labelSmall?.copyWith(
                       color: theme.colorScheme.tertiary,
                       fontWeight: FontWeight.bold,
                     ),
-                    materialTapTargetSize:
-                        MaterialTapTargetSize.shrinkWrap,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     visualDensity: VisualDensity.compact,
                     side: BorderSide.none,
                   ),
@@ -1062,12 +1022,14 @@ class _LogsTabState extends ConsumerState<_LogsTab> {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final logsAsync = ref.watch(
-      sonarrLogsProvider((
-        widget.instance,
-        page: _currentPage,
-        pageSize: _pageSize,
-        level: _levelFilter,
-      ),),
+      sonarrLogsProvider(
+        (
+          widget.instance,
+          page: _currentPage,
+          pageSize: _pageSize,
+          level: _levelFilter,
+        ),
+      ),
     );
 
     return Column(
@@ -1122,15 +1084,12 @@ class _LogsTabState extends ConsumerState<_LogsTab> {
 
         Expanded(
           child: logsAsync.when(
-            loading: () =>
-                const Center(child: ExpressiveProgressIndicator()),
-            error: (Object err, _) =>
-                Center(child: Text('Error: $err')),
+            loading: () => const Center(child: ExpressiveProgressIndicator()),
+            error: (Object err, _) => Center(child: Text('Error: $err')),
             data: (Map<String, dynamic> data) {
               final List<dynamic> records =
                   data['records'] as List<dynamic>? ?? <dynamic>[];
-              final int totalRecords =
-                  data['totalRecords'] as int? ?? 0;
+              final int totalRecords = data['totalRecords'] as int? ?? 0;
               final int totalPages =
                   (totalRecords / _pageSize).ceil().clamp(1, 9999);
 
@@ -1143,19 +1102,22 @@ class _LogsTabState extends ConsumerState<_LogsTab> {
                   Expanded(
                     child: M3RefreshIndicator(
                       onRefresh: () async {
-                        ref.invalidate(sonarrLogsProvider((
-                          widget.instance,
-                          page: _currentPage,
-                          pageSize: _pageSize,
-                          level: _levelFilter,
-                        ),),);
+                        ref.invalidate(
+                          sonarrLogsProvider(
+                            (
+                              widget.instance,
+                              page: _currentPage,
+                              pageSize: _pageSize,
+                              level: _levelFilter,
+                            ),
+                          ),
+                        );
                       },
                       child: ListView.builder(
                         padding:
                             const EdgeInsets.symmetric(horizontal: Insets.md),
                         itemCount: records.length,
-                        itemBuilder:
-                            (BuildContext context, int index) {
+                        itemBuilder: (BuildContext context, int index) {
                           final Map<String, dynamic> log =
                               records[index] as Map<String, dynamic>;
                           return _LogEntryTile(log: log);
@@ -1173,8 +1135,7 @@ class _LogsTabState extends ConsumerState<_LogsTab> {
                         IconButton(
                           icon: const Icon(Icons.chevron_left),
                           onPressed: _currentPage > 1
-                              ? () =>
-                                  setState(() => _currentPage--)
+                              ? () => setState(() => _currentPage--)
                               : null,
                         ),
                         Text(
@@ -1184,8 +1145,7 @@ class _LogsTabState extends ConsumerState<_LogsTab> {
                         IconButton(
                           icon: const Icon(Icons.chevron_right),
                           onPressed: _currentPage < totalPages
-                              ? () =>
-                                  setState(() => _currentPage++)
+                              ? () => setState(() => _currentPage++)
                               : null,
                         ),
                       ],
@@ -1317,8 +1277,7 @@ class _LogEntryTile extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
                           exception,
-                          style:
-                              theme.textTheme.bodySmall?.copyWith(
+                          style: theme.textTheme.bodySmall?.copyWith(
                             color: theme.colorScheme.error,
                             fontFamily: 'monospace',
                             fontSize: 11,
@@ -1409,10 +1368,8 @@ class _BackupsTab extends ConsumerWidget {
         await ref.read(sonarrBackupsProvider(instance).future);
       },
       child: backupsAsync.when(
-        loading: () =>
-            const Center(child: ExpressiveProgressIndicator()),
-        error: (Object err, _) =>
-            Center(child: Text('Error: $err')),
+        loading: () => const Center(child: ExpressiveProgressIndicator()),
+        error: (Object err, _) => Center(child: Text('Error: $err')),
         data: (List<Map<String, dynamic>> backups) {
           if (backups.isEmpty) {
             return const Center(child: Text('No backups found.'));
@@ -1423,14 +1380,11 @@ class _BackupsTab extends ConsumerWidget {
             itemCount: backups.length,
             itemBuilder: (BuildContext context, int index) {
               final Map<String, dynamic> backup = backups[index];
-              final String name =
-                  backup['name'] as String? ?? 'Backup';
-              final String type =
-                  backup['type'] as String? ?? 'unknown';
+              final String name = backup['name'] as String? ?? 'Backup';
+              final String type = backup['type'] as String? ?? 'unknown';
               final int size = backup['size'] as int? ?? 0;
               final int id = backup['id'] as int? ?? 0;
-              final String timeStr =
-                  backup['time'] as String? ?? '';
+              final String timeStr = backup['time'] as String? ?? '';
 
               String dateText = '';
               if (timeStr.isNotEmpty) {
@@ -1465,8 +1419,7 @@ class _BackupsTab extends ConsumerWidget {
                 ),
                 child: ListTile(
                   leading: CircleAvatar(
-                    backgroundColor:
-                        theme.colorScheme.surfaceContainerHighest,
+                    backgroundColor: theme.colorScheme.surfaceContainerHighest,
                     child: Icon(
                       typeIcon,
                       color: theme.colorScheme.onSurfaceVariant,
@@ -1491,8 +1444,7 @@ class _BackupsTab extends ConsumerWidget {
                       Icons.delete_outline,
                       color: theme.colorScheme.error,
                     ),
-                    onPressed: () =>
-                        _deleteBackup(context, ref, id, name),
+                    onPressed: () => _deleteBackup(context, ref, id, name),
                   ),
                 ),
               );

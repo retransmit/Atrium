@@ -22,6 +22,7 @@ abstract class SeerrRequest with _$SeerrRequest {
   const factory SeerrRequest({
     required int id,
     @Default(1) int status,
+
     /// 'movie' or 'tv'.
     @Default('') String type,
     SeerrMedia? media,

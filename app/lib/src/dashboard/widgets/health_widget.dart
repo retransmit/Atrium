@@ -35,8 +35,9 @@ class DashboardHealthWidget extends ConsumerWidget {
       accent: issues > 0 ? cs.error : cs.tertiary,
       trailing: DashboardPill(
         icon: issues > 0 ? Icons.warning_amber_rounded : Icons.check_rounded,
-        label:
-            issues > 0 ? '$issues issue${issues == 1 ? '' : 's'}' : 'All online',
+        label: issues > 0
+            ? '$issues issue${issues == 1 ? '' : 's'}'
+            : 'All online',
         color: issues > 0 ? cs.error : cs.tertiary,
       ),
       child: Wrap(

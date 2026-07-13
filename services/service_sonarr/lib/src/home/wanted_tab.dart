@@ -105,7 +105,9 @@ class _WantedTabState extends ConsumerState<WantedTab>
       await api.performEpisodeSearch(ids);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Search started for ${ids.length} selected episodes.')),
+          SnackBar(
+              content:
+                  Text('Search started for ${ids.length} selected episodes.')),
         );
       }
     } catch (e) {
@@ -189,7 +191,8 @@ class _WantedTabState extends ConsumerState<WantedTab>
     final Set<int> selectedEpisodeIds =
         ref.watch(sonarrWantedSelectionProvider(widget.instance));
     final bool hasSelection = selectedEpisodeIds.isNotEmpty;
-    final bool isGrouped = ref.watch(sonarrWantedGroupedProvider(widget.instance));
+    final bool isGrouped =
+        ref.watch(sonarrWantedGroupedProvider(widget.instance));
 
     // Keep the local controller in sync when the search query is cleared
     // externally (SonarrHome unwinds search state on system back).
@@ -209,7 +212,8 @@ class _WantedTabState extends ConsumerState<WantedTab>
       child: Scaffold(
         backgroundColor: theme.colorScheme.surface,
         body: NestedScrollView(
-          headerSliverBuilder: (BuildContext innerContext, bool innerBoxIsScrolled) {
+          headerSliverBuilder:
+              (BuildContext innerContext, bool innerBoxIsScrolled) {
             return <Widget>[
               SliverAppBar(
                 floating: true,
@@ -302,12 +306,18 @@ class _WantedTabState extends ConsumerState<WantedTab>
                     : <Widget>[
                         IconButton(
                           icon: Icon(
-                            isGrouped ? Icons.format_list_bulleted : Icons.group_work_outlined,
+                            isGrouped
+                                ? Icons.format_list_bulleted
+                                : Icons.group_work_outlined,
                           ),
-                          tooltip: isGrouped ? 'Switch to plain list' : 'Switch to grouped view',
+                          tooltip: isGrouped
+                              ? 'Switch to plain list'
+                              : 'Switch to grouped view',
                           onPressed: () {
                             ref
-                                .read(sonarrWantedGroupedProvider(widget.instance).notifier)
+                                .read(
+                                    sonarrWantedGroupedProvider(widget.instance)
+                                        .notifier)
                                 .update((state) => !state);
                           },
                         ),
@@ -438,7 +448,8 @@ class _EpisodeListLayout extends ConsumerWidget {
   final String Function(String?) formatAirDate;
   final VoidCallback onBulkSearch;
 
-  Future<void> _triggerSingleSearch(BuildContext context, WidgetRef ref, int episodeId) async {
+  Future<void> _triggerSingleSearch(
+      BuildContext context, WidgetRef ref, int episodeId) async {
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
       await api.performEpisodeSearch([episodeId]);
@@ -456,7 +467,8 @@ class _EpisodeListLayout extends ConsumerWidget {
     }
   }
 
-  void _showEpisodeDetails(BuildContext context, WidgetRef ref, SonarrEpisode episode) {
+  void _showEpisodeDetails(
+      BuildContext context, WidgetRef ref, SonarrEpisode episode) {
     showModalBottomSheet<void>(
       context: context,
       useRootNavigator: true,
@@ -489,7 +501,8 @@ class _EpisodeListLayout extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
+              Icon(Icons.error_outline,
+                  size: 48, color: theme.colorScheme.error),
               const SizedBox(height: 16),
               Text(
                 'Failed to load episodes',
@@ -527,7 +540,9 @@ class _EpisodeListLayout extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  isCutoffTab ? 'No cutoff unmet episodes' : 'No missing episodes',
+                  isCutoffTab
+                      ? 'No cutoff unmet episodes'
+                      : 'No missing episodes',
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.bold,
@@ -540,11 +555,11 @@ class _EpisodeListLayout extends ConsumerWidget {
 
         // Grouping logic by seriesId
         final List<Widget> listItems = [];
-        
+
         if (isGrouped) {
           final Map<int, List<SonarrEpisode>> groupedMap = {};
           final List<SonarrSeries> seriesList = [];
-          
+
           for (final ep in list) {
             final series = ep.series;
             if (series == null) continue;
@@ -566,7 +581,8 @@ class _EpisodeListLayout extends ConsumerWidget {
                 onSelectionChanged: onSelectionChanged,
                 isCutoffTab: isCutoffTab,
                 formatAirDate: formatAirDate,
-                onSearchTriggered: (id) => _triggerSingleSearch(context, ref, id),
+                onSearchTriggered: (id) =>
+                    _triggerSingleSearch(context, ref, id),
                 onShowDetails: (ep) => _showEpisodeDetails(context, ref, ep),
               ),
             );
@@ -582,11 +598,14 @@ class _EpisodeListLayout extends ConsumerWidget {
               (img) => img.coverType == 'poster',
               orElse: () => const SonarrImage(coverType: 'poster'),
             );
-            final String? posterUrl =
-                api != null && posterImage != null ? api.posterUrl(posterImage, width: 120) : null;
+            final String? posterUrl = api != null && posterImage != null
+                ? api.posterUrl(posterImage, width: 120)
+                : null;
 
-            final String sSeason = episode.seasonNumber.toString().padLeft(2, '0');
-            final String sEpisode = episode.episodeNumber.toString().padLeft(2, '0');
+            final String sSeason =
+                episode.seasonNumber.toString().padLeft(2, '0');
+            final String sEpisode =
+                episode.episodeNumber.toString().padLeft(2, '0');
             final String episodeCode = 'S${sSeason}E$sEpisode';
 
             String? qualityLabel;
@@ -607,7 +626,8 @@ class _EpisodeListLayout extends ConsumerWidget {
                   side: BorderSide(
                     color: isSelected
                         ? theme.colorScheme.primary
-                        : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                        : theme.colorScheme.outlineVariant
+                            .withValues(alpha: 0.5),
                     width: isSelected ? 2.0 : 1.0,
                   ),
                 ),
@@ -643,7 +663,6 @@ class _EpisodeListLayout extends ConsumerWidget {
                           },
                         ),
                         const SizedBox(width: 4),
-
                         if (posterUrl != null)
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
@@ -677,7 +696,6 @@ class _EpisodeListLayout extends ConsumerWidget {
                             child: const Icon(Icons.movie, size: 20),
                           ),
                         const SizedBox(width: 12),
-
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -699,13 +717,16 @@ class _EpisodeListLayout extends ConsumerWidget {
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: theme.colorScheme.secondaryContainer,
+                                      color:
+                                          theme.colorScheme.secondaryContainer,
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
                                       episodeCode,
-                                      style: theme.textTheme.labelSmall?.copyWith(
-                                        color: theme.colorScheme.onSecondaryContainer,
+                                      style:
+                                          theme.textTheme.labelSmall?.copyWith(
+                                        color: theme
+                                            .colorScheme.onSecondaryContainer,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -714,8 +735,10 @@ class _EpisodeListLayout extends ConsumerWidget {
                                   Expanded(
                                     child: Text(
                                       episode.title,
-                                      style: theme.textTheme.bodyMedium?.copyWith(
-                                        color: theme.colorScheme.onSurfaceVariant,
+                                      style:
+                                          theme.textTheme.bodyMedium?.copyWith(
+                                        color:
+                                            theme.colorScheme.onSurfaceVariant,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -746,13 +769,16 @@ class _EpisodeListLayout extends ConsumerWidget {
                                         vertical: 1,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: theme.colorScheme.tertiaryContainer,
+                                        color:
+                                            theme.colorScheme.tertiaryContainer,
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
                                         qualityLabel,
-                                        style: theme.textTheme.labelSmall?.copyWith(
-                                          color: theme.colorScheme.onTertiaryContainer,
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                          color: theme
+                                              .colorScheme.onTertiaryContainer,
                                           fontSize: 9,
                                         ),
                                       ),
@@ -764,17 +790,18 @@ class _EpisodeListLayout extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: 8),
-
                         Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: <Widget>[
                             IconButton(
                               icon: const Icon(Icons.search, size: 20),
                               tooltip: 'Automatic Search',
-                              onPressed: () => _triggerSingleSearch(context, ref, episode.id),
+                              onPressed: () => _triggerSingleSearch(
+                                  context, ref, episode.id),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.person_search_outlined, size: 20),
+                              icon: const Icon(Icons.person_search_outlined,
+                                  size: 20),
                               tooltip: 'Interactive Search',
                               onPressed: () {
                                 pushScreen<void>(
@@ -789,13 +816,13 @@ class _EpisodeListLayout extends ConsumerWidget {
                           ],
                         ),
                       ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          );
+            );
+          }
         }
-      }
 
         return M3RefreshIndicator(
           onRefresh: () async {
@@ -815,7 +842,9 @@ class _EpisodeListLayout extends ConsumerWidget {
                           onPressed: onBulkSearch,
                           icon: const Icon(Icons.search, size: 18),
                           label: Text(
-                            isCutoffTab ? 'Search Cutoff Unmet' : 'Search All Missing',
+                            isCutoffTab
+                                ? 'Search Cutoff Unmet'
+                                : 'Search All Missing',
                           ),
                         ),
                       ),
@@ -866,7 +895,8 @@ class _GroupedEpisodeCard extends ConsumerStatefulWidget {
   final ValueChanged<SonarrEpisode> onShowDetails;
 
   @override
-  ConsumerState<_GroupedEpisodeCard> createState() => _GroupedEpisodeCardState();
+  ConsumerState<_GroupedEpisodeCard> createState() =>
+      _GroupedEpisodeCardState();
 }
 
 class _GroupedEpisodeCardState extends ConsumerState<_GroupedEpisodeCard> {
@@ -889,7 +919,8 @@ class _GroupedEpisodeCardState extends ConsumerState<_GroupedEpisodeCard> {
     // Determine selection checkbox state for the group
     final Set<int> groupEpIds = widget.episodes.map((e) => e.id).toSet();
     final bool allSelected = widget.selectedIds.containsAll(groupEpIds);
-    final bool someSelected = !allSelected && widget.selectedIds.any(groupEpIds.contains);
+    final bool someSelected =
+        !allSelected && widget.selectedIds.any(groupEpIds.contains);
     final bool? checkboxState = someSelected ? null : allSelected;
 
     return Card(
@@ -997,7 +1028,8 @@ class _GroupedEpisodeCardState extends ConsumerState<_GroupedEpisodeCard> {
 
                   // Wanted Count Badge
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.primaryContainer,
                       borderRadius: BorderRadius.circular(8),
@@ -1030,11 +1062,15 @@ class _GroupedEpisodeCardState extends ConsumerState<_GroupedEpisodeCard> {
                 itemCount: widget.episodes.length,
                 itemBuilder: (BuildContext context, int index) {
                   final episode = widget.episodes[index];
-                  final bool isEpSelected = widget.selectedIds.contains(episode.id);
-                  final String airDateStr = widget.formatAirDate(episode.airDateUtc);
+                  final bool isEpSelected =
+                      widget.selectedIds.contains(episode.id);
+                  final String airDateStr =
+                      widget.formatAirDate(episode.airDateUtc);
 
-                  final String sSeason = episode.seasonNumber.toString().padLeft(2, '0');
-                  final String sEpisode = episode.episodeNumber.toString().padLeft(2, '0');
+                  final String sSeason =
+                      episode.seasonNumber.toString().padLeft(2, '0');
+                  final String sEpisode =
+                      episode.episodeNumber.toString().padLeft(2, '0');
                   final String episodeCode = 'S${sSeason}E$sEpisode';
 
                   String? qualityLabel;
@@ -1051,7 +1087,8 @@ class _GroupedEpisodeCardState extends ConsumerState<_GroupedEpisodeCard> {
                     elevation: 0,
                     margin: const EdgeInsets.symmetric(vertical: 4),
                     color: isEpSelected
-                        ? theme.colorScheme.primaryContainer.withValues(alpha: 0.15)
+                        ? theme.colorScheme.primaryContainer
+                            .withValues(alpha: 0.15)
                         : theme.colorScheme.surface.withValues(alpha: 0.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -1065,7 +1102,8 @@ class _GroupedEpisodeCardState extends ConsumerState<_GroupedEpisodeCard> {
                       borderRadius: BorderRadius.circular(12),
                       onTap: () => widget.onShowDetails(episode),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 8),
                         child: Row(
                           children: <Widget>[
                             Checkbox(
@@ -1083,7 +1121,8 @@ class _GroupedEpisodeCardState extends ConsumerState<_GroupedEpisodeCard> {
                             ),
                             const SizedBox(width: 4),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color: theme.colorScheme.secondaryContainer,
                                 borderRadius: BorderRadius.circular(6),
@@ -1114,7 +1153,8 @@ class _GroupedEpisodeCardState extends ConsumerState<_GroupedEpisodeCard> {
                                     children: [
                                       Text(
                                         airDateStr,
-                                        style: theme.textTheme.bodySmall?.copyWith(
+                                        style:
+                                            theme.textTheme.bodySmall?.copyWith(
                                           color: theme.colorScheme.outline,
                                           fontSize: 11,
                                         ),
@@ -1127,13 +1167,17 @@ class _GroupedEpisodeCardState extends ConsumerState<_GroupedEpisodeCard> {
                                             vertical: 1,
                                           ),
                                           decoration: BoxDecoration(
-                                            color: theme.colorScheme.tertiaryContainer,
-                                            borderRadius: BorderRadius.circular(4),
+                                            color: theme
+                                                .colorScheme.tertiaryContainer,
+                                            borderRadius:
+                                                BorderRadius.circular(4),
                                           ),
                                           child: Text(
                                             qualityLabel,
-                                            style: theme.textTheme.labelSmall?.copyWith(
-                                              color: theme.colorScheme.onTertiaryContainer,
+                                            style: theme.textTheme.labelSmall
+                                                ?.copyWith(
+                                              color: theme.colorScheme
+                                                  .onTertiaryContainer,
                                               fontSize: 8,
                                             ),
                                           ),
@@ -1148,7 +1192,8 @@ class _GroupedEpisodeCardState extends ConsumerState<_GroupedEpisodeCard> {
                             IconButton(
                               icon: const Icon(Icons.search, size: 18),
                               tooltip: 'Automatic Search',
-                              onPressed: () => widget.onSearchTriggered(episode.id),
+                              onPressed: () =>
+                                  widget.onSearchTriggered(episode.id),
                             ),
                           ],
                         ),
@@ -1179,7 +1224,8 @@ class _EpisodeDetailsSheet extends ConsumerStatefulWidget {
   final ValueChanged<int> onSearchTriggered;
 
   @override
-  ConsumerState<_EpisodeDetailsSheet> createState() => _EpisodeDetailsSheetState();
+  ConsumerState<_EpisodeDetailsSheet> createState() =>
+      _EpisodeDetailsSheetState();
 }
 
 class _EpisodeDetailsSheetState extends ConsumerState<_EpisodeDetailsSheet> {
@@ -1196,7 +1242,8 @@ class _EpisodeDetailsSheetState extends ConsumerState<_EpisodeDetailsSheet> {
   Future<void> _loadHistory() async {
     try {
       final api = await ref.read(sonarrApiProvider(widget.instance).future);
-      final logs = await api.getHistory(pageSize: 50, episodeId: widget.episode.id);
+      final logs =
+          await api.getHistory(pageSize: 50, episodeId: widget.episode.id);
       if (mounted) {
         setState(() {
           _history = logs;
@@ -1218,8 +1265,10 @@ class _EpisodeDetailsSheetState extends ConsumerState<_EpisodeDetailsSheet> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-    final String sSeason = widget.episode.seasonNumber.toString().padLeft(2, '0');
-    final String sEpisode = widget.episode.episodeNumber.toString().padLeft(2, '0');
+    final String sSeason =
+        widget.episode.seasonNumber.toString().padLeft(2, '0');
+    final String sEpisode =
+        widget.episode.episodeNumber.toString().padLeft(2, '0');
     final String episodeCode = 'S${sSeason}E$sEpisode';
 
     return SizedBox(
@@ -1238,13 +1287,14 @@ class _EpisodeDetailsSheetState extends ConsumerState<_EpisodeDetailsSheet> {
               ),
             ),
             const SizedBox(height: 16),
-
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
                   Icon(
-                    widget.episode.monitored ? Icons.bookmark : Icons.bookmark_border,
+                    widget.episode.monitored
+                        ? Icons.bookmark
+                        : Icons.bookmark_border,
                     color: widget.episode.monitored ? cs.primary : cs.outline,
                   ),
                   const SizedBox(width: 8),
@@ -1274,9 +1324,9 @@ class _EpisodeDetailsSheetState extends ConsumerState<_EpisodeDetailsSheet> {
               ),
             ),
             const SizedBox(height: 8),
-
             TabBar(
-              dividerColor: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+              dividerColor:
+                  theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
               indicatorSize: TabBarIndicatorSize.tab,
               tabs: const <Widget>[
                 Tab(text: 'Details'),
@@ -1284,7 +1334,6 @@ class _EpisodeDetailsSheetState extends ConsumerState<_EpisodeDetailsSheet> {
                 Tab(text: 'Search'),
               ],
             ),
-
             Expanded(
               child: TabBarView(
                 children: <Widget>[
@@ -1326,7 +1375,9 @@ class _EpisodeDetailsSheetState extends ConsumerState<_EpisodeDetailsSheet> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            widget.episode.series?.monitored == true ? 'Yes' : 'No',
+                            widget.episode.series?.monitored == true
+                                ? 'Yes'
+                                : 'No',
                             style: theme.textTheme.labelMedium?.copyWith(
                               color: cs.onPrimaryContainer,
                               fontWeight: FontWeight.bold,
@@ -1343,7 +1394,8 @@ class _EpisodeDetailsSheetState extends ConsumerState<_EpisodeDetailsSheet> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          widget.episode.overview != null && widget.episode.overview!.isNotEmpty
+                          widget.episode.overview != null &&
+                                  widget.episode.overview!.isNotEmpty
                               ? widget.episode.overview!
                               : 'No overview details are available for this episode.',
                           style: theme.textTheme.bodyMedium?.copyWith(
@@ -1370,7 +1422,6 @@ class _EpisodeDetailsSheetState extends ConsumerState<_EpisodeDetailsSheet> {
                       ],
                     ),
                   ),
-
                   _historyLoading
                       ? const Center(child: ExpressiveProgressIndicator())
                       : _historyError != null
@@ -1382,25 +1433,33 @@ class _EpisodeDetailsSheetState extends ConsumerState<_EpisodeDetailsSheet> {
                               ),
                             )
                           : _history.isEmpty
-                              ? const Center(child: Text('No history items for this episode.'))
+                              ? const Center(
+                                  child: Text(
+                                      'No history items for this episode.'))
                               : ListView.builder(
                                   padding: const EdgeInsets.all(16),
                                   itemCount: _history.length,
-                                  itemBuilder: (BuildContext context, int index) {
+                                  itemBuilder:
+                                      (BuildContext context, int index) {
                                     final log = _history[index];
                                     final DateTime? dt = log.date != null
-                                        ? DateTime.tryParse(log.date!)?.toLocal()
+                                        ? DateTime.tryParse(log.date!)
+                                            ?.toLocal()
                                         : null;
                                     final date = dt != null
                                         ? DateFormat.yMMMd().add_jm().format(dt)
                                         : 'Unknown Date';
-                                    final eventType = log.eventType?.toUpperCase() ?? 'UNKNOWN';
+                                    final eventType =
+                                        log.eventType?.toUpperCase() ??
+                                            'UNKNOWN';
                                     return ListTile(
                                       leading: Icon(
                                         log.eventType == 'grabbed'
                                             ? Icons.cloud_download_outlined
                                             : Icons.save_alt_outlined,
-                                        color: log.eventType == 'grabbed' ? cs.primary : cs.secondary,
+                                        color: log.eventType == 'grabbed'
+                                            ? cs.primary
+                                            : cs.secondary,
                                       ),
                                       title: Text(eventType),
                                       subtitle: Text(
@@ -1410,7 +1469,6 @@ class _EpisodeDetailsSheetState extends ConsumerState<_EpisodeDetailsSheet> {
                                     );
                                   },
                                 ),
-
                   Padding(
                     padding: const EdgeInsets.all(24.0),
                     child: Column(

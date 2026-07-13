@@ -41,83 +41,92 @@ class SettingsTab extends StatelessWidget {
           _buildSettingsCard(
             context: context,
             title: 'Media Management',
-            subtitle: 'Rename movies, configure empty folders, copy links & permission details.',
+            subtitle:
+                'Rename movies, configure empty folders, copy links & permission details.',
             icon: Icons.folder_open_outlined,
             screen: MediaManagementSettingsScreen(instance: instance),
           ),
           _buildSettingsCard(
             context: context,
             title: 'Profiles',
-            subtitle: 'Manage quality profiles, delay profiles, and custom formats.',
+            subtitle:
+                'Manage quality profiles, delay profiles, and custom formats.',
             icon: Icons.high_quality_outlined,
             screen: ProfilesSettingsScreen(instance: instance),
           ),
           _buildSettingsCard(
             context: context,
             title: 'Quality Definitions',
-            subtitle: 'Configure minimum, maximum, and preferred size limits per quality type.',
+            subtitle:
+                'Configure minimum, maximum, and preferred size limits per quality type.',
             icon: Icons.aspect_ratio_outlined,
             screen: QualityDefinitionsScreen(instance: instance),
           ),
           const SizedBox(height: Insets.md),
-
           _buildCategoryHeader(context, 'Network & Integration'),
           _buildSettingsCard(
             context: context,
             title: 'Indexers & Trackers',
-            subtitle: 'RSS feeds, automatic search, indexers list, and import lists configurations.',
+            subtitle:
+                'RSS feeds, automatic search, indexers list, and import lists configurations.',
             icon: Icons.rss_feed_outlined,
             screen: IndexersSettingsScreen(instance: instance),
           ),
           _buildSettingsCard(
             context: context,
             title: 'Download Clients',
-            subtitle: 'Clients list, connections, download tracking, and path override mappings.',
+            subtitle:
+                'Clients list, connections, download tracking, and path override mappings.',
             icon: Icons.download_for_offline_outlined,
             screen: DownloadClientsScreen(instance: instance),
           ),
           _buildSettingsCard(
             context: context,
             title: 'Connect',
-            subtitle: 'Discord, Telegram, Email, Plex notifications and trigger events.',
+            subtitle:
+                'Discord, Telegram, Email, Plex notifications and trigger events.',
             icon: Icons.connect_without_contact,
             screen: ConnectSettingsScreen(instance: instance),
           ),
           _buildSettingsCard(
             context: context,
             title: 'Metadata Consumers',
-            subtitle: 'Configure metadata files creation for Kodi, Emby, Roksbox, and WDTV.',
+            subtitle:
+                'Configure metadata files creation for Kodi, Emby, Roksbox, and WDTV.',
             icon: Icons.settings_applications_outlined,
             screen: MetadataSettingsScreen(instance: instance),
           ),
           const SizedBox(height: Insets.md),
-
           _buildCategoryHeader(context, 'Application System'),
           _buildSettingsCard(
             context: context,
             title: 'General',
-            subtitle: 'Set server listening port, SSL certifications, API Keys, and logs.',
+            subtitle:
+                'Set server listening port, SSL certifications, API Keys, and logs.',
             icon: Icons.dns_outlined,
             screen: GeneralSettingsScreen(instance: instance),
           ),
           _buildSettingsCard(
             context: context,
             title: 'UI Settings',
-            subtitle: 'Date formatting, first day of week selection, and color options.',
+            subtitle:
+                'Date formatting, first day of week selection, and color options.',
             icon: Icons.palette_outlined,
             screen: UiSettingsScreen(instance: instance),
           ),
           _buildSettingsCard(
             context: context,
             title: 'Tags',
-            subtitle: 'Manage label identifiers for categories, movies, and profiles.',
+            subtitle:
+                'Manage label identifiers for categories, movies, and profiles.',
             icon: Icons.label_outline,
             screen: TagsSettingsScreen(instance: instance),
           ),
           _buildSettingsCard(
             context: context,
             title: 'Connection Settings',
-            subtitle: 'Edit connection URL, API Key, and label for this Radarr instance in Atrium.',
+            subtitle:
+                'Edit connection URL, API Key, and label for this Radarr instance in Atrium.',
             icon: Icons.key_outlined,
             onTap: () {
               context.pushNamed(
@@ -129,17 +138,18 @@ class SettingsTab extends StatelessWidget {
             },
           ),
           const SizedBox(height: Insets.md),
-
           _buildCategoryHeader(context, 'Diagnostics & Troubleshooting'),
           _buildSettingsCard(
             context: context,
             title: 'Parse Title',
-            subtitle: 'Extract metadata and check matching movie database results for any release name.',
+            subtitle:
+                'Extract metadata and check matching movie database results for any release name.',
             icon: Icons.troubleshoot_outlined,
             onTap: () {
               showDialog<void>(
                 context: context,
-                builder: (context) => RadarrParseTitleDialog(instance: instance),
+                builder: (context) =>
+                    RadarrParseTitleDialog(instance: instance),
               ).ignore();
             },
           ),
@@ -182,11 +192,12 @@ class SettingsTab extends StatelessWidget {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: onTap ?? () {
-          if (screen != null) {
-            pushScreen<void>(context, screen);
-          }
-        },
+        onTap: onTap ??
+            () {
+              if (screen != null) {
+                pushScreen<void>(context, screen);
+              }
+            },
         child: Padding(
           padding: const EdgeInsets.all(Insets.md),
           child: Row(

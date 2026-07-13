@@ -90,7 +90,6 @@ class _EmbyRemoteImagesScreenState
         }
       }
 
-
       await client.setRemoteImage(widget.itemId, imageUrl, widget.imageType);
 
       // Evict untagged URL from cache for sessions that don't use tags
@@ -156,7 +155,8 @@ class _EmbyRemoteImagesScreenState
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to update ${widget.imageType.toLowerCase()}: $e'),
+          content:
+              Text('Failed to update ${widget.imageType.toLowerCase()}: $e'),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -171,7 +171,8 @@ class _EmbyRemoteImagesScreenState
   Widget build(BuildContext context) {
     final AsyncValue<List<EmbyRemoteImage>> imagesAsync = ref.watch(
       embyRemoteImagesProvider(
-          (widget.instance, widget.itemId, widget.imageType),),
+        (widget.instance, widget.itemId, widget.imageType),
+      ),
     );
 
     return Scaffold(
@@ -184,7 +185,8 @@ class _EmbyRemoteImagesScreenState
             value: imagesAsync,
             onRetry: () => ref.invalidate(
               embyRemoteImagesProvider(
-                  (widget.instance, widget.itemId, widget.imageType),),
+                (widget.instance, widget.itemId, widget.imageType),
+              ),
             ),
             data: (List<EmbyRemoteImage> images) {
               if (images.isEmpty) {

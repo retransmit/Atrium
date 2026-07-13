@@ -281,7 +281,8 @@ final sonarrEpisodesProvider =
   ]);
 
   final List<SonarrEpisode> episodes = results[0] as List<SonarrEpisode>;
-  final List<Map<String, dynamic>> files = results[1] as List<Map<String, dynamic>>;
+  final List<Map<String, dynamic>> files =
+      results[1] as List<Map<String, dynamic>>;
 
   final Map<int, Map<String, dynamic>> filesById = {
     for (final file in files) file['id'] as int: file,
@@ -448,8 +449,8 @@ final sonarrWantedCutoffProvider =
 });
 
 /// The calendar entries for an instance for a given month.
-final sonarrCalendarProvider =
-    FutureProvider.autoDispose.family<List<SonarrEpisode>, (Instance, DateTime)>((
+final sonarrCalendarProvider = FutureProvider.autoDispose
+    .family<List<SonarrEpisode>, (Instance, DateTime)>((
   Ref ref,
   (Instance, DateTime) key,
 ) async {
@@ -458,7 +459,8 @@ final sonarrCalendarProvider =
 
   // Calculate local month boundaries
   final DateTime start = DateTime(month.year, month.month);
-  final DateTime end = DateTime(month.year, month.month + 1).subtract(const Duration(seconds: 1));
+  final DateTime end = DateTime(month.year, month.month + 1)
+      .subtract(const Duration(seconds: 1));
 
   final List<SonarrEpisode> episodes = await api.getCalendar(
     start: start,
@@ -488,7 +490,8 @@ final sonarrWantedFilteredMissingProvider = Provider.autoDispose
         .where(
           (SonarrEpisode ep) =>
               ep.title.toLowerCase().contains(lowercaseQuery) ||
-              (ep.series?.title.toLowerCase().contains(lowercaseQuery) ?? false),
+              (ep.series?.title.toLowerCase().contains(lowercaseQuery) ??
+                  false),
         )
         .toList();
   });
@@ -510,7 +513,8 @@ final sonarrWantedFilteredCutoffProvider = Provider.autoDispose
         .where(
           (SonarrEpisode ep) =>
               ep.title.toLowerCase().contains(lowercaseQuery) ||
-              (ep.series?.title.toLowerCase().contains(lowercaseQuery) ?? false),
+              (ep.series?.title.toLowerCase().contains(lowercaseQuery) ??
+                  false),
         )
         .toList();
   });
@@ -573,8 +577,8 @@ final sonarrUiConfigProvider =
 });
 
 /// Quality definitions provider.
-final sonarrQualityDefinitionsProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrQualityDefinitionsProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -583,8 +587,8 @@ final sonarrQualityDefinitionsProvider = FutureProvider.autoDispose
 });
 
 /// Indexers configuration provider.
-final sonarrIndexersProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrIndexersProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -593,8 +597,8 @@ final sonarrIndexersProvider = FutureProvider.autoDispose
 });
 
 /// Download Clients configuration provider.
-final sonarrDownloadClientsProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrDownloadClientsProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -613,8 +617,8 @@ final sonarrDownloadClientConfigProvider =
 });
 
 /// Indexer schemas provider.
-final sonarrIndexerSchemaProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrIndexerSchemaProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -623,8 +627,8 @@ final sonarrIndexerSchemaProvider = FutureProvider.autoDispose
 });
 
 /// Import lists provider.
-final sonarrImportListsProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrImportListsProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -653,8 +657,8 @@ final sonarrIndexerConfigProvider =
 });
 
 /// Import list schemas provider.
-final sonarrImportListSchemaProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrImportListSchemaProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -663,8 +667,8 @@ final sonarrImportListSchemaProvider = FutureProvider.autoDispose
 });
 
 /// Download client schemas provider.
-final sonarrDownloadClientSchemaProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrDownloadClientSchemaProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -673,8 +677,8 @@ final sonarrDownloadClientSchemaProvider = FutureProvider.autoDispose
 });
 
 /// Remote path mappings provider.
-final sonarrRemotePathMappingsProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrRemotePathMappingsProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -683,8 +687,8 @@ final sonarrRemotePathMappingsProvider = FutureProvider.autoDispose
 });
 
 /// Notifications provider.
-final sonarrNotificationsProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrNotificationsProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -693,8 +697,8 @@ final sonarrNotificationsProvider = FutureProvider.autoDispose
 });
 
 /// Notification schemas provider.
-final sonarrNotificationSchemaProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrNotificationSchemaProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -703,8 +707,8 @@ final sonarrNotificationSchemaProvider = FutureProvider.autoDispose
 });
 
 /// Metadata configurations provider.
-final sonarrMetadataConfigsProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrMetadataConfigsProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -713,8 +717,8 @@ final sonarrMetadataConfigsProvider = FutureProvider.autoDispose
 });
 
 /// Metadata schemas provider.
-final sonarrMetadataSchemaProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrMetadataSchemaProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -723,8 +727,8 @@ final sonarrMetadataSchemaProvider = FutureProvider.autoDispose
 });
 
 /// Delay profiles provider.
-final sonarrDelayProfilesProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrDelayProfilesProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -733,8 +737,8 @@ final sonarrDelayProfilesProvider = FutureProvider.autoDispose
 });
 
 /// Release profiles provider.
-final sonarrReleaseProfilesProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrReleaseProfilesProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -743,8 +747,8 @@ final sonarrReleaseProfilesProvider = FutureProvider.autoDispose
 });
 
 /// Custom formats provider.
-final sonarrCustomFormatsProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrCustomFormatsProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -753,8 +757,8 @@ final sonarrCustomFormatsProvider = FutureProvider.autoDispose
 });
 
 /// Custom format schemas provider.
-final sonarrCustomFormatSchemaProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrCustomFormatSchemaProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -767,8 +771,8 @@ final sonarrCustomFormatSchemaProvider = FutureProvider.autoDispose
 // ==========================================
 
 /// System status (version, OS, uptime, etc.).
-final sonarrSystemStatusProvider = FutureProvider.autoDispose
-    .family<Map<String, dynamic>, Instance>((
+final sonarrSystemStatusProvider =
+    FutureProvider.autoDispose.family<Map<String, dynamic>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -777,8 +781,8 @@ final sonarrSystemStatusProvider = FutureProvider.autoDispose
 });
 
 /// Health check warnings/errors.
-final sonarrHealthProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrHealthProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -787,8 +791,8 @@ final sonarrHealthProvider = FutureProvider.autoDispose
 });
 
 /// Disk space for all root paths.
-final sonarrDiskSpaceProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrDiskSpaceProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -797,8 +801,8 @@ final sonarrDiskSpaceProvider = FutureProvider.autoDispose
 });
 
 /// Scheduled tasks list.
-final sonarrTasksProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrTasksProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -807,8 +811,8 @@ final sonarrTasksProvider = FutureProvider.autoDispose
 });
 
 /// Available software updates.
-final sonarrUpdatesProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrUpdatesProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -817,9 +821,8 @@ final sonarrUpdatesProvider = FutureProvider.autoDispose
 });
 
 /// Paginated logs. Key is (instance, page, pageSize, level).
-final sonarrLogsProvider = FutureProvider.autoDispose
-    .family<Map<String, dynamic>,
-        (Instance, {int page, int pageSize, String? level})>((
+final sonarrLogsProvider = FutureProvider.autoDispose.family<
+    Map<String, dynamic>, (Instance, {int page, int pageSize, String? level})>((
   Ref ref,
   (Instance, {int page, int pageSize, String? level}) key,
 ) async {
@@ -829,8 +832,8 @@ final sonarrLogsProvider = FutureProvider.autoDispose
 });
 
 /// Log files list.
-final sonarrLogFilesProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrLogFilesProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -839,8 +842,8 @@ final sonarrLogFilesProvider = FutureProvider.autoDispose
 });
 
 /// Backups list.
-final sonarrBackupsProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final sonarrBackupsProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {

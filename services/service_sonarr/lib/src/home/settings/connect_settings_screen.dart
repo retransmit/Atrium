@@ -16,7 +16,9 @@ class ConnectSettingsScreen extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _selectNotificationPresetAndAdd(
-      BuildContext context, WidgetRef ref,) async {
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final schemasAsync = ref.read(sonarrNotificationSchemaProvider(instance));
     final presets = schemasAsync.value ?? [];
     if (presets.isEmpty) {
@@ -60,7 +62,11 @@ class ConnectSettingsScreen extends ConsumerWidget {
                       onTap: () {
                         Navigator.pop(context);
                         _showNotificationEditorDialog(
-                            context, ref, preset, isNew: true,);
+                          context,
+                          ref,
+                          preset,
+                          isNew: true,
+                        );
                       },
                     );
                   },
@@ -74,8 +80,11 @@ class ConnectSettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _showNotificationEditorDialog(
-      BuildContext context, WidgetRef ref, Map<String, dynamic> notification,
-      {bool isNew = false,}) async {
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> notification, {
+    bool isNew = false,
+  }) async {
     final fields = (notification['fields'] as List<dynamic>?)
             ?.map((dynamic f) => f as Map<String, dynamic>)
             .toList() ??
@@ -100,9 +109,11 @@ class ConnectSettingsScreen extends ConsumerWidget {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text(isNew
-                  ? 'Add ${notification['name']}'
-                  : 'Edit ${notification['name']}',),
+              title: Text(
+                isNew
+                    ? 'Add ${notification['name']}'
+                    : 'Edit ${notification['name']}',
+              ),
               content: SizedBox(
                 width: double.maxFinite,
                 child: SingleChildScrollView(
@@ -122,7 +133,8 @@ class ConnectSettingsScreen extends ConsumerWidget {
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           side: BorderSide(
-                              color: Theme.of(context).colorScheme.outlineVariant,),
+                            color: Theme.of(context).colorScheme.outlineVariant,
+                          ),
                           borderRadius: Radii.card,
                         ),
                         child: Padding(
@@ -148,50 +160,54 @@ class ConnectSettingsScreen extends ConsumerWidget {
                                 contentPadding: EdgeInsets.zero,
                                 title: const Text('On Download'),
                                 value: onDownload,
-                                onChanged: (val) =>
-                                    setDialogState(() => onDownload = val ?? false),
+                                onChanged: (val) => setDialogState(
+                                    () => onDownload = val ?? false),
                               ),
                               CheckboxListTile(
                                 contentPadding: EdgeInsets.zero,
                                 title: const Text('On Upgrade'),
                                 value: onUpgrade,
-                                onChanged: (val) =>
-                                    setDialogState(() => onUpgrade = val ?? false),
+                                onChanged: (val) => setDialogState(
+                                    () => onUpgrade = val ?? false),
                               ),
                               CheckboxListTile(
                                 contentPadding: EdgeInsets.zero,
                                 title: const Text('On Rename'),
                                 value: onRename,
-                                onChanged: (val) =>
-                                    setDialogState(() => onRename = val ?? false),
+                                onChanged: (val) => setDialogState(
+                                    () => onRename = val ?? false),
                               ),
                               CheckboxListTile(
                                 contentPadding: EdgeInsets.zero,
                                 title: const Text('On Series Add'),
                                 value: onSeriesAdd,
                                 onChanged: (val) => setDialogState(
-                                    () => onSeriesAdd = val ?? false,),
+                                  () => onSeriesAdd = val ?? false,
+                                ),
                               ),
                               CheckboxListTile(
                                 contentPadding: EdgeInsets.zero,
                                 title: const Text('On Series Delete'),
                                 value: onSeriesDelete,
                                 onChanged: (val) => setDialogState(
-                                    () => onSeriesDelete = val ?? false,),
+                                  () => onSeriesDelete = val ?? false,
+                                ),
                               ),
                               CheckboxListTile(
                                 contentPadding: EdgeInsets.zero,
                                 title: const Text('On Episode File Delete'),
                                 value: onEpisodeFileDelete,
                                 onChanged: (val) => setDialogState(
-                                    () => onEpisodeFileDelete = val ?? false,),
+                                  () => onEpisodeFileDelete = val ?? false,
+                                ),
                               ),
                               CheckboxListTile(
                                 contentPadding: EdgeInsets.zero,
                                 title: const Text('On Health Issue'),
                                 value: onHealthIssue,
                                 onChanged: (val) => setDialogState(
-                                    () => onHealthIssue = val ?? false,),
+                                  () => onHealthIssue = val ?? false,
+                                ),
                               ),
                             ],
                           ),
@@ -242,21 +258,26 @@ class ConnectSettingsScreen extends ConsumerWidget {
                               await api.updateNotification(payload);
                             }
 
-                            ref.invalidate(sonarrNotificationsProvider(instance));
+                            ref.invalidate(
+                                sonarrNotificationsProvider(instance));
                             if (context.mounted) {
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                    content: Text(
-                                        'Notification ${isNew ? 'added' : 'updated'}!',),),
+                                  content: Text(
+                                    'Notification ${isNew ? 'added' : 'updated'}!',
+                                  ),
+                                ),
                               );
                             }
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                    content: Text(
-                                        'Failed to save notification: $e',),),
+                                  content: Text(
+                                    'Failed to save notification: $e',
+                                  ),
+                                ),
                               );
                             }
                           }
@@ -274,7 +295,10 @@ class ConnectSettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _deleteNotification(
-      BuildContext context, WidgetRef ref, int id,) async {
+    BuildContext context,
+    WidgetRef ref,
+    int id,
+  ) async {
     if (!await confirmDelete(context, 'this notification')) return;
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
@@ -315,7 +339,8 @@ class ConnectSettingsScreen extends ConsumerWidget {
         data: (notifications) {
           if (notifications.isEmpty) {
             return const Center(
-                child: Text('No notification connections configured.'),);
+              child: Text('No notification connections configured.'),
+            );
           }
 
           return ListView.builder(
@@ -329,14 +354,16 @@ class ConnectSettingsScreen extends ConsumerWidget {
                   (notification['implementationName'] as String?) ?? '';
 
               final List<String> activeEvents = [];
-              if (notification['onGrab'] as bool? ?? false) activeEvents.add('Grab');
+              if (notification['onGrab'] as bool? ?? false)
+                activeEvents.add('Grab');
               if (notification['onDownload'] as bool? ?? false) {
                 activeEvents.add('Download');
               }
               if (notification['onUpgrade'] as bool? ?? false) {
                 activeEvents.add('Upgrade');
               }
-              if (notification['onRename'] as bool? ?? false) activeEvents.add('Rename');
+              if (notification['onRename'] as bool? ?? false)
+                activeEvents.add('Rename');
               if (notification['onSeriesAdd'] as bool? ?? false) {
                 activeEvents.add('Series Add');
               }
@@ -359,14 +386,18 @@ class ConnectSettingsScreen extends ConsumerWidget {
                     ),
                   ),
                   subtitle: Text(
-                      '$implementation\nEvents: ${activeEvents.isEmpty ? 'None' : activeEvents.join(', ')}',),
+                    '$implementation\nEvents: ${activeEvents.isEmpty ? 'None' : activeEvents.join(', ')}',
+                  ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
                         icon: const Icon(Icons.edit_outlined),
                         onPressed: () => _showNotificationEditorDialog(
-                            context, ref, notification,),
+                          context,
+                          ref,
+                          notification,
+                        ),
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete_outline),

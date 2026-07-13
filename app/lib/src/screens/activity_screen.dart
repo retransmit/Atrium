@@ -49,8 +49,8 @@ class ActivityScreen extends ConsumerWidget {
         message: 'Active streams and transfers will show up here.',
       );
     } else {
-      final bool showStreams = streamsState.streams.isNotEmpty ||
-          streamsState.errors.isNotEmpty;
+      final bool showStreams =
+          streamsState.streams.isNotEmpty || streamsState.errors.isNotEmpty;
       final bool showDownloads = downloadsState.downloads.isNotEmpty ||
           downloadsState.errors.isNotEmpty;
       body = M3RefreshIndicator(
@@ -74,8 +74,7 @@ class ActivityScreen extends ConsumerWidget {
                   onTap: () => _openStream(context, stream),
                 ),
             ],
-            if (showStreams && showDownloads)
-              const SizedBox(height: Insets.sm),
+            if (showStreams && showDownloads) const SizedBox(height: Insets.sm),
             if (showDownloads) ...<Widget>[
               _SectionHeader(
                 title: 'Transfers',
@@ -89,8 +88,7 @@ class ActivityScreen extends ConsumerWidget {
               ),
               if (downloadsState.errors.isNotEmpty)
                 ActivitySourceErrorChips(errors: downloadsState.errors),
-              for (final ActivityDownload download
-                  in downloadsState.downloads)
+              for (final ActivityDownload download in downloadsState.downloads)
                 ActivityDownloadCard(
                   key: ValueKey<String>(download.key),
                   download: download,

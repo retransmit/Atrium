@@ -42,7 +42,8 @@ class RadarrCalendarEvent extends CalendarEvent {
   @override
   DateTime get date {
     final DateTime start = DateTime(month.year, month.month, 1);
-    final DateTime end = DateTime(month.year, month.month + 1, 1).subtract(const Duration(seconds: 1));
+    final DateTime end = DateTime(month.year, month.month + 1, 1)
+        .subtract(const Duration(seconds: 1));
 
     final DateTime? digital = _parseDate(movie.digitalRelease);
     if (digital != null && digital.isAfter(start) && digital.isBefore(end)) {
@@ -73,8 +74,7 @@ class RadarrCalendarEvent extends CalendarEvent {
   String get primaryTitle => movie.title;
 
   @override
-  String get subtitle =>
-      movie.year == null ? 'Movie' : '${movie.year} - Movie';
+  String get subtitle => movie.year == null ? 'Movie' : '${movie.year} - Movie';
 
   @override
   String? get posterUrl => _image('poster');
@@ -136,7 +136,6 @@ class SonarrCalendarEvent extends CalendarEvent {
       ?.remoteUrl;
 }
 
-
 /// Aggregated calendar provider for all active Sonarr and Radarr instances.
 final globalCalendarProvider =
     FutureProvider.autoDispose.family<List<CalendarEvent>, DateTime>((
@@ -151,7 +150,8 @@ final globalCalendarProvider =
       futures.add(
         ref.watch(radarrCalendarProvider((instance, month)).future).then(
               (List<RadarrMovie> movies) => movies
-                  .map((RadarrMovie m) => RadarrCalendarEvent(m, instance, month))
+                  .map((RadarrMovie m) =>
+                      RadarrCalendarEvent(m, instance, month))
                   .toList(),
             ),
       );
@@ -240,7 +240,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           builder: (BuildContext context, StateSetter setModalState) {
             final ThemeData theme = Theme.of(context);
             return Container(
-              padding: const EdgeInsets.fromLTRB(Insets.md, 0, Insets.md, Insets.md),
+              padding:
+                  const EdgeInsets.fromLTRB(Insets.md, 0, Insets.md, Insets.md),
               height: 320,
               child: Column(
                 children: <Widget>[
@@ -252,7 +253,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         icon: const Icon(Icons.chevron_left),
                         onPressed: () {
                           setModalState(() {
-                            _visibleMonth = DateTime(_visibleMonth.year - 1, _visibleMonth.month);
+                            _visibleMonth = DateTime(
+                                _visibleMonth.year - 1, _visibleMonth.month);
                           });
                           setState(() {});
                         },
@@ -267,7 +269,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         icon: const Icon(Icons.chevron_right),
                         onPressed: () {
                           setModalState(() {
-                            _visibleMonth = DateTime(_visibleMonth.year + 1, _visibleMonth.month);
+                            _visibleMonth = DateTime(
+                                _visibleMonth.year + 1, _visibleMonth.month);
                           });
                           setState(() {});
                         },
@@ -278,7 +281,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   // Month Grid (3x4)
                   Expanded(
                     child: GridView.builder(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 4,
                         childAspectRatio: 1.6,
                         crossAxisSpacing: Insets.sm,
@@ -288,11 +292,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       itemBuilder: (BuildContext context, int index) {
                         final int monthNum = index + 1;
                         final bool isCurrent = _visibleMonth.month == monthNum;
-                        final String monthName = DateFormat('MMMM').format(DateTime(2000, monthNum));
+                        final String monthName =
+                            DateFormat('MMMM').format(DateTime(2000, monthNum));
                         return InkWell(
                           onTap: () {
                             setState(() {
-                              _visibleMonth = DateTime(_visibleMonth.year, monthNum);
+                              _visibleMonth =
+                                  DateTime(_visibleMonth.year, monthNum);
                             });
                             Navigator.pop(context);
                           },
@@ -343,15 +349,17 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         ref.watch(globalCalendarProvider(_visibleMonth));
 
     // Prefetch and cache adjacent months to ensure instant navigation transitions
-    final DateTime nextMonth = DateTime(_visibleMonth.year, _visibleMonth.month + 1);
-    final DateTime prevMonth = DateTime(_visibleMonth.year, _visibleMonth.month - 1);
+    final DateTime nextMonth =
+        DateTime(_visibleMonth.year, _visibleMonth.month + 1);
+    final DateTime prevMonth =
+        DateTime(_visibleMonth.year, _visibleMonth.month - 1);
     ref.watch(globalCalendarProvider(nextMonth));
     ref.watch(globalCalendarProvider(prevMonth));
 
     final bool hasCalendarServices = ref.watch(activeInstancesProvider).any(
-      (Instance i) =>
-          i.kind == ServiceKind.radarr || i.kind == ServiceKind.sonarr,
-    );
+          (Instance i) =>
+              i.kind == ServiceKind.radarr || i.kind == ServiceKind.sonarr,
+        );
 
     if (!hasCalendarServices) {
       return Scaffold(
@@ -392,7 +400,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         title: const Text('Calendar'),
       ),
       body: M3RefreshIndicator(
-        onRefresh: () async => ref.invalidate(globalCalendarProvider(_visibleMonth)),
+        onRefresh: () async =>
+            ref.invalidate(globalCalendarProvider(_visibleMonth)),
         child: AsyncValueView<List<CalendarEvent>>(
           value: calendar,
           onRetry: () => ref.invalidate(globalCalendarProvider(_visibleMonth)),
@@ -408,8 +417,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             }
 
             // Selected day entries
-            final DateTime selectedDayKey =
-                DateTime(_selectedDay.year, _selectedDay.month, _selectedDay.day);
+            final DateTime selectedDayKey = DateTime(
+                _selectedDay.year, _selectedDay.month, _selectedDay.day);
             final List<CalendarEvent> selectedDayEntries =
                 entriesMap[selectedDayKey] ?? [];
 
@@ -450,7 +459,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                   Flexible(
                                     child: Text(
                                       DateFormat('MMMM').format(_visibleMonth),
-                                      style: theme.textTheme.titleLarge?.copyWith(
+                                      style:
+                                          theme.textTheme.titleLarge?.copyWith(
                                         fontWeight: FontWeight.bold,
                                       ),
                                       maxLines: 1,
@@ -475,7 +485,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       onPressed: _goToToday,
                       style: TextButton.styleFrom(
                         visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(horizontal: Insets.sm),
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: Insets.sm),
                       ),
                       icon: const Icon(Icons.today, size: 16),
                       label: const Text('Today'),
@@ -528,22 +539,27 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   child: GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 7,
                       childAspectRatio: 0.82,
                     ),
                     itemCount: gridDays.length,
                     itemBuilder: (BuildContext context, int index) {
                       final DateTime day = gridDays[index];
-                      final bool isCurrentMonth = day.month == _visibleMonth.month;
-                      final DateTime dayKey = DateTime(day.year, day.month, day.day);
+                      final bool isCurrentMonth =
+                          day.month == _visibleMonth.month;
+                      final DateTime dayKey =
+                          DateTime(day.year, day.month, day.day);
                       final bool isSelected = dayKey == selectedDayKey;
                       final bool isToday = dayKey == todayKey;
 
-                      final List<CalendarEvent> dayEntries = entriesMap[dayKey] ?? [];
+                      final List<CalendarEvent> dayEntries =
+                          entriesMap[dayKey] ?? [];
 
                       // Dots calculations
-                      final bool hasDownloaded = dayEntries.any((CalendarEvent e) => e.hasFile);
+                      final bool hasDownloaded =
+                          dayEntries.any((CalendarEvent e) => e.hasFile);
                       final bool hasUpcoming = dayEntries.any(
                         (CalendarEvent e) => !e.hasFile && e.date.isAfter(now),
                       );
@@ -565,7 +581,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                 color: isSelected
                                     ? theme.colorScheme.primary
                                     : isToday
-                                        ? theme.colorScheme.primaryContainer.withValues(alpha: 0.45)
+                                        ? theme.colorScheme.primaryContainer
+                                            .withValues(alpha: 0.45)
                                         : Colors.transparent,
                                 shape: BoxShape.circle,
                                 border: isToday && !isSelected
@@ -582,8 +599,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                       ? theme.colorScheme.onPrimary
                                       : isCurrentMonth
                                           ? theme.colorScheme.onSurface
-                                          : theme.colorScheme.onSurface.withValues(alpha: 0.35),
-                                  fontWeight: isSelected || isToday ? FontWeight.bold : FontWeight.normal,
+                                          : theme.colorScheme.onSurface
+                                              .withValues(alpha: 0.35),
+                                  fontWeight: isSelected || isToday
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
                                 ),
                               ),
                             ),
@@ -593,9 +613,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: <Widget>[
-                                  if (hasDownloaded) const _Dot(color: Colors.green),
-                                  if (hasUpcoming) _Dot(color: theme.colorScheme.primary),
-                                  if (hasMissing) _Dot(color: theme.colorScheme.error),
+                                  if (hasDownloaded)
+                                    const _Dot(color: Colors.green),
+                                  if (hasUpcoming)
+                                    _Dot(color: theme.colorScheme.primary),
+                                  if (hasMissing)
+                                    _Dot(color: theme.colorScheme.error),
                                 ],
                               ),
                             ),
@@ -621,7 +644,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                           Icon(
                             Icons.calendar_today_outlined,
                             size: 40,
-                            color: theme.colorScheme.outline.withValues(alpha: 0.5),
+                            color: theme.colorScheme.outline
+                                .withValues(alpha: 0.5),
                           ),
                           const SizedBox(height: Insets.sm),
                           Text(
@@ -726,14 +750,18 @@ class _EventTile extends ConsumerWidget {
     if (event is RadarrCalendarEvent) {
       final RadarrMovie movie = (event as RadarrCalendarEvent).movie;
       final RadarrApi? api = ref.watch(radarrApiProvider(instance)).value;
-      final RadarrImage? poster =
-          movie.images.firstWhereOrNull((RadarrImage i) => i.coverType == 'poster');
+      final RadarrImage? poster = movie.images
+          .firstWhereOrNull((RadarrImage i) => i.coverType == 'poster');
       final String? imageUrl = poster == null ? null : api?.posterUrl(poster);
 
       final DateTime eventDate = event.date;
-      if (movie.digitalRelease != null && DateTime.tryParse(movie.digitalRelease!)?.toLocal().day == eventDate.day) {
+      if (movie.digitalRelease != null &&
+          DateTime.tryParse(movie.digitalRelease!)?.toLocal().day ==
+              eventDate.day) {
         releaseType = 'Digital Release';
-      } else if (movie.physicalRelease != null && DateTime.tryParse(movie.physicalRelease!)?.toLocal().day == eventDate.day) {
+      } else if (movie.physicalRelease != null &&
+          DateTime.tryParse(movie.physicalRelease!)?.toLocal().day ==
+              eventDate.day) {
         releaseType = 'Physical Release';
       } else {
         releaseType = 'Cinema Release';
@@ -752,17 +780,19 @@ class _EventTile extends ConsumerWidget {
     } else if (event is SonarrCalendarEvent) {
       final SonarrEpisode episode = (event as SonarrCalendarEvent).episode;
       final SonarrApi? api = ref.watch(sonarrApiProvider(instance)).value;
-      final SonarrImage? poster =
-          episode.series?.images.firstWhereOrNull((SonarrImage i) => i.coverType == 'poster');
+      final SonarrImage? poster = episode.series?.images
+          .firstWhereOrNull((SonarrImage i) => i.coverType == 'poster');
       final String? imageUrl = poster == null ? null : api?.posterUrl(poster);
 
-      releaseType = 'S${episode.seasonNumber.toString().padLeft(2, '0')}E${episode.episodeNumber.toString().padLeft(2, '0')}';
+      releaseType =
+          'S${episode.seasonNumber.toString().padLeft(2, '0')}E${episode.episodeNumber.toString().padLeft(2, '0')}';
 
       onTap = () => Navigator.of(context, rootNavigator: true).push(
             MaterialPageRoute<void>(
               builder: (_) => SeriesDetailScreen(
                 instance: instance,
-                series: episode.series ?? SonarrSeries(id: episode.seriesId, title: ''),
+                series: episode.series ??
+                    SonarrSeries(id: episode.seriesId, title: ''),
               ),
             ),
           );
@@ -846,7 +876,8 @@ class _EventTile extends ConsumerWidget {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: theme.colorScheme.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(6),
@@ -890,7 +921,9 @@ class _EventTile extends ConsumerWidget {
                         ),
                         const SizedBox(width: Insets.md),
                         Icon(
-                          event.monitored ? Icons.bookmark : Icons.bookmark_border,
+                          event.monitored
+                              ? Icons.bookmark
+                              : Icons.bookmark_border,
                           size: 14,
                           color: theme.colorScheme.outline,
                         ),
@@ -908,7 +941,8 @@ class _EventTile extends ConsumerWidget {
               ),
               const SizedBox(width: Insets.sm),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: bg,
                   borderRadius: BorderRadius.circular(12),
@@ -952,7 +986,8 @@ class _Poster extends StatelessWidget {
       fit: BoxFit.cover,
       memCacheWidth: 100,
       memCacheHeight: 150,
-      placeholder: (_, __) => Container(color: theme.colorScheme.surfaceContainerHighest),
+      placeholder: (_, __) =>
+          Container(color: theme.colorScheme.surfaceContainerHighest),
       errorWidget: (_, __, ___) => fallback,
     );
   }

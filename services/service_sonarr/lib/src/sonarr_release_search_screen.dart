@@ -623,8 +623,8 @@ class _SonarrReleaseSearchScreenState
                               ? const SizedBox(
                                   width: 24,
                                   height: 24,
-                                  child:
-                                      ExpressiveProgressIndicator(strokeWidth: 2),
+                                  child: ExpressiveProgressIndicator(
+                                      strokeWidth: 2),
                                 )
                               : IconButton(
                                   icon: Icon(

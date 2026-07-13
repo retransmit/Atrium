@@ -93,13 +93,15 @@ class _CircularProgressIndicatorM3EState
                   value: widget.value,
                   active: active,
                   track: track,
-                  rotation: rot,)
+                  rotation: rot,
+                )
               : _CircularFlatPainter(
                   value: widget.value,
                   active: active,
                   track: track,
                   rotation: rot,
-                  size: widget.size,),
+                  size: widget.size,
+                ),
         ),
       ),
     );
@@ -107,12 +109,13 @@ class _CircularProgressIndicatorM3EState
 }
 
 class _CircularFlatPainter extends CustomPainter {
-  _CircularFlatPainter(
-      {required this.value,
-      required this.active,
-      required this.track,
-      required this.rotation,
-      required this.size,});
+  _CircularFlatPainter({
+    required this.value,
+    required this.active,
+    required this.track,
+    required this.rotation,
+    required this.size,
+  });
 
   final double? value;
   final Color active;
@@ -135,7 +138,7 @@ class _CircularFlatPainter extends CustomPainter {
       ..color = track;
 
     if (value == 0.0) {
-      canvas.drawArc(rect, 0, math.pi * 2, false, trackPaint);
+      canvas.drawCircle(center, radius, trackPaint);
       return;
     }
 
@@ -184,11 +187,12 @@ class _CircularFlatPainter extends CustomPainter {
 }
 
 class _CircularWavyPainter extends CustomPainter {
-  _CircularWavyPainter(
-      {required this.value,
-      required this.active,
-      required this.track,
-      required this.rotation,});
+  _CircularWavyPainter({
+    required this.value,
+    required this.active,
+    required this.track,
+    required this.rotation,
+  });
 
   final double? value;
   final Color active;
@@ -208,8 +212,7 @@ class _CircularWavyPainter extends CustomPainter {
         ..strokeCap = StrokeCap.round
         ..isAntiAlias = true
         ..color = track;
-      canvas.drawArc(Rect.fromCircle(center: center, radius: baseRadius), 0,
-          math.pi * 2, false, trackPaint);
+      canvas.drawCircle(center, baseRadius, trackPaint);
       return;
     }
 
@@ -230,7 +233,7 @@ class _CircularWavyPainter extends CustomPainter {
       final gapAngle = 2.0 / baseRadius;
       final rect = Rect.fromCircle(center: center, radius: baseRadius);
       const total = math.pi * 2;
-      
+
       if (activeSweep + 2 * gapAngle < total) {
         final trackPaint = Paint()
           ..style = PaintingStyle.stroke

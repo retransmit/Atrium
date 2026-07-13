@@ -4,6 +4,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 
 import 'activity_providers.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 /// Backdrop card for one active stream: session art under a bottom-heavy
 /// scrim, the watching user top-left, the source service (and transcode
@@ -51,13 +52,25 @@ class ActivityStreamCard extends StatelessWidget {
                 CachedNetworkImage(
                   imageUrl: imageUrl,
                   fit: BoxFit.cover,
+                  alignment: Alignment.center,
                   placeholder: (BuildContext context, String _) => ColoredBox(
                     color: theme.colorScheme.surfaceContainerHighest,
                   ),
                   errorWidget: (BuildContext context, String _, Object __) =>
-                      ColoredBox(
-                    color: theme.colorScheme.surfaceContainerHighest,
-                  ),
+                      (stream.posterUrl != null &&
+                              stream.posterUrl!.trim().isNotEmpty &&
+                              stream.posterUrl != imageUrl)
+                          ? CachedNetworkImage(
+                              imageUrl: stream.posterUrl!,
+                              fit: BoxFit.cover,
+                              alignment: Alignment.center,
+                              errorWidget: (_, __, ___) => ColoredBox(
+                                color:
+                                    theme.colorScheme.surfaceContainerHighest,
+                              ),
+                            )
+                          : ColoredBox(
+                              color: theme.colorScheme.surfaceContainerHighest),
                 )
               else
                 ColoredBox(color: theme.colorScheme.surfaceContainerHighest),
@@ -147,13 +160,13 @@ class ActivityStreamCard extends StatelessWidget {
                 bottom: 0,
                 left: 0,
                 right: 0,
-                child: LinearProgressIndicator(
+                child: LinearProgressIndicatorM3E(
+                  shape: ProgressM3EShape.flat,
                   value: stream.progress.clamp(0.0, 1.0),
-                  minHeight: 5,
-                  color: stream.paused
+                  activeColor: stream.paused
                       ? theme.colorScheme.outline
                       : theme.colorScheme.primary,
-                  backgroundColor: Colors.white.withValues(alpha: 0.15),
+                  trackColor: Colors.white.withValues(alpha: 0.15),
                 ),
               ),
             ],
@@ -267,8 +280,7 @@ class ActivityDownloadCard extends StatelessWidget {
     final String meta = <String>[
       '${(download.progress * 100).round()}%',
       if (download.speedBps != null) '↓ ${fmtSpeedBps(download.speedBps!)}',
-      if (download.upSpeedBps != null)
-        '↑ ${fmtSpeedBps(download.upSpeedBps!)}',
+      if (download.upSpeedBps != null) '↑ ${fmtSpeedBps(download.upSpeedBps!)}',
       if (download.eta != null) download.eta!,
       if (instanceLabel != null) instanceLabel!,
     ].join(' · ');
@@ -316,11 +328,10 @@ class ActivityDownloadCard extends StatelessWidget {
                     const SizedBox(height: Insets.sm),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(6),
-                      child: LinearProgressIndicator(
+                      child: LinearProgressIndicatorM3E(
+                        shape: ProgressM3EShape.flat,
                         value: download.progress.clamp(0.0, 1.0),
-                        minHeight: 6,
-                        backgroundColor:
-                            theme.colorScheme.surfaceContainerHighest,
+                        trackColor: theme.colorScheme.surfaceContainerHighest,
                       ),
                     ),
                     const SizedBox(height: 6),

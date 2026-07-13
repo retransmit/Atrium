@@ -93,7 +93,9 @@ class _WantedTabState extends ConsumerState<WantedTab>
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Search started for ${ids.length} selected movies.')),
+          SnackBar(
+              content:
+                  Text('Search started for ${ids.length} selected movies.')),
         );
       }
     } catch (e) {
@@ -145,7 +147,8 @@ class _WantedTabState extends ConsumerState<WantedTab>
     final Set<int> selectedMovieIds =
         ref.watch(radarrWantedSelectionProvider(widget.instance));
     final bool hasSelection = selectedMovieIds.isNotEmpty;
-    final bool isGrouped = ref.watch(radarrWantedGroupedProvider(widget.instance));
+    final bool isGrouped =
+        ref.watch(radarrWantedGroupedProvider(widget.instance));
 
     ref.listen<String>(radarrWantedSearchQueryProvider(widget.instance),
         (String? previous, String next) {
@@ -163,7 +166,8 @@ class _WantedTabState extends ConsumerState<WantedTab>
       child: Scaffold(
         backgroundColor: theme.colorScheme.surface,
         body: NestedScrollView(
-          headerSliverBuilder: (BuildContext innerContext, bool innerBoxIsScrolled) {
+          headerSliverBuilder:
+              (BuildContext innerContext, bool innerBoxIsScrolled) {
             return <Widget>[
               SliverAppBar(
                 floating: true,
@@ -256,12 +260,18 @@ class _WantedTabState extends ConsumerState<WantedTab>
                     : <Widget>[
                         IconButton(
                           icon: Icon(
-                            isGrouped ? Icons.format_list_bulleted : Icons.group_work_outlined,
+                            isGrouped
+                                ? Icons.format_list_bulleted
+                                : Icons.group_work_outlined,
                           ),
-                          tooltip: isGrouped ? 'Switch to plain list' : 'Switch to grouped view',
+                          tooltip: isGrouped
+                              ? 'Switch to plain list'
+                              : 'Switch to grouped view',
                           onPressed: () {
                             ref
-                                .read(radarrWantedGroupedProvider(widget.instance).notifier)
+                                .read(
+                                    radarrWantedGroupedProvider(widget.instance)
+                                        .notifier)
                                 .update((state) => !state);
                           },
                         ),
@@ -535,9 +545,11 @@ class _WantedMovieCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         onTap: () {
           if (hasSelection) {
-            final notifier = ref.read(radarrWantedSelectionProvider(instance).notifier);
+            final notifier =
+                ref.read(radarrWantedSelectionProvider(instance).notifier);
             if (isSelected) {
-              notifier.state = selectedIds(ref).where((id) => id != movie.id).toSet();
+              notifier.state =
+                  selectedIds(ref).where((id) => id != movie.id).toSet();
             } else {
               notifier.state = {...selectedIds(ref), movie.id};
             }
@@ -552,9 +564,11 @@ class _WantedMovieCard extends ConsumerWidget {
           }
         },
         onLongPress: () {
-          final notifier = ref.read(radarrWantedSelectionProvider(instance).notifier);
+          final notifier =
+              ref.read(radarrWantedSelectionProvider(instance).notifier);
           if (isSelected) {
-            notifier.state = selectedIds(ref).where((id) => id != movie.id).toSet();
+            notifier.state =
+                selectedIds(ref).where((id) => id != movie.id).toSet();
           } else {
             notifier.state = {...selectedIds(ref), movie.id};
           }
@@ -733,7 +747,8 @@ class _GroupedWantedCardState extends ConsumerState<_GroupedWantedCard> {
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: theme.colorScheme.primaryContainer,
                       borderRadius: BorderRadius.circular(10),

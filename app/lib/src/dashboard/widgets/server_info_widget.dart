@@ -231,7 +231,8 @@ class _MetricTile extends StatelessWidget {
           detail,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          style:
+              theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
         ),
       ],
     );

@@ -87,18 +87,21 @@ class SonarrHome extends ConsumerWidget {
     ];
 
     return Scaffold(
-      drawerEdgeDragWidth: drawer != null ? MediaQuery.sizeOf(context).width * 0.15 : null,
+      drawerEdgeDragWidth:
+          drawer != null ? MediaQuery.sizeOf(context).width * 0.15 : null,
       drawer: drawer,
       body: NotificationListener<UserScrollNotification>(
         onNotification: (UserScrollNotification notification) {
           if (notification.metrics.axis == Axis.vertical) {
             final ScrollDirection direction = notification.direction;
             if (direction == ScrollDirection.reverse) {
-              ref.read(sonarrBottomNavVisibleProvider(instance).notifier).state =
-                  false;
+              ref
+                  .read(sonarrBottomNavVisibleProvider(instance).notifier)
+                  .state = false;
             } else if (direction == ScrollDirection.forward) {
-              ref.read(sonarrBottomNavVisibleProvider(instance).notifier).state =
-                  true;
+              ref
+                  .read(sonarrBottomNavVisibleProvider(instance).notifier)
+                  .state = true;
             }
           }
           return false;
@@ -127,7 +130,7 @@ class SonarrHome extends ConsumerWidget {
                       .state = 0;
                   return;
                 }
-                
+
                 // If nothing to unwind, go back to dashboard.
                 GoRouter.of(context).go(AtriumRoutes.dashboard);
               },

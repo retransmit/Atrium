@@ -82,7 +82,8 @@ void main() {
     expect(find.text('Ubuntu.24.04.iso'), findsOneWidget);
   });
 
-  testWidgets('TautulliHome renders active streams', (WidgetTester tester) async {
+  testWidgets('TautulliHome renders active streams',
+      (WidgetTester tester) async {
     final Instance instance = _instance(ServiceKind.tautulli);
     await _pump(
       tester,
@@ -144,7 +145,8 @@ void main() {
     expect(find.text('Bob'), findsOneWidget);
   });
 
-  testWidgets('BazarrHome renders wanted-subtitles rows', (WidgetTester tester) async {
+  testWidgets('BazarrHome renders wanted-subtitles rows',
+      (WidgetTester tester) async {
     final Instance instance = _instance(ServiceKind.bazarr);
     await _pump(
       tester,
@@ -158,7 +160,9 @@ void main() {
             BazarrWantedRow(
               title: 'Breaking Bad',
               subtitle: 'S01E01 · Pilot',
-              missing: <BazarrSubtitle>[BazarrSubtitle(name: 'English', code2: 'en')],
+              missing: <BazarrSubtitle>[
+                BazarrSubtitle(name: 'English', code2: 'en')
+              ],
               isMovie: false,
             ),
           ],
@@ -232,7 +236,8 @@ void main() {
     expect(find.text('Movies'), findsOneWidget);
   });
 
-  testWidgets('CalendarScreen renders Radarr aggregated entries', (WidgetTester tester) async {
+  testWidgets('CalendarScreen renders Radarr aggregated entries',
+      (WidgetTester tester) async {
     tester.view.physicalSize = const Size(800, 1200);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -270,5 +275,4 @@ void main() {
     expect(find.text('Inception'), findsOneWidget);
     expect(find.text('Missing'), findsOneWidget);
   });
-
 }

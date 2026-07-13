@@ -127,14 +127,18 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
               instance: widget.instance,
               selectedIds: selection,
               onClear: () {
-                ref.read(radarrMoviesSelectionProvider(widget.instance).notifier).state = {};
+                ref
+                    .read(
+                        radarrMoviesSelectionProvider(widget.instance).notifier)
+                    .state = {};
               },
             )
           : null,
-      floatingActionButton: !isSelecting && ref.watch(
-                radarrActiveTabBarIndexProvider(widget.instance),
-              ) ==
-              0
+      floatingActionButton: !isSelecting &&
+              ref.watch(
+                    radarrActiveTabBarIndexProvider(widget.instance),
+                  ) ==
+                  0
           ? Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -179,8 +183,7 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
         behavior: HitTestBehavior.translucent,
         child: AsyncValueView<List<RadarrMovie>>(
           value: filtered,
-          onRetry: () =>
-              ref.invalidate(radarrMoviesProvider(widget.instance)),
+          onRetry: () => ref.invalidate(radarrMoviesProvider(widget.instance)),
           data: (List<RadarrMovie> list) {
             return M3RefreshIndicator(
               onRefresh: () async {
@@ -203,7 +206,11 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                         ? IconButton(
                             icon: const Icon(Icons.close),
                             onPressed: () {
-                              ref.read(radarrMoviesSelectionProvider(widget.instance).notifier).state = {};
+                              ref
+                                  .read(radarrMoviesSelectionProvider(
+                                          widget.instance)
+                                      .notifier)
+                                  .state = {};
                             },
                           )
                         : IconButton(
@@ -271,7 +278,9 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                               tooltip: 'Select all',
                               onPressed: () {
                                 ref
-                                    .read(radarrMoviesSelectionProvider(widget.instance).notifier)
+                                    .read(radarrMoviesSelectionProvider(
+                                            widget.instance)
+                                        .notifier)
                                     .state = list.map((m) => m.id).toSet();
                               },
                             )
@@ -281,7 +290,9 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                               tooltip: 'Deselect all',
                               onPressed: () {
                                 ref
-                                    .read(radarrMoviesSelectionProvider(widget.instance).notifier)
+                                    .read(radarrMoviesSelectionProvider(
+                                            widget.instance)
+                                        .notifier)
                                     .state = {};
                               },
                             ),
@@ -340,8 +351,8 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                         delegate: SliverChildBuilderDelegate(
                           (BuildContext context, int index) {
                             final RadarrMovie m = list[index];
-                            final RadarrImage? poster = m.images
-                                .firstWhereOrNull(
+                            final RadarrImage? poster =
+                                m.images.firstWhereOrNull(
                               (RadarrImage i) => i.coverType == 'poster',
                             );
                             final isSelected = selection.contains(m.id);
@@ -352,18 +363,28 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                                   : api?.posterUrl(poster, width: 500),
                               selected: isSelected,
                               onLongPress: () {
-                                final notifier = ref.read(radarrMoviesSelectionProvider(widget.instance).notifier);
+                                final notifier = ref.read(
+                                    radarrMoviesSelectionProvider(
+                                            widget.instance)
+                                        .notifier);
                                 if (isSelected) {
-                                  notifier.state = selection.where((id) => id != m.id).toSet();
+                                  notifier.state = selection
+                                      .where((id) => id != m.id)
+                                      .toSet();
                                 } else {
                                   notifier.state = {...selection, m.id};
                                 }
                               },
                               onTap: () {
                                 if (isSelecting) {
-                                  final notifier = ref.read(radarrMoviesSelectionProvider(widget.instance).notifier);
+                                  final notifier = ref.read(
+                                      radarrMoviesSelectionProvider(
+                                              widget.instance)
+                                          .notifier);
                                   if (isSelected) {
-                                    notifier.state = selection.where((id) => id != m.id).toSet();
+                                    notifier.state = selection
+                                        .where((id) => id != m.id)
+                                        .toSet();
                                   } else {
                                     notifier.state = {...selection, m.id};
                                   }
@@ -399,17 +420,21 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                           (BuildContext context, int index) {
                             final RadarrMovie m = list[index];
                             return Padding(
-                              padding:
-                                  const EdgeInsets.only(bottom: Insets.md),
+                              padding: const EdgeInsets.only(bottom: Insets.md),
                               child: _MovieBannerCard(
                                 instance: widget.instance,
                                 movie: m,
                                 selected: selection.contains(m.id),
                                 onLongPress: () {
                                   final isSelected = selection.contains(m.id);
-                                  final notifier = ref.read(radarrMoviesSelectionProvider(widget.instance).notifier);
+                                  final notifier = ref.read(
+                                      radarrMoviesSelectionProvider(
+                                              widget.instance)
+                                          .notifier);
                                   if (isSelected) {
-                                    notifier.state = selection.where((id) => id != m.id).toSet();
+                                    notifier.state = selection
+                                        .where((id) => id != m.id)
+                                        .toSet();
                                   } else {
                                     notifier.state = {...selection, m.id};
                                   }
@@ -417,9 +442,14 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                                 onTap: () {
                                   final isSelected = selection.contains(m.id);
                                   if (isSelecting) {
-                                    final notifier = ref.read(radarrMoviesSelectionProvider(widget.instance).notifier);
+                                    final notifier = ref.read(
+                                        radarrMoviesSelectionProvider(
+                                                widget.instance)
+                                            .notifier);
                                     if (isSelected) {
-                                      notifier.state = selection.where((id) => id != m.id).toSet();
+                                      notifier.state = selection
+                                          .where((id) => id != m.id)
+                                          .toSet();
                                     } else {
                                       notifier.state = {...selection, m.id};
                                     }
@@ -496,7 +526,8 @@ class _MovieCard extends StatelessWidget {
                   if (selected)
                     Positioned.fill(
                       child: Container(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.25),
+                        color:
+                            theme.colorScheme.primary.withValues(alpha: 0.25),
                         child: Center(
                           child: Container(
                             padding: const EdgeInsets.all(6),
@@ -709,7 +740,8 @@ class _MovieBannerCard extends ConsumerWidget {
                                 errorWidget: (_, __, ___) => Container(
                                   color:
                                       theme.colorScheme.surfaceContainerHighest,
-                                  child: const Icon(Icons.movie_outlined, size: 20),
+                                  child: const Icon(Icons.movie_outlined,
+                                      size: 20),
                                 ),
                               ),
                             )
@@ -948,7 +980,8 @@ class _BulkEditDialogState extends ConsumerState<_BulkEditDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final profilesAsync = ref.watch(radarrQualityProfilesProvider(widget.instance));
+    final profilesAsync =
+        ref.watch(radarrQualityProfilesProvider(widget.instance));
     final foldersAsync = ref.watch(radarrRootFoldersProvider(widget.instance));
 
     return AlertDialog(
@@ -981,10 +1014,12 @@ class _BulkEditDialogState extends ConsumerState<_BulkEditDialog> {
                 ),
                 items: [
                   const DropdownMenuItem(child: Text('Keep current')),
-                  ...profiles.map((p) => DropdownMenuItem(
-                        value: p['id'] as int,
-                        child: Text(p['name'] as String),
-                      ),),
+                  ...profiles.map(
+                    (p) => DropdownMenuItem(
+                      value: p['id'] as int,
+                      child: Text(p['name'] as String),
+                    ),
+                  ),
                 ],
                 onChanged: (val) => setState(() => _qualityProfileId = val),
               ),
@@ -1004,10 +1039,12 @@ class _BulkEditDialogState extends ConsumerState<_BulkEditDialog> {
                 ),
                 items: [
                   const DropdownMenuItem(child: Text('Keep current')),
-                  ...folders.map((f) => DropdownMenuItem(
-                        value: f['path'] as String,
-                        child: Text(f['path'] as String),
-                      ),),
+                  ...folders.map(
+                    (f) => DropdownMenuItem(
+                      value: f['path'] as String,
+                      child: Text(f['path'] as String),
+                    ),
+                  ),
                 ],
                 onChanged: (val) => setState(() => _rootFolderPath = val),
               ),
@@ -1044,21 +1081,24 @@ class _BulkEditDialogState extends ConsumerState<_BulkEditDialog> {
             final payload = <String, dynamic>{
               'movieIds': widget.selectedIds.toList(),
               if (_monitored != null) 'monitored': _monitored,
-              if (_qualityProfileId != null) 'qualityProfileId': _qualityProfileId,
+              if (_qualityProfileId != null)
+                'qualityProfileId': _qualityProfileId,
               if (_rootFolderPath != null) 'rootFolderPath': _rootFolderPath,
               // Changing the root folder without moveFiles orphans the
               // files on disk, so send the user's explicit choice.
               if (_rootFolderPath != null) 'moveFiles': _moveFiles,
             };
 
-            unawaited(showDialog<void>(
-              context: context,
-              barrierDismissible: false,
-              builder: (ctx) => const PopScope<Object?>(
-                canPop: false,
-                child: Center(child: ExpressiveProgressIndicator()),
+            unawaited(
+              showDialog<void>(
+                context: context,
+                barrierDismissible: false,
+                builder: (ctx) => const PopScope<Object?>(
+                  canPop: false,
+                  child: Center(child: ExpressiveProgressIndicator()),
+                ),
               ),
-            ),);
+            );
 
             Object? error;
             try {
@@ -1079,7 +1119,9 @@ class _BulkEditDialogState extends ConsumerState<_BulkEditDialog> {
               return;
             }
             ref.invalidate(radarrMoviesProvider(widget.instance));
-            ref.read(radarrMoviesSelectionProvider(widget.instance).notifier).state = {};
+            ref
+                .read(radarrMoviesSelectionProvider(widget.instance).notifier)
+                .state = {};
             Navigator.pop(context); // pop dialog
 
             ScaffoldMessenger.of(context).showSnackBar(
@@ -1117,7 +1159,8 @@ class _BulkDeleteDialogState extends ConsumerState<_BulkDeleteDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Are you sure you want to delete these movies? This action cannot be undone.'),
+          const Text(
+              'Are you sure you want to delete these movies? This action cannot be undone.'),
           const SizedBox(height: 16),
           CheckboxListTile(
             title: const Text('Delete all files from disk'),
@@ -1140,20 +1183,23 @@ class _BulkDeleteDialogState extends ConsumerState<_BulkDeleteDialog> {
           onPressed: () async {
             final NavigatorState nav =
                 Navigator.of(context, rootNavigator: true);
-            unawaited(showDialog<void>(
-              context: context,
-              barrierDismissible: false,
-              builder: (ctx) => const PopScope<Object?>(
-                canPop: false,
-                child: Center(child: ExpressiveProgressIndicator()),
+            unawaited(
+              showDialog<void>(
+                context: context,
+                barrierDismissible: false,
+                builder: (ctx) => const PopScope<Object?>(
+                  canPop: false,
+                  child: Center(child: ExpressiveProgressIndicator()),
+                ),
               ),
-            ),);
+            );
 
             Object? error;
             try {
               final api =
                   await ref.read(radarrApiProvider(widget.instance).future);
-              await api.bulkDeleteMovies(widget.selectedIds.toList(), deleteFiles: _deleteFiles);
+              await api.bulkDeleteMovies(widget.selectedIds.toList(),
+                  deleteFiles: _deleteFiles);
             } catch (e) {
               error = e;
             } finally {
@@ -1168,7 +1214,9 @@ class _BulkDeleteDialogState extends ConsumerState<_BulkDeleteDialog> {
               return;
             }
             ref.invalidate(radarrMoviesProvider(widget.instance));
-            ref.read(radarrMoviesSelectionProvider(widget.instance).notifier).state = {};
+            ref
+                .read(radarrMoviesSelectionProvider(widget.instance).notifier)
+                .state = {};
             Navigator.pop(context); // pop dialog
 
             ScaffoldMessenger.of(context).showSnackBar(
@@ -1218,35 +1266,50 @@ class _SortFilterBottomSheet extends ConsumerWidget {
                     label: const Text('All Status'),
                     selected: filter == RadarrMovieFilter.all,
                     onSelected: (val) {
-                      if (val) ref.read(radarrMovieFilterProvider(instance).notifier).state = RadarrMovieFilter.all;
+                      if (val)
+                        ref
+                            .read(radarrMovieFilterProvider(instance).notifier)
+                            .state = RadarrMovieFilter.all;
                     },
                   ),
                   ChoiceChip(
                     label: const Text('Downloaded Only'),
                     selected: filter == RadarrMovieFilter.downloaded,
                     onSelected: (val) {
-                      if (val) ref.read(radarrMovieFilterProvider(instance).notifier).state = RadarrMovieFilter.downloaded;
+                      if (val)
+                        ref
+                            .read(radarrMovieFilterProvider(instance).notifier)
+                            .state = RadarrMovieFilter.downloaded;
                     },
                   ),
                   ChoiceChip(
                     label: const Text('Missing Only'),
                     selected: filter == RadarrMovieFilter.missing,
                     onSelected: (val) {
-                      if (val) ref.read(radarrMovieFilterProvider(instance).notifier).state = RadarrMovieFilter.missing;
+                      if (val)
+                        ref
+                            .read(radarrMovieFilterProvider(instance).notifier)
+                            .state = RadarrMovieFilter.missing;
                     },
                   ),
                   ChoiceChip(
                     label: const Text('Monitored Only'),
                     selected: filter == RadarrMovieFilter.monitoredOnly,
                     onSelected: (val) {
-                      if (val) ref.read(radarrMovieFilterProvider(instance).notifier).state = RadarrMovieFilter.monitoredOnly;
+                      if (val)
+                        ref
+                            .read(radarrMovieFilterProvider(instance).notifier)
+                            .state = RadarrMovieFilter.monitoredOnly;
                     },
                   ),
                   ChoiceChip(
                     label: const Text('Unmonitored Only'),
                     selected: filter == RadarrMovieFilter.unmonitoredOnly,
                     onSelected: (val) {
-                      if (val) ref.read(radarrMovieFilterProvider(instance).notifier).state = RadarrMovieFilter.unmonitoredOnly;
+                      if (val)
+                        ref
+                            .read(radarrMovieFilterProvider(instance).notifier)
+                            .state = RadarrMovieFilter.unmonitoredOnly;
                     },
                   ),
                 ],
@@ -1269,10 +1332,19 @@ class _SortFilterBottomSheet extends ConsumerWidget {
                     onSelected: (val) {
                       if (val) {
                         if (sortOption == RadarrMovieSortField.title) {
-                          ref.read(radarrMovieSortAscendingProvider(instance).notifier).state = !sortAscending;
+                          ref
+                              .read(radarrMovieSortAscendingProvider(instance)
+                                  .notifier)
+                              .state = !sortAscending;
                         } else {
-                          ref.read(radarrMovieSortFieldProvider(instance).notifier).state = RadarrMovieSortField.title;
-                          ref.read(radarrMovieSortAscendingProvider(instance).notifier).state = true;
+                          ref
+                              .read(radarrMovieSortFieldProvider(instance)
+                                  .notifier)
+                              .state = RadarrMovieSortField.title;
+                          ref
+                              .read(radarrMovieSortAscendingProvider(instance)
+                                  .notifier)
+                              .state = true;
                         }
                       }
                     },
@@ -1283,10 +1355,19 @@ class _SortFilterBottomSheet extends ConsumerWidget {
                     onSelected: (val) {
                       if (val) {
                         if (sortOption == RadarrMovieSortField.year) {
-                          ref.read(radarrMovieSortAscendingProvider(instance).notifier).state = !sortAscending;
+                          ref
+                              .read(radarrMovieSortAscendingProvider(instance)
+                                  .notifier)
+                              .state = !sortAscending;
                         } else {
-                          ref.read(radarrMovieSortFieldProvider(instance).notifier).state = RadarrMovieSortField.year;
-                          ref.read(radarrMovieSortAscendingProvider(instance).notifier).state = false;
+                          ref
+                              .read(radarrMovieSortFieldProvider(instance)
+                                  .notifier)
+                              .state = RadarrMovieSortField.year;
+                          ref
+                              .read(radarrMovieSortAscendingProvider(instance)
+                                  .notifier)
+                              .state = false;
                         }
                       }
                     },
@@ -1297,10 +1378,19 @@ class _SortFilterBottomSheet extends ConsumerWidget {
                     onSelected: (val) {
                       if (val) {
                         if (sortOption == RadarrMovieSortField.added) {
-                          ref.read(radarrMovieSortAscendingProvider(instance).notifier).state = !sortAscending;
+                          ref
+                              .read(radarrMovieSortAscendingProvider(instance)
+                                  .notifier)
+                              .state = !sortAscending;
                         } else {
-                          ref.read(radarrMovieSortFieldProvider(instance).notifier).state = RadarrMovieSortField.added;
-                          ref.read(radarrMovieSortAscendingProvider(instance).notifier).state = false;
+                          ref
+                              .read(radarrMovieSortFieldProvider(instance)
+                                  .notifier)
+                              .state = RadarrMovieSortField.added;
+                          ref
+                              .read(radarrMovieSortAscendingProvider(instance)
+                                  .notifier)
+                              .state = false;
                         }
                       }
                     },
@@ -1311,24 +1401,44 @@ class _SortFilterBottomSheet extends ConsumerWidget {
                     onSelected: (val) {
                       if (val) {
                         if (sortOption == RadarrMovieSortField.sizeOnDisk) {
-                          ref.read(radarrMovieSortAscendingProvider(instance).notifier).state = !sortAscending;
+                          ref
+                              .read(radarrMovieSortAscendingProvider(instance)
+                                  .notifier)
+                              .state = !sortAscending;
                         } else {
-                          ref.read(radarrMovieSortFieldProvider(instance).notifier).state = RadarrMovieSortField.sizeOnDisk;
-                          ref.read(radarrMovieSortAscendingProvider(instance).notifier).state = false;
+                          ref
+                              .read(radarrMovieSortFieldProvider(instance)
+                                  .notifier)
+                              .state = RadarrMovieSortField.sizeOnDisk;
+                          ref
+                              .read(radarrMovieSortAscendingProvider(instance)
+                                  .notifier)
+                              .state = false;
                         }
                       }
                     },
                   ),
                   ChoiceChip(
                     label: const Text('Monitored Status'),
-                    selected: sortOption == RadarrMovieSortField.monitoredStatus,
+                    selected:
+                        sortOption == RadarrMovieSortField.monitoredStatus,
                     onSelected: (val) {
                       if (val) {
-                        if (sortOption == RadarrMovieSortField.monitoredStatus) {
-                          ref.read(radarrMovieSortAscendingProvider(instance).notifier).state = !sortAscending;
+                        if (sortOption ==
+                            RadarrMovieSortField.monitoredStatus) {
+                          ref
+                              .read(radarrMovieSortAscendingProvider(instance)
+                                  .notifier)
+                              .state = !sortAscending;
                         } else {
-                          ref.read(radarrMovieSortFieldProvider(instance).notifier).state = RadarrMovieSortField.monitoredStatus;
-                          ref.read(radarrMovieSortAscendingProvider(instance).notifier).state = true;
+                          ref
+                              .read(radarrMovieSortFieldProvider(instance)
+                                  .notifier)
+                              .state = RadarrMovieSortField.monitoredStatus;
+                          ref
+                              .read(radarrMovieSortAscendingProvider(instance)
+                                  .notifier)
+                              .state = true;
                         }
                       }
                     },

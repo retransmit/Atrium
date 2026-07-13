@@ -37,8 +37,7 @@ class _DynamicSchemaFormState extends State<DynamicSchemaForm> {
       final value = field['value'];
 
       if (type == 'checkbox' || type == 'select') continue;
-      final text =
-          value is List ? value.join(',') : value?.toString() ?? '';
+      final text = value is List ? value.join(',') : value?.toString() ?? '';
       _controllers[name] = TextEditingController(text: text);
       _initialTexts[name] = text;
     }
@@ -124,7 +123,8 @@ class _DynamicSchemaFormState extends State<DynamicSchemaForm> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final hasAdvanced = _localFields.any((f) => f['advanced'] as bool? ?? false);
+    final hasAdvanced =
+        _localFields.any((f) => f['advanced'] as bool? ?? false);
 
     final visibleFields = _localFields.where((f) {
       final hiddenMode = f['hidden'];
@@ -186,7 +186,8 @@ class _DynamicSchemaFormState extends State<DynamicSchemaForm> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.check_circle_outline, color: theme.colorScheme.onPrimaryContainer),
+                  Icon(Icons.check_circle_outline,
+                      color: theme.colorScheme.onPrimaryContainer),
                   const SizedBox(width: Insets.sm),
                   Text(
                     'Connection Test Successful!',
@@ -266,9 +267,9 @@ class _DynamicSchemaFormState extends State<DynamicSchemaForm> {
       final selectOptions = ((field['selectOptions'] as List<dynamic>?) ?? [])
           .cast<Map<String, dynamic>>();
       final value = field['value'];
-      
+
       final isMulti = selectOptions.isNotEmpty && value is List;
-      
+
       if (isMulti) {
         final List<dynamic> listValue = List<dynamic>.from(value);
         return Padding(
@@ -278,13 +279,15 @@ class _DynamicSchemaFormState extends State<DynamicSchemaForm> {
             children: [
               Text(
                 label,
-                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
               if (helpText != null) ...[
                 const SizedBox(height: 2),
                 Text(
                   helpText,
-                  style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
               ],
               const SizedBox(height: Insets.sm),
@@ -319,8 +322,10 @@ class _DynamicSchemaFormState extends State<DynamicSchemaForm> {
 
       dynamic matchedValue;
       final valStr = (value as Object?)?.toString();
-      if (selectOptions.any((opt) => (opt['value'] as Object).toString() == valStr)) {
-        matchedValue = selectOptions.firstWhere((opt) => (opt['value'] as Object).toString() == valStr)['value'];
+      if (selectOptions
+          .any((opt) => (opt['value'] as Object).toString() == valStr)) {
+        matchedValue = selectOptions.firstWhere(
+            (opt) => (opt['value'] as Object).toString() == valStr)['value'];
       } else if (selectOptions.isNotEmpty) {
         matchedValue = selectOptions.first['value'];
       }
@@ -336,8 +341,8 @@ class _DynamicSchemaFormState extends State<DynamicSchemaForm> {
             border: const OutlineInputBorder(),
           ),
           items: selectOptions.map((opt) {
-            final optName = (opt['name'] as String?) ??
-                (opt['value'] as Object).toString();
+            final optName =
+                (opt['name'] as String?) ?? (opt['value'] as Object).toString();
             return DropdownMenuItem<dynamic>(
               value: opt['value'],
               child: Text(optName),
@@ -358,7 +363,8 @@ class _DynamicSchemaFormState extends State<DynamicSchemaForm> {
       child: TextFormField(
         controller: _controllers[name],
         obscureText: isPassword,
-        keyboardType: type == 'number' ? TextInputType.number : TextInputType.text,
+        keyboardType:
+            type == 'number' ? TextInputType.number : TextInputType.text,
         decoration: InputDecoration(
           labelText: label,
           helperText: helpText,

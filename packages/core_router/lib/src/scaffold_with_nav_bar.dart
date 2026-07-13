@@ -21,7 +21,8 @@ class ScaffoldWithNavBar extends StatelessWidget {
     return Scaffold(
       body: navigationShell,
       drawer: drawer,
-      drawerEdgeDragWidth: drawer != null ? MediaQuery.sizeOf(context).width * 0.15 : null,
+      drawerEdgeDragWidth:
+          drawer != null ? MediaQuery.sizeOf(context).width * 0.15 : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: navigationShell.currentIndex,
         onDestinationSelected: _onTap,

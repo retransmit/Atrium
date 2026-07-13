@@ -11,10 +11,12 @@ class RadarrParseTitleDialog extends ConsumerStatefulWidget {
   final Instance instance;
 
   @override
-  ConsumerState<RadarrParseTitleDialog> createState() => _RadarrParseTitleDialogState();
+  ConsumerState<RadarrParseTitleDialog> createState() =>
+      _RadarrParseTitleDialogState();
 }
 
-class _RadarrParseTitleDialogState extends ConsumerState<RadarrParseTitleDialog> {
+class _RadarrParseTitleDialogState
+    extends ConsumerState<RadarrParseTitleDialog> {
   final _controller = TextEditingController();
   String _query = '';
 
@@ -27,7 +29,7 @@ class _RadarrParseTitleDialogState extends ConsumerState<RadarrParseTitleDialog>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     final parseAsync = _query.trim().isNotEmpty
         ? ref.watch(radarrParseResultProvider((widget.instance, _query.trim())))
         : null;
@@ -108,29 +110,41 @@ class _RadarrParseTitleDialogState extends ConsumerState<RadarrParseTitleDialog>
                   child: parseAsync.when(
                     data: (data) {
                       if (data == null) {
-                        return const Center(child: Text('Failed to parse title.'));
+                        return const Center(
+                            child: Text('Failed to parse title.'));
                       }
-                      final parsedInfo = data['parsedMovieInfo'] as Map<String, dynamic>?;
+                      final parsedInfo =
+                          data['parsedMovieInfo'] as Map<String, dynamic>?;
                       if (parsedInfo == null) {
-                        return const Center(child: Text('Could not extract movie details.'));
+                        return const Center(
+                            child: Text('Could not extract movie details.'));
                       }
 
-                      final String? movieTitle = parsedInfo['movieTitle'] as String?;
+                      final String? movieTitle =
+                          parsedInfo['movieTitle'] as String?;
                       final int? year = parsedInfo['year'] as int?;
-                      final String? releaseGroup = parsedInfo['releaseGroup'] as String?;
-                      
-                      final qualityMap = parsedInfo['quality'] as Map<String, dynamic>?;
-                      final qualityInner = qualityMap?['quality'] as Map<String, dynamic>?;
-                      final String? qualityName = qualityInner?['name'] as String?;
-                      
-                      final languages = parsedInfo['languages'] as List<dynamic>?;
+                      final String? releaseGroup =
+                          parsedInfo['releaseGroup'] as String?;
+
+                      final qualityMap =
+                          parsedInfo['quality'] as Map<String, dynamic>?;
+                      final qualityInner =
+                          qualityMap?['quality'] as Map<String, dynamic>?;
+                      final String? qualityName =
+                          qualityInner?['name'] as String?;
+
+                      final languages =
+                          parsedInfo['languages'] as List<dynamic>?;
                       final List<String> languageNames = languages
-                              ?.map((l) => (l as Map<String, dynamic>)['name'] as String)
+                              ?.map((l) =>
+                                  (l as Map<String, dynamic>)['name'] as String)
                               .toList() ??
                           [];
 
-                      final matchingMovie = data['movie'] as Map<String, dynamic>?;
-                      final matchingMovieTitle = matchingMovie?['title'] as String?;
+                      final matchingMovie =
+                          data['movie'] as Map<String, dynamic>?;
+                      final matchingMovieTitle =
+                          matchingMovie?['title'] as String?;
 
                       return SingleChildScrollView(
                         child: Column(
@@ -144,11 +158,20 @@ class _RadarrParseTitleDialogState extends ConsumerState<RadarrParseTitleDialog>
                               ),
                             ),
                             const SizedBox(height: Insets.sm),
-                            _buildInfoRow(theme, 'Movie Title', movieTitle ?? 'N/A'),
-                            _buildInfoRow(theme, 'Year', year?.toString() ?? 'N/A'),
-                            _buildInfoRow(theme, 'Quality', qualityName ?? 'N/A'),
-                            _buildInfoRow(theme, 'Release Group', releaseGroup ?? 'N/A'),
-                            _buildInfoRow(theme, 'Language', languageNames.isNotEmpty ? languageNames.join(', ') : 'N/A'),
+                            _buildInfoRow(
+                                theme, 'Movie Title', movieTitle ?? 'N/A'),
+                            _buildInfoRow(
+                                theme, 'Year', year?.toString() ?? 'N/A'),
+                            _buildInfoRow(
+                                theme, 'Quality', qualityName ?? 'N/A'),
+                            _buildInfoRow(
+                                theme, 'Release Group', releaseGroup ?? 'N/A'),
+                            _buildInfoRow(
+                                theme,
+                                'Language',
+                                languageNames.isNotEmpty
+                                    ? languageNames.join(', ')
+                                    : 'N/A'),
                             const SizedBox(height: Insets.md),
                             Text(
                               'Radarr Database Match',
@@ -192,7 +215,8 @@ class _RadarrParseTitleDialogState extends ConsumerState<RadarrParseTitleDialog>
     );
   }
 
-  Widget _buildInfoRow(ThemeData theme, String label, String value, {Color? valueColor}) {
+  Widget _buildInfoRow(ThemeData theme, String label, String value,
+      {Color? valueColor}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(

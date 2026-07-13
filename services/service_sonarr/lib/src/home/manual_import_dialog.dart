@@ -17,13 +17,15 @@ void showManualImportFlow(
   WidgetRef ref,
   Instance instance,
 ) {
-  unawaited(showDialog<void>(
-    context: context,
-    barrierDismissible: false,
-    builder: (BuildContext context) => _ManualImportSetupDialog(
-      instance: instance,
+  unawaited(
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) => _ManualImportSetupDialog(
+        instance: instance,
+      ),
     ),
-  ),);
+  );
 }
 
 class _ManualImportSetupDialog extends ConsumerStatefulWidget {
@@ -68,9 +70,8 @@ class __ManualImportSetupDialogState
       setState(() {
         _pathController.text = selectedPath;
       });
-      ref
-          .read(sonarrManualImportPathProvider(widget.instance).notifier)
-          .state = selectedPath;
+      ref.read(sonarrManualImportPathProvider(widget.instance).notifier).state =
+          selectedPath;
     }
   }
 
@@ -87,62 +88,67 @@ class __ManualImportSetupDialogState
 
     // Show loading overlay
     final NavigatorState nav = Navigator.of(context, rootNavigator: true);
-    unawaited(showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) => PopScope<Object?>(
-        canPop: false,
-        child: Center(
-          child: Card(
-            margin: const EdgeInsets.symmetric(horizontal: 32),
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  const ExpressiveProgressIndicator(),
-                  const SizedBox(height: 16),
-                  const Text('Scanning folder contents...'),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: <Widget>[
-                      TextButton(
-                        onPressed: () async {
-                          final bool? confirm = await showDialog<bool>(
-                            context: dialogContext,
-                            builder: (BuildContext confirmContext) => AlertDialog(
-                              title: const Text('Cancel Scan?'),
-                              content: const Text(
-                                'Are you sure you want to stop scanning this folder?',
+    unawaited(
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext dialogContext) => PopScope<Object?>(
+          canPop: false,
+          child: Center(
+            child: Card(
+              margin: const EdgeInsets.symmetric(horizontal: 32),
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    const ExpressiveProgressIndicator(),
+                    const SizedBox(height: 16),
+                    const Text('Scanning folder contents...'),
+                    const SizedBox(height: 24),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: <Widget>[
+                        TextButton(
+                          onPressed: () async {
+                            final bool? confirm = await showDialog<bool>(
+                              context: dialogContext,
+                              builder: (BuildContext confirmContext) =>
+                                  AlertDialog(
+                                title: const Text('Cancel Scan?'),
+                                content: const Text(
+                                  'Are you sure you want to stop scanning this folder?',
+                                ),
+                                actions: <Widget>[
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(confirmContext, false),
+                                    child: const Text('No'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(confirmContext, true),
+                                    child: const Text('Yes, Cancel'),
+                                  ),
+                                ],
                               ),
-                              actions: <Widget>[
-                                TextButton(
-                                  onPressed: () => Navigator.pop(confirmContext, false),
-                                  child: const Text('No'),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(confirmContext, true),
-                                  child: const Text('Yes, Cancel'),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (confirm == true) {
-                            cancelToken.cancel('user_cancelled');
-                          }
-                        },
-                        child: const Text('Cancel'),
-                      ),
-                    ],
-                  ),
-                ],
+                            );
+                            if (confirm == true) {
+                              cancelToken.cancel('user_cancelled');
+                            }
+                          },
+                          child: const Text('Cancel'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
-    ),);
+    );
 
     Object? error;
     List<dynamic> scanResults = const <dynamic>[];
@@ -186,21 +192,24 @@ class __ManualImportSetupDialogState
 
     // Close setup dialog and open mapping screen
     Navigator.pop(context);
-    unawaited(nav.push<void>(
-      MaterialPageRoute<void>(
-        builder: (BuildContext context) => _ManualImportMappingScreen(
-          instance: widget.instance,
-          initialFiles: scanResults,
-          folderPath: folder,
+    unawaited(
+      nav.push<void>(
+        MaterialPageRoute<void>(
+          builder: (BuildContext context) => _ManualImportMappingScreen(
+            instance: widget.instance,
+            initialFiles: scanResults,
+            folderPath: folder,
+          ),
         ),
       ),
-    ),);
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final String mode = ref.watch(sonarrManualImportModeProvider(widget.instance));
+    final String mode =
+        ref.watch(sonarrManualImportModeProvider(widget.instance));
     final bool filterExisting =
         ref.watch(sonarrManualImportFilterProvider(widget.instance));
 
@@ -236,7 +245,8 @@ class __ManualImportSetupDialogState
                     ),
                     onChanged: (String val) {
                       ref
-                          .read(sonarrManualImportPathProvider(widget.instance).notifier)
+                          .read(sonarrManualImportPathProvider(widget.instance)
+                              .notifier)
                           .state = val;
                     },
                   ),
@@ -269,7 +279,8 @@ class __ManualImportSetupDialogState
               onChanged: (String? val) {
                 if (val != null) {
                   ref
-                      .read(sonarrManualImportModeProvider(widget.instance).notifier)
+                      .read(sonarrManualImportModeProvider(widget.instance)
+                          .notifier)
                       .state = val;
                 }
               },
@@ -282,7 +293,8 @@ class __ManualImportSetupDialogState
               value: filterExisting,
               onChanged: (bool val) {
                 ref
-                    .read(sonarrManualImportFilterProvider(widget.instance).notifier)
+                    .read(sonarrManualImportFilterProvider(widget.instance)
+                        .notifier)
                     .state = val;
               },
             ),
@@ -431,7 +443,8 @@ class __DirectoryBrowserDialogState
                     if (segments.isNotEmpty && !isWindows)
                       Text('/', style: theme.textTheme.bodyMedium),
                     for (int i = 0; i < segments.length; i++) ...<Widget>[
-                      if (i > 0) Text(separator, style: theme.textTheme.bodyMedium),
+                      if (i > 0)
+                        Text(separator, style: theme.textTheme.bodyMedium),
                       TextButton(
                         style: TextButton.styleFrom(
                           minimumSize: Size.zero,
@@ -442,7 +455,8 @@ class __DirectoryBrowserDialogState
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
                         onPressed: () {
-                          final List<String> subSegments = segments.sublist(0, i + 1);
+                          final List<String> subSegments =
+                              segments.sublist(0, i + 1);
                           final String target = isWindows
                               ? subSegments.join('\\')
                               : '/${subSegments.join('/')}';
@@ -505,7 +519,8 @@ class __DirectoryBrowserDialogState
                       : _directories.isEmpty
                           ? const Center(child: Text('No directories found.'))
                           : ListView.builder(
-                              itemCount: _directories.length + (segments.isNotEmpty ? 1 : 0),
+                              itemCount: _directories.length +
+                                  (segments.isNotEmpty ? 1 : 0),
                               itemBuilder: (BuildContext context, int index) {
                                 if (segments.isNotEmpty && index == 0) {
                                   return ListTile(
@@ -515,15 +530,20 @@ class __DirectoryBrowserDialogState
                                   );
                                 }
 
-                                final int dataIndex = segments.isNotEmpty ? index - 1 : index;
-                                final dir = _directories[dataIndex] as Map<String, dynamic>;
-                                final String name = (dir['name'] as String?) ?? 'Unknown';
-                                final String fullPath = (dir['path'] as String?) ?? '';
+                                final int dataIndex =
+                                    segments.isNotEmpty ? index - 1 : index;
+                                final dir = _directories[dataIndex]
+                                    as Map<String, dynamic>;
+                                final String name =
+                                    (dir['name'] as String?) ?? 'Unknown';
+                                final String fullPath =
+                                    (dir['path'] as String?) ?? '';
 
                                 return ListTile(
                                   leading: const Icon(Icons.folder),
                                   title: Text(name),
-                                  trailing: const Icon(Icons.chevron_right, size: 16),
+                                  trailing:
+                                      const Icon(Icons.chevron_right, size: 16),
                                   onTap: () {
                                     _navigateTo(fullPath);
                                   },
@@ -540,7 +560,8 @@ class __DirectoryBrowserDialogState
           child: const Text('Cancel'),
         ),
         FilledButton(
-          onPressed: _loading ? null : () => Navigator.pop(context, _currentPath),
+          onPressed:
+              _loading ? null : () => Navigator.pop(context, _currentPath),
           child: const Text('Select Folder'),
         ),
       ],
@@ -612,7 +633,8 @@ class __ManualImportMappingScreenState
     super.initState();
     // Copy the items locally so they are mutable, filtering out non-video files
     final List<Map<String, dynamic>> rawFiles = List<Map<String, dynamic>>.from(
-      widget.initialFiles.map((dynamic f) => Map<String, dynamic>.from(f as Map)),
+      widget.initialFiles
+          .map((dynamic f) => Map<String, dynamic>.from(f as Map)),
     );
     _files = rawFiles.where(_isVideoFile).toList();
 
@@ -709,14 +731,16 @@ class __ManualImportMappingScreenState
 
     // Show loading spinner
     final NavigatorState nav = Navigator.of(context, rootNavigator: true);
-    unawaited(showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) => const PopScope<Object?>(
-        canPop: false,
-        child: Center(child: ExpressiveProgressIndicator()),
+    unawaited(
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) => const PopScope<Object?>(
+          canPop: false,
+          child: Center(child: ExpressiveProgressIndicator()),
+        ),
       ),
-    ),);
+    );
 
     Object? error;
     List<SonarrEpisode> allEpisodes = const <SonarrEpisode>[];
@@ -738,9 +762,8 @@ class __ManualImportMappingScreenState
       return;
     }
 
-    final List<SonarrEpisode> seasonEpisodes = allEpisodes
-        .where((e) => e.seasonNumber == seasonNumber)
-        .toList();
+    final List<SonarrEpisode> seasonEpisodes =
+        allEpisodes.where((e) => e.seasonNumber == seasonNumber).toList();
 
     if (seasonEpisodes.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -777,20 +800,18 @@ class __ManualImportMappingScreenState
   }
 
   Future<void> _executeImport() async {
-    final List<Map<String, dynamic>> importList = _files
-        .cast<Map<String, dynamic>>()
-        .where((f) {
-          final String? path = f['path'] as String?;
-          final dynamic series = f['series'];
-          final List<dynamic>? episodes = f['episodes'] as List<dynamic>?;
+    final List<Map<String, dynamic>> importList =
+        _files.cast<Map<String, dynamic>>().where((f) {
+      final String? path = f['path'] as String?;
+      final dynamic series = f['series'];
+      final List<dynamic>? episodes = f['episodes'] as List<dynamic>?;
 
-          return path != null &&
-              _selectedPaths.contains(path) &&
-              series != null &&
-              episodes != null &&
-              episodes.isNotEmpty;
-        })
-        .toList();
+      return path != null &&
+          _selectedPaths.contains(path) &&
+          series != null &&
+          episodes != null &&
+          episodes.isNotEmpty;
+    }).toList();
 
     if (importList.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -835,7 +856,9 @@ class __ManualImportMappingScreenState
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Import command triggered for ${importList.length} files.')),
+          SnackBar(
+              content: Text(
+                  'Import command triggered for ${importList.length} files.')),
         );
         Navigator.pop(context); // Close the mapping screen
       }
@@ -930,12 +953,15 @@ class __ManualImportMappingScreenState
                     itemBuilder: (BuildContext context, int index) {
                       final f = _files[index] as Map<String, dynamic>;
                       final String pathStr = (f['path'] as String?) ?? '';
-                      final String relativePath = (f['relativePath'] as String?) ?? pathStr;
+                      final String relativePath =
+                          (f['relativePath'] as String?) ?? pathStr;
                       final int bytes = (f['size'] as int?) ?? 0;
                       final series = f['series'] as Map<String, dynamic>?;
                       final int? season = f['seasonNumber'] as int?;
-                      final List<dynamic>? episodes = f['episodes'] as List<dynamic>?;
-                      final List<dynamic>? rejections = f['rejections'] as List<dynamic>?;
+                      final List<dynamic>? episodes =
+                          f['episodes'] as List<dynamic>?;
+                      final List<dynamic>? rejections =
+                          f['rejections'] as List<dynamic>?;
                       final bool isSelected = _selectedPaths.contains(pathStr);
 
                       // Parse quality
@@ -957,7 +983,8 @@ class __ManualImportMappingScreenState
                           side: BorderSide(
                             color: isSelected
                                 ? theme.colorScheme.primary
-                                : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                                : theme.colorScheme.outlineVariant
+                                    .withValues(alpha: 0.5),
                             width: isSelected ? 2.0 : 1.0,
                           ),
                           borderRadius: BorderRadius.circular(12),
@@ -984,11 +1011,13 @@ class __ManualImportMappingScreenState
                                   ),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: <Widget>[
                                         Text(
                                           relativePath,
-                                          style: theme.textTheme.bodyMedium?.copyWith(
+                                          style: theme.textTheme.bodyMedium
+                                              ?.copyWith(
                                             fontWeight: FontWeight.bold,
                                           ),
                                           maxLines: 2,
@@ -997,8 +1026,10 @@ class __ManualImportMappingScreenState
                                         const SizedBox(height: 2),
                                         Text(
                                           '${_formatSize(bytes)} • $qName',
-                                          style: theme.textTheme.bodySmall?.copyWith(
-                                            color: theme.colorScheme.onSurfaceVariant,
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                            color: theme
+                                                .colorScheme.onSurfaceVariant,
                                           ),
                                         ),
                                       ],
@@ -1008,15 +1039,18 @@ class __ManualImportMappingScreenState
                               ),
                               const Divider(height: 16),
                               // Rejection notes if any
-                              if (rejections != null && rejections.isNotEmpty) ...<Widget>[
+                              if (rejections != null &&
+                                  rejections.isNotEmpty) ...<Widget>[
                                 Container(
                                   padding: const EdgeInsets.all(8),
                                   margin: const EdgeInsets.only(bottom: 12),
                                   decoration: BoxDecoration(
-                                    color: theme.colorScheme.errorContainer.withValues(alpha: 0.2),
+                                    color: theme.colorScheme.errorContainer
+                                        .withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                      color: theme.colorScheme.error.withValues(alpha: 0.4),
+                                      color: theme.colorScheme.error
+                                          .withValues(alpha: 0.4),
                                     ),
                                   ),
                                   child: Row(
@@ -1033,8 +1067,10 @@ class __ManualImportMappingScreenState
                                               .cast<Map<String, dynamic>>()
                                               .map((r) => r['reason'] as String)
                                               .join(', '),
-                                          style: theme.textTheme.bodySmall?.copyWith(
-                                            color: theme.colorScheme.onErrorContainer,
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                            color: theme
+                                                .colorScheme.onErrorContainer,
                                           ),
                                         ),
                                       ),
@@ -1056,29 +1092,39 @@ class __ManualImportMappingScreenState
                                           : 'Select Series',
                                     ),
                                     backgroundColor: series == null
-                                        ? theme.colorScheme.errorContainer.withValues(alpha: 0.3)
+                                        ? theme.colorScheme.errorContainer
+                                            .withValues(alpha: 0.3)
                                         : null,
-                                    onPressed: () => _selectSeriesForFile(index),
+                                    onPressed: () =>
+                                        _selectSeriesForFile(index),
                                   ),
                                   // Season number dropdown
                                   if (series != null)
                                     ActionChip(
-                                      avatar: const Icon(Icons.calendar_view_day, size: 14),
+                                      avatar: const Icon(
+                                          Icons.calendar_view_day,
+                                          size: 14),
                                       label: Text(
-                                        season != null ? 'Season $season' : 'Season ?',
+                                        season != null
+                                            ? 'Season $season'
+                                            : 'Season ?',
                                       ),
                                       onPressed: () async {
-                                        final int? nextSeason = await showDialog<int>(
+                                        final int? nextSeason =
+                                            await showDialog<int>(
                                           context: context,
-                                          builder: (BuildContext context) => _SeasonPickerDialog(
-                                            seasonNumbers: _seasonNumbersFor(series),
+                                          builder: (BuildContext context) =>
+                                              _SeasonPickerDialog(
+                                            seasonNumbers:
+                                                _seasonNumbersFor(series),
                                             initialSeason: season ?? 1,
                                           ),
                                         );
                                         if (nextSeason != null) {
                                           setState(() {
                                             f['seasonNumber'] = nextSeason;
-                                            f['episodes'] = <dynamic>[]; // Reset mapped ep
+                                            f['episodes'] =
+                                                <dynamic>[]; // Reset mapped ep
                                           });
                                         }
                                       },
@@ -1086,16 +1132,20 @@ class __ManualImportMappingScreenState
                                   // Episodes list
                                   if (series != null)
                                     ActionChip(
-                                      avatar: const Icon(Icons.numbers, size: 14),
+                                      avatar:
+                                          const Icon(Icons.numbers, size: 14),
                                       label: Text(
                                         episodes != null && episodes.isNotEmpty
                                             ? 'Episode ${episodes.cast<Map<String, dynamic>>().map((e) => e['episodeNumber'].toString()).join(', ')}'
                                             : 'Select Episode(s)',
                                       ),
-                                      backgroundColor: episodes == null || episodes.isEmpty
-                                          ? theme.colorScheme.errorContainer.withValues(alpha: 0.3)
-                                          : null,
-                                      onPressed: () => _selectEpisodesForFile(index),
+                                      backgroundColor:
+                                          episodes == null || episodes.isEmpty
+                                              ? theme.colorScheme.errorContainer
+                                                  .withValues(alpha: 0.3)
+                                              : null,
+                                      onPressed: () =>
+                                          _selectEpisodesForFile(index),
                                     ),
                                 ],
                               ),
@@ -1113,7 +1163,8 @@ class __ManualImportMappingScreenState
               color: theme.colorScheme.surfaceContainer,
               border: Border(
                 top: BorderSide(
-                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
+                  color:
+                      theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
                 ),
               ),
             ),
@@ -1204,7 +1255,8 @@ class _SeriesPickerDialogState extends State<_SeriesPickerDialog> {
                   final SonarrSeries s = _filtered[index];
                   return ListTile(
                     title: Text(s.title),
-                    subtitle: Text('${s.network ?? 'Unknown'} • ${s.year ?? ''}'),
+                    subtitle:
+                        Text('${s.network ?? 'Unknown'} • ${s.year ?? ''}'),
                     onTap: () {
                       Navigator.pop(context, s);
                     },

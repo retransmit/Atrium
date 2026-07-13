@@ -129,17 +129,19 @@ class EmbyAlbumScreen extends ConsumerWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.secondaryContainer,
+                          color:
+                              Theme.of(context).colorScheme.secondaryContainer,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           g,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSecondaryContainer,
-                                fontWeight: FontWeight.w500,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSecondaryContainer,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                         ),
                       );
                     }).toList(),
@@ -249,7 +251,8 @@ class EmbyAlbumScreen extends ConsumerWidget {
                                           color: Theme.of(context)
                                               .colorScheme
                                               .surfaceContainerHighest,
-                                          borderRadius: BorderRadius.circular(4),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
                                         ),
                                         child: const Icon(Icons.music_note),
                                       ),
@@ -372,4 +375,3 @@ class EmbyAlbumScreen extends ConsumerWidget {
     );
   }
 }
-

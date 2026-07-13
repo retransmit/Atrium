@@ -16,8 +16,7 @@ class AtriumSecureStorage {
   /// Creates a storage with a real backing store. Inject a custom
   /// [FlutterSecureStorage] in tests.
   AtriumSecureStorage({FlutterSecureStorage? store})
-      : _store = store ??
-            const FlutterSecureStorage();
+      : _store = store ?? const FlutterSecureStorage();
 
   final FlutterSecureStorage _store;
 

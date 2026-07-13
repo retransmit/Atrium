@@ -34,6 +34,7 @@ abstract class PlexLibrary with _$PlexLibrary {
   const factory PlexLibrary({
     required String key,
     @Default('') String title,
+
     /// "movie", "show", "artist", "photo".
     @Default('') String type,
   }) = _PlexLibrary;
@@ -72,34 +73,45 @@ abstract class PlexMetadata with _$PlexMetadata {
     @JsonKey(name: 'ratingKey') @Default('') String ratingKey,
     @Default('') String title,
     int? year,
+
     /// Relative thumbnail path, e.g. `/library/metadata/123/thumb/456`.
     String? thumb,
     @Default('') String type,
+
     /// Present and > 0 when the user has watched it.
     @JsonKey(name: 'viewCount') @Default(0) int viewCount,
+
     /// Resume point in milliseconds, when partially watched.
     @JsonKey(name: 'viewOffset') int? viewOffset,
+
     /// Total runtime in milliseconds.
     @JsonKey(name: 'duration') int? duration,
+
     /// Playable media (present on movies/episodes; absent on shows/seasons).
     @JsonKey(name: 'Media') @Default(<PlexMedia>[]) List<PlexMedia> media,
+
     /// Detail fields (populated by `GET /library/metadata/{ratingKey}`).
     String? summary,
     String? tagline,
     String? studio,
+
     /// Age/content rating, e.g. "PG-13".
     String? contentRating,
+
     /// Critic rating (0-10); `audienceRating` is the audience score.
     double? rating,
     @JsonKey(name: 'audienceRating') double? audienceRating,
+
     /// Backdrop art, relative path.
     String? art,
+
     /// For an episode: the show + season titles and the season/episode numbers.
     String? grandparentTitle,
     String? parentTitle,
     @JsonKey(name: 'grandparentRatingKey') String? grandparentRatingKey,
     int? index,
     int? parentIndex,
+
     /// For a show: total vs watched leaf (episode) counts.
     int? leafCount,
     int? viewedLeafCount,
@@ -142,8 +154,10 @@ abstract class PlexRole with _$PlexRole {
   const factory PlexRole({
     /// Actor name.
     String? tag,
+
     /// Character played.
     String? role,
+
     /// Headshot - sometimes an absolute URL, sometimes a relative path.
     String? thumb,
   }) = _PlexRole;

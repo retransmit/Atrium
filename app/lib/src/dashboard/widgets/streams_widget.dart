@@ -12,6 +12,8 @@ import 'package:service_tautulli/service_tautulli.dart';
 
 import '../dashboard_widget_card.dart';
 import '../dashboard_widget_kind.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
+import 'package:palette_generator/palette_generator.dart';
 
 /// Live count of active sessions across every Tautulli, Jellyfin and Emby
 /// instance. Instances still loading or in error contribute 0, so the
@@ -45,6 +47,7 @@ class _StreamRow {
     required this.instance,
     this.device = '',
     this.posterUrl,
+    this.backdropUrl,
     this.quality,
     this.transcoding = false,
     this.timeLabel,
@@ -59,6 +62,7 @@ class _StreamRow {
   /// Player / client the session is on (e.g. "Chrome", "Apple TV").
   final String device;
   final String? posterUrl;
+  final String? backdropUrl;
 
   /// Stream resolution (e.g. "1080p"), when the backend reports it.
   final String? quality;
@@ -113,6 +117,7 @@ class DashboardStreamsWidget extends ConsumerWidget {
           progress: (s.progressPercent / 100).clamp(0, 1).toDouble(),
           paused: s.state.toLowerCase() == 'paused',
           posterUrl: api?.imageUrl(s.posterThumb),
+          backdropUrl: api?.imageUrl(s.art),
           device: s.player,
           quality: s.videoResolution.isEmpty ? null : s.videoResolution,
           transcoding: s.transcodeDecision.toLowerCase() == 'transcode',
@@ -135,6 +140,7 @@ class DashboardStreamsWidget extends ConsumerWidget {
           progress: (s.progressPercent / 100).clamp(0, 1).toDouble(),
           paused: s.status.toLowerCase() == 'paused',
           posterUrl: s.posterUrl,
+          backdropUrl: s.backdropUrl,
           device: s.device,
           timeLabel: _timeLabel(s.timePosition, s.timeDuration),
           instance: i,
@@ -156,6 +162,7 @@ class DashboardStreamsWidget extends ConsumerWidget {
           progress: (s.progressPercent / 100).clamp(0, 1).toDouble(),
           paused: s.status.toLowerCase() == 'paused',
           posterUrl: s.posterUrl,
+          backdropUrl: s.backdropUrl,
           device: s.device,
           timeLabel: _timeLabel(s.timePosition, s.timeDuration),
           instance: i,
@@ -187,12 +194,13 @@ class DashboardStreamsWidget extends ConsumerWidget {
         children: <Widget>[
           for (int j = 0; j < top.length; j++) ...<Widget>[
             if (j > 0) const SizedBox(height: Insets.sm),
-            _SessionRow(row: top[j]),
+            _StreamBanner(row: top[j]),
           ],
           if (rows.length > top.length)
             Padding(
               padding: const EdgeInsets.only(top: Insets.sm),
-              child: DashboardIdleRow(text: '+${rows.length - top.length} more'),
+              child:
+                  DashboardIdleRow(text: '+${rows.length - top.length} more'),
             ),
         ],
       );
@@ -225,121 +233,259 @@ class DashboardStreamsWidget extends ConsumerWidget {
   }
 }
 
-class _SessionRow extends StatelessWidget {
-  const _SessionRow({required this.row});
+class _StreamBanner extends StatefulWidget {
+  const _StreamBanner({required this.row});
 
   final _StreamRow row;
 
   @override
+  State<_StreamBanner> createState() => _StreamBannerState();
+}
+
+class _StreamBannerState extends State<_StreamBanner> {
+  PaletteGenerator? _palette;
+  String? _lastPosterUrl;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _updateColorScheme();
+  }
+
+  @override
+  void didUpdateWidget(covariant _StreamBanner oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.row.posterUrl != widget.row.posterUrl) {
+      _updateColorScheme();
+    }
+  }
+
+  void _updateColorScheme() {
+    final String? posterUrl = widget.row.posterUrl;
+    if (posterUrl == null || posterUrl == _lastPosterUrl) return;
+    _lastPosterUrl = posterUrl;
+
+    PaletteGenerator.fromImageProvider(
+      CachedNetworkImageProvider(posterUrl, maxWidth: 200, maxHeight: 300),
+      size: const Size(200, 300),
+    ).then((PaletteGenerator palette) {
+      if (mounted) {
+        setState(() {
+          _palette = palette;
+        });
+      }
+    }).catchError((_) {});
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
+    ThemeData theme = Theme.of(context);
+
+    if (_palette != null) {
+      final Color dominant =
+          _palette!.dominantColor?.color ?? theme.colorScheme.surface;
+      final Color vibrant = _palette!.vibrantColor?.color ??
+          _palette!.lightVibrantColor?.color ??
+          dominant;
+      theme = theme.copyWith(
+        colorScheme: theme.colorScheme.copyWith(
+          primary: vibrant,
+        ),
+      );
+    }
     final ColorScheme cs = theme.colorScheme;
+    final _StreamRow row = widget.row;
+
     final String? poster = row.posterUrl;
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: () => context.go(
-        AtriumRoutes.servicePath(row.instance.kind.name, row.instance.id),
-      ),
-      child: Row(
-        children: <Widget>[
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: SizedBox(
-              width: 40,
-              height: 56,
-              child: (poster == null || poster.isEmpty)
-                  ? _posterFallback(cs)
-                  : CachedNetworkImage(
-                      imageUrl: poster,
-                      fit: BoxFit.cover,
-                      memCacheWidth: 120,
-                      errorWidget: (_, __, ___) => _posterFallback(cs),
+    final String? backdrop =
+        (row.backdropUrl != null && row.backdropUrl!.trim().isNotEmpty)
+            ? row.backdropUrl
+            : poster;
+    final bool hasArt = backdrop != null && backdrop.trim().isNotEmpty;
+
+    final bool isLight = theme.brightness == Brightness.light;
+    final Color scrim = isLight ? Colors.white : Colors.black;
+    final Color onArt = isLight ? const Color(0xFF141414) : Colors.white;
+    final Color titleColor = hasArt ? onArt : cs.onSurface;
+    final Color subColor =
+        hasArt ? onArt.withValues(alpha: 0.78) : cs.onSurfaceVariant;
+
+    return Theme(
+      data: theme,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: SizedBox(
+          height: 78,
+          child: Stack(
+            fit: StackFit.expand,
+            children: <Widget>[
+              if (hasArt)
+                CachedNetworkImage(
+                  imageUrl: backdrop,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                  memCacheWidth: 600,
+                  errorWidget: (_, __, ___) => (backdrop != poster &&
+                          poster != null &&
+                          poster.trim().isNotEmpty)
+                      ? CachedNetworkImage(
+                          imageUrl: poster,
+                          fit: BoxFit.cover,
+                          alignment: Alignment.center,
+                          memCacheWidth: 600,
+                          errorWidget: (_, __, ___) =>
+                              Container(color: cs.surfaceContainerHighest),
+                        )
+                      : Container(color: cs.surfaceContainerHighest),
+                )
+              else
+                Container(color: cs.surfaceContainerHighest),
+              if (hasArt)
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: <Color>[
+                        scrim.withValues(alpha: 0.88),
+                        scrim.withValues(alpha: 0.60),
+                        scrim.withValues(alpha: 0.20),
+                      ],
+                      stops: const <double>[0.0, 0.55, 1.0],
                     ),
-            ),
-          ),
-          const SizedBox(width: Insets.md),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        row.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                    if (row.quality != null) ...<Widget>[
-                      const SizedBox(width: Insets.sm),
-                      _QualityChip(
-                        label: row.quality!,
-                        transcoding: row.transcoding,
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
-                const SizedBox(height: 2),
-                Row(
-                  children: <Widget>[
-                    Icon(
-                      row.paused
-                          ? Icons.pause_rounded
-                          : Icons.play_arrow_rounded,
-                      size: 14,
-                      color: cs.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 2),
-                    Expanded(
-                      child: Text(
-                        row.device.isEmpty
-                            ? row.user
-                            : '${row.user} · ${row.device}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(color: cs.onSurfaceVariant),
-                      ),
-                    ),
-                  ],
+              InkWell(
+                onTap: () => context.go(
+                  AtriumRoutes.servicePath(
+                      row.instance.kind.name, row.instance.id),
                 ),
-                const SizedBox(height: 6),
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: row.progress,
-                          minHeight: 5,
-                          color: cs.tertiary,
-                          backgroundColor: cs.surfaceContainerHighest,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  child: Row(
+                    children: <Widget>[
+                      SizedBox(
+                        width: 66,
+                        height: 66,
+                        child: Center(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                minWidth: 44,
+                                maxWidth: 66,
+                              ),
+                              child: SizedBox(
+                                height: 66,
+                                child: (poster == null || poster.isEmpty)
+                                    ? _posterFallback(cs)
+                                    : CachedNetworkImage(
+                                        imageUrl: poster,
+                                        fit: BoxFit.cover,
+                                        memCacheWidth: 132,
+                                        errorWidget: (_, __, ___) =>
+                                            _posterFallback(cs),
+                                      ),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: Insets.sm),
-                    Text(
-                      row.timeLabel ??
-                          '${(row.progress * 100).toStringAsFixed(0)}%',
-                      style: theme.textTheme.labelSmall
-                          ?.copyWith(color: cs.onSurfaceVariant),
-                    ),
-                  ],
+                      const SizedBox(width: Insets.md),
+                      Expanded(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: Text(
+                                    row.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      color: titleColor,
+                                    ),
+                                  ),
+                                ),
+                                if (row.quality != null) ...<Widget>[
+                                  const SizedBox(width: Insets.sm),
+                                  _QualityChip(
+                                    label: row.quality!,
+                                    transcoding: row.transcoding,
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Row(
+                              children: <Widget>[
+                                Icon(
+                                  row.paused
+                                      ? Icons.pause_rounded
+                                      : Icons.play_arrow_rounded,
+                                  size: 14,
+                                  color: subColor,
+                                ),
+                                const SizedBox(width: 2),
+                                Expanded(
+                                  child: Text(
+                                    row.device.isEmpty
+                                        ? row.user
+                                        : '${row.user} • ${row.device}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.bodySmall
+                                        ?.copyWith(color: subColor),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: LinearProgressIndicatorM3E(
+                                      size: LinearProgressM3ESize.s,
+                                      shape: ProgressM3EShape.flat,
+                                      value: row.progress.clamp(0, 1),
+                                      activeColor: !row.paused
+                                          ? theme.colorScheme.primary
+                                          : theme.colorScheme.outline,
+                                      trackColor: hasArt
+                                          ? scrim.withValues(alpha: 0.15)
+                                          : cs.surfaceContainerHighest,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: Insets.sm),
+                                Text(
+                                  row.timeLabel ??
+                                      '${(row.progress * 100).toStringAsFixed(0)}%',
+                                  style: theme.textTheme.labelSmall
+                                      ?.copyWith(color: subColor),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _posterFallback(ColorScheme cs) => Container(
-        color: cs.surfaceContainerHighest,
+        color: cs.surfaceContainerHigh,
         alignment: Alignment.center,
         child: Icon(
           Icons.play_circle_outline,

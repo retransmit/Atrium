@@ -68,9 +68,11 @@ class _IndexersTab extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _selectIndexerPresetAndAdd(
-      BuildContext context, WidgetRef ref,) async {
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final schemasAsync = ref.read(radarrIndexerSchemaProvider(instance));
-    
+
     final presets = schemasAsync.value ?? [];
     if (presets.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -111,7 +113,8 @@ class _IndexersTab extends ConsumerWidget {
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         Navigator.pop(context);
-                        _showIndexerEditorDialog(context, ref, preset, isNew: true);
+                        _showIndexerEditorDialog(context, ref, preset,
+                            isNew: true);
                       },
                     );
                   },
@@ -125,8 +128,11 @@ class _IndexersTab extends ConsumerWidget {
   }
 
   Future<void> _showIndexerEditorDialog(
-      BuildContext context, WidgetRef ref, Map<String, dynamic> indexer,
-      {bool isNew = false,}) async {
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> indexer, {
+    bool isNew = false,
+  }) async {
     final fields = (indexer['fields'] as List<dynamic>?)
             ?.map((dynamic f) => f as Map<String, dynamic>)
             .toList() ??
@@ -137,21 +143,24 @@ class _IndexersTab extends ConsumerWidget {
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          title: Text(isNew ? 'Add ${indexer['name']}' : 'Edit ${indexer['name']}'),
+          title: Text(
+              isNew ? 'Add ${indexer['name']}' : 'Edit ${indexer['name']}'),
           content: SizedBox(
             width: double.maxFinite,
             child: SingleChildScrollView(
               child: DynamicSchemaForm(
                 fields: fields,
                 onTest: (updatedFields) async {
-                  final api = await ref.read(radarrApiProvider(instance).future);
+                  final api =
+                      await ref.read(radarrApiProvider(instance).future);
                   final payload = Map<String, dynamic>.from(indexer);
                   payload['fields'] = updatedFields;
                   await api.testIndexer(payload);
                 },
                 onSave: (updatedFields) async {
                   try {
-                    final api = await ref.read(radarrApiProvider(instance).future);
+                    final api =
+                        await ref.read(radarrApiProvider(instance).future);
                     final payload = Map<String, dynamic>.from(indexer);
                     payload['fields'] = updatedFields;
 
@@ -166,7 +175,8 @@ class _IndexersTab extends ConsumerWidget {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Indexer ${isNew ? 'added' : 'updated'}!'),
+                          content:
+                              Text('Indexer ${isNew ? 'added' : 'updated'}!'),
                         ),
                       );
                     }
@@ -187,7 +197,11 @@ class _IndexersTab extends ConsumerWidget {
   }
 
   Future<void> _deleteIndexer(
-      BuildContext context, WidgetRef ref, int id, String name,) async {
+    BuildContext context,
+    WidgetRef ref,
+    int id,
+    String name,
+  ) async {
     final confirmed = await confirmDelete(context, 'Indexer "$name"');
     if (!confirmed) return;
 
@@ -227,7 +241,8 @@ class _IndexersTab extends ConsumerWidget {
         error: (err, _) => Center(child: Text('Error: $err')),
         data: (indexers) {
           if (indexers.isEmpty) {
-            return const Center(child: Text('No indexers configured. Tap + to add one.'));
+            return const Center(
+                child: Text('No indexers configured. Tap + to add one.'));
           }
 
           return ListView.builder(
@@ -243,17 +258,20 @@ class _IndexersTab extends ConsumerWidget {
                 margin: const EdgeInsets.only(bottom: 12),
                 color: theme.colorScheme.surfaceContainerLow,
                 child: ListTile(
-                  title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text(name,
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text('Protocol: ${proto.toUpperCase()}'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
                         icon: const Icon(Icons.edit_outlined),
-                        onPressed: () => _showIndexerEditorDialog(context, ref, idx),
+                        onPressed: () =>
+                            _showIndexerEditorDialog(context, ref, idx),
                       ),
                       IconButton(
-                        icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
+                        icon: Icon(Icons.delete_outline,
+                            color: theme.colorScheme.error),
                         onPressed: () => _deleteIndexer(context, ref, id, name),
                       ),
                     ],
@@ -274,9 +292,11 @@ class _ImportListsTab extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _selectImportListPresetAndAdd(
-      BuildContext context, WidgetRef ref,) async {
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final schemasAsync = ref.read(radarrImportListSchemaProvider(instance));
-    
+
     final presets = schemasAsync.value ?? [];
     if (presets.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -314,7 +334,8 @@ class _ImportListsTab extends ConsumerWidget {
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         Navigator.pop(context);
-                        _showImportListEditorDialog(context, ref, preset, isNew: true);
+                        _showImportListEditorDialog(context, ref, preset,
+                            isNew: true);
                       },
                     );
                   },
@@ -328,8 +349,11 @@ class _ImportListsTab extends ConsumerWidget {
   }
 
   Future<void> _showImportListEditorDialog(
-      BuildContext context, WidgetRef ref, Map<String, dynamic> list,
-      {bool isNew = false,}) async {
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> list, {
+    bool isNew = false,
+  }) async {
     final fields = (list['fields'] as List<dynamic>?)
             ?.map((dynamic f) => f as Map<String, dynamic>)
             .toList() ??
@@ -350,14 +374,16 @@ class _ImportListsTab extends ConsumerWidget {
               child: DynamicSchemaForm(
                 fields: fields,
                 onTest: (updatedFields) async {
-                  final api = await ref.read(radarrApiProvider(instance).future);
+                  final api =
+                      await ref.read(radarrApiProvider(instance).future);
                   final payload = Map<String, dynamic>.from(list);
                   payload['fields'] = updatedFields;
                   await api.testImportList(payload);
                 },
                 onSave: (updatedFields) async {
                   try {
-                    final api = await ref.read(radarrApiProvider(instance).future);
+                    final api =
+                        await ref.read(radarrApiProvider(instance).future);
                     final payload = Map<String, dynamic>.from(list);
                     payload['fields'] = updatedFields;
 
@@ -405,14 +431,16 @@ class _ImportListsTab extends ConsumerWidget {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Import list ${isNew ? 'added' : 'updated'}!'),
+                          content: Text(
+                              'Import list ${isNew ? 'added' : 'updated'}!'),
                         ),
                       );
                     }
                   } catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Failed to save import list: $e')),
+                        SnackBar(
+                            content: Text('Failed to save import list: $e')),
                       );
                     }
                   }
@@ -426,7 +454,11 @@ class _ImportListsTab extends ConsumerWidget {
   }
 
   Future<void> _deleteImportList(
-      BuildContext context, WidgetRef ref, int id, String name,) async {
+    BuildContext context,
+    WidgetRef ref,
+    int id,
+    String name,
+  ) async {
     final confirmed = await confirmDelete(context, 'Import List "$name"');
     if (!confirmed) return;
 
@@ -465,7 +497,8 @@ class _ImportListsTab extends ConsumerWidget {
         error: (err, _) => Center(child: Text('Error: $err')),
         data: (lists) {
           if (lists.isEmpty) {
-            return const Center(child: Text('No import lists configured. Tap + to add one.'));
+            return const Center(
+                child: Text('No import lists configured. Tap + to add one.'));
           }
 
           return ListView.builder(
@@ -480,17 +513,21 @@ class _ImportListsTab extends ConsumerWidget {
                 margin: const EdgeInsets.only(bottom: 12),
                 color: theme.colorScheme.surfaceContainerLow,
                 child: ListTile(
-                  title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text(name,
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
                         icon: const Icon(Icons.edit_outlined),
-                        onPressed: () => _showImportListEditorDialog(context, ref, lst),
+                        onPressed: () =>
+                            _showImportListEditorDialog(context, ref, lst),
                       ),
                       IconButton(
-                        icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
-                        onPressed: () => _deleteImportList(context, ref, id, name),
+                        icon: Icon(Icons.delete_outline,
+                            color: theme.colorScheme.error),
+                        onPressed: () =>
+                            _deleteImportList(context, ref, id, name),
                       ),
                     ],
                   ),
@@ -549,7 +586,8 @@ class _IndexerOptionsTabState extends ConsumerState<_IndexerOptionsTab> {
     _minAgeController.text = (config['minimumAge'] as int? ?? 0).toString();
     _retentionController.text = (config['retention'] as int? ?? 0).toString();
     _maxSizeController.text = (config['maximumSize'] as int? ?? 0).toString();
-    _rssIntervalController.text = (config['rssSyncInterval'] as int? ?? 15).toString();
+    _rssIntervalController.text =
+        (config['rssSyncInterval'] as int? ?? 15).toString();
   }
 
   Future<void> _save() async {
@@ -560,9 +598,12 @@ class _IndexerOptionsTabState extends ConsumerState<_IndexerOptionsTab> {
       final api = await ref.read(radarrApiProvider(widget.instance).future);
       final payload = Map<String, dynamic>.from(_rawConfig!);
       payload['minimumAge'] = int.tryParse(_minAgeController.text.trim()) ?? 0;
-      payload['retention'] = int.tryParse(_retentionController.text.trim()) ?? 0;
-      payload['maximumSize'] = int.tryParse(_maxSizeController.text.trim()) ?? 0;
-      payload['rssSyncInterval'] = int.tryParse(_rssIntervalController.text.trim()) ?? 15;
+      payload['retention'] =
+          int.tryParse(_retentionController.text.trim()) ?? 0;
+      payload['maximumSize'] =
+          int.tryParse(_maxSizeController.text.trim()) ?? 0;
+      payload['rssSyncInterval'] =
+          int.tryParse(_rssIntervalController.text.trim()) ?? 15;
 
       await api.updateIndexerConfig(payload);
       ref.invalidate(radarrIndexerConfigProvider(widget.instance));
@@ -633,7 +674,8 @@ class _IndexerOptionsTabState extends ConsumerState<_IndexerOptionsTab> {
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(
                           labelText: 'Retention (Days)',
-                          helperText: 'Usenet only: max retention age (0 = unlimited)',
+                          helperText:
+                              'Usenet only: max retention age (0 = unlimited)',
                           border: OutlineInputBorder(),
                         ),
                       ),

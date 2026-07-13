@@ -52,16 +52,19 @@ class AtriumApp extends ConsumerWidget {
       } catch (_) {}
     }
 
-    final ThemeSource themeSource = ref
-        .watch(preferencesProvider.select((Preferences p) => p.themeSource));
-    final (ColorScheme customLight, ColorScheme customDark) = ref.watch(customColorSchemeProvider);
+    final ThemeSource themeSource =
+        ref.watch(preferencesProvider.select((Preferences p) => p.themeSource));
+    final (ColorScheme customLight, ColorScheme customDark) =
+        ref.watch(customColorSchemeProvider);
 
     return AtriumTheme.withDynamicColor(
       builder: (ColorScheme? lightScheme, ColorScheme? darkScheme) {
         final systemNotifier = ref.read(systemColorSchemeProvider.notifier);
-        if (systemNotifier.state.light != lightScheme || systemNotifier.state.dark != darkScheme) {
+        if (systemNotifier.state.light != lightScheme ||
+            systemNotifier.state.dark != darkScheme) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            systemNotifier.state = SystemColorSchemeState(lightScheme, darkScheme);
+            systemNotifier.state =
+                SystemColorSchemeState(lightScheme, darkScheme);
           });
         }
 
@@ -69,14 +72,17 @@ class AtriumApp extends ConsumerWidget {
             ? (lightScheme ?? ColorScheme.fromSeed(seedColor: AtriumTheme.seed))
             : customLight;
         final ColorScheme activeDark = themeSource == ThemeSource.system
-            ? (darkScheme ?? ColorScheme.fromSeed(seedColor: AtriumTheme.seed, brightness: Brightness.dark))
+            ? (darkScheme ??
+                ColorScheme.fromSeed(
+                    seedColor: AtriumTheme.seed, brightness: Brightness.dark))
             : customDark;
 
         return MaterialApp.router(
           title: 'Atrium',
           debugShowCheckedModeBanner: false,
           theme: AtriumTheme.light(activeLight, fontFamily: resolvedFontFamily),
-          darkTheme: AtriumTheme.dark(activeDark, fontFamily: resolvedFontFamily),
+          darkTheme:
+              AtriumTheme.dark(activeDark, fontFamily: resolvedFontFamily),
           themeMode: themeMode,
           routerConfig: router,
           // Overlay the opt-in biometric lock above every route.
@@ -198,7 +204,8 @@ class _LockScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Icon(Icons.lock_outline, size: 64, color: theme.colorScheme.primary),
+            Icon(Icons.lock_outline,
+                size: 64, color: theme.colorScheme.primary),
             const SizedBox(height: 16),
             Text('Atrium is locked', style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
