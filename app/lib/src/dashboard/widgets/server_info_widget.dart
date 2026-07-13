@@ -274,11 +274,13 @@ class _DiskBar extends StatelessWidget {
           const SizedBox(height: 4),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
+            child: LinearProgressIndicatorM3E(
               value: fraction,
-              minHeight: 5,
-              color: _loadColor(disk.percentage, cs),
-              backgroundColor: cs.surfaceContainerHighest,
+              shape: ProgressM3EShape.flat,
+              size: LinearProgressM3ESize.s,
+              activeColor: _loadColor(disk.percentage, cs),
+              trackColor: cs.surfaceContainerHighest,
+              inset: 0.0,
             ),
           ),
         ],

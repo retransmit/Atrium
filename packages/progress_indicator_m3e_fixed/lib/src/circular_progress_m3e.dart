@@ -127,19 +127,6 @@ class _CircularFlatPainter extends CustomPainter {
     final radius = (math.min(s.width, s.height) - stroke) / 2;
     final rect = Rect.fromCircle(center: center, radius: radius);
 
-    // gap before active in dp -> angle
-    const gapDp = 8.0;
-    final gapAngle = gapDp / radius; // s = r * angle
-
-    // active sweep
-    final sweep =
-        value == null ? math.pi * 1.5 : (value!.clamp(0.0, 1.0) * math.pi * 2);
-
-    final start = -math.pi / 2 + rotation;
-    final activeStart = start;
-    final activeEnd = start + sweep;
-
-    // TRACK: draw the rest of the ring, leaving a gap ahead of the active arc and no overlap.
     final trackPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke
@@ -147,23 +134,44 @@ class _CircularFlatPainter extends CustomPainter {
       ..isAntiAlias = true
       ..color = track;
 
-    const total = math.pi * 2;
-    final a1 = activeEnd + gapAngle;
-    final a2 = activeStart - gapAngle;
-    double sweep1 = a2 - a1;
-    while (sweep1 <= 0) {
-      sweep1 += total;
+    if (value == 0.0) {
+      canvas.drawArc(rect, 0, math.pi * 2, false, trackPaint);
+      return;
     }
-    canvas.drawArc(rect, a1, sweep1, false, trackPaint);
 
-    // ACTIVE arc
     final activePaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = stroke
       ..strokeCap = StrokeCap.round
       ..isAntiAlias = true
       ..color = active;
-    canvas.drawArc(rect, activeStart, sweep, false, activePaint);
+
+    final start = -math.pi / 2 + rotation;
+    final sweep =
+        value == null ? math.pi * 1.5 : (value!.clamp(0.0, 1.0) * math.pi * 2);
+
+    if (value == 1.0) {
+      canvas.drawArc(rect, start, sweep, false, activePaint);
+      return;
+    }
+
+    // gap before active in dp -> angle
+    const gapDp = 8.0;
+    final gapAngle = gapDp / radius; // s = r * angle
+    const total = math.pi * 2;
+
+    if (sweep + 2 * gapAngle < total) {
+      final a1 = start + sweep + gapAngle;
+      final a2 = start - gapAngle;
+      double sweep1 = a2 - a1;
+      while (sweep1 <= 0) {
+        sweep1 += total;
+      }
+      canvas.drawArc(rect, a1, sweep1, false, trackPaint);
+    }
+
+    // ACTIVE arc
+    canvas.drawArc(rect, start, sweep, false, activePaint);
   }
 
   @override
@@ -193,6 +201,18 @@ class _CircularWavyPainter extends CustomPainter {
     final center = s.center(Offset.zero);
     final baseRadius = (math.min(s.width, s.height) - stroke) / 2;
 
+    if (value == 0.0) {
+      final trackPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..strokeCap = StrokeCap.round
+        ..isAntiAlias = true
+        ..color = track;
+      canvas.drawArc(Rect.fromCircle(center: center, radius: baseRadius), 0,
+          math.pi * 2, false, trackPaint);
+      return;
+    }
+
     const amp = 2.0; // radial amplitude of squiggle
     const scallopLen = 18.0; // along-arc wavelength proxy (dp)
     // Taper length to fade the wave amplitude to zero near the end so the line ends "closed".
@@ -207,23 +227,26 @@ class _CircularWavyPainter extends CustomPainter {
     // Track ring with gap around active (skip when wave-only: indeterminate or 100%)
     final bool waveOnly = value == null || (value != null && value! >= 1.0);
     if (!waveOnly) {
-      final trackPaint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = stroke
-        ..strokeCap = StrokeCap.round
-        ..isAntiAlias = true
-        ..color = track;
-
       final gapAngle = 2.0 / baseRadius;
       final rect = Rect.fromCircle(center: center, radius: baseRadius);
       const total = math.pi * 2;
-      final a1 = end + gapAngle;
-      final a2 = start - gapAngle;
-      double sweep1 = a2 - a1;
-      while (sweep1 <= 0) {
-        sweep1 += total;
+      
+      if (activeSweep + 2 * gapAngle < total) {
+        final trackPaint = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = stroke
+          ..strokeCap = StrokeCap.round
+          ..isAntiAlias = true
+          ..color = track;
+
+        final a1 = end + gapAngle;
+        final a2 = start - gapAngle;
+        double sweep1 = a2 - a1;
+        while (sweep1 <= 0) {
+          sweep1 += total;
+        }
+        canvas.drawArc(rect, a1, sweep1, false, trackPaint);
       }
-      canvas.drawArc(rect, a1, sweep1, false, trackPaint);
     }
 
     // Active squiggle path
