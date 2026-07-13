@@ -7,6 +7,7 @@ import 'package:service_sabnzbd/service_sabnzbd.dart';
 
 import '../dashboard_widget_card.dart';
 import '../dashboard_widget_kind.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 class _DiskRow {
   const _DiskRow({
@@ -74,8 +75,7 @@ class DashboardDiskWidget extends ConsumerWidget {
       final AsyncValue<GlancesStats> stats = ref.watch(glancesStatsProvider(i));
       anyLoading |= stats.isLoading && !stats.hasValue;
       anyError |= stats.hasError;
-      for (final GlancesDisk d
-          in stats.value?.disks ?? const <GlancesDisk>[]) {
+      for (final GlancesDisk d in stats.value?.disks ?? const <GlancesDisk>[]) {
         if (d.total > 0) {
           rows.add(_DiskRow(
             label: '${i.name} ${d.path}',
@@ -169,11 +169,12 @@ class _BarRow extends StatelessWidget {
           const SizedBox(height: 4),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
+            child: LinearProgressIndicatorM3E(
+              size: LinearProgressM3ESize.s,
+              shape: ProgressM3EShape.flat,
               value: row.fraction,
-              minHeight: 5,
-              color: barColor,
-              backgroundColor: cs.surfaceContainerHighest,
+              activeColor: barColor,
+              trackColor: cs.surfaceContainerHighest,
             ),
           ),
         ],

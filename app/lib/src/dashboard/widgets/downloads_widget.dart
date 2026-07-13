@@ -10,6 +10,7 @@ import 'package:service_sabnzbd/service_sabnzbd.dart';
 
 import '../dashboard_widget_card.dart';
 import '../dashboard_widget_kind.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 /// qBittorrent states that count as actively downloading.
 const Set<String> _activeDlStates = <String>{
@@ -31,8 +32,7 @@ final activeDownloadCountProvider = Provider.autoDispose<int>((Ref ref) {
   for (final Instance i in instances) {
     if (i.kind == ServiceKind.qbittorrent) {
       final List<QbitTorrent> torrents =
-          ref.watch(qbitRawTorrentsProvider(i)).value ??
-              const <QbitTorrent>[];
+          ref.watch(qbitRawTorrentsProvider(i)).value ?? const <QbitTorrent>[];
       for (final QbitTorrent t in torrents) {
         if (_activeDlStates.contains(t.state)) {
           count++;
@@ -131,7 +131,8 @@ class DashboardDownloadsWidget extends ConsumerWidget {
       }
     }
 
-    rows.sort((_DownloadRow a, _DownloadRow b) => b.progress.compareTo(a.progress));
+    rows.sort(
+        (_DownloadRow a, _DownloadRow b) => b.progress.compareTo(a.progress));
     final List<_DownloadRow> top = rows.take(3).toList();
 
     Widget body;
@@ -226,11 +227,12 @@ class _ItemRow extends StatelessWidget {
             const SizedBox(height: 4),
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
+              child: LinearProgressIndicatorM3E(
+                size: LinearProgressM3ESize.s,
+                shape: ProgressM3EShape.flat,
                 value: row.progress,
-                minHeight: 5,
-                color: cs.primary,
-                backgroundColor: cs.surfaceContainerHighest,
+                activeColor: cs.primary,
+                trackColor: cs.surfaceContainerHighest,
               ),
             ),
           ],
