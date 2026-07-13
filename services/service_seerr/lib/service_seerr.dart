@@ -5,6 +5,7 @@
 /// with approve / decline).
 library;
 
+export 'src/models/seerr_counts.dart';
 export 'src/models/seerr_discover.dart';
 export 'src/models/seerr_issue.dart';
 export 'src/models/seerr_request.dart';
