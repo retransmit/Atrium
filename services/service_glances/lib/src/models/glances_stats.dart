@@ -12,6 +12,7 @@ abstract class GlancesStats with _$GlancesStats {
     required List<GlancesNetwork> network,
     required List<GlancesDisk> disks,
     required GlancesUptime uptime,
+    @Default(<GlancesGpu>[]) List<GlancesGpu> gpus,
   }) = _GlancesStats;
 
   factory GlancesStats.fromJson(Map<String, dynamic> json) =>
@@ -92,6 +93,19 @@ abstract class GlancesNetwork with _$GlancesNetwork {
 
   factory GlancesNetwork.fromJson(Map<String, dynamic> json) =>
       _$GlancesNetworkFromJson(json);
+}
+
+@freezed
+abstract class GlancesGpu with _$GlancesGpu {
+  const factory GlancesGpu({
+    required String name,
+    required double proc,
+    required double mem,
+    required double temp,
+  }) = _GlancesGpu;
+
+  factory GlancesGpu.fromJson(Map<String, dynamic> json) =>
+      _$GlancesGpuFromJson(json);
 }
 
 @freezed
