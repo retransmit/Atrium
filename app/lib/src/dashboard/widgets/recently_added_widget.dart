@@ -1,0 +1,218 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:collection/collection.dart';
+import 'package:core_models/core_models.dart';
+import 'package:core_router/core_router.dart';
+import 'package:core_ui/core_ui.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:service_radarr/service_radarr.dart';
+import 'package:service_sonarr/service_sonarr.dart';
+
+import '../dashboard_widget_card.dart';
+import '../dashboard_widget_kind.dart';
+
+class _RecentItem {
+  const _RecentItem({
+    required this.title,
+    required this.added,
+    required this.isMovie,
+    required this.instance,
+    this.posterUrl,
+    this.year,
+  });
+
+  final String title;
+  final DateTime added;
+  final bool isMovie;
+  final Instance instance;
+  final String? posterUrl;
+  final int? year;
+}
+
+/// The most recently added Sonarr series and Radarr movies across every
+/// instance, merged and shown as a horizontally scrollable poster row.
+class DashboardRecentlyAddedWidget extends ConsumerWidget {
+  const DashboardRecentlyAddedWidget({
+    required this.sonarrInstances,
+    required this.radarrInstances,
+    super.key,
+  });
+
+  final List<Instance> sonarrInstances;
+  final List<Instance> radarrInstances;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+
+    final List<_RecentItem> items = <_RecentItem>[];
+    bool anyLoading = false;
+    bool anyError = false;
+
+    for (final Instance i in sonarrInstances) {
+      final AsyncValue<List<SonarrSeries>> series =
+          ref.watch(sonarrSeriesProvider(i));
+      anyLoading |= series.isLoading && !series.hasValue;
+      anyError |= series.hasError;
+      for (final SonarrSeries s in series.value ?? const <SonarrSeries>[]) {
+        final DateTime? added = DateTime.tryParse(s.added ?? '');
+        if (added == null) {
+          continue;
+        }
+        items.add(_RecentItem(
+          title: s.title,
+          added: added,
+          isMovie: false,
+          instance: i,
+          year: s.year,
+          posterUrl: s.images
+              .firstWhereOrNull((SonarrImage im) => im.coverType == 'poster')
+              ?.remoteUrl,
+        ));
+      }
+    }
+    for (final Instance i in radarrInstances) {
+      final AsyncValue<List<RadarrMovie>> movies =
+          ref.watch(radarrMoviesProvider(i));
+      anyLoading |= movies.isLoading && !movies.hasValue;
+      anyError |= movies.hasError;
+      for (final RadarrMovie m in movies.value ?? const <RadarrMovie>[]) {
+        final DateTime? added = DateTime.tryParse(m.added ?? '');
+        if (added == null) {
+          continue;
+        }
+        items.add(_RecentItem(
+          title: m.title,
+          added: added,
+          isMovie: true,
+          instance: i,
+          year: m.year,
+          posterUrl: m.images
+              .firstWhereOrNull((RadarrImage im) => im.coverType == 'poster')
+              ?.remoteUrl,
+        ));
+      }
+    }
+
+    items.sort((_RecentItem a, _RecentItem b) => b.added.compareTo(a.added));
+    final List<_RecentItem> top = items.take(15).toList();
+
+    Widget body;
+    if (items.isEmpty && anyLoading) {
+      body = const Center(
+        child: Padding(
+          padding: EdgeInsets.all(Insets.sm),
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2.5),
+          ),
+        ),
+      );
+    } else if (items.isEmpty && anyError) {
+      body = DashboardErrorRow(
+        onRetry: () {
+          for (final Instance i in sonarrInstances) {
+            ref.invalidate(sonarrSeriesProvider(i));
+          }
+          for (final Instance i in radarrInstances) {
+            ref.invalidate(radarrMoviesProvider(i));
+          }
+        },
+      );
+    } else if (items.isEmpty) {
+      body = const DashboardIdleRow(text: 'Nothing added yet');
+    } else {
+      body = SizedBox(
+        height: 184,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: EdgeInsets.zero,
+          itemCount: top.length,
+          separatorBuilder: (_, __) => const SizedBox(width: Insets.sm),
+          itemBuilder: (BuildContext context, int index) =>
+              _PosterTile(item: top[index]),
+        ),
+      );
+    }
+
+    return DashboardWidgetCard(
+      kind: DashboardWidgetKind.recentlyAdded,
+      accent: cs.primary,
+      child: body,
+    );
+  }
+}
+
+class _PosterTile extends StatelessWidget {
+  const _PosterTile({required this.item});
+
+  final _RecentItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final String? poster = item.posterUrl;
+    final String subtitle = <String>[
+      item.isMovie ? 'Movie' : 'Series',
+      if (item.year != null) '${item.year}',
+    ].join(' · ');
+
+    return SizedBox(
+      width: 94,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () => context.go(
+          AtriumRoutes.servicePath(item.instance.kind.name, item.instance.id),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 94,
+                height: 140,
+                child: (poster == null || poster.isEmpty)
+                    ? _posterFallback(cs)
+                    : CachedNetworkImage(
+                        imageUrl: poster,
+                        fit: BoxFit.cover,
+                        memCacheWidth: 220,
+                        errorWidget: (_, __, ___) => _posterFallback(cs),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              item.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.labelMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _posterFallback(ColorScheme cs) => Container(
+        color: cs.surfaceContainerHighest,
+        alignment: Alignment.center,
+        child: Icon(
+          item.isMovie ? Icons.movie_outlined : Icons.live_tv_outlined,
+          size: 22,
+          color: cs.onSurfaceVariant,
+        ),
+      );
+}

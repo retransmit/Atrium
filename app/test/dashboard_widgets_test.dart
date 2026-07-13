@@ -4,7 +4,9 @@ import 'package:atrium/src/dashboard/dashboard_widget_kind.dart';
 import 'package:atrium/src/dashboard/widgets/disk_widget.dart';
 import 'package:atrium/src/dashboard/widgets/downloads_widget.dart';
 import 'package:atrium/src/dashboard/widgets/health_widget.dart';
+import 'package:atrium/src/dashboard/widgets/recently_added_widget.dart';
 import 'package:atrium/src/dashboard/widgets/requests_widget.dart';
+import 'package:atrium/src/dashboard/widgets/server_info_widget.dart';
 import 'package:atrium/src/dashboard/widgets/streams_widget.dart';
 import 'package:atrium/src/dashboard/widgets/upcoming_widget.dart';
 import 'package:atrium/src/health_providers.dart';
@@ -14,9 +16,12 @@ import 'package:core_profile/core_profile.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:service_jellyfin/service_jellyfin.dart' as jf;
+import 'package:service_glances/service_glances.dart';
 import 'package:service_qbittorrent/service_qbittorrent.dart';
+import 'package:service_radarr/service_radarr.dart';
 import 'package:service_seerr/service_seerr.dart';
 import 'package:service_sabnzbd/service_sabnzbd.dart';
 import 'package:service_sonarr/service_sonarr.dart';
@@ -146,6 +151,9 @@ void main() {
                 fullTitle: 'The Matrix',
                 progressPercent: 30,
                 state: 'playing',
+                player: 'Plex Web',
+                videoResolution: '1080p',
+                transcodeDecision: 'transcode',
               ),
             ],
           ),
@@ -164,6 +172,8 @@ void main() {
               timeDuration: '0:45:00',
               positionTicks: 0,
               durationTicks: 0,
+              volumeLevel: 100,
+              isMuted: false,
             ),
           ]),
         ),
@@ -177,6 +187,12 @@ void main() {
     expect(find.text('Now streaming'), findsOneWidget);
     expect(find.textContaining('The Matrix'), findsOneWidget);
     expect(find.textContaining('Breaking Bad'), findsOneWidget);
+    // Enriched session info: device on the meta line, the resolution chip,
+    // and Jellyfin's elapsed / total time.
+    expect(find.textContaining('Plex Web'), findsOneWidget);
+    expect(find.text('1080p'), findsOneWidget);
+    expect(find.textContaining('Web'), findsWidgets);
+    expect(find.text('0:10:00 / 0:45:00'), findsOneWidget);
   });
 
   testWidgets('DashboardUpcomingWidget lists events inside the 7-day window',
@@ -185,13 +201,13 @@ void main() {
     final DateTime tomorrow = DateTime.now().add(const Duration(days: 1));
     final List<CalendarEvent> events = <CalendarEvent>[
       SonarrCalendarEvent(
-        SonarrCalendarEntry(
+        SonarrEpisode(
           id: 1,
           seriesId: 10,
           title: 'Pilot',
           seasonNumber: 1,
           episodeNumber: 1,
-          airDateUtc: tomorrow.toUtc(),
+          airDateUtc: tomorrow.toUtc().toIso8601String(),
           hasFile: false,
           monitored: true,
           series: const SonarrSeries(id: 10, title: 'Test Show'),
@@ -209,6 +225,49 @@ void main() {
     );
     expect(find.text('Upcoming releases'), findsOneWidget);
     expect(find.textContaining('Test Show'), findsOneWidget);
+  });
+
+  testWidgets('DashboardRecentlyAddedWidget shows newest series and movies',
+      (WidgetTester tester) async {
+    final Instance sonarr = makeInstance(ServiceKind.sonarr);
+    final Instance radarr = makeInstance(ServiceKind.radarr);
+    await pumpBody(
+      tester,
+      <Override>[
+        sonarrSeriesProvider(sonarr).overrideWith(
+          (Ref ref) async => const <SonarrSeries>[
+            SonarrSeries(
+              title: 'New Show',
+              year: 2024,
+              added: '2026-07-10T00:00:00Z',
+            ),
+            SonarrSeries(
+              title: 'Old Show',
+              year: 2010,
+              added: '2020-01-01T00:00:00Z',
+            ),
+          ],
+        ),
+        radarrMoviesProvider(radarr).overrideWith(
+          (Ref ref) async => const <RadarrMovie>[
+            RadarrMovie(
+              title: 'New Movie',
+              year: 2025,
+              added: '2026-07-12T00:00:00Z',
+            ),
+          ],
+        ),
+      ],
+      DashboardRecentlyAddedWidget(
+        sonarrInstances: <Instance>[sonarr],
+        radarrInstances: <Instance>[radarr],
+      ),
+      pumps: 3,
+    );
+    expect(find.text('Recently added'), findsOneWidget);
+    expect(find.text('New Movie'), findsOneWidget);
+    expect(find.text('New Show'), findsOneWidget);
+    expect(find.text('Movie · 2025'), findsOneWidget);
   });
 
   testWidgets('DashboardHealthWidget shows per-instance chips and counts',
@@ -261,10 +320,62 @@ void main() {
       DashboardRequestsWidget(instances: <Instance>[seerr]),
       pumps: 3,
     );
-    expect(find.text('Pending requests'), findsOneWidget);
-    expect(find.text('2 pending'), findsOneWidget);
+    expect(find.text('Requests'), findsOneWidget);
+    expect(find.text('3 requested'), findsOneWidget);
+    expect(find.text('Needs approval'), findsOneWidget);
     expect(find.textContaining('The Matrix'), findsOneWidget);
     expect(find.textContaining('Bob'), findsOneWidget);
+  });
+
+  testWidgets('DashboardServerInfoWidget shows CPU, memory, GPU and disks',
+      (WidgetTester tester) async {
+    final Instance glances = makeInstance(ServiceKind.glances);
+    await pumpBody(
+      tester,
+      <Override>[
+        glancesStatsProvider(glances).overrideWith(
+          (Ref ref) async => const GlancesStats(
+            cpu: GlancesCpu(
+              physicalCores: 4,
+              logicalCores: 8,
+              totalUsage: 42,
+              packageTemp: 55,
+              cores: <GlancesCpuCore>[],
+            ),
+            memory:
+                GlancesMemory(percentage: 63, used: 8000000000, total: 16000000000),
+            swap: GlancesSwap(percentage: 0, used: 0, total: 0),
+            network: <GlancesNetwork>[],
+            disks: <GlancesDisk>[
+              GlancesDisk(
+                path: '/data',
+                percentage: 71,
+                used: 500000000000,
+                total: 1000000000000,
+              ),
+            ],
+            uptime: GlancesUptime(
+              days: 1,
+              hours: 2,
+              minutes: 3,
+              seconds: 4,
+              totalSeconds: 93784,
+            ),
+            gpus: <GlancesGpu>[
+              GlancesGpu(name: 'RTX', proc: 30, mem: 40, temp: 60),
+            ],
+          ),
+        ),
+      ],
+      DashboardServerInfoWidget(instances: <Instance>[glances]),
+      pumps: 3,
+    );
+    expect(find.text('Server info'), findsOneWidget);
+    expect(find.text('CPU'), findsOneWidget);
+    expect(find.text('Memory'), findsOneWidget);
+    expect(find.text('GPU'), findsOneWidget);
+    expect(find.text('42%'), findsOneWidget);
+    expect(find.text('/data'), findsOneWidget);
   });
 
   testWidgets('DashboardDiskWidget shows SAB free space',
@@ -321,12 +432,59 @@ void main() {
     );
     expect(find.text('Active downloads'), findsOneWidget);
     expect(find.text('Ubuntu ISO'), findsOneWidget);
-    expect(find.text('Now streaming'), findsOneWidget);
+    // Streams is activity-gated: tautulli is configured but nobody is
+    // streaming (streamCount 0), so the widget stays hidden.
+    expect(find.text('Now streaming'), findsNothing);
     expect(find.text('Service health'), findsOneWidget);
     // No sonarr/radarr, seerr, sab or glances configured:
     expect(find.text('Upcoming releases'), findsNothing);
-    expect(find.text('Pending requests'), findsNothing);
+    expect(find.text('Requests'), findsNothing);
     expect(find.text('Disk space'), findsNothing);
+  });
+
+  testWidgets('DashboardBoard activity-gates downloads and streams',
+      (WidgetTester tester) async {
+    final Instance qbit = makeInstance(ServiceKind.qbittorrent);
+    final Instance tau = makeInstance(ServiceKind.tautulli);
+    await pumpBody(
+      tester,
+      <Override>[
+        activeInstancesProvider.overrideWithValue(<Instance>[qbit, tau]),
+        // Only a seeding torrent -> no active download -> widget hidden.
+        qbitRawTorrentsProvider(qbit).overrideWith(
+          (Ref ref) async => const <QbitTorrent>[
+            QbitTorrent(
+              hash: 'h1',
+              name: 'Seeded ISO',
+              state: 'uploading',
+              progress: 1.0,
+            ),
+          ],
+        ),
+        // One active session -> streams widget shown.
+        tautulliActivityProvider(tau).overrideWith(
+          (Ref ref) async => const TautulliActivity(
+            streamCount: 1,
+            sessions: <TautulliSession>[
+              TautulliSession(
+                friendlyName: 'Alice',
+                fullTitle: 'The Matrix',
+                progressPercent: 30,
+                state: 'playing',
+              ),
+            ],
+          ),
+        ),
+        instanceHealthProvider(qbit).overrideWith((Ref ref) async => Health.ok),
+        instanceHealthProvider(tau).overrideWith((Ref ref) async => Health.ok),
+      ],
+      const DashboardBoard(),
+      pumps: 3,
+    );
+    expect(find.text('Active downloads'), findsNothing);
+    expect(find.text('Now streaming'), findsOneWidget);
+    expect(find.textContaining('The Matrix'), findsOneWidget);
+    expect(find.text('Service health'), findsOneWidget);
   });
 
   testWidgets('DashboardBoard edit mode reorders and hides widgets',
@@ -340,14 +498,14 @@ void main() {
       ],
       const DashboardBoard(),
     );
-    // All six widgets are arrangeable in edit mode, configured or not.
-    expect(find.byIcon(Icons.drag_indicator), findsNWidgets(6));
+    // All eight widgets are arrangeable in edit mode, configured or not.
+    expect(find.byIcon(Icons.drag_indicator), findsNWidgets(8));
     expect(find.text('Hidden'), findsNothing);
     // Hide the first widget -> it moves to the Hidden section.
     await tester.tap(find.byIcon(Icons.visibility_off_outlined).first);
     await tester.pump();
     expect(find.text('Hidden'), findsOneWidget);
-    expect(find.byIcon(Icons.drag_indicator), findsNWidgets(5));
+    expect(find.byIcon(Icons.drag_indicator), findsNWidgets(7));
     expect(find.byIcon(Icons.add_circle_outline), findsOneWidget);
   });
 }

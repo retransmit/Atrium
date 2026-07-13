@@ -58,7 +58,7 @@ class DashboardDiskWidget extends ConsumerWidget {
       final AsyncValue<SabQueue> queue = ref.watch(sabQueueProvider(i));
       anyLoading |= queue.isLoading && !queue.hasValue;
       anyError |= queue.hasError;
-      final SabQueue? q = queue.valueOrNull;
+      final SabQueue? q = queue.value;
       final double free = double.tryParse(q?.diskspace1 ?? '') ?? 0;
       final double total = double.tryParse(q?.diskspacetotal1 ?? '') ?? 0;
       if (total > 0) {
@@ -75,7 +75,7 @@ class DashboardDiskWidget extends ConsumerWidget {
       anyLoading |= stats.isLoading && !stats.hasValue;
       anyError |= stats.hasError;
       for (final GlancesDisk d
-          in stats.valueOrNull?.disks ?? const <GlancesDisk>[]) {
+          in stats.value?.disks ?? const <GlancesDisk>[]) {
         if (d.total > 0) {
           rows.add(_DiskRow(
             label: '${i.name} ${d.path}',

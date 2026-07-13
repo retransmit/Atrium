@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:core_storage/core_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:hive_ce/hive.dart';
 
 import 'dashboard_widget_kind.dart';
 

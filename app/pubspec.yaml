@@ -30,6 +30,10 @@ dependencies:
   flutter_riverpod: ^3.3.2
   go_router: ^17.3.0
   hive_ce: ^2.10.1
+  # M3 Expressive determinate circular/linear gauges (progress_indicator_m3e
+  # is path-overridden to packages/progress_indicator_m3e_fixed at the root).
+  m3e_design: 0.2.1
+  progress_indicator_m3e: ^0.1.1
   service_bazarr:
   service_emby:
   service_jellyfin:

@@ -3,12 +3,15 @@ import 'package:core_profile/core_profile.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import 'package:service_emby/service_emby.dart' as emby;
 import 'package:service_glances/service_glances.dart';
 import 'package:service_jellyfin/service_jellyfin.dart' as jf;
 import 'package:service_qbittorrent/service_qbittorrent.dart';
+import 'package:service_radarr/service_radarr.dart';
 import 'package:service_sabnzbd/service_sabnzbd.dart';
 import 'package:service_seerr/service_seerr.dart';
+import 'package:service_sonarr/service_sonarr.dart';
 import 'package:service_tautulli/service_tautulli.dart';
 
 import '../health_providers.dart';
@@ -18,7 +21,9 @@ import 'dashboard_widget_kind.dart';
 import 'widgets/disk_widget.dart';
 import 'widgets/downloads_widget.dart';
 import 'widgets/health_widget.dart';
+import 'widgets/recently_added_widget.dart';
 import 'widgets/requests_widget.dart';
+import 'widgets/server_info_widget.dart';
 import 'widgets/streams_widget.dart';
 import 'widgets/upcoming_widget.dart';
 
@@ -45,7 +50,10 @@ class DashboardBoard extends ConsumerWidget {
 
     final List<DashboardWidgetConfig> visible = <DashboardWidgetConfig>[
       for (final DashboardWidgetConfig c in layout)
-        if (c.enabled && _configured(c.kind, instances)) c,
+        if (c.enabled &&
+            _configured(c.kind, instances) &&
+            _hasLiveContent(ref, c.kind))
+          c,
     ];
 
     if (visible.isEmpty) {
@@ -56,7 +64,7 @@ class DashboardBoard extends ConsumerWidget {
       );
     }
 
-    return RefreshIndicator(
+    return M3RefreshIndicator(
       onRefresh: () async => _refreshAll(ref, instances),
       child: ListView.separated(
         padding: Insets.page,
@@ -73,6 +81,18 @@ class DashboardBoard extends ConsumerWidget {
       return instances.isNotEmpty;
     }
     return instances.any((Instance i) => kind.serviceKinds.contains(i.kind));
+  }
+
+  /// Downloads and streams are activity-gated: they only appear on the board
+  /// while something is actually downloading / streaming, instead of sitting
+  /// there with an idle row. Every other widget shows whenever its service is
+  /// configured.
+  static bool _hasLiveContent(WidgetRef ref, DashboardWidgetKind kind) {
+    return switch (kind) {
+      DashboardWidgetKind.downloads => ref.watch(activeDownloadCountProvider) > 0,
+      DashboardWidgetKind.streams => ref.watch(activeStreamCountProvider) > 0,
+      _ => true,
+    };
   }
 
   static List<Instance> _byKind(List<Instance> instances, ServiceKind kind) =>
@@ -96,11 +116,20 @@ class DashboardBoard extends ConsumerWidget {
         );
       case DashboardWidgetKind.upcoming:
         return const DashboardUpcomingWidget();
+      case DashboardWidgetKind.recentlyAdded:
+        return DashboardRecentlyAddedWidget(
+          sonarrInstances: _byKind(instances, ServiceKind.sonarr),
+          radarrInstances: _byKind(instances, ServiceKind.radarr),
+        );
       case DashboardWidgetKind.health:
         return DashboardHealthWidget(instances: instances);
       case DashboardWidgetKind.requests:
         return DashboardRequestsWidget(
           instances: _byKind(instances, ServiceKind.seerr),
+        );
+      case DashboardWidgetKind.serverInfo:
+        return DashboardServerInfoWidget(
+          instances: _byKind(instances, ServiceKind.glances),
         );
       case DashboardWidgetKind.diskSpace:
         return DashboardDiskWidget(
@@ -114,6 +143,10 @@ class DashboardBoard extends ConsumerWidget {
     for (final Instance i in instances) {
       ref.invalidate(instanceHealthProvider(i));
       switch (i.kind) {
+        case ServiceKind.sonarr:
+          ref.invalidate(sonarrSeriesProvider(i));
+        case ServiceKind.radarr:
+          ref.invalidate(radarrMoviesProvider(i));
         case ServiceKind.qbittorrent:
           ref.invalidate(qbitRawTorrentsProvider(i));
           ref.invalidate(qbitTransferProvider(i));

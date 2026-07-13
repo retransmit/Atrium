@@ -1,4 +1,5 @@
 import 'package:core_models/core_models.dart';
+import 'package:core_profile/core_profile.dart';
 import 'package:core_router/core_router.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
@@ -20,6 +21,29 @@ const Set<String> _activeDlStates = <String>{
   'checkingDL',
   'allocating',
 };
+
+/// Live count of active downloads across every qBittorrent + SABnzbd instance.
+/// Instances still loading or in error contribute 0, so the dashboard only
+/// surfaces the downloads widget once real activity is confirmed.
+final activeDownloadCountProvider = Provider.autoDispose<int>((Ref ref) {
+  final List<Instance> instances = ref.watch(activeInstancesProvider);
+  int count = 0;
+  for (final Instance i in instances) {
+    if (i.kind == ServiceKind.qbittorrent) {
+      final List<QbitTorrent> torrents =
+          ref.watch(qbitRawTorrentsProvider(i)).value ??
+              const <QbitTorrent>[];
+      for (final QbitTorrent t in torrents) {
+        if (_activeDlStates.contains(t.state)) {
+          count++;
+        }
+      }
+    } else if (i.kind == ServiceKind.sabnzbd) {
+      count += ref.watch(sabQueueProvider(i)).value?.slots.length ?? 0;
+    }
+  }
+  return count;
+});
 
 /// Parses SABnzbd's human speed string ("1.2 M", "512 K") into bytes/s.
 int parseSabSpeed(String raw) {
@@ -77,7 +101,7 @@ class DashboardDownloadsWidget extends ConsumerWidget {
           ref.watch(qbitRawTorrentsProvider(i));
       anyLoading |= torrents.isLoading && !torrents.hasValue;
       anyError |= torrents.hasError;
-      for (final QbitTorrent t in torrents.valueOrNull ?? const <QbitTorrent>[]) {
+      for (final QbitTorrent t in torrents.value ?? const <QbitTorrent>[]) {
         if (_activeDlStates.contains(t.state)) {
           rows.add(_DownloadRow(
             name: t.name,
@@ -86,13 +110,13 @@ class DashboardDownloadsWidget extends ConsumerWidget {
           ));
         }
       }
-      totalSpeed += ref.watch(qbitTransferProvider(i)).valueOrNull?.dlSpeed ?? 0;
+      totalSpeed += ref.watch(qbitTransferProvider(i)).value?.dlSpeed ?? 0;
     }
     for (final Instance i in sabInstances) {
       final AsyncValue<SabQueue> queue = ref.watch(sabQueueProvider(i));
       anyLoading |= queue.isLoading && !queue.hasValue;
       anyError |= queue.hasError;
-      final SabQueue? q = queue.valueOrNull;
+      final SabQueue? q = queue.value;
       if (q != null) {
         totalSpeed += parseSabSpeed(q.speed);
         for (final SabSlot s in q.slots) {

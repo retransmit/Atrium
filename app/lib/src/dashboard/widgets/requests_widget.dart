@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:core_models/core_models.dart';
 import 'package:core_router/core_router.dart';
 import 'package:core_ui/core_ui.dart';
@@ -9,14 +10,18 @@ import 'package:service_seerr/service_seerr.dart';
 import '../dashboard_widget_card.dart';
 import '../dashboard_widget_kind.dart';
 
-class _PendingRequest {
-  const _PendingRequest({required this.request, required this.instance});
+String _tmdbImage(String path, String size) =>
+    'https://image.tmdb.org/t/p/$size$path';
+
+class _Request {
+  const _Request({required this.request, required this.instance});
 
   final SeerrRequest request;
   final Instance instance;
 }
 
-/// Seerr requests awaiting approval: count plus the newest titles.
+/// Recent Seerr requests across every instance, newest first, each with its
+/// poster and live availability status - not just the approval queue.
 class DashboardRequestsWidget extends ConsumerWidget {
   const DashboardRequestsWidget({required this.instances, super.key});
 
@@ -26,40 +31,36 @@ class DashboardRequestsWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ColorScheme cs = Theme.of(context).colorScheme;
 
-    int pendingCount = 0;
-    final List<_PendingRequest> pending = <_PendingRequest>[];
+    int totalRequested = 0;
+    final List<_Request> requests = <_Request>[];
     bool anyLoading = false;
     bool anyError = false;
 
     for (final Instance i in instances) {
       final AsyncValue<SeerrCounts> counts =
           ref.watch(seerrRequestCountsProvider(i));
-      anyLoading |= counts.isLoading && !counts.hasValue;
-      anyError |= counts.hasError;
-      pendingCount += counts.valueOrNull?.pending ?? 0;
+      totalRequested += counts.value?.total ?? 0;
 
-      final List<SeerrRequest> requests =
-          ref.watch(seerrRequestsProvider(i)).valueOrNull ??
-              const <SeerrRequest>[];
-      for (final SeerrRequest r in requests) {
-        // Request status 1 = pending approval.
-        if (r.status == 1) {
-          pending.add(_PendingRequest(request: r, instance: i));
-        }
+      final AsyncValue<List<SeerrRequest>> list =
+          ref.watch(seerrRequestsProvider(i));
+      anyLoading |= list.isLoading && !list.hasValue;
+      anyError |= list.hasError;
+      for (final SeerrRequest r in list.value ?? const <SeerrRequest>[]) {
+        requests.add(_Request(request: r, instance: i));
       }
     }
 
-    pending.sort((_PendingRequest a, _PendingRequest b) {
+    requests.sort((_Request a, _Request b) {
       final DateTime da =
           DateTime.tryParse(a.request.createdAt ?? '') ?? DateTime(1970);
       final DateTime db =
           DateTime.tryParse(b.request.createdAt ?? '') ?? DateTime(1970);
       return db.compareTo(da);
     });
-    final List<_PendingRequest> top = pending.take(2).toList();
+    final List<_Request> top = requests.take(3).toList();
 
     Widget body;
-    if (pendingCount == 0 && pending.isEmpty && anyLoading) {
+    if (requests.isEmpty && anyLoading) {
       body = const Center(
         child: Padding(
           padding: EdgeInsets.all(Insets.sm),
@@ -70,7 +71,7 @@ class DashboardRequestsWidget extends ConsumerWidget {
           ),
         ),
       );
-    } else if (pendingCount == 0 && pending.isEmpty && anyError) {
+    } else if (requests.isEmpty && anyError) {
       body = DashboardErrorRow(
         onRetry: () {
           for (final Instance i in instances) {
@@ -79,15 +80,22 @@ class DashboardRequestsWidget extends ConsumerWidget {
           }
         },
       );
-    } else if (pendingCount == 0 && pending.isEmpty) {
-      body = const DashboardIdleRow(text: 'No pending requests');
+    } else if (requests.isEmpty) {
+      body = const DashboardIdleRow(text: 'No requests yet');
     } else {
       body = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          for (final _PendingRequest p in top) _RequestRow(pending: p),
-          if (pending.length > top.length)
-            DashboardIdleRow(text: '+${pending.length - top.length} more'),
+          for (int j = 0; j < top.length; j++) ...<Widget>[
+            if (j > 0) const SizedBox(height: Insets.sm),
+            _RequestRow(request: top[j]),
+          ],
+          if (requests.length > top.length)
+            Padding(
+              padding: const EdgeInsets.only(top: Insets.sm),
+              child:
+                  DashboardIdleRow(text: '+${requests.length - top.length} more'),
+            ),
         ],
       );
     }
@@ -103,10 +111,10 @@ class DashboardRequestsWidget extends ConsumerWidget {
                 ),
               )
           : null,
-      trailing: pendingCount > 0
+      trailing: totalRequested > 0
           ? DashboardPill(
-              icon: Icons.hourglass_top_rounded,
-              label: '$pendingCount pending',
+              icon: Icons.bookmark_added_outlined,
+              label: '$totalRequested requested',
               color: cs.secondary,
             )
           : null,
@@ -115,53 +123,154 @@ class DashboardRequestsWidget extends ConsumerWidget {
   }
 }
 
+/// A single request as a poster banner: artwork thumb, resolved title, the
+/// requester, and an availability chip.
 class _RequestRow extends ConsumerWidget {
-  const _RequestRow({required this.pending});
+  const _RequestRow({required this.request});
 
-  final _PendingRequest pending;
+  final _Request request;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
-    final SeerrRequest r = pending.request;
+    final ColorScheme cs = theme.colorScheme;
+    final SeerrRequest r = request.request;
 
-    // Resolve the title like the Seerr requests tab does; fall back to the
-    // request type while it loads or when there is no tmdb id.
+    // Resolve the title + poster like the Seerr requests tab does; fall back
+    // to the request type while it loads or when there is no tmdb id.
     final int? tmdbId = r.media?.tmdbId;
     String title = r.type == 'movie' ? 'Movie request' : 'Series request';
+    String? posterPath;
     if (tmdbId != null) {
       final String mediaType =
-          r.media!.mediaType.isNotEmpty ? r.media!.mediaType : r.type;
+          (r.media?.mediaType ?? '').isNotEmpty ? r.media!.mediaType : r.type;
       final SeerrDiscoverResult? details = ref
           .watch(seerrMediaDetailsProvider(
-            (instance: pending.instance, mediaType: mediaType, tmdbId: tmdbId),
+            (instance: request.instance, mediaType: mediaType, tmdbId: tmdbId),
           ))
-          .valueOrNull;
+          .value;
       if (details != null) {
         title = details.displayTitle;
+        posterPath = details.posterPath;
       }
     }
     final String by = r.requestedBy?.displayName ?? '';
+    final (String statusLabel, Color statusColor) = _status(r, cs);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: Insets.xs),
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => context.go(
+        AtriumRoutes.servicePath(
+          request.instance.kind.name,
+          request.instance.id,
+        ),
+      ),
       child: Row(
         children: <Widget>[
-          Icon(
-            r.type == 'movie' ? Icons.movie_outlined : Icons.live_tv_outlined,
-            size: 16,
-            color: theme.colorScheme.onSurfaceVariant,
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: SizedBox(
+              width: 40,
+              height: 56,
+              child: posterPath == null
+                  ? _posterFallback(cs, r.type)
+                  : CachedNetworkImage(
+                      imageUrl: _tmdbImage(posterPath, 'w185'),
+                      fit: BoxFit.cover,
+                      memCacheWidth: 120,
+                      errorWidget: (_, __, ___) => _posterFallback(cs, r.type),
+                    ),
+            ),
           ),
-          const SizedBox(width: Insets.sm),
+          const SizedBox(width: Insets.md),
           Expanded(
-            child: Text(
-              by.isEmpty ? title : '$title - $by',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  children: <Widget>[
+                    _StatusChip(label: statusLabel, color: statusColor),
+                    if (by.isNotEmpty) ...<Widget>[
+                      const SizedBox(width: Insets.sm),
+                      Flexible(
+                        child: Text(
+                          by,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: cs.onSurfaceVariant),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _posterFallback(ColorScheme cs, String type) => Container(
+        color: cs.surfaceContainerHighest,
+        alignment: Alignment.center,
+        child: Icon(
+          type == 'movie' ? Icons.movie_outlined : Icons.live_tv_outlined,
+          size: 18,
+          color: cs.onSurfaceVariant,
+        ),
+      );
+
+  /// Request state -> (label, colour). Approval status wins; otherwise the
+  /// media availability status (1 unknown, 2 pending, 3 processing, 4 partial,
+  /// 5 available) is surfaced.
+  (String, Color) _status(SeerrRequest r, ColorScheme cs) {
+    if (r.status == 3) {
+      return ('Declined', cs.onSurfaceVariant);
+    }
+    if (r.status == 1) {
+      return ('Needs approval', cs.primary);
+    }
+    return switch (r.media?.status ?? 1) {
+      5 => ('Available', cs.tertiary),
+      4 => ('Partial', cs.tertiary),
+      3 => ('Processing', cs.secondary),
+      _ => ('Requested', cs.onSurfaceVariant),
+    };
+  }
+}
+
+/// A compact filled status chip for a request row.
+class _StatusChip extends StatelessWidget {
+  const _StatusChip({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context)
+            .textTheme
+            .labelSmall
+            ?.copyWith(fontWeight: FontWeight.w700, color: color),
       ),
     );
   }

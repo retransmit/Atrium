@@ -68,7 +68,10 @@ void main() {
     test('build returns defaults; setEnabled flips one kind', () {
       final ProviderContainer container = ProviderContainer();
       addTearDown(container.dispose);
-      expect(container.read(dashboardLayoutProvider), hasLength(6));
+      expect(
+        container.read(dashboardLayoutProvider),
+        hasLength(DashboardWidgetKind.values.length),
+      );
       container
           .read(dashboardLayoutProvider.notifier)
           .setEnabled(DashboardWidgetKind.requests, false);
@@ -85,8 +88,9 @@ void main() {
           container.read(dashboardLayoutProvider.notifier);
       // Hide one widget so enabled != full list.
       controller.setEnabled(DashboardWidgetKind.streams, false);
-      // Enabled order is now: downloads, upcoming, health, requests, diskSpace.
-      controller.moveEnabled(0, 3); // drag downloads below health
+      // Enabled order is now: downloads, upcoming, recentlyAdded, health,
+      // requests, serverInfo, diskSpace.
+      controller.moveEnabled(0, 3); // drag downloads down two slots
       final List<DashboardWidgetKind> enabled = container
           .read(dashboardLayoutProvider)
           .where((DashboardWidgetConfig c) => c.enabled)
@@ -94,9 +98,11 @@ void main() {
           .toList();
       expect(enabled, <DashboardWidgetKind>[
         DashboardWidgetKind.upcoming,
-        DashboardWidgetKind.health,
+        DashboardWidgetKind.recentlyAdded,
         DashboardWidgetKind.downloads,
+        DashboardWidgetKind.health,
         DashboardWidgetKind.requests,
+        DashboardWidgetKind.serverInfo,
         DashboardWidgetKind.diskSpace,
       ]);
       // The disabled widget is still present, at the end.

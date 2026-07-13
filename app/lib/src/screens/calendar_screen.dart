@@ -18,6 +18,17 @@ sealed class CalendarEvent {
   DateTime get date;
   bool get hasFile;
   bool get monitored;
+
+  /// Series/movie name, for artwork-rich rows (the dashboard upcoming widget).
+  String get primaryTitle;
+
+  /// Episode code + name (or year marker), for artwork-rich rows.
+  String get subtitle;
+
+  /// Public artwork URLs (TMDB/fanart CDN remote urls), when the API included
+  /// them; null renders a plain fallback.
+  String? get posterUrl;
+  String? get backdropUrl;
 }
 
 class RadarrCalendarEvent extends CalendarEvent {
@@ -58,6 +69,23 @@ class RadarrCalendarEvent extends CalendarEvent {
   @override
   bool get monitored => movie.monitored;
 
+  @override
+  String get primaryTitle => movie.title;
+
+  @override
+  String get subtitle =>
+      movie.year == null ? 'Movie' : '${movie.year} - Movie';
+
+  @override
+  String? get posterUrl => _image('poster');
+
+  @override
+  String? get backdropUrl => _image('fanart');
+
+  String? _image(String type) => movie.images
+      .firstWhereOrNull((RadarrImage i) => i.coverType == type)
+      ?.remoteUrl;
+
   static DateTime? _parseDate(String? s) {
     if (s == null || s.isEmpty) return null;
     return DateTime.tryParse(s)?.toLocal();
@@ -86,6 +114,26 @@ class SonarrCalendarEvent extends CalendarEvent {
 
   @override
   bool get monitored => episode.monitored;
+
+  @override
+  String get primaryTitle => episode.series?.title ?? 'Unknown Series';
+
+  @override
+  String get subtitle {
+    final String s = episode.seasonNumber.toString().padLeft(2, '0');
+    final String e = episode.episodeNumber.toString().padLeft(2, '0');
+    return episode.title.isEmpty ? 'S${s}E$e' : 'S${s}E$e - ${episode.title}';
+  }
+
+  @override
+  String? get posterUrl => _image('poster');
+
+  @override
+  String? get backdropUrl => _image('fanart');
+
+  String? _image(String type) => episode.series?.images
+      .firstWhereOrNull((SonarrImage i) => i.coverType == type)
+      ?.remoteUrl;
 }
 
 

@@ -7,11 +7,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../dashboard/dashboard_board.dart';
 import '../health_providers.dart';
 
 /// Home screen. Services live in the navigation drawer (the sidebar); the
-/// dashboard body is reserved for at-a-glance widgets (in progress on a
-/// feature branch). Until a service exists, the body onboards the user.
+/// dashboard body is the at-a-glance widget board. Until a service exists,
+/// the body onboards the user to add their first one.
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
@@ -33,6 +34,21 @@ class DashboardScreen extends ConsumerWidget {
           },
         ),
         title: Text(profile == null ? 'Atrium' : profile.name),
+        actions: <Widget>[
+          if (instances.isNotEmpty)
+            Consumer(
+              builder: (BuildContext context, WidgetRef ref, Widget? _) {
+                final bool editing = ref.watch(dashboardEditModeProvider);
+                return IconButton(
+                  tooltip: editing ? 'Done' : 'Customize dashboard',
+                  icon: Icon(editing ? Icons.check : Icons.tune),
+                  onPressed: () => ref
+                      .read(dashboardEditModeProvider.notifier)
+                      .update((bool v) => !v),
+                );
+              },
+            ),
+        ],
       ),
       body: instances.isEmpty
           ? EmptyView(
@@ -47,23 +63,7 @@ class DashboardScreen extends ConsumerWidget {
                 label: const Text('Add service'),
               ),
             )
-          : const _DashboardWidgets(),
-    );
-  }
-}
-
-/// Placeholder for the widget board (being built on a feature branch).
-class _DashboardWidgets extends StatelessWidget {
-  const _DashboardWidgets();
-
-  @override
-  Widget build(BuildContext context) {
-    return const EmptyView(
-      icon: Icons.dashboard_customize_outlined,
-      title: 'Dashboard widgets coming soon',
-      message:
-          'At-a-glance widgets will live here. Open the menu (top left) to jump '
-          'to a service.',
+          : const DashboardBoard(),
     );
   }
 }
