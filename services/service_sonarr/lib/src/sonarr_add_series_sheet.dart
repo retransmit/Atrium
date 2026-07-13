@@ -4,6 +4,7 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'models/sonarr_series.dart';
 import 'sonarr_api.dart';
@@ -196,7 +197,9 @@ class _SonarrAddSeriesSheetState extends ConsumerState<SonarrAddSeriesSheet> {
                                   },
                                 );
                               },
-                              loading: () => const LinearProgressIndicator(),
+                              loading: () => const LinearProgressIndicatorM3E(
+                                shape: ProgressM3EShape.flat,
+                              ),
                               error: (e, s) =>
                                   Text('Error loading folders: $e'),
                             ),
@@ -467,7 +470,8 @@ class _SonarrAddSeriesSheetState extends ConsumerState<SonarrAddSeriesSheet> {
     if (_selectedRootFolder == null || _selectedQualityProfileId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Please select a root folder and quality profile.'),
+          content:
+              const Text('Please select a root folder and quality profile.'),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );

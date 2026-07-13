@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:palette_generator_plus/palette_generator_plus.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'jellyfin_client.dart';
 import 'jellyfin_identify_screen.dart';
@@ -46,8 +47,10 @@ class JellyfinHome extends ConsumerStatefulWidget {
 class _JellyfinHomeState extends ConsumerState<JellyfinHome> {
   @override
   Widget build(BuildContext context) {
-    final AsyncValue<List<JellyfinView>> viewsAsync = ref.watch(jellyfinViewsProvider(widget.instance));
-    final int index = ref.watch(jellyfinActiveTabBarIndexProvider(widget.instance));
+    final AsyncValue<List<JellyfinView>> viewsAsync =
+        ref.watch(jellyfinViewsProvider(widget.instance));
+    final int index =
+        ref.watch(jellyfinActiveTabBarIndexProvider(widget.instance));
 
     return AsyncValueView<List<JellyfinView>>(
       value: viewsAsync,
@@ -60,11 +63,12 @@ class _JellyfinHomeState extends ConsumerState<JellyfinHome> {
             message: 'This Jellyfin server has no libraries to show.',
           );
         }
-        
-        final String libsKey = libraries.map((JellyfinView l) => l.id).join(',');
+
+        final String libsKey =
+            libraries.map((JellyfinView l) => l.id).join(',');
         final int targetLength = libraries.length + 3;
         final int initialIndex = (index < targetLength) ? index : 0;
-        
+
         return DefaultTabController(
           key: ValueKey<String>(libsKey),
           length: targetLength,
@@ -684,11 +688,10 @@ class JellyfinPosterCard extends ConsumerWidget {
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(6),
-                            child: LinearProgressIndicator(
+                            child: LinearProgressIndicatorM3E(
+                              shape: ProgressM3EShape.flat,
                               value: progress.clamp(0, 1),
-                              minHeight: 6,
-                              backgroundColor:
-                                  Colors.black.withValues(alpha: 0.5),
+                              trackColor: Colors.black.withValues(alpha: 0.5),
                             ),
                           ),
                         ),
@@ -859,7 +862,8 @@ class JellyfinBannerCard extends ConsumerWidget {
                             ref.read(jellyfinClientProvider(instance)).value;
                         if (client != null) {
                           try {
-                            final bool isFav = item.userData?.isFavorite == true;
+                            final bool isFav =
+                                item.userData?.isFavorite == true;
                             await client.markFavorite(item.id, !isFav);
                             if (!context.mounted) return;
                             ref.invalidate(
@@ -868,7 +872,8 @@ class JellyfinBannerCard extends ConsumerWidget {
                             ref.invalidate(jellyfinFavoritesProvider(instance));
                             ref.invalidate(jellyfinItemsProvider);
                             ref.invalidate(jellyfinNextUpProvider(instance));
-                            ref.invalidate(jellyfinResumeItemsProvider(instance));
+                            ref.invalidate(
+                                jellyfinResumeItemsProvider(instance),);
                           } catch (_) {
                             // Action failed; no revert needed.
                           }
@@ -896,7 +901,8 @@ class JellyfinBannerCard extends ConsumerWidget {
                             );
                             ref.invalidate(jellyfinItemsProvider);
                             ref.invalidate(jellyfinNextUpProvider(instance));
-                            ref.invalidate(jellyfinResumeItemsProvider(instance));
+                            ref.invalidate(
+                                jellyfinResumeItemsProvider(instance),);
                           }
                         },
                       ),
@@ -1045,10 +1051,10 @@ class JellyfinBannerCard extends ConsumerWidget {
                               const SizedBox(height: 8),
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(6),
-                                child: LinearProgressIndicator(
+                                child: LinearProgressIndicatorM3E(
+                                  shape: ProgressM3EShape.flat,
                                   value: progress.clamp(0, 1),
-                                  minHeight: 6,
-                                  backgroundColor:
+                                  trackColor:
                                       Colors.black.withValues(alpha: 0.1),
                                 ),
                               ),
@@ -1415,37 +1421,209 @@ class _SessionCardState extends State<_SessionCard> {
           borderRadius: BorderRadius.circular(24),
         ),
         child: InkWell(
-        onTap: () => pushScreen<void>(
-          context,
-          JellyfinSessionDetailScreen(
-            initialSession: session,
-            instance: widget.instance,
+          onTap: () => pushScreen<void>(
+            context,
+            JellyfinSessionDetailScreen(
+              initialSession: session,
+              instance: widget.instance,
+            ),
           ),
-        ),
-        child: Stack(
-          children: <Widget>[
-            // Backdrop
-            if (session.posterUrl != null)
-              Positioned.fill(
-                child: Stack(
-                  fit: StackFit.expand,
+          child: Stack(
+            children: <Widget>[
+              // Backdrop
+              if (session.posterUrl != null)
+                Positioned.fill(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: <Widget>[
+                      Image.network(
+                        session.posterUrl!,
+                        fit: BoxFit.cover,
+                        alignment: Alignment.topCenter,
+                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: <Color>[
+                              theme.colorScheme.surfaceContainerLow
+                                  .withValues(alpha: 0.3),
+                              theme.colorScheme.surfaceContainerLow
+                                  .withValues(alpha: 0.85),
+                              theme.colorScheme.surfaceContainerLow
+                                  .withValues(alpha: 0.95),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              // Content
+              Padding(
+                padding: const EdgeInsets.all(Insets.md),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Image.network(
-                      session.posterUrl!,
-                      fit: BoxFit.cover,
-                      alignment: Alignment.topCenter,
-                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    // Poster
+                    ConstrainedBox(
+                      constraints:
+                          const BoxConstraints(maxWidth: 120, maxHeight: 126),
+                      child: AspectRatio(
+                        aspectRatio: session.aspectRatio != null &&
+                                session.aspectRatio! > 0.0
+                            ? session.aspectRatio!
+                            : (2 / 3),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: <BoxShadow>[
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.25),
+                                blurRadius: 12,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                            image: session.posterUrl != null
+                                ? DecorationImage(
+                                    image: NetworkImage(session.posterUrl!),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                          ),
+                          child: session.posterUrl == null
+                              ? Icon(
+                                  Icons.movie_outlined,
+                                  color: theme.colorScheme.outline,
+                                  size: 32,
+                                )
+                              : null,
+                        ),
+                      ),
                     ),
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: <Color>[
-                            theme.colorScheme.surfaceContainerLow
-                                .withValues(alpha: 0.3),
-                            theme.colorScheme.surfaceContainerLow
-                                .withValues(alpha: 0.85),
-                            theme.colorScheme.surfaceContainerLow
-                                .withValues(alpha: 0.95),
+                    const SizedBox(width: Insets.lg),
+
+                    // Details
+                    Expanded(
+                      child: SizedBox(
+                        height: 126,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            // Title
+                            Text(
+                              session.showTitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                shadows: <Shadow>[
+                                  Shadow(
+                                    color: Colors.black.withValues(alpha: 0.8),
+                                    offset: const Offset(0, 2),
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+
+                            if (session.episodeName != null)
+                              Text(
+                                session.episodeName!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                  shadows: <Shadow>[
+                                    Shadow(
+                                      color:
+                                          Colors.black.withValues(alpha: 0.8),
+                                      offset: const Offset(0, 1),
+                                      blurRadius: 3,
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: theme.colorScheme.outlineVariant
+                                      .withValues(alpha: 0.5),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Icon(
+                                    Icons.person,
+                                    size: 14,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      '${session.user}: ${session.device}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style:
+                                          theme.textTheme.bodySmall?.copyWith(
+                                        color:
+                                            theme.colorScheme.onSurfaceVariant,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const Spacer(),
+
+                            // Progress Header
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: <Widget>[
+                                Text(
+                                  session.timePosition,
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                Text(
+                                  session.timeDuration,
+                                  style: theme.textTheme.labelMedium?.copyWith(
+                                    color: theme.colorScheme.outline,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+
+                            // Progress Bar
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: LinearProgressIndicatorM3E(
+                                  shape: ProgressM3EShape.flat,
+                                  value: pct.clamp(0.0, 1.0),
+                                  trackColor:
+                                      theme.colorScheme.surfaceContainerHighest,
+                                  activeColor: playing
+                                      ? theme.colorScheme.primary
+                                      : theme.colorScheme.outline,),
+                            ),
                           ],
                         ),
                       ),
@@ -1453,181 +1631,9 @@ class _SessionCardState extends State<_SessionCard> {
                   ],
                 ),
               ),
-
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(Insets.md),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  // Poster
-                  ConstrainedBox(
-                    constraints:
-                        const BoxConstraints(maxWidth: 120, maxHeight: 126),
-                    child: AspectRatio(
-                      aspectRatio: session.aspectRatio != null &&
-                              session.aspectRatio! > 0.0
-                          ? session.aspectRatio!
-                          : (2 / 3),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: <BoxShadow>[
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.25),
-                              blurRadius: 12,
-                              offset: const Offset(0, 6),
-                            ),
-                          ],
-                          image: session.posterUrl != null
-                              ? DecorationImage(
-                                  image: NetworkImage(session.posterUrl!),
-                                  fit: BoxFit.cover,
-                                )
-                              : null,
-                        ),
-                        child: session.posterUrl == null
-                            ? Icon(
-                                Icons.movie_outlined,
-                                color: theme.colorScheme.outline,
-                                size: 32,
-                              )
-                            : null,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: Insets.lg),
-
-                  // Details
-                  Expanded(
-                    child: SizedBox(
-                      height: 126,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          // Title
-                          Text(
-                            session.showTitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                              shadows: <Shadow>[
-                                Shadow(
-                                  color: Colors.black.withValues(alpha: 0.8),
-                                  offset: const Offset(0, 2),
-                                  blurRadius: 4,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-
-                          if (session.episodeName != null)
-                            Text(
-                              session.episodeName!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                                shadows: <Shadow>[
-                                  Shadow(
-                                    color: Colors.black.withValues(alpha: 0.8),
-                                    offset: const Offset(0, 1),
-                                    blurRadius: 3,
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.surfaceContainerHighest
-                                  .withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: theme.colorScheme.outlineVariant
-                                    .withValues(alpha: 0.5),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: <Widget>[
-                                Icon(
-                                  Icons.person,
-                                  size: 14,
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                                const SizedBox(width: 4),
-                                Flexible(
-                                  child: Text(
-                                    '${session.user}: ${session.device}',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const Spacer(),
-
-                          // Progress Header
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: <Widget>[
-                              Text(
-                                session.timePosition,
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              Text(
-                                session.timeDuration,
-                                style: theme.textTheme.labelMedium?.copyWith(
-                                  color: theme.colorScheme.outline,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-
-                          // Progress Bar
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: LinearProgressIndicator(
-                              value: pct.clamp(0.0, 1.0),
-                              minHeight: 8,
-                              backgroundColor:
-                                  theme.colorScheme.surfaceContainerHighest,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                playing
-                                    ? theme.colorScheme.primary
-                                    : theme.colorScheme.outline,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }

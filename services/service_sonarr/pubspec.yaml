@@ -26,6 +26,7 @@ dependencies:
   intl: ^0.20.1
   json_annotation: ^4.9.0
   meta: ^1.16.0
+  progress_indicator_m3e:
   url_launcher: ^6.3.2
 
 dev_dependencies:
