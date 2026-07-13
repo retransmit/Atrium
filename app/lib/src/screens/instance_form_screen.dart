@@ -28,6 +28,10 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
   final TextEditingController _apiKey = TextEditingController();
   final TextEditingController _username = TextEditingController();
   final TextEditingController _password = TextEditingController();
+
+  /// qBittorrent 5.2+ supports both username/password and API-key auth; this
+  /// tracks which the user picked (qBit only).
+  bool _qbitUseApiKey = false;
   final TextEditingController _pollingInterval = TextEditingController(text: '5');
 
   ServiceKind _kind = ServiceKind.sonarr;
@@ -73,6 +77,9 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
         _username.text = username;
         _password.text = password;
     }
+    // A qBittorrent instance saved with key auth reopens on the API-key tab.
+    _qbitUseApiKey = instance.kind == ServiceKind.qbittorrent &&
+        instance.auth is InstanceAuthApiKey;
   }
 
   InstanceAuth _buildAuth() {
@@ -84,10 +91,13 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
           username: _username.text.trim(),
           password: _password.text,
         ),
-      AuthStyle.cookieLogin => InstanceAuth.cookieLogin(
-          username: _username.text.trim(),
-          password: _password.text,
-        ),
+      AuthStyle.cookieLogin =>
+        (_kind == ServiceKind.qbittorrent && _qbitUseApiKey)
+            ? InstanceAuth.apiKey(apiKey: _apiKey.text.trim())
+            : InstanceAuth.cookieLogin(
+                username: _username.text.trim(),
+                password: _password.text,
+              ),
       AuthStyle.none => const InstanceAuth.apiKey(apiKey: ''),
     };
   }
@@ -329,7 +339,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
         // empty submission guarantees a failed login.
         final bool passwordOptional =
             _kind == ServiceKind.emby || _kind == ServiceKind.jellyfin;
-        return <Widget>[
+        final List<Widget> userPass = <Widget>[
           TextFormField(
             controller: _username,
             decoration: const InputDecoration(
@@ -354,6 +364,46 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                 : (String? v) =>
                     (v == null || v.trim().isEmpty) ? 'Required' : null,
           ),
+        ];
+        if (_kind != ServiceKind.qbittorrent) {
+          return userPass;
+        }
+        // qBittorrent 5.2+ accepts either username/password or a stateless
+        // API key, so offer both.
+        return <Widget>[
+          SegmentedButton<bool>(
+            segments: const <ButtonSegment<bool>>[
+              ButtonSegment<bool>(
+                value: false,
+                label: Text('Password'),
+                icon: Icon(Icons.password),
+              ),
+              ButtonSegment<bool>(
+                value: true,
+                label: Text('API key'),
+                icon: Icon(Icons.key),
+              ),
+            ],
+            selected: <bool>{_qbitUseApiKey},
+            onSelectionChanged: (Set<bool> s) =>
+                setState(() => _qbitUseApiKey = s.first),
+          ),
+          const SizedBox(height: Insets.md),
+          if (_qbitUseApiKey)
+            TextFormField(
+              controller: _apiKey,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'API key',
+                helperText: 'qBittorrent 5.2+ Web UI setting; '
+                    'sent as Authorization: Bearer',
+              ),
+              autocorrect: false,
+              validator: (String? v) =>
+                  (v == null || v.trim().isEmpty) ? 'Required' : null,
+            )
+          else
+            ...userPass,
         ];
       case AuthStyle.none:
         return const <Widget>[];
