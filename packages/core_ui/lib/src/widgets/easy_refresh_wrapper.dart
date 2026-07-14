@@ -69,25 +69,43 @@ class EasyRefresh extends StatelessWidget {
           final double scale = isRefreshing ? 1.0 : value;
           final double opacity = (state.offset / 30.0).clamp(0.0, 1.0);
 
-          return Container(
-            alignment: Alignment.center,
+          final double top = position == er.IndicatorPosition.locator
+              ? (state.offset - 40.0) / 2
+              : -40.0 + state.offset.clamp(0.0, 110.0);
+
+          return SizedBox(
             height: state.offset,
-            child: Opacity(
-              opacity: opacity,
-              child: Transform.scale(
-                scale: scale,
-                child: Card(
-                  elevation: 6,
-                  shape: const CircleBorder(),
-                  color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: ExpressiveProgressIndicator(
-                      value: isRefreshing ? null : value,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned(
+                  top: top,
+                  left: 0,
+                  right: 0,
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: Opacity(
+                      opacity: opacity,
+                      child: Transform.scale(
+                        scale: scale,
+                        child: Card(
+                          elevation: 6,
+                          shape: const CircleBorder(),
+                          color: Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHigh,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: ExpressiveProgressIndicator(
+                              value: isRefreshing ? null : value,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
           );
         },
@@ -96,7 +114,8 @@ class EasyRefresh extends StatelessWidget {
 
     return NotificationListener<ScrollNotification>(
       onNotification: (ScrollNotification notification) {
-        if (notification.metrics.axis == Axis.horizontal) {
+        if (notification.depth > 0 ||
+            notification.metrics.axis == Axis.horizontal) {
           return true;
         }
         return false;
