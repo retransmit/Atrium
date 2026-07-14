@@ -62,8 +62,12 @@ class EasyRefresh extends StatelessWidget {
         clamping: clamping,
         position: position,
         builder: (BuildContext context, er.IndicatorState state) {
+          if (state.offset <= 0.0) {
+            return const SizedBox.shrink();
+          }
+
           final double value =
-              (state.offset / state.triggerOffset).clamp(0.0, 1.0);
+              (state.offset / state.triggerOffset).clamp(0.01, 1.0);
           final bool isRefreshing = state.mode == er.IndicatorMode.ready ||
               state.mode == er.IndicatorMode.processing;
           final double scale = isRefreshing ? 1.0 : value;
@@ -71,7 +75,7 @@ class EasyRefresh extends StatelessWidget {
 
           final double top = position == er.IndicatorPosition.locator
               ? (state.offset - 40.0) / 2
-              : -40.0 + state.offset.clamp(0.0, 110.0);
+              : -40.0 + state.offset.clamp(0.0, 70.0);
 
           return SizedBox(
             height: state.offset,
@@ -94,10 +98,10 @@ class EasyRefresh extends StatelessWidget {
                           color: Theme.of(context)
                               .colorScheme
                               .surfaceContainerHigh,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
+                          child: const Padding(
+                            padding: EdgeInsets.all(8.0),
                             child: ExpressiveProgressIndicator(
-                              value: isRefreshing ? null : value,
+                              value: null,
                             ),
                           ),
                         ),
