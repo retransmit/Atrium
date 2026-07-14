@@ -6,6 +6,7 @@ import 'package:easy_refresh/easy_refresh.dart' as er;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:m3_expressive/m3_expressive.dart';
+import 'package:m3_expressive/material_shapes.dart';
 
 /// A wrapper around [er.EasyRefresh] that transparently falls back to
 /// standard Flutter [RefreshIndicator] during widget tests to prevent
@@ -165,7 +166,8 @@ class _ExpressiveIndicator extends StatefulWidget {
   State<_ExpressiveIndicator> createState() => _ExpressiveIndicatorState();
 }
 
-class _ExpressiveIndicatorState extends State<_ExpressiveIndicator> {
+class _ExpressiveIndicatorState extends State<_ExpressiveIndicator>
+    with TickerProviderStateMixin {
   static const double _kSize = 48.0;
 
   er.IndicatorMode get _mode => widget.state.mode;
@@ -173,6 +175,90 @@ class _ExpressiveIndicatorState extends State<_ExpressiveIndicator> {
   Axis get _axis => widget.state.axis;
   double get _offset => widget.state.offset;
   double get _actualTriggerOffset => widget.state.actualTriggerOffset;
+
+  late final AnimationController _loadCtrl;
+  int _loadIndex = 0;
+
+  // Fixed loading sequence: verySunny → gem → pentagon → diamond → arrow → pill → circle
+  static final _loadingSequence = <RoundedPolygon>[
+    MaterialShapes.verySunny,
+    MaterialShapes.gem,
+    MaterialShapes.pentagon,
+    MaterialShapes.diamond,
+    MaterialShapes.arrow,
+    MaterialShapes.pill,
+    MaterialShapes.circle,
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 750),
+    )..addStatusListener(_onLoadCycle);
+
+    final isRefreshing = widget.state.mode == er.IndicatorMode.refresh ||
+        widget.state.mode == er.IndicatorMode.processing;
+    if (isRefreshing) {
+      _loadCtrl.forward();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _ExpressiveIndicator oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final wasRefreshing = oldWidget.state.mode == er.IndicatorMode.refresh ||
+        oldWidget.state.mode == er.IndicatorMode.processing;
+    final isRefreshing = widget.state.mode == er.IndicatorMode.refresh ||
+        widget.state.mode == er.IndicatorMode.processing;
+
+    if (isRefreshing && !wasRefreshing) {
+      _loadIndex = 0;
+      _loadCtrl.forward();
+    } else if (!isRefreshing && wasRefreshing) {
+      _loadCtrl.stop();
+      _loadCtrl.reset();
+      _loadIndex = 0;
+    }
+  }
+
+  @override
+  void dispose() {
+    _loadCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onLoadCycle(AnimationStatus status) {
+    if (status == AnimationStatus.completed && mounted) {
+      final isRefreshing = widget.state.mode == er.IndicatorMode.refresh ||
+          widget.state.mode == er.IndicatorMode.processing;
+      if (isRefreshing) {
+        setState(() {
+          _loadIndex = (_loadIndex + 1) % _loadingSequence.length;
+        });
+        _loadCtrl
+          ..reset()
+          ..forward();
+      }
+    }
+  }
+
+  (RoundedPolygon, RoundedPolygon, double) _dragBlend(double progress) {
+    if (progress <= 0.5) {
+      return (
+        MaterialShapes.circle,
+        MaterialShapes.sunny,
+        progress * 2,
+      );
+    } else {
+      return (
+        MaterialShapes.sunny,
+        MaterialShapes.verySunny,
+        (progress - 0.5) * 2,
+      );
+    }
+  }
 
   Widget _buildIndicator() {
     if (_offset <= 0) {
@@ -200,8 +286,47 @@ class _ExpressiveIndicatorState extends State<_ExpressiveIndicator> {
               child: SizedBox(
                 width: 36,
                 height: 36,
-                child: M3LoadingIndicator(
-                  color: Theme.of(context).colorScheme.primary,
+                child: AnimatedBuilder(
+                  animation: _loadCtrl,
+                  builder: (context, _) {
+                    final dragProgress =
+                        (_offset / _actualTriggerOffset).clamp(0.0, 1.0);
+                    final isDragging = _mode == er.IndicatorMode.drag ||
+                        _mode == er.IndicatorMode.armed;
+
+                    RoundedPolygon shapeA;
+                    RoundedPolygon shapeB;
+                    double morphT;
+                    double angle;
+
+                    if (isDragging) {
+                      final (a, b, t) = _dragBlend(dragProgress);
+                      shapeA = a;
+                      shapeB = b;
+                      morphT = Curves.easeInOutCubic.transform(t);
+                      angle = dragProgress * math.pi * 2.2;
+                    } else {
+                      shapeA = _loadingSequence[_loadIndex];
+                      shapeB = _loadingSequence[
+                          (_loadIndex + 1) % _loadingSequence.length];
+                      morphT = Curves.elasticOut
+                          .transform(_loadCtrl.value)
+                          .clamp(0.0, 1.0);
+                      angle = (dragProgress * math.pi * 2.2) +
+                          _loadCtrl.value * math.pi * 1.5 +
+                          _loadIndex * math.pi * 0.6;
+                    }
+
+                    return CustomPaint(
+                      painter: M3ShapeMorphPainter(
+                        shapeA: shapeA,
+                        shapeB: shapeB,
+                        morphProgress: morphT,
+                        color: Theme.of(context).colorScheme.primary,
+                        rotationAngle: angle,
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
