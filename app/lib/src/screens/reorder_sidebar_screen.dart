@@ -69,11 +69,8 @@ class _ReorderSidebarScreenState extends ConsumerState<ReorderSidebarScreen> {
                 Expanded(
                   child: ReorderableListView.builder(
                     itemCount: _localInstances!.length,
-                    onReorder: (int oldIndex, int newIndex) {
+                    onReorderItem: (int oldIndex, int newIndex) {
                       setState(() {
-                        if (oldIndex < newIndex) {
-                          newIndex -= 1;
-                        }
                         final Instance item =
                             _localInstances!.removeAt(oldIndex);
                         _localInstances!.insert(newIndex, item);
@@ -136,7 +133,7 @@ class _ReorderSidebarScreenState extends ConsumerState<ReorderSidebarScreen> {
                                   height: 40,
                                   decoration: BoxDecoration(
                                     color: ServiceVisuals.accent(instance.kind)
-                                        .withOpacity(0.12),
+                                        .withValues(alpha: 0.12),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(
