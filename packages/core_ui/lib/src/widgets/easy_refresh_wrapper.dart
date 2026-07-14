@@ -49,13 +49,20 @@ class EasyRefresh extends StatelessWidget {
 
     final er.Header effectiveHeader = header ?? const er.MaterialHeader();
 
-    return er.EasyRefresh(
-      header: effectiveHeader,
-      footer: footer,
-      controller: controller,
-      onRefresh: onRefresh,
-      onLoad: onLoad,
-      child: child,
+    // Block horizontal scroll notifications (e.g. TabBarView swipes) so they
+    // don't accidentally trigger pull-to-refresh. Vertical notifications at
+    // any depth are allowed through so nested lists inside tabs stay scrollable.
+    return NotificationListener<ScrollNotification>(
+      onNotification: (ScrollNotification notification) =>
+          notification.metrics.axis == Axis.horizontal,
+      child: er.EasyRefresh(
+        header: effectiveHeader,
+        footer: footer,
+        controller: controller,
+        onRefresh: onRefresh,
+        onLoad: onLoad,
+        child: child,
+      ),
     );
   }
 }
