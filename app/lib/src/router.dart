@@ -11,6 +11,7 @@ import 'screens/instance_form_screen.dart';
 import 'screens/calendar_screen.dart';
 import 'screens/profiles_screen.dart';
 import 'screens/service_detail_screen.dart';
+import 'screens/select_service_screen.dart';
 import 'screens/settings_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey =
@@ -44,15 +45,15 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
           StatefulNavigationShell shell,
         ) =>
             Consumer(
-              builder: (BuildContext context, WidgetRef ref, Widget? child) {
-                final List<Instance> instances = ref.watch(activeInstancesProvider);
-                final Profile? profile = ref.watch(activeProfileProvider);
-                return ScaffoldWithNavBar(
-                  navigationShell: shell,
-                  drawer: ServicesDrawer(instances: instances, profile: profile),
-                );
-              },
-            ),
+          builder: (BuildContext context, WidgetRef ref, Widget? child) {
+            final List<Instance> instances = ref.watch(activeInstancesProvider);
+            final Profile? profile = ref.watch(activeProfileProvider);
+            return ScaffoldWithNavBar(
+              navigationShell: shell,
+              drawer: ServicesDrawer(instances: instances, profile: profile),
+            );
+          },
+        ),
         branches: <StatefulShellBranch>[
           StatefulShellBranch(
             routes: <RouteBase>[
@@ -67,7 +68,20 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
                     parentNavigatorKey: _rootNavigatorKey,
                     name: AtriumRoutes.addInstanceName,
                     builder: (BuildContext context, GoRouterState state) =>
-                        const InstanceFormScreen(),
+                        const SelectServiceScreen(),
+                  ),
+                  GoRoute(
+                    path: AtriumRoutes.addInstanceForm,
+                    parentNavigatorKey: _rootNavigatorKey,
+                    name: AtriumRoutes.addInstanceFormName,
+                    builder: (BuildContext context, GoRouterState state) {
+                      final String? kindName = state.pathParameters['kind'];
+                      final ServiceKind kind = ServiceKind.values.firstWhere(
+                        (ServiceKind k) => k.name == kindName,
+                        orElse: () => ServiceKind.sonarr,
+                      );
+                      return InstanceFormScreen(initialKind: kind);
+                    },
                   ),
                   GoRoute(
                     path: AtriumRoutes.editInstance,

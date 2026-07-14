@@ -64,7 +64,8 @@ class DashboardBoard extends ConsumerWidget {
       );
     }
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async => _refreshAll(ref, instances),
       child: ListView.separated(
         padding: Insets.page,
@@ -89,7 +90,8 @@ class DashboardBoard extends ConsumerWidget {
   /// configured.
   static bool _hasLiveContent(WidgetRef ref, DashboardWidgetKind kind) {
     return switch (kind) {
-      DashboardWidgetKind.downloads => ref.watch(activeDownloadCountProvider) > 0,
+      DashboardWidgetKind.downloads =>
+        ref.watch(activeDownloadCountProvider) > 0,
       DashboardWidgetKind.streams => ref.watch(activeStreamCountProvider) > 0,
       _ => true,
     };
@@ -195,7 +197,7 @@ class _EditBoard extends ConsumerWidget {
     return ReorderableListView(
       padding: Insets.page,
       buildDefaultDragHandles: false,
-      onReorder: (int oldIndex, int newIndex) => ref
+      onReorderItem: (int oldIndex, int newIndex) => ref
           .read(dashboardLayoutProvider.notifier)
           .moveEnabled(oldIndex, newIndex),
       footer: hidden.isEmpty

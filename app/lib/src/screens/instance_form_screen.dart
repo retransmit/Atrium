@@ -12,9 +12,14 @@ import 'package:go_router/go_router.dart';
 /// api-key services show one field; user/pass services show two; Plex shows a
 /// token field.
 class InstanceFormScreen extends ConsumerStatefulWidget {
-  const InstanceFormScreen({this.instanceId, super.key});
+  const InstanceFormScreen({
+    this.instanceId,
+    this.initialKind,
+    super.key,
+  });
 
   final String? instanceId;
+  final ServiceKind? initialKind;
 
   @override
   ConsumerState<InstanceFormScreen> createState() => _InstanceFormScreenState();
@@ -32,7 +37,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
   /// qBittorrent 5.2+ supports both username/password and API-key auth; this
   /// tracks which the user picked (qBit only).
   bool _qbitUseApiKey = false;
-  final TextEditingController _pollingInterval = TextEditingController(text: '5');
+  final TextEditingController _pollingInterval =
+      TextEditingController(text: '5');
 
   ServiceKind _kind = ServiceKind.sonarr;
   UrlMode _urlMode = UrlMode.auto;
@@ -40,6 +46,19 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
   bool _loaded = false;
 
   bool get _isEdit => widget.instanceId != null;
+
+  String _getNextUniqueName(String baseName, List<Instance> instances) {
+    final Set<String> existingNames =
+        instances.map((Instance i) => i.name.toLowerCase().trim()).toSet();
+    if (!existingNames.contains(baseName.toLowerCase().trim())) {
+      return baseName;
+    }
+    int index = 2;
+    while (existingNames.contains('$baseName $index'.toLowerCase().trim())) {
+      index++;
+    }
+    return '$baseName $index';
+  }
 
   @override
   void dispose() {
@@ -85,8 +104,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
   InstanceAuth _buildAuth() {
     return switch (_kind.authStyle) {
       AuthStyle.apiKey => InstanceAuth.apiKey(apiKey: _apiKey.text.trim()),
-      AuthStyle.plexToken =>
-        InstanceAuth.plexToken(token: _apiKey.text.trim()),
+      AuthStyle.plexToken => InstanceAuth.plexToken(token: _apiKey.text.trim()),
       AuthStyle.userPass => InstanceAuth.userPass(
           username: _username.text.trim(),
           password: _password.text,
@@ -113,8 +131,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     // After creating, make it active.
     await ref.read(activeProfileIdProvider.notifier).select(profile.id);
 
-    final String id =
-        widget.instanceId ?? ref.read(profileRepositoryProvider).newInstanceId();
+    final String id = widget.instanceId ??
+        ref.read(profileRepositoryProvider).newInstanceId();
     final Instance instance = Instance(
       id: id,
       name: _name.text.trim(),
@@ -153,6 +171,14 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
       if (existing != null) {
         _hydrateFrom(existing);
       }
+    } else if (!_loaded) {
+      _loaded = true;
+      if (widget.initialKind != null) {
+        _kind = widget.initialKind!;
+      }
+      final Profile? profile = ref.watch(activeProfileProvider);
+      final List<Instance> instances = profile?.instances ?? <Instance>[];
+      _name.text = _getNextUniqueName(_kind.displayName, instances);
     }
 
     return Scaffold(
@@ -187,8 +213,18 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                     leadingIcon: _buildServiceIcon(k),
                   ),
               ],
-              onSelected: (ServiceKind? k) =>
-                  setState(() => _kind = k ?? _kind),
+              onSelected: (ServiceKind? k) {
+                if (k != null && k != _kind) {
+                  setState(() {
+                    _kind = k;
+                    final Profile? profile = ref.read(activeProfileProvider);
+                    final List<Instance> instances =
+                        profile?.instances ?? <Instance>[];
+                    _name.text =
+                        _getNextUniqueName(_kind.displayName, instances);
+                  });
+                }
+              },
             ),
             const SizedBox(height: Insets.md),
             TextFormField(
@@ -287,7 +323,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                 keyboardType: TextInputType.number,
                 validator: (String? v) {
                   final int? val = int.tryParse(v?.trim() ?? '');
-                  if (val == null || val < 1) return 'Must be at least 1 second';
+                  if (val == null || val < 1)
+                    return 'Must be at least 1 second';
                   return null;
                 },
               ),

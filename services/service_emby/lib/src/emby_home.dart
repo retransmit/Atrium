@@ -177,7 +177,8 @@ class EmbyLibraryGrid extends ConsumerWidget {
         ref.watch(embyLibraryItemsProvider((instance, view)));
     final EmbyClient? client = ref.watch(embyClientProvider(instance)).value;
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async =>
           ref.invalidate(embyLibraryItemsProvider((instance, view))),
       child: AsyncValueView<List<EmbyItem>>(
@@ -351,7 +352,8 @@ class EmbyItemsGrid extends ConsumerWidget {
         ref.watch(embyItemsProvider((instance, libraryId)));
     final EmbyClient? client = ref.watch(embyClientProvider(instance)).value;
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async =>
           ref.invalidate(embyItemsProvider((instance, libraryId))),
       child: AsyncValueView<List<EmbyItem>>(
@@ -1141,7 +1143,8 @@ class _HomeSections extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async {
         ref.invalidate(embySessionsProvider(instance));
         ref.invalidate(embyResumeItemsProvider(instance));
@@ -1653,13 +1656,14 @@ class _SessionCardState extends State<_SessionCard> {
                             ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: LinearProgressIndicatorM3E(
-                                  shape: ProgressM3EShape.flat,
-                                  value: pct.clamp(0.0, 1.0),
-                                  trackColor:
-                                      theme.colorScheme.surfaceContainerHighest,
-                                  activeColor: playing
-                                      ? theme.colorScheme.primary
-                                      : theme.colorScheme.outline,),
+                                shape: ProgressM3EShape.flat,
+                                value: pct.clamp(0.0, 1.0),
+                                trackColor:
+                                    theme.colorScheme.surfaceContainerHighest,
+                                activeColor: playing
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.outline,
+                              ),
                             ),
                           ],
                         ),

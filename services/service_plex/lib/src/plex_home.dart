@@ -161,7 +161,8 @@ class _ItemsGridState extends ConsumerState<_ItemsGrid> {
     final AsyncValue<List<PlexMetadata>> items = ref.watch(_provider);
     final PlexApi? api = ref.watch(plexApiProvider(widget.instance)).value;
 
-    final Widget grid = M3RefreshIndicator(
+    final Widget grid = EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async {
         ref.invalidate(_provider);
         if (widget.isSection) {
@@ -325,7 +326,8 @@ class _HomeSections extends ConsumerWidget {
     final List<PlexLibrary> libraries =
         ref.watch(plexLibrariesProvider(instance)).value ??
             const <PlexLibrary>[];
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async {
         ref.invalidate(plexSessionsProvider(instance));
         ref.invalidate(plexOnDeckProvider(instance));
@@ -578,7 +580,9 @@ class _SessionCard extends ConsumerWidget {
           onTap: () => pushScreen<void>(
             context,
             PlexSessionDetailScreen(
-                instance: instance, initialSession: session,),
+              instance: instance,
+              initialSession: session,
+            ),
           ),
           child: Stack(
             fit: StackFit.expand,

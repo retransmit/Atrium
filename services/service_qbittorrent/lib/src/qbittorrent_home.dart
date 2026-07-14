@@ -35,7 +35,8 @@ class QbittorrentHome extends ConsumerWidget {
       body: Column(
         children: <Widget>[
           Expanded(
-            child: M3RefreshIndicator(
+            child: EasyRefresh(
+              header: const MaterialHeader(),
               onRefresh: () async => _refresh(ref),
               child: AsyncValueView<List<QbitTorrent>>(
                 value: torrents,
@@ -227,7 +228,9 @@ class QbittorrentAppBarActions extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _run(
-      WidgetRef ref, Future<void> Function(QbittorrentClient) action,) async {
+    WidgetRef ref,
+    Future<void> Function(QbittorrentClient) action,
+  ) async {
     final QbittorrentClient client =
         await ref.read(qbittorrentClientProvider(instance).future);
     await action(client);
@@ -236,7 +239,10 @@ class QbittorrentAppBarActions extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(
-      BuildContext context, WidgetRef ref, Set<String> selectedHashes,) async {
+    BuildContext context,
+    WidgetRef ref,
+    Set<String> selectedHashes,
+  ) async {
     bool deleteFiles = false;
     final bool? ok = await showDialog<bool>(
       context: context,
@@ -247,7 +253,8 @@ class QbittorrentAppBarActions extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               Text(
-                  'Are you sure to delete the selected ${selectedHashes.length} torrents?',),
+                'Are you sure to delete the selected ${selectedHashes.length} torrents?',
+              ),
               const SizedBox(height: Insets.md),
               CheckboxListTile(
                 contentPadding: EdgeInsets.zero,
@@ -281,7 +288,10 @@ class QbittorrentAppBarActions extends ConsumerWidget {
   }
 
   Future<void> _editCategory(
-      BuildContext context, WidgetRef ref, Set<String> selectedHashes,) async {
+    BuildContext context,
+    WidgetRef ref,
+    Set<String> selectedHashes,
+  ) async {
     final List<String> cats =
         await ref.read(qbitCategoriesProvider(instance).future);
     if (!context.mounted) return;
@@ -304,14 +314,17 @@ class QbittorrentAppBarActions extends ConsumerWidget {
     );
     if (chosen != null) {
       await _run(
-          ref,
-          (QbittorrentClient c) =>
-              c.setCategory(selectedHashes.toList(), chosen),);
+        ref,
+        (QbittorrentClient c) => c.setCategory(selectedHashes.toList(), chosen),
+      );
     }
   }
 
   Future<void> _editTags(
-      BuildContext context, WidgetRef ref, Set<String> selectedHashes,) async {
+    BuildContext context,
+    WidgetRef ref,
+    Set<String> selectedHashes,
+  ) async {
     final TextEditingController ctrl = TextEditingController();
     final String? chosen = await showDialog<String>(
       context: context,
@@ -323,22 +336,29 @@ class QbittorrentAppBarActions extends ConsumerWidget {
         ),
         actions: <Widget>[
           TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),),
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.of(context).pop(ctrl.text),
-              child: const Text('Save'),),
+            onPressed: () => Navigator.of(context).pop(ctrl.text),
+            child: const Text('Save'),
+          ),
         ],
       ),
     );
     if (chosen != null && chosen.isNotEmpty) {
-      await _run(ref,
-          (QbittorrentClient c) => c.addTags(selectedHashes.toList(), chosen),);
+      await _run(
+        ref,
+        (QbittorrentClient c) => c.addTags(selectedHashes.toList(), chosen),
+      );
     }
   }
 
   Future<void> _editSavePath(
-      BuildContext context, WidgetRef ref, Set<String> selectedHashes,) async {
+    BuildContext context,
+    WidgetRef ref,
+    Set<String> selectedHashes,
+  ) async {
     final TextEditingController ctrl = TextEditingController();
     final String? chosen = await showDialog<String>(
       context: context,
@@ -350,24 +370,29 @@ class QbittorrentAppBarActions extends ConsumerWidget {
         ),
         actions: <Widget>[
           TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),),
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.of(context).pop(ctrl.text),
-              child: const Text('Save'),),
+            onPressed: () => Navigator.of(context).pop(ctrl.text),
+            child: const Text('Save'),
+          ),
         ],
       ),
     );
     if (chosen != null && chosen.isNotEmpty) {
       await _run(
-          ref,
-          (QbittorrentClient c) =>
-              c.setLocation(selectedHashes.toList(), chosen),);
+        ref,
+        (QbittorrentClient c) => c.setLocation(selectedHashes.toList(), chosen),
+      );
     }
   }
 
   Future<void> _rename(
-      BuildContext context, WidgetRef ref, Set<String> selectedHashes,) async {
+    BuildContext context,
+    WidgetRef ref,
+    Set<String> selectedHashes,
+  ) async {
     final TextEditingController ctrl = TextEditingController();
     final String? chosen = await showDialog<String>(
       context: context,
@@ -379,17 +404,21 @@ class QbittorrentAppBarActions extends ConsumerWidget {
         ),
         actions: <Widget>[
           TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),),
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.of(context).pop(ctrl.text),
-              child: const Text('Save'),),
+            onPressed: () => Navigator.of(context).pop(ctrl.text),
+            child: const Text('Save'),
+          ),
         ],
       ),
     );
     if (chosen != null && chosen.isNotEmpty) {
       await _run(
-          ref, (QbittorrentClient c) => c.rename(selectedHashes.first, chosen),);
+        ref,
+        (QbittorrentClient c) => c.rename(selectedHashes.first, chosen),
+      );
     }
   }
 
@@ -405,9 +434,11 @@ class QbittorrentAppBarActions extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: Insets.md),
               children: <Widget>[
                 ListTile(
-                  leading: Icon(config.ascending
-                      ? Icons.arrow_upward
-                      : Icons.arrow_downward,),
+                  leading: Icon(
+                    config.ascending
+                        ? Icons.arrow_upward
+                        : Icons.arrow_downward,
+                  ),
                   title: Text(config.ascending ? 'Ascending' : 'Descending'),
                   onTap: () {
                     ref.read(qbitSortProvider(instance).notifier).state =
@@ -503,7 +534,8 @@ class QbittorrentAppBarActions extends ConsumerWidget {
                 await Clipboard.setData(ClipboardData(text: hashes.join('\n')));
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Hashes copied')),);
+                    const SnackBar(content: Text('Hashes copied')),
+                  );
                 }
               case 'recheck':
                 await _run(ref, (QbittorrentClient c) => c.recheck(hashes));
@@ -511,9 +543,9 @@ class QbittorrentAppBarActions extends ConsumerWidget {
                 await _run(ref, (QbittorrentClient c) => c.reannounce(hashes));
               case 'forcestart':
                 await _run(
-                    ref,
-                    (QbittorrentClient c) =>
-                        c.setForceStart(hashes, value: true),);
+                  ref,
+                  (QbittorrentClient c) => c.setForceStart(hashes, value: true),
+                );
               case 'rename':
                 await _rename(context, ref, selectedHashes);
               case 'savepath':
@@ -528,13 +560,17 @@ class QbittorrentAppBarActions extends ConsumerWidget {
                       .read(qbittorrentClientProvider(instance).future);
                   await client.exportTorrent(hashes.first);
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Torrent exported successfully'),),);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Torrent exported successfully'),
+                      ),
+                    );
                   }
                 } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Export failed: $e')),);
+                      SnackBar(content: Text('Export failed: $e')),
+                    );
                   }
                 }
             }
@@ -544,20 +580,30 @@ class QbittorrentAppBarActions extends ConsumerWidget {
             const PopupMenuItem<String>(value: 'resume', child: Text('Resume')),
             const PopupMenuItem<String>(value: 'copy', child: Text('Copy')),
             const PopupMenuItem<String>(
-                value: 'recheck', child: Text('Force Recheck'),),
+              value: 'recheck',
+              child: Text('Force Recheck'),
+            ),
             const PopupMenuItem<String>(
-                value: 'reannounce', child: Text('Force Reannounce'),),
+              value: 'reannounce',
+              child: Text('Force Reannounce'),
+            ),
             const PopupMenuItem<String>(
-                value: 'forcestart', child: Text('Force Start'),),
+              value: 'forcestart',
+              child: Text('Force Start'),
+            ),
             PopupMenuItem<String>(
               value: 'rename',
               enabled: selectedHashes.length == 1,
               child: const Text('Rename'),
             ),
             const PopupMenuItem<String>(
-                value: 'savepath', child: Text('Set SavePath'),),
+              value: 'savepath',
+              child: Text('Set SavePath'),
+            ),
             const PopupMenuItem<String>(
-                value: 'category', child: Text('Set Category'),),
+              value: 'category',
+              child: Text('Set Category'),
+            ),
             const PopupMenuItem<String>(value: 'tags', child: Text('Set Tags')),
             PopupMenuItem<String>(
               value: 'export',
@@ -759,8 +805,11 @@ class _TorrentTile extends ConsumerWidget {
                     ),
                     if (!complete) ...<Widget>[
                       const SizedBox(width: Insets.sm),
-                      Icon(Icons.schedule,
-                          size: 14, color: cs.onSurfaceVariant,),
+                      Icon(
+                        Icons.schedule,
+                        size: 14,
+                        color: cs.onSurfaceVariant,
+                      ),
                       const SizedBox(width: 2),
                       Text(
                         _formatEta(torrent.eta),

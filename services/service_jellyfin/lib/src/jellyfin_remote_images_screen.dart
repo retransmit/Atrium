@@ -50,7 +50,6 @@ class _JellyfinRemoteImagesScreenState
         }
       }
 
-
       await client.setRemoteImage(widget.itemId, imageUrl, widget.imageType);
 
       // Evict untagged URL from cache for sessions that don't use tags
@@ -95,7 +94,8 @@ class _JellyfinRemoteImagesScreenState
 
       // Invalidate relevant providers to force refresh of the image
       ref.invalidate(
-          jellyfinItemDetailsProvider((widget.instance, widget.itemId)),);
+        jellyfinItemDetailsProvider((widget.instance, widget.itemId)),
+      );
       ref.invalidate(jellyfinItemsProvider);
       ref.invalidate(jellyfinLibraryItemsProvider);
       ref.invalidate(jellyfinFastSessionsProvider(widget.instance));
@@ -117,7 +117,8 @@ class _JellyfinRemoteImagesScreenState
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to update ${widget.imageType.toLowerCase()}: $e'),
+          content:
+              Text('Failed to update ${widget.imageType.toLowerCase()}: $e'),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -155,7 +156,8 @@ class _JellyfinRemoteImagesScreenState
   Widget build(BuildContext context) {
     final AsyncValue<List<JellyfinRemoteImage>> imagesAsync = ref.watch(
       jellyfinRemoteImagesProvider(
-          (widget.instance, widget.itemId, widget.imageType),),
+        (widget.instance, widget.itemId, widget.imageType),
+      ),
     );
 
     return Scaffold(
@@ -168,7 +170,8 @@ class _JellyfinRemoteImagesScreenState
             value: imagesAsync,
             onRetry: () => ref.invalidate(
               jellyfinRemoteImagesProvider(
-                  (widget.instance, widget.itemId, widget.imageType),),
+                (widget.instance, widget.itemId, widget.imageType),
+              ),
             ),
             data: (List<JellyfinRemoteImage> images) {
               if (images.isEmpty) {

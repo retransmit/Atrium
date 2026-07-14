@@ -30,7 +30,8 @@ class PlexArtistScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text(artist.title)),
-      body: M3RefreshIndicator(
+      body: EasyRefresh(
+        header: const MaterialHeader(),
         onRefresh: () async =>
             ref.invalidate(plexChildrenProvider((instance, artist.ratingKey))),
         child: AsyncValueView<List<PlexMetadata>>(
@@ -179,7 +180,8 @@ class PlexAlbumScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: M3RefreshIndicator(
+      body: EasyRefresh(
+        header: const MaterialHeader(),
         onRefresh: () async =>
             ref.invalidate(plexChildrenProvider((instance, album.ratingKey))),
         child: CustomScrollView(
@@ -250,8 +252,8 @@ class PlexAlbumScreen extends ConsumerWidget {
             SliverToBoxAdapter(
               child: AsyncValueView<List<PlexMetadata>>(
                 value: tracks,
-                onRetry: () => ref
-                    .invalidate(plexChildrenProvider((instance, album.ratingKey))),
+                onRetry: () => ref.invalidate(
+                    plexChildrenProvider((instance, album.ratingKey))),
                 data: (List<PlexMetadata> list) {
                   if (list.isEmpty) {
                     return const EmptyView(

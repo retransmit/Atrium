@@ -23,7 +23,8 @@ class ProwlarrAppsTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<ProwlarrApplication>> apps =
         ref.watch(prowlarrApplicationsProvider(instance));
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async =>
           ref.invalidate(prowlarrApplicationsProvider(instance)),
       child: AsyncValueView<List<ProwlarrApplication>>(

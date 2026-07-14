@@ -67,7 +67,8 @@ class _ProwlarrHistoryTabState extends ConsumerState<ProwlarrHistoryTab> {
           ),
         ),
         Expanded(
-          child: M3RefreshIndicator(
+          child: EasyRefresh(
+            header: const MaterialHeader(),
             onRefresh: () async =>
                 ref.invalidate(prowlarrHistoryProvider(args)),
             child: AsyncValueView<ProwlarrHistoryPage>(
@@ -84,7 +85,8 @@ class _ProwlarrHistoryTabState extends ConsumerState<ProwlarrHistoryTab> {
                 return ListView.separated(
                   padding: Insets.page,
                   itemCount: page.records.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: Insets.sm),
+                  separatorBuilder: (_, __) =>
+                      const SizedBox(height: Insets.sm),
                   itemBuilder: (BuildContext context, int index) {
                     final ProwlarrHistoryRecord r = page.records[index];
                     return _HistoryTile(

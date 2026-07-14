@@ -20,7 +20,8 @@ class QualityDefinitionsScreen extends ConsumerStatefulWidget {
       _QualityDefinitionsScreenState();
 }
 
-class _QualityDefinitionsScreenState extends ConsumerState<QualityDefinitionsScreen> {
+class _QualityDefinitionsScreenState
+    extends ConsumerState<QualityDefinitionsScreen> {
   bool _initialized = false;
   bool _saving = false;
   late List<Map<String, dynamic>> _definitions;
@@ -29,9 +30,7 @@ class _QualityDefinitionsScreenState extends ConsumerState<QualityDefinitionsScr
     if (_initialized) return;
     _initialized = true;
     // Perform deep copy so editing doesn't mutate cache directly before save
-    _definitions = data
-        .map(Map<String, dynamic>.from)
-        .toList();
+    _definitions = data.map(Map<String, dynamic>.from).toList();
   }
 
   Future<void> _save() async {
@@ -42,7 +41,8 @@ class _QualityDefinitionsScreenState extends ConsumerState<QualityDefinitionsScr
       ref.invalidate(sonarrQualityDefinitionsProvider(widget.instance));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Quality definitions updated successfully!')),
+          const SnackBar(
+              content: Text('Quality definitions updated successfully!')),
         );
         Navigator.pop(context);
       }
@@ -60,7 +60,8 @@ class _QualityDefinitionsScreenState extends ConsumerState<QualityDefinitionsScr
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final definitionsAsync = ref.watch(sonarrQualityDefinitionsProvider(widget.instance));
+    final definitionsAsync =
+        ref.watch(sonarrQualityDefinitionsProvider(widget.instance));
 
     return Scaffold(
       appBar: AppBar(
@@ -95,11 +96,12 @@ class _QualityDefinitionsScreenState extends ConsumerState<QualityDefinitionsScr
               final def = _definitions[index];
               final qualityMap = def['quality'] as Map<String, dynamic>?;
               final qName = (qualityMap?['name'] as String?) ?? 'Unknown';
-              
+
               // min/max/preferred are usually represented as double (MB per minute)
               final double minVal = (def['minSize'] as num?)?.toDouble() ?? 0.0;
               final double? maxVal = (def['maxSize'] as num?)?.toDouble();
-              final double prefVal = (def['preferredSize'] as num?)?.toDouble() ?? minVal;
+              final double prefVal =
+                  (def['preferredSize'] as num?)?.toDouble() ?? minVal;
 
               final bool isUnlimited = maxVal == null || maxVal == 0;
 

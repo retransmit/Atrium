@@ -18,7 +18,8 @@ class BazarrSystemTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async {
         ref.invalidate(bazarrSystemStatusProvider(instance));
         ref.invalidate(bazarrSystemHealthProvider(instance));

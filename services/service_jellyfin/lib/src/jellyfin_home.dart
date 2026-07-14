@@ -181,7 +181,8 @@ class JellyfinLibraryGrid extends ConsumerWidget {
     final JellyfinClient? client =
         ref.watch(jellyfinClientProvider(instance)).value;
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async =>
           ref.invalidate(jellyfinLibraryItemsProvider((instance, view))),
       child: AsyncValueView<List<JellyfinItem>>(
@@ -358,7 +359,8 @@ class JellyfinItemsGrid extends ConsumerWidget {
     final JellyfinClient? client =
         ref.watch(jellyfinClientProvider(instance)).value;
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async =>
           ref.invalidate(jellyfinItemsProvider((instance, libraryId))),
       child: AsyncValueView<List<JellyfinItem>>(
@@ -873,7 +875,8 @@ class JellyfinBannerCard extends ConsumerWidget {
                             ref.invalidate(jellyfinItemsProvider);
                             ref.invalidate(jellyfinNextUpProvider(instance));
                             ref.invalidate(
-                                jellyfinResumeItemsProvider(instance),);
+                              jellyfinResumeItemsProvider(instance),
+                            );
                           } catch (_) {
                             // Action failed; no revert needed.
                           }
@@ -902,7 +905,8 @@ class JellyfinBannerCard extends ConsumerWidget {
                             ref.invalidate(jellyfinItemsProvider);
                             ref.invalidate(jellyfinNextUpProvider(instance));
                             ref.invalidate(
-                                jellyfinResumeItemsProvider(instance),);
+                              jellyfinResumeItemsProvider(instance),
+                            );
                           }
                         },
                       ),
@@ -1105,7 +1109,8 @@ class _HomeSections extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async {
         ref.invalidate(jellyfinSessionsProvider(instance));
         ref.invalidate(jellyfinResumeItemsProvider(instance));
@@ -1616,13 +1621,14 @@ class _SessionCardState extends State<_SessionCard> {
                             ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: LinearProgressIndicatorM3E(
-                                  shape: ProgressM3EShape.flat,
-                                  value: pct.clamp(0.0, 1.0),
-                                  trackColor:
-                                      theme.colorScheme.surfaceContainerHighest,
-                                  activeColor: playing
-                                      ? theme.colorScheme.primary
-                                      : theme.colorScheme.outline,),
+                                shape: ProgressM3EShape.flat,
+                                value: pct.clamp(0.0, 1.0),
+                                trackColor:
+                                    theme.colorScheme.surfaceContainerHighest,
+                                activeColor: playing
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.outline,
+                              ),
                             ),
                           ],
                         ),

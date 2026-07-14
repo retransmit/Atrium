@@ -109,7 +109,8 @@ class RadarrApi {
     }
   }
 
-  Future<void> bulkDeleteMovies(List<int> ids, {bool deleteFiles = false}) async {
+  Future<void> bulkDeleteMovies(List<int> ids,
+      {bool deleteFiles = false}) async {
     try {
       await _dio.delete<dynamic>(
         '$_base/movie/editor',
@@ -203,7 +204,8 @@ class RadarrApi {
       if (records is List<dynamic>) {
         return records
             .map(
-              (dynamic e) => RadarrQueueItem.fromJson(e as Map<String, dynamic>),
+              (dynamic e) =>
+                  RadarrQueueItem.fromJson(e as Map<String, dynamic>),
             )
             .toList();
       }
@@ -588,7 +590,8 @@ class RadarrApi {
   }
 
   Future<Map<String, dynamic>> createQualityProfile(
-      Map<String, dynamic> payload,) async {
+    Map<String, dynamic> payload,
+  ) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/qualityprofile',
@@ -716,7 +719,8 @@ class RadarrApi {
   // connection test (offline client, unreachable indexer) does not 400 the
   // save.
   Future<Map<String, dynamic>> createIndexer(
-      Map<String, dynamic> payload,) async {
+    Map<String, dynamic> payload,
+  ) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/indexer',
@@ -803,7 +807,8 @@ class RadarrApi {
   }
 
   Future<Map<String, dynamic>> createDownloadClient(
-      Map<String, dynamic> payload,) async {
+    Map<String, dynamic> payload,
+  ) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/downloadclient',
@@ -817,7 +822,9 @@ class RadarrApi {
   }
 
   Future<void> updateDownloadClient(
-      Map<String, dynamic> payload, int id,) async {
+    Map<String, dynamic> payload,
+    int id,
+  ) async {
     try {
       await _dio.put<dynamic>(
         '$_base/downloadclient/$id',
@@ -891,7 +898,8 @@ class RadarrApi {
   }
 
   Future<Map<String, dynamic>> createNotification(
-      Map<String, dynamic> payload,) async {
+    Map<String, dynamic> payload,
+  ) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/notification',
@@ -934,8 +942,7 @@ class RadarrApi {
 
   Future<List<Map<String, dynamic>>> getMetadataConfigs() async {
     try {
-      final Response<dynamic> resp =
-          await _dio.get<dynamic>('$_base/metadata');
+      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/metadata');
       return (resp.data as List<dynamic>)
           .map((dynamic e) => e as Map<String, dynamic>)
           .toList();
@@ -956,7 +963,8 @@ class RadarrApi {
     }
   }
 
-  Future<void> updateMetadataConfig(Map<String, dynamic> payload, int id) async {
+  Future<void> updateMetadataConfig(
+      Map<String, dynamic> payload, int id) async {
     try {
       await _dio.put<dynamic>(
         '$_base/metadata/$id',
@@ -993,7 +1001,8 @@ class RadarrApi {
   }
 
   Future<Map<String, dynamic>> createCustomFormat(
-      Map<String, dynamic> payload,) async {
+    Map<String, dynamic> payload,
+  ) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/customformat',
@@ -1037,7 +1046,8 @@ class RadarrApi {
   }
 
   Future<Map<String, dynamic>> createDelayProfile(
-      Map<String, dynamic> payload,) async {
+    Map<String, dynamic> payload,
+  ) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/delayprofile',
@@ -1114,7 +1124,8 @@ class RadarrApi {
   }
 
   Future<Map<String, dynamic>> createImportList(
-      Map<String, dynamic> payload,) async {
+    Map<String, dynamic> payload,
+  ) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/importlist',
@@ -1252,7 +1263,8 @@ class RadarrApi {
   }
 
   Future<Map<String, dynamic>> createRemotePathMapping(
-      Map<String, dynamic> payload,) async {
+    Map<String, dynamic> payload,
+  ) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         '$_base/remotepathmapping',
@@ -1265,7 +1277,9 @@ class RadarrApi {
   }
 
   Future<void> updateRemotePathMapping(
-      Map<String, dynamic> payload, int id,) async {
+    Map<String, dynamic> payload,
+    int id,
+  ) async {
     try {
       await _dio.put<dynamic>(
         '$_base/remotepathmapping/$id',
@@ -1334,7 +1348,8 @@ class RadarrApi {
 
   Future<List<Map<String, dynamic>>> getDiskSpace() async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/diskspace');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/diskspace');
       return (resp.data as List<dynamic>)
           .map((dynamic e) => e as Map<String, dynamic>)
           .toList();
@@ -1392,8 +1407,7 @@ class RadarrApi {
 
   Future<List<Map<String, dynamic>>> getLogFiles() async {
     try {
-      final Response<dynamic> resp =
-          await _dio.get<dynamic>('$_base/log/file');
+      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/log/file');
       return (resp.data as List<dynamic>)
           .map((dynamic e) => e as Map<String, dynamic>)
           .toList();

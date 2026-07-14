@@ -43,7 +43,8 @@ class JellyfinAlbumScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: M3RefreshIndicator(
+      body: EasyRefresh(
+        header: const MaterialHeader(),
         onRefresh: () async => ref.invalidate(
           jellyfinAlbumDataFutureProvider((instance, albumId, albumArtist)),
         ),
@@ -130,17 +131,19 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.secondaryContainer,
+                          color:
+                              Theme.of(context).colorScheme.secondaryContainer,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           g,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSecondaryContainer,
-                                fontWeight: FontWeight.w500,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSecondaryContainer,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                         ),
                       );
                     }).toList(),
@@ -211,7 +214,8 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                             ),
                             onTap: () {
                               if (client != null) {
-                                launchJellyfinDeepLink(context, client, song.id);
+                                launchJellyfinDeepLink(
+                                    context, client, song.id);
                               }
                             },
                             leading: Row(
@@ -250,7 +254,8 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                                           color: Theme.of(context)
                                               .colorScheme
                                               .surfaceContainerHighest,
-                                          borderRadius: BorderRadius.circular(4),
+                                          borderRadius:
+                                              BorderRadius.circular(4),
                                         ),
                                         child: const Icon(Icons.music_note),
                                       ),
@@ -372,4 +377,3 @@ class JellyfinAlbumScreen extends ConsumerWidget {
     );
   }
 }
-

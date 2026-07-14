@@ -207,8 +207,7 @@ class _InstanceHeadersScreenState
     if (result == null || !mounted) {
       return;
     }
-    final Instance? current =
-        ref.read(instanceByIdProvider(widget.instanceId));
+    final Instance? current = ref.read(instanceByIdProvider(widget.instanceId));
     if (current == null) {
       return;
     }
@@ -471,8 +470,7 @@ class _HeaderDialog extends StatefulWidget {
 
 class _HeaderDialogState extends State<_HeaderDialog> {
   /// RFC 7230 token characters - the set allowed in an HTTP header name.
-  static final RegExp _tokenPattern =
-      RegExp(r'^[!#$%&*+.^_|~0-9A-Za-z-]+$');
+  static final RegExp _tokenPattern = RegExp(r'^[!#$%&*+.^_|~0-9A-Za-z-]+$');
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   late final TextEditingController _name =

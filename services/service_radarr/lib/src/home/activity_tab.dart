@@ -125,11 +125,14 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
               onClear: () {
                 ref
                     .read(
-                        radarrQueueSelectionProvider(widget.instance).notifier,)
+                      radarrQueueSelectionProvider(widget.instance).notifier,
+                    )
                     .state = {};
                 ref
-                    .read(radarrBlocklistSelectionProvider(widget.instance)
-                        .notifier,)
+                    .read(
+                      radarrBlocklistSelectionProvider(widget.instance)
+                          .notifier,
+                    )
                     .state = {};
               },
             )
@@ -153,13 +156,17 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
                       icon: const Icon(Icons.close),
                       onPressed: () {
                         ref
-                            .read(radarrQueueSelectionProvider(widget.instance)
-                                .notifier,)
+                            .read(
+                              radarrQueueSelectionProvider(widget.instance)
+                                  .notifier,
+                            )
                             .state = {};
                         ref
-                            .read(radarrBlocklistSelectionProvider(
-                                    widget.instance,)
-                                .notifier,)
+                            .read(
+                              radarrBlocklistSelectionProvider(
+                                widget.instance,
+                              ).notifier,
+                            )
                             .state = {};
                       },
                     )
@@ -596,16 +603,22 @@ class _QueueCard extends ConsumerWidget {
                 _DetailRow(label: 'Movie', value: i.movie?.title ?? 'Unknown'),
                 _DetailRow(label: 'Status', value: i.status ?? 'Unknown'),
                 _DetailRow(
-                    label: 'Tracked State',
-                    value: i.trackedDownloadState ?? 'None',),
+                  label: 'Tracked State',
+                  value: i.trackedDownloadState ?? 'None',
+                ),
                 _DetailRow(
-                    label: 'Download Client',
-                    value: i.downloadClient ?? 'Unknown',),
+                  label: 'Download Client',
+                  value: i.downloadClient ?? 'Unknown',
+                ),
                 _DetailRow(
-                    label: 'Download ID', value: i.downloadId ?? 'Unknown',),
+                  label: 'Download ID',
+                  value: i.downloadId ?? 'Unknown',
+                ),
                 _DetailRow(label: 'Indexer', value: i.indexer ?? 'Unknown'),
                 _DetailRow(
-                    label: 'Output Path', value: i.outputPath ?? 'Unknown',),
+                  label: 'Output Path',
+                  value: i.outputPath ?? 'Unknown',
+                ),
               ],
             ),
           ),
@@ -751,7 +764,9 @@ class _HistoryView extends ConsumerWidget {
 
         if (grouped) {
           final groupedMap = groupBy(
-              filteredItems, (RadarrHistoryItem item) => item.movie?.id ?? 0,);
+            filteredItems,
+            (RadarrHistoryItem item) => item.movie?.id ?? 0,
+          );
           final keys = groupedMap.keys.toList();
           return ListView.builder(
             padding: const EdgeInsets.all(Insets.md),
@@ -987,7 +1002,8 @@ Future<void> _confirmDeleteBlocklistItem(
     builder: (context) => AlertDialog(
       title: const Text('Delete from Blocklist?'),
       content: const Text(
-          'Are you sure you want to remove this entry from your blocklist?',),
+        'Are you sure you want to remove this entry from your blocklist?',
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
@@ -1351,7 +1367,11 @@ class _GroupedHistoryCardState extends ConsumerState<_GroupedHistoryCard> {
                         IconButton(
                           icon: const Icon(Icons.info_outline, size: 20),
                           onPressed: () => _showHistoryDetails(
-                              context, ref, widget.instance, item,),
+                            context,
+                            ref,
+                            widget.instance,
+                            item,
+                          ),
                         ),
                       ],
                     ),
@@ -1414,7 +1434,9 @@ class _BlocklistView extends ConsumerWidget {
 
         if (grouped) {
           final groupedMap = groupBy(
-              filteredItems, (RadarrBlocklistItem item) => item.movie?.id ?? 0,);
+            filteredItems,
+            (RadarrBlocklistItem item) => item.movie?.id ?? 0,
+          );
           final keys = groupedMap.keys.toList();
           return ListView.builder(
             padding: const EdgeInsets.all(Insets.md),
@@ -1601,7 +1623,8 @@ class _BlocklistCard extends ConsumerWidget {
       builder: (context) => AlertDialog(
         title: const Text('Delete from Blocklist?'),
         content: const Text(
-            'Are you sure you want to remove this entry from your blocklist?',),
+          'Are you sure you want to remove this entry from your blocklist?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -1729,15 +1752,19 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
                                   errorWidget: (context, url, err) => Container(
                                     color: theme
                                         .colorScheme.surfaceContainerHighest,
-                                    child: const Icon(Icons.movie_outlined,
-                                        size: 18,),
+                                    child: const Icon(
+                                      Icons.movie_outlined,
+                                      size: 18,
+                                    ),
                                   ),
                                 )
                               : Container(
                                   color:
                                       theme.colorScheme.surfaceContainerHighest,
-                                  child: const Icon(Icons.movie_outlined,
-                                      size: 18,),
+                                  child: const Icon(
+                                    Icons.movie_outlined,
+                                    size: 18,
+                                  ),
                                 ),
                           if (isGroupSelected)
                             Container(
@@ -1824,8 +1851,9 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
 
                   void toggleItemSelection() {
                     final notifier = ref.read(
-                        radarrBlocklistSelectionProvider(widget.instance)
-                            .notifier,);
+                      radarrBlocklistSelectionProvider(widget.instance)
+                          .notifier,
+                    );
                     if (isItemSelected) {
                       notifier.state =
                           selection.where((id) => id != item.id).toSet();
@@ -1888,7 +1916,11 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
                               size: 20,
                             ),
                             onPressed: () => _confirmDeleteBlocklistItem(
-                                context, ref, widget.instance, item,),
+                              context,
+                              ref,
+                              widget.instance,
+                              item,
+                            ),
                           ),
                       ],
                     ),
@@ -1995,7 +2027,8 @@ class _ActivityBulkActionsBar extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                  'Are you sure you want to cancel the selected downloads?',),
+                'Are you sure you want to cancel the selected downloads?',
+              ),
               CheckboxListTile(
                 title: const Text('Add releases to blocklist'),
                 value: blocklist,
@@ -2041,7 +2074,8 @@ class _ActivityBulkActionsBar extends StatelessWidget {
       builder: (context) => AlertDialog(
         title: Text('Remove ${selectedIds.length} Entries?'),
         content: const Text(
-            'Are you sure you want to remove the selected entries from the blocklist?',),
+          'Are you sure you want to remove the selected entries from the blocklist?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -2131,7 +2165,8 @@ class _QueueBulkGrabDialog extends ConsumerWidget {
 
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                  content: Text('Forced grab successfully triggered'),),
+                content: Text('Forced grab successfully triggered'),
+              ),
             );
           },
           child: const Text('Force Grab'),

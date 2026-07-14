@@ -16,53 +16,50 @@ const Duration sabHistoryPollInterval = Duration(seconds: 10);
 /// A [SabnzbdApi] for an instance, over the shared `instanceDioProvider`.
 ///
 /// Deliberately NOT autoDispose: the underlying Dio is shared and cheap to keep.
-final sabnzbdApiProvider =
-    FutureProvider.family<SabnzbdApi, Instance>((
-      Ref ref,
-      Instance instance,
-    ) async {
-      final dio = await ref.watch(instanceDioProvider(instance).future);
-      return SabnzbdApi(dio);
-    });
+final sabnzbdApiProvider = FutureProvider.family<SabnzbdApi, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final dio = await ref.watch(instanceDioProvider(instance).future);
+  return SabnzbdApi(dio);
+});
 
 /// The current download queue. Polls fast while watched.
-final sabQueueProvider =
-    FutureProvider.autoDispose.family<SabQueue, Instance>((
-      Ref ref,
-      Instance instance,
-    ) async {
-      ref.pollEvery(sabQueuePollInterval);
-      final SabnzbdApi api = await ref.watch(sabnzbdApiProvider(instance).future);
-      return api.getQueue();
-    });
+final sabQueueProvider = FutureProvider.autoDispose.family<SabQueue, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  ref.pollEvery(sabQueuePollInterval);
+  final SabnzbdApi api = await ref.watch(sabnzbdApiProvider(instance).future);
+  return api.getQueue();
+});
 
 /// Completed / failed download history. Polls slowly while watched.
 final sabHistoryProvider =
     FutureProvider.autoDispose.family<SabHistory, Instance>((
-      Ref ref,
-      Instance instance,
-    ) async {
-      ref.pollEvery(sabHistoryPollInterval);
-      final SabnzbdApi api = await ref.watch(sabnzbdApiProvider(instance).future);
-      return api.getHistory();
-    });
+  Ref ref,
+  Instance instance,
+) async {
+  ref.pollEvery(sabHistoryPollInterval);
+  final SabnzbdApi api = await ref.watch(sabnzbdApiProvider(instance).future);
+  return api.getHistory();
+});
 
 /// Bytes-downloaded stats (day/week/month/total). Fetched on demand.
 final sabServerStatsProvider =
     FutureProvider.autoDispose.family<SabServerStats, Instance>((
-      Ref ref,
-      Instance instance,
-    ) async {
-      final SabnzbdApi api = await ref.watch(sabnzbdApiProvider(instance).future);
-      return api.getServerStats();
-    });
+  Ref ref,
+  Instance instance,
+) async {
+  final SabnzbdApi api = await ref.watch(sabnzbdApiProvider(instance).future);
+  return api.getServerStats();
+});
 
 /// SABnzbd version string. Fetched on demand.
-final sabVersionProvider =
-    FutureProvider.autoDispose.family<String, Instance>((
-      Ref ref,
-      Instance instance,
-    ) async {
-      final SabnzbdApi api = await ref.watch(sabnzbdApiProvider(instance).future);
-      return api.getVersion();
-    });
+final sabVersionProvider = FutureProvider.autoDispose.family<String, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final SabnzbdApi api = await ref.watch(sabnzbdApiProvider(instance).future);
+  return api.getVersion();
+});

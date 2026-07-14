@@ -10,6 +10,7 @@ import 'package:service_bazarr/service_bazarr.dart';
 import 'package:service_seerr/service_seerr.dart';
 import 'package:service_plex/service_plex.dart';
 import 'package:service_radarr/service_radarr.dart';
+import 'package:service_sonarr/service_sonarr.dart';
 import 'package:service_sabnzbd/service_sabnzbd.dart';
 import 'package:service_tautulli/service_tautulli.dart';
 import 'package:atrium/src/screens/calendar_screen.dart';
@@ -82,7 +83,8 @@ void main() {
     expect(find.text('Ubuntu.24.04.iso'), findsOneWidget);
   });
 
-  testWidgets('TautulliHome renders active streams', (WidgetTester tester) async {
+  testWidgets('TautulliHome renders active streams',
+      (WidgetTester tester) async {
     final Instance instance = _instance(ServiceKind.tautulli);
     await _pump(
       tester,
@@ -144,7 +146,8 @@ void main() {
     expect(find.text('Bob'), findsOneWidget);
   });
 
-  testWidgets('BazarrHome renders wanted-subtitles rows', (WidgetTester tester) async {
+  testWidgets('BazarrHome renders wanted-subtitles rows',
+      (WidgetTester tester) async {
     final Instance instance = _instance(ServiceKind.bazarr);
     await _pump(
       tester,
@@ -158,7 +161,9 @@ void main() {
             BazarrWantedRow(
               title: 'Breaking Bad',
               subtitle: 'S01E01 · Pilot',
-              missing: <BazarrSubtitle>[BazarrSubtitle(name: 'English', code2: 'en')],
+              missing: <BazarrSubtitle>[
+                BazarrSubtitle(name: 'English', code2: 'en')
+              ],
               isMovie: false,
             ),
           ],
@@ -232,7 +237,8 @@ void main() {
     expect(find.text('Movies'), findsOneWidget);
   });
 
-  testWidgets('CalendarScreen renders Radarr aggregated entries', (WidgetTester tester) async {
+  testWidgets('CalendarScreen renders Radarr aggregated entries',
+      (WidgetTester tester) async {
     tester.view.physicalSize = const Size(800, 1200);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -271,4 +277,95 @@ void main() {
     expect(find.text('Missing'), findsOneWidget);
   });
 
+  testWidgets('CalendarScreen list view toggle and rendering',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final Instance radarr = _instance(ServiceKind.radarr);
+    final DateTime airDate = DateTime.now();
+
+    await _pump(
+      tester,
+      <Override>[
+        activeInstancesProvider.overrideWith(
+          (Ref ref) => <Instance>[radarr],
+        ),
+        radarrApiProvider(radarr).overrideWith(
+          (Ref ref) async => RadarrApi(Dio(), apiKey: 'k'),
+        ),
+        radarrCalendarProvider.overrideWith(
+          (Ref ref, (Instance, DateTime) key) async => <RadarrMovie>[
+            RadarrMovie(
+              id: 1,
+              title: 'Inception',
+              year: 2010,
+              inCinemas: airDate.toIso8601String(),
+              monitored: true,
+              hasFile: false,
+            ),
+          ],
+        ),
+      ],
+      const CalendarScreen(),
+      pumps: 3,
+    );
+
+    // Default: grid view. Toggle to list view.
+    await tester.tap(find.byIcon(Icons.format_list_bulleted));
+    await tester.pumpAndSettle();
+
+    // Verify it is now in list view (switch icon changes to grid view icon)
+    expect(find.byIcon(Icons.calendar_month), findsOneWidget);
+    expect(find.text('Inception'), findsOneWidget);
+  });
+
+  testWidgets('CalendarScreen is resilient when a service is down',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final Instance radarr = _instance(ServiceKind.radarr);
+    final Instance sonarr = _instance(ServiceKind.sonarr);
+    final DateTime airDate = DateTime.now();
+
+    await _pump(
+      tester,
+      <Override>[
+        activeInstancesProvider.overrideWith(
+          (Ref ref) => <Instance>[radarr, sonarr],
+        ),
+        radarrApiProvider(radarr).overrideWith(
+          (Ref ref) async => RadarrApi(Dio(), apiKey: 'k'),
+        ),
+        sonarrApiProvider(sonarr).overrideWith(
+          (Ref ref) async => SonarrApi(Dio(), apiKey: 'k'),
+        ),
+        radarrCalendarProvider.overrideWith(
+          (Ref ref, (Instance, DateTime) key) async => <RadarrMovie>[
+            RadarrMovie(
+              id: 1,
+              title: 'Inception',
+              year: 2010,
+              inCinemas: airDate.toIso8601String(),
+              monitored: true,
+              hasFile: false,
+            ),
+          ],
+        ),
+        sonarrCalendarProvider.overrideWith(
+          (Ref ref, (Instance, DateTime) key) async => <SonarrEpisode>[],
+        ),
+      ],
+      const CalendarScreen(),
+      pumps: 3,
+    );
+
+    expect(find.text('Inception'), findsOneWidget);
+    expect(find.text('Missing'), findsOneWidget);
+  });
 }

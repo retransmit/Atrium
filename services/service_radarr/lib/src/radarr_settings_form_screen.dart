@@ -155,7 +155,6 @@ class _RadarrSettingsFormScreenState
                             ),
                           ),
                           const SizedBox(height: Insets.md),
-
                           TextFormField(
                             controller: _pathController,
                             decoration: const InputDecoration(
@@ -165,13 +164,12 @@ class _RadarrSettingsFormScreenState
                             ),
                             validator: (value) {
                               if (value == null || value.trim().isEmpty) {
-                                  return 'Path cannot be empty';
+                                return 'Path cannot be empty';
                               }
                               return null;
                             },
                           ),
                           const SizedBox(height: Insets.md),
-
                           SwitchListTile(
                             title: const Text('Monitored'),
                             subtitle: const Text(
@@ -184,7 +182,6 @@ class _RadarrSettingsFormScreenState
                             },
                           ),
                           const SizedBox(height: Insets.md),
-
                           profilesAsync.when(
                             loading: () => const Center(
                               child: ExpressiveProgressIndicator(),
@@ -224,7 +221,6 @@ class _RadarrSettingsFormScreenState
                             },
                           ),
                           const SizedBox(height: Insets.md),
-
                           DropdownButtonFormField<String>(
                             initialValue: _minimumAvailability,
                             decoration: const InputDecoration(
@@ -257,7 +253,6 @@ class _RadarrSettingsFormScreenState
                             },
                           ),
                           const SizedBox(height: Insets.md),
-
                           tagsAsync.when(
                             loading: () => const Center(
                               child: ExpressiveProgressIndicator(),
@@ -273,8 +268,7 @@ class _RadarrSettingsFormScreenState
                                 children: [
                                   Text(
                                     'Tags',
-                                    style: theme.textTheme.titleSmall
-                                        ?.copyWith(
+                                    style: theme.textTheme.titleSmall?.copyWith(
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),

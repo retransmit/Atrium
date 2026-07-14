@@ -19,7 +19,8 @@ class BazarrBlacklistTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<BazarrBlacklistItem>> blacklist =
         ref.watch(bazarrBlacklistProvider(instance));
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async => ref.invalidate(bazarrBlacklistProvider(instance)),
       child: AsyncValueView<List<BazarrBlacklistItem>>(
         value: blacklist,

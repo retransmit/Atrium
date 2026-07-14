@@ -225,7 +225,8 @@ class _SeerrIssueDetailScreenState
         child: Column(
           children: <Widget>[
             Expanded(
-              child: M3RefreshIndicator(
+              child: EasyRefresh(
+                header: const MaterialHeader(),
                 onRefresh: () async {
                   _refreshIssue();
                 },

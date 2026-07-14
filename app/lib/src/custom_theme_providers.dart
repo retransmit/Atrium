@@ -11,7 +11,8 @@ class SystemColorSchemeState {
 }
 
 /// Stores the platform-detected system color schemes.
-final systemColorSchemeProvider = StateProvider<SystemColorSchemeState>((ref) => const SystemColorSchemeState(null, null));
+final systemColorSchemeProvider = StateProvider<SystemColorSchemeState>(
+    (ref) => const SystemColorSchemeState(null, null));
 
 DynamicScheme _createDynamicScheme({
   required Color seedColor,
@@ -21,7 +22,7 @@ DynamicScheme _createDynamicScheme({
   final Hct sourceColorHct = Hct.fromInt(seedColor.toARGB32());
   final bool isDark = brightness == Brightness.dark;
   const double contrastLevel = 0.0;
-  
+
   switch (style) {
     case PaletteStyle.content:
       return SchemeContent(
@@ -74,13 +75,14 @@ DynamicScheme _createDynamicScheme({
   }
 }
 
-ColorScheme colorSchemeFromSeedAndStyle(Color seedColor, PaletteStyle style, Brightness brightness) {
+ColorScheme colorSchemeFromSeedAndStyle(
+    Color seedColor, PaletteStyle style, Brightness brightness) {
   final DynamicScheme dynamicScheme = _createDynamicScheme(
     seedColor: seedColor,
     brightness: brightness,
     style: style,
   );
-  
+
   final isLight = brightness == Brightness.light;
   if (isLight) {
     return ColorScheme(
@@ -158,11 +160,12 @@ ColorScheme colorSchemeFromSeedAndStyle(Color seedColor, PaletteStyle style, Bri
 /// Provider for custom ColorScheme pair generated from preferences seed color.
 final customColorSchemeProvider = Provider<(ColorScheme, ColorScheme)>((ref) {
   final prefs = ref.watch(preferencesProvider);
-  
+
   // Default fallback seed color (AtriumTheme violet)
   Color seed = const Color(0xFF6750A4);
-  
-  if (prefs.customSeedColorHex != null && prefs.customSeedColorHex!.isNotEmpty) {
+
+  if (prefs.customSeedColorHex != null &&
+      prefs.customSeedColorHex!.isNotEmpty) {
     try {
       final int? val = int.tryParse(prefs.customSeedColorHex!, radix: 16);
       if (val != null) {
@@ -170,7 +173,7 @@ final customColorSchemeProvider = Provider<(ColorScheme, ColorScheme)>((ref) {
       }
     } catch (_) {}
   }
-  
+
   return (
     colorSchemeFromSeedAndStyle(seed, prefs.paletteStyle, Brightness.light),
     colorSchemeFromSeedAndStyle(seed, prefs.paletteStyle, Brightness.dark),

@@ -65,7 +65,8 @@ class _SeerrIssuesScreenState extends ConsumerState<SeerrIssuesScreen> {
           ),
         ),
         Expanded(
-          child: M3RefreshIndicator(
+          child: EasyRefresh(
+            header: const MaterialHeader(),
             onRefresh: () async {
               ref.invalidate(seerrIssuesProvider(args));
             },

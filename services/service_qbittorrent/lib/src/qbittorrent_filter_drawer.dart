@@ -13,9 +13,11 @@ class QbittorrentFilterDrawer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final statusFilter = ref.watch(qbitFilterStatusProvider(instance));
     final categoryFilter = ref.watch(qbitFilterCategoryProvider(instance));
-    
-    final AsyncValue<List<String>> categoriesAsync = ref.watch(qbitCategoriesProvider(instance));
-    final AsyncValue<List<QbitTorrent>> rawTorrentsAsync = ref.watch(qbitRawTorrentsProvider(instance));
+
+    final AsyncValue<List<String>> categoriesAsync =
+        ref.watch(qbitCategoriesProvider(instance));
+    final AsyncValue<List<QbitTorrent>> rawTorrentsAsync =
+        ref.watch(qbitRawTorrentsProvider(instance));
 
     int getStatusCount(String status, List<QbitTorrent> torrents) {
       return torrents
@@ -57,7 +59,9 @@ class QbittorrentFilterDrawer extends ConsumerWidget {
                     icon: Icons.filter_alt,
                     isSelected: statusFilter == null || statusFilter == 'all',
                     onTap: () {
-                      ref.read(qbitFilterStatusProvider(instance).notifier).state = 'all';
+                      ref
+                          .read(qbitFilterStatusProvider(instance).notifier)
+                          .state = 'all';
                     },
                   ),
                   _FilterTile(
@@ -66,7 +70,9 @@ class QbittorrentFilterDrawer extends ConsumerWidget {
                     icon: Icons.sync,
                     isSelected: statusFilter == 'active',
                     onTap: () {
-                      ref.read(qbitFilterStatusProvider(instance).notifier).state = 'active';
+                      ref
+                          .read(qbitFilterStatusProvider(instance).notifier)
+                          .state = 'active';
                     },
                   ),
                   _FilterTile(
@@ -75,7 +81,9 @@ class QbittorrentFilterDrawer extends ConsumerWidget {
                     icon: Icons.download,
                     isSelected: statusFilter == 'downloading',
                     onTap: () {
-                      ref.read(qbitFilterStatusProvider(instance).notifier).state = 'downloading';
+                      ref
+                          .read(qbitFilterStatusProvider(instance).notifier)
+                          .state = 'downloading';
                     },
                   ),
                   _FilterTile(
@@ -84,7 +92,9 @@ class QbittorrentFilterDrawer extends ConsumerWidget {
                     icon: Icons.upload,
                     isSelected: statusFilter == 'seeding',
                     onTap: () {
-                      ref.read(qbitFilterStatusProvider(instance).notifier).state = 'seeding';
+                      ref
+                          .read(qbitFilterStatusProvider(instance).notifier)
+                          .state = 'seeding';
                     },
                   ),
                   _FilterTile(
@@ -93,7 +103,9 @@ class QbittorrentFilterDrawer extends ConsumerWidget {
                     icon: Icons.stop,
                     isSelected: statusFilter == 'stopped',
                     onTap: () {
-                      ref.read(qbitFilterStatusProvider(instance).notifier).state = 'stopped';
+                      ref
+                          .read(qbitFilterStatusProvider(instance).notifier)
+                          .state = 'stopped';
                     },
                   ),
                   _FilterTile(
@@ -102,7 +114,9 @@ class QbittorrentFilterDrawer extends ConsumerWidget {
                     icon: Icons.check,
                     isSelected: statusFilter == 'completed',
                     onTap: () {
-                      ref.read(qbitFilterStatusProvider(instance).notifier).state = 'completed';
+                      ref
+                          .read(qbitFilterStatusProvider(instance).notifier)
+                          .state = 'completed';
                     },
                   ),
                   _FilterTile(
@@ -111,7 +125,9 @@ class QbittorrentFilterDrawer extends ConsumerWidget {
                     icon: Icons.error_outline,
                     isSelected: statusFilter == 'errored',
                     onTap: () {
-                      ref.read(qbitFilterStatusProvider(instance).notifier).state = 'errored';
+                      ref
+                          .read(qbitFilterStatusProvider(instance).notifier)
+                          .state = 'errored';
                     },
                   ),
                 ],
@@ -131,7 +147,9 @@ class QbittorrentFilterDrawer extends ConsumerWidget {
                     icon: Icons.folder_copy,
                     isSelected: categoryFilter == null,
                     onTap: () {
-                      ref.read(qbitFilterCategoryProvider(instance).notifier).state = null;
+                      ref
+                          .read(qbitFilterCategoryProvider(instance).notifier)
+                          .state = null;
                     },
                   ),
                   _FilterTile(
@@ -140,19 +158,26 @@ class QbittorrentFilterDrawer extends ConsumerWidget {
                     icon: Icons.folder_open,
                     isSelected: categoryFilter == 'uncategorized',
                     onTap: () {
-                      ref.read(qbitFilterCategoryProvider(instance).notifier).state = 'uncategorized';
+                      ref
+                          .read(qbitFilterCategoryProvider(instance).notifier)
+                          .state = 'uncategorized';
                     },
                   ),
                   ...categoriesAsync.maybeWhen(
-                    data: (categories) => categories.map((cat) => _FilterTile(
-                      title: cat,
-                      count: getCategoryCount(cat, torrents),
-                      icon: Icons.folder,
-                      isSelected: categoryFilter == cat,
-                      onTap: () {
-                        ref.read(qbitFilterCategoryProvider(instance).notifier).state = cat;
-                      },
-                    ),),
+                    data: (categories) => categories.map(
+                      (cat) => _FilterTile(
+                        title: cat,
+                        count: getCategoryCount(cat, torrents),
+                        icon: Icons.folder,
+                        isSelected: categoryFilter == cat,
+                        onTap: () {
+                          ref
+                              .read(
+                                  qbitFilterCategoryProvider(instance).notifier)
+                              .state = cat;
+                        },
+                      ),
+                    ),
                     orElse: () => [],
                   ),
                 ],
@@ -189,7 +214,8 @@ class _FilterTile extends StatelessWidget {
       child: ListTile(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
         leading: Icon(icon),
-        title: Text('$title ($count)', style: TextStyle(fontWeight: isSelected ? FontWeight.bold : null)),
+        title: Text('$title ($count)',
+            style: TextStyle(fontWeight: isSelected ? FontWeight.bold : null)),
         onTap: onTap,
         selected: isSelected,
         selectedColor: Theme.of(context).colorScheme.onSecondaryContainer,

@@ -133,9 +133,8 @@ class _PlexItemDetailScreenState extends ConsumerState<PlexItemDetailScreen> {
           actions: <Widget>[
             if (current != null && api != null)
               IconButton(
-                tooltip: _watched(current)
-                    ? 'Mark as unwatched'
-                    : 'Mark as watched',
+                tooltip:
+                    _watched(current) ? 'Mark as unwatched' : 'Mark as watched',
                 icon: Icon(
                   _watched(current)
                       ? Icons.check_circle

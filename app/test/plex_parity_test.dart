@@ -165,8 +165,8 @@ void main() {
         plexApiProvider(instance)
             .overrideWith((Ref ref) async => PlexApi(Dio(), token: 'tok')),
         plexItemDetailProvider((instance, '100')).overrideWith(
-          (Ref ref) async =>
-              const PlexMetadata(ratingKey: '100', title: 'The Wire', type: 'show'),
+          (Ref ref) async => const PlexMetadata(
+              ratingKey: '100', title: 'The Wire', type: 'show'),
         ),
         plexChildrenProvider((instance, '100')).overrideWith(
           (Ref ref) async => const <PlexMetadata>[
@@ -291,8 +291,12 @@ void main() {
         plexOnDeckProvider(instance).overrideWith(
           (Ref ref) async => const <PlexMetadata>[
             PlexMetadata(
-                ratingKey: '10', title: 'Blade Runner', year: 1982,
-                type: 'movie', viewOffset: 600000, duration: 6000000),
+                ratingKey: '10',
+                title: 'Blade Runner',
+                year: 1982,
+                type: 'movie',
+                viewOffset: 600000,
+                duration: 6000000),
           ],
         ),
         plexRecentlyAddedProvider(instance)

@@ -24,6 +24,9 @@ abstract final class AtriumRoutes {
   static const String addInstance = 'add-instance';
   static const String addInstanceName = 'add-instance';
 
+  static const String addInstanceForm = 'add-instance/form/:kind';
+  static const String addInstanceFormName = 'add-instance-form';
+
   static const String editInstance = 'edit-instance/:instanceId';
   static const String editInstanceName = 'edit-instance';
 

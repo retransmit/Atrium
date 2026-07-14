@@ -40,7 +40,8 @@ final jellyfinClientProvider = FutureProvider.family<JellyfinClient, Instance>((
     deviceId: instance.id,
     allowSelfSigned: instance.allowSelfSignedCerts,
     customHeaders: customHeaders,
-    getLocalOverride: (String itemId, String type) => overridesBox.get('${instance.id}_${itemId}_$type'),
+    getLocalOverride: (String itemId, String type) =>
+        overridesBox.get('${instance.id}_${itemId}_$type'),
     setLocalOverride: (String itemId, String type, String tag) {
       if (tag.isEmpty) {
         overridesBox.delete('${instance.id}_${itemId}_$type');
@@ -54,11 +55,13 @@ final jellyfinClientProvider = FutureProvider.family<JellyfinClient, Instance>((
 });
 
 /// Libraries for an instance.
-final jellyfinViewsProvider = FutureProvider.family<List<JellyfinView>, Instance>((
+final jellyfinViewsProvider =
+    FutureProvider.family<List<JellyfinView>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
-  final JellyfinClient client = await ref.watch(jellyfinClientProvider(instance).future);
+  final JellyfinClient client =
+      await ref.watch(jellyfinClientProvider(instance).future);
   return client.getViews();
 });
 
@@ -169,8 +172,8 @@ final jellyfinEpisodesProvider =
   return client.getEpisodes(seriesId, seasonId);
 });
 
-final jellyfinLibraryScanProvider =
-    StreamProvider.autoDispose.family<({String state, double progress})?, Instance>((
+final jellyfinLibraryScanProvider = StreamProvider.autoDispose
+    .family<({String state, double progress})?, Instance>((
   Ref ref,
   Instance instance,
 ) async* {
@@ -322,8 +325,8 @@ final jellyfinFastSessionsProvider =
   }
 });
 
-final jellyfinRemoteImagesProvider = FutureProvider.autoDispose.family<
-    List<JellyfinRemoteImage>, (Instance, String, String)>((
+final jellyfinRemoteImagesProvider = FutureProvider.autoDispose
+    .family<List<JellyfinRemoteImage>, (Instance, String, String)>((
   Ref ref,
   (Instance, String, String) key,
 ) async {

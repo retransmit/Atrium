@@ -67,7 +67,8 @@ class _ActivityTab extends ConsumerWidget {
         ref.watch(tautulliActivityProvider(instance));
     final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).value;
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async => ref.invalidate(tautulliActivityProvider(instance)),
       child: AsyncValueView<TautulliActivity>(
         value: activity,
@@ -512,7 +513,10 @@ class _SessionSheetState extends ConsumerState<_SessionSheet> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 _Poster(
-                    url: api?.imageUrl(s.posterThumb), width: 64, height: 96,),
+                  url: api?.imageUrl(s.posterThumb),
+                  width: 64,
+                  height: 96,
+                ),
                 const SizedBox(width: Insets.md),
                 Expanded(
                   child: Column(
@@ -707,7 +711,8 @@ class _HistoryTab extends ConsumerWidget {
     final AsyncValue<TautulliHistoryPage> history =
         ref.watch(tautulliHistoryProvider(instance));
     final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).value;
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async => ref.invalidate(tautulliHistoryProvider(instance)),
       child: AsyncValueView<TautulliHistoryPage>(
         value: history,
@@ -858,7 +863,8 @@ class _StatsTab extends ConsumerWidget {
     final AsyncValue<List<TautulliHomeStat>> stats =
         ref.watch(tautulliHomeStatsProvider(instance));
     final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).value;
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async =>
           ref.invalidate(tautulliHomeStatsProvider(instance)),
       child: AsyncValueView<List<TautulliHomeStat>>(
@@ -1067,7 +1073,8 @@ class _UsersTab extends ConsumerWidget {
     final AsyncValue<List<TautulliUser>> users =
         ref.watch(tautulliUsersProvider(instance));
     final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).value;
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async => ref.invalidate(tautulliUsersProvider(instance)),
       child: AsyncValueView<List<TautulliUser>>(
         value: users,

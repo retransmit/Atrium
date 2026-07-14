@@ -28,38 +28,37 @@ const Duration qbitDetailPollInterval = Duration(seconds: 10);
 /// failed-login ban counter on flaky networks).
 final qbittorrentClientProvider =
     FutureProvider.family<QbittorrentClient, Instance>((
-      Ref ref,
-      Instance instance,
-    ) async {
-      final ConnectionResolver resolver =
-          ref.watch(connectionResolverProvider);
-      final Uri baseUrl = await resolver.resolve(instance);
-      final (String username, String password, String? apiKey) =
-          switch (instance.auth) {
-        InstanceAuthCookie(:final String username, :final String password) => (
-            username,
-            password,
-            null,
-          ),
-        // qBittorrent 5.2+ stateless key auth (Authorization: Bearer).
-        InstanceAuthApiKey(:final String apiKey) => ('', '', apiKey),
-        _ => ('', '', null),
-      };
-      final Map<String, String> customHeaders = mergeHeaders(
-        ref.watch(globalHeadersProvider),
-        instance.customHeaders,
-      );
-      final QbittorrentClient client = QbittorrentClient.create(
-        baseUrl: baseUrl,
-        username: username,
-        password: password,
-        apiKey: apiKey,
-        allowSelfSigned: instance.allowSelfSignedCerts,
-        customHeaders: customHeaders,
-      );
-      ref.onDispose(client.close);
-      return client;
-    });
+  Ref ref,
+  Instance instance,
+) async {
+  final ConnectionResolver resolver = ref.watch(connectionResolverProvider);
+  final Uri baseUrl = await resolver.resolve(instance);
+  final (String username, String password, String? apiKey) =
+      switch (instance.auth) {
+    InstanceAuthCookie(:final String username, :final String password) => (
+        username,
+        password,
+        null,
+      ),
+    // qBittorrent 5.2+ stateless key auth (Authorization: Bearer).
+    InstanceAuthApiKey(:final String apiKey) => ('', '', apiKey),
+    _ => ('', '', null),
+  };
+  final Map<String, String> customHeaders = mergeHeaders(
+    ref.watch(globalHeadersProvider),
+    instance.customHeaders,
+  );
+  final QbittorrentClient client = QbittorrentClient.create(
+    baseUrl: baseUrl,
+    username: username,
+    password: password,
+    apiKey: apiKey,
+    allowSelfSigned: instance.allowSelfSignedCerts,
+    customHeaders: customHeaders,
+  );
+  ref.onDispose(client.close);
+  return client;
+});
 
 enum QbitSortField {
   addedOn,
@@ -83,25 +82,42 @@ enum QbitSortField {
 extension QbitSortFieldExt on QbitSortField {
   String get displayName {
     switch (this) {
-      case QbitSortField.addedOn: return 'Added On';
-      case QbitSortField.name: return 'Name';
-      case QbitSortField.size: return 'Size';
-      case QbitSortField.progress: return 'Progress';
-      case QbitSortField.status: return 'Status';
-      case QbitSortField.seeds: return 'Seeds';
-      case QbitSortField.peers: return 'Peers';
-      case QbitSortField.dlSpeed: return 'Down Speed';
-      case QbitSortField.upSpeed: return 'Up Speed';
-      case QbitSortField.eta: return 'ETA';
-      case QbitSortField.ratio: return 'Ratio';
-      case QbitSortField.priority: return 'Priority';
-      case QbitSortField.category: return 'Category';
-      case QbitSortField.completedOn: return 'Completed On';
-      case QbitSortField.sessionDl: return 'Session Download';
-      case QbitSortField.sessionUp: return 'Session Upload';
+      case QbitSortField.addedOn:
+        return 'Added On';
+      case QbitSortField.name:
+        return 'Name';
+      case QbitSortField.size:
+        return 'Size';
+      case QbitSortField.progress:
+        return 'Progress';
+      case QbitSortField.status:
+        return 'Status';
+      case QbitSortField.seeds:
+        return 'Seeds';
+      case QbitSortField.peers:
+        return 'Peers';
+      case QbitSortField.dlSpeed:
+        return 'Down Speed';
+      case QbitSortField.upSpeed:
+        return 'Up Speed';
+      case QbitSortField.eta:
+        return 'ETA';
+      case QbitSortField.ratio:
+        return 'Ratio';
+      case QbitSortField.priority:
+        return 'Priority';
+      case QbitSortField.category:
+        return 'Category';
+      case QbitSortField.completedOn:
+        return 'Completed On';
+      case QbitSortField.sessionDl:
+        return 'Session Download';
+      case QbitSortField.sessionUp:
+        return 'Session Upload';
     }
   }
 }
+
 class QbitSortConfig {
   const QbitSortConfig({required this.field, required this.ascending});
   final QbitSortField field;
@@ -115,12 +131,15 @@ class QbitSortConfig {
   }
 }
 
-final qbitSortProvider = StateProvider.family<QbitSortConfig, Instance>((ref, instance) {
+final qbitSortProvider =
+    StateProvider.family<QbitSortConfig, Instance>((ref, instance) {
   return const QbitSortConfig(field: QbitSortField.addedOn, ascending: false);
 });
 
-final qbitFilterStatusProvider = StateProvider.autoDispose.family<String?, Instance>((ref, instance) => null);
-final qbitFilterCategoryProvider = StateProvider.autoDispose.family<String?, Instance>((ref, instance) => null);
+final qbitFilterStatusProvider = StateProvider.autoDispose
+    .family<String?, Instance>((ref, instance) => null);
+final qbitFilterCategoryProvider = StateProvider.autoDispose
+    .family<String?, Instance>((ref, instance) => null);
 
 /// Whether a torrent belongs to the given status filter bucket.
 ///
@@ -171,14 +190,14 @@ bool qbitStatusMatches(String status, QbitTorrent t) {
 /// goes away (autoDispose).
 final qbitRawTorrentsProvider =
     FutureProvider.autoDispose.family<List<QbitTorrent>, Instance>((
-      Ref ref,
-      Instance instance,
-    ) async {
-      ref.pollEvery(qbitListPollInterval);
-      final QbittorrentClient client =
-          await ref.watch(qbittorrentClientProvider(instance).future);
-      return client.getTorrents();
-    });
+  Ref ref,
+  Instance instance,
+) async {
+  ref.pollEvery(qbitListPollInterval);
+  final QbittorrentClient client =
+      await ref.watch(qbittorrentClientProvider(instance).future);
+  return client.getTorrents();
+});
 
 final qbitSearchProvider =
     StateProvider.autoDispose.family<String, Instance>((ref, instance) => '');
@@ -194,16 +213,18 @@ final qbitTorrentsProvider = Provider.autoDispose
       ref.watch(qbitSearchProvider(instance)).toLowerCase();
 
   final String? statusFilter = ref.watch(qbitFilterStatusProvider(instance));
-  final String? categoryFilter = ref.watch(qbitFilterCategoryProvider(instance));
+  final String? categoryFilter =
+      ref.watch(qbitFilterCategoryProvider(instance));
 
   return rawAsync.whenData((List<QbitTorrent> raw) {
     final List<QbitTorrent> torrents = List<QbitTorrent>.of(raw);
 
     if (searchQuery.isNotEmpty) {
       torrents.retainWhere(
-          (QbitTorrent t) => t.name.toLowerCase().contains(searchQuery),);
+        (QbitTorrent t) => t.name.toLowerCase().contains(searchQuery),
+      );
     }
-    
+
     if (statusFilter != null && statusFilter != 'all') {
       torrents.retainWhere(
         (QbitTorrent t) => qbitStatusMatches(statusFilter, t),
@@ -267,84 +288,84 @@ final qbitTorrentsProvider = Provider.autoDispose
 /// Global transfer stats for an instance. Polls with the list.
 final qbitTransferProvider =
     FutureProvider.autoDispose.family<QbitTransferInfo, Instance>((
-      Ref ref,
-      Instance instance,
-    ) async {
-      ref.pollEvery(qbitListPollInterval);
-      final QbittorrentClient client =
-          await ref.watch(qbittorrentClientProvider(instance).future);
-      return client.getTransferInfo();
-    });
+  Ref ref,
+  Instance instance,
+) async {
+  ref.pollEvery(qbitListPollInterval);
+  final QbittorrentClient client =
+      await ref.watch(qbittorrentClientProvider(instance).future);
+  return client.getTransferInfo();
+});
 
 /// Category names defined on an instance. Fetched on demand (no polling -
 /// categories rarely change).
 final qbitCategoriesProvider =
     FutureProvider.autoDispose.family<List<String>, Instance>((
-      Ref ref,
-      Instance instance,
-    ) async {
-      final QbittorrentClient client =
-          await ref.watch(qbittorrentClientProvider(instance).future);
-      return client.getCategories();
-    });
+  Ref ref,
+  Instance instance,
+) async {
+  final QbittorrentClient client =
+      await ref.watch(qbittorrentClientProvider(instance).future);
+  return client.getCategories();
+});
 
 /// Detailed properties for one torrent, keyed by (instance, hash).
 final qbitPropertiesProvider = FutureProvider.autoDispose
-        .family<QbitTorrentProperties, (Instance, String)>((
-      Ref ref,
-      (Instance, String) key,
-    ) async {
-      ref.pollEvery(qbitDetailPollInterval);
-      final (Instance instance, String hash) = key;
-      final QbittorrentClient client =
-          await ref.watch(qbittorrentClientProvider(instance).future);
-      return client.getProperties(hash);
-    });
+    .family<QbitTorrentProperties, (Instance, String)>((
+  Ref ref,
+  (Instance, String) key,
+) async {
+  ref.pollEvery(qbitDetailPollInterval);
+  final (Instance instance, String hash) = key;
+  final QbittorrentClient client =
+      await ref.watch(qbittorrentClientProvider(instance).future);
+  return client.getProperties(hash);
+});
 
 /// File list for one torrent, keyed by (instance, hash).
 final qbitFilesProvider =
     FutureProvider.autoDispose.family<List<QbitFile>, (Instance, String)>((
-      Ref ref,
-      (Instance, String) key,
-    ) async {
-      ref.pollEvery(qbitDetailPollInterval);
-      final (Instance instance, String hash) = key;
-      final QbittorrentClient client =
-          await ref.watch(qbittorrentClientProvider(instance).future);
-      return client.getFiles(hash);
-    });
+  Ref ref,
+  (Instance, String) key,
+) async {
+  ref.pollEvery(qbitDetailPollInterval);
+  final (Instance instance, String hash) = key;
+  final QbittorrentClient client =
+      await ref.watch(qbittorrentClientProvider(instance).future);
+  return client.getFiles(hash);
+});
 
 /// Tracker list for one torrent, keyed by (instance, hash).
 final qbitTrackersProvider =
     FutureProvider.autoDispose.family<List<QbitTracker>, (Instance, String)>((
-      Ref ref,
-      (Instance, String) key,
-    ) async {
-      ref.pollEvery(qbitDetailPollInterval);
-      final (Instance instance, String hash) = key;
-      final QbittorrentClient client =
-          await ref.watch(qbittorrentClientProvider(instance).future);
-      return client.getTrackers(hash);
-    });
+  Ref ref,
+  (Instance, String) key,
+) async {
+  ref.pollEvery(qbitDetailPollInterval);
+  final (Instance instance, String hash) = key;
+  final QbittorrentClient client =
+      await ref.watch(qbittorrentClientProvider(instance).future);
+  return client.getTrackers(hash);
+});
 
 /// Holds the set of currently selected torrent hashes for multi-select actions.
 final qbitSelectionProvider =
     StateProvider.autoDispose.family<Set<String>, Instance>((
-      Ref ref,
-      Instance instance,
-    ) {
-      return <String>{};
-    });
+  Ref ref,
+  Instance instance,
+) {
+  return <String>{};
+});
 
 /// Peers list for one torrent, keyed by (instance, hash).
 final qbitPeersProvider =
     FutureProvider.autoDispose.family<List<QbitPeer>, (Instance, String)>((
-      Ref ref,
-      (Instance, String) key,
-    ) async {
-      ref.pollEvery(qbitDetailPollInterval);
-      final (Instance instance, String hash) = key;
-      final QbittorrentClient client =
-          await ref.watch(qbittorrentClientProvider(instance).future);
-      return client.getPeers(hash);
-    });
+  Ref ref,
+  (Instance, String) key,
+) async {
+  ref.pollEvery(qbitDetailPollInterval);
+  final (Instance instance, String hash) = key;
+  final QbittorrentClient client =
+      await ref.watch(qbittorrentClientProvider(instance).future);
+  return client.getPeers(hash);
+});

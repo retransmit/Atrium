@@ -8,16 +8,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'glances_api.dart';
 import 'models/glances_stats.dart';
 
-final glancesApiProvider =
-    Provider.family<Future<GlancesApi>, Instance>(
-        (Ref ref, Instance instance) async {
+final glancesApiProvider = Provider.family<Future<GlancesApi>, Instance>(
+    (Ref ref, Instance instance) async {
   final DioFactory factory = ref.watch(dioFactoryProvider);
   return GlancesApi(await factory.create(instance));
 });
 
-final glancesStatsProvider =
-    FutureProvider.autoDispose.family<GlancesStats, Instance>(
-        (Ref ref, Instance instance) async {
+final glancesStatsProvider = FutureProvider.autoDispose
+    .family<GlancesStats, Instance>((Ref ref, Instance instance) async {
   ref.pollEvery(Duration(seconds: instance.pollingIntervalSeconds));
   final GlancesApi api = await ref.watch(glancesApiProvider(instance));
   return api.getStats();

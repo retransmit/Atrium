@@ -16,5 +16,5 @@ final Provider<HealthProbe> healthProbeProvider = Provider<HealthProbe>((
 /// (unreachable) - far more meaningful than a blind `GET /`.
 final instanceHealthProvider =
     FutureProvider.family<Health, Instance>((Ref ref, Instance instance) {
-      return ref.watch(healthProbeProvider).check(instance);
-    });
+  return ref.watch(healthProbeProvider).check(instance);
+});

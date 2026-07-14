@@ -17,7 +17,8 @@ class BazarrHistoryTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<BazarrHistoryItem>> history =
         ref.watch(bazarrHistoryProvider(instance));
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async => ref.invalidate(bazarrHistoryProvider(instance)),
       child: AsyncValueView<List<BazarrHistoryItem>>(
         value: history,

@@ -129,11 +129,14 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
               onClear: () {
                 ref
                     .read(
-                        sonarrQueueSelectionProvider(widget.instance).notifier,)
+                      sonarrQueueSelectionProvider(widget.instance).notifier,
+                    )
                     .state = {};
                 ref
-                    .read(sonarrBlocklistSelectionProvider(widget.instance)
-                        .notifier,)
+                    .read(
+                      sonarrBlocklistSelectionProvider(widget.instance)
+                          .notifier,
+                    )
                     .state = {};
               },
             )
@@ -157,13 +160,17 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
                       icon: const Icon(Icons.close),
                       onPressed: () {
                         ref
-                            .read(sonarrQueueSelectionProvider(widget.instance)
-                                .notifier,)
+                            .read(
+                              sonarrQueueSelectionProvider(widget.instance)
+                                  .notifier,
+                            )
                             .state = {};
                         ref
-                            .read(sonarrBlocklistSelectionProvider(
-                                    widget.instance,)
-                                .notifier,)
+                            .read(
+                              sonarrBlocklistSelectionProvider(
+                                widget.instance,
+                              ).notifier,
+                            )
                             .state = {};
                       },
                     )
@@ -344,7 +351,8 @@ class _QueueView extends ConsumerWidget {
           );
         }
 
-        return M3RefreshIndicator(
+        return EasyRefresh(
+          header: const MaterialHeader(),
           onRefresh: () async {
             ref.invalidate(sonarrQueueProvider(instance));
             await ref.read(sonarrQueueProvider(instance).future);
@@ -739,21 +747,28 @@ class _QueueItemCard extends ConsumerWidget {
               children: <Widget>[
                 _DetailRow(label: 'Title', value: item.title ?? 'No title'),
                 _DetailRow(
-                    label: 'Series',
-                    value: item.series?.title ?? 'Unknown Series',),
+                  label: 'Series',
+                  value: item.series?.title ?? 'Unknown Series',
+                ),
                 _DetailRow(label: 'Episodes', value: episodesDisplay),
                 _DetailRow(label: 'Status', value: item.status ?? 'Unknown'),
                 _DetailRow(
-                    label: 'Tracked State',
-                    value: item.trackedDownloadState ?? 'None',),
+                  label: 'Tracked State',
+                  value: item.trackedDownloadState ?? 'None',
+                ),
                 _DetailRow(
-                    label: 'Download Client',
-                    value: item.downloadClient ?? 'Unknown',),
+                  label: 'Download Client',
+                  value: item.downloadClient ?? 'Unknown',
+                ),
                 _DetailRow(
-                    label: 'Download ID', value: item.downloadId ?? 'Unknown',),
+                  label: 'Download ID',
+                  value: item.downloadId ?? 'Unknown',
+                ),
                 _DetailRow(label: 'Indexer', value: item.indexer ?? 'Unknown'),
                 _DetailRow(
-                    label: 'Output Path', value: item.outputPath ?? 'Unknown',),
+                  label: 'Output Path',
+                  value: item.outputPath ?? 'Unknown',
+                ),
                 if (item.errorMessage != null &&
                     item.errorMessage!.isNotEmpty) ...[
                   const SizedBox(height: 12),
@@ -813,7 +828,8 @@ class _QueueItemCard extends ConsumerWidget {
           builder: (BuildContext context, StateSetter setState) {
             return AlertDialog(
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(28),),
+                borderRadius: BorderRadius.circular(28),
+              ),
               title: Text(
                 'Remove from Queue',
                 style: theme.textTheme.titleLarge?.copyWith(
@@ -845,7 +861,8 @@ class _QueueItemCard extends ConsumerWidget {
                   CheckboxListTile(
                     title: const Text('Blocklist this release'),
                     subtitle: const Text(
-                        'Prevents Sonarr from grabbing this file again',),
+                      'Prevents Sonarr from grabbing this file again',
+                    ),
                     value: blocklist,
                     controlAffinity: ListTileControlAffinity.leading,
                     contentPadding: EdgeInsets.zero,
@@ -987,7 +1004,8 @@ class _HistoryView extends ConsumerWidget {
             return latestB.compareTo(latestA);
           });
 
-          return M3RefreshIndicator(
+          return EasyRefresh(
+            header: const MaterialHeader(),
             onRefresh: () async {
               ref.invalidate(sonarrHistoryProvider(instance));
               await ref.read(sonarrHistoryProvider(instance).future);
@@ -1017,7 +1035,8 @@ class _HistoryView extends ConsumerWidget {
           );
         } else {
           // Plain list layout
-          return M3RefreshIndicator(
+          return EasyRefresh(
+            header: const MaterialHeader(),
             onRefresh: () async {
               ref.invalidate(sonarrHistoryProvider(instance));
               await ref.read(sonarrHistoryProvider(instance).future);
@@ -1257,7 +1276,11 @@ class _GroupedHistoryCardState extends ConsumerState<_GroupedHistoryCard> {
                         IconButton(
                           icon: const Icon(Icons.info_outline, size: 20),
                           onPressed: () => _showHistoryDetails(
-                              context, ref, widget.instance, item,),
+                            context,
+                            ref,
+                            widget.instance,
+                            item,
+                          ),
                         ),
                       ],
                     ),
@@ -1412,7 +1435,8 @@ class _BlocklistView extends ConsumerWidget {
             return latestB.compareTo(latestA);
           });
 
-          return M3RefreshIndicator(
+          return EasyRefresh(
+            header: const MaterialHeader(),
             onRefresh: () async {
               ref.invalidate(sonarrBlocklistProvider(instance));
               await ref.read(sonarrBlocklistProvider(instance).future);
@@ -1442,7 +1466,8 @@ class _BlocklistView extends ConsumerWidget {
           );
         } else {
           // Plain list layout
-          return M3RefreshIndicator(
+          return EasyRefresh(
+            header: const MaterialHeader(),
             onRefresh: () async {
               ref.invalidate(sonarrBlocklistProvider(instance));
               await ref.read(sonarrBlocklistProvider(instance).future);
@@ -1698,8 +1723,9 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
 
                   void toggleItemSelection() {
                     final notifier = ref.read(
-                        sonarrBlocklistSelectionProvider(widget.instance)
-                            .notifier,);
+                      sonarrBlocklistSelectionProvider(widget.instance)
+                          .notifier,
+                    );
                     if (isItemSelected) {
                       notifier.state =
                           selection.where((id) => id != item.id).toSet();
@@ -1801,7 +1827,11 @@ class _GroupedBlocklistCardState extends ConsumerState<_GroupedBlocklistCard> {
                                 color: theme.colorScheme.error,
                               ),
                               onPressed: () => _confirmDeleteBlocklistItem(
-                                  context, ref, widget.instance, item,),
+                                context,
+                                ref,
+                                widget.instance,
+                                item,
+                              ),
                             ),
                         ],
                       ),
@@ -2029,7 +2059,9 @@ void _showHistoryDetails(
               _DetailRow(label: 'Event Type', value: eventType.toUpperCase()),
               _DetailRow(label: 'Date', value: _formatDateTime(item.date)),
               _DetailRow(
-                  label: 'Source Title', value: item.sourceTitle ?? 'None',),
+                label: 'Source Title',
+                value: item.sourceTitle ?? 'None',
+              ),
               if (item.downloadId != null)
                 _DetailRow(label: 'Download ID', value: item.downloadId!),
               if (item.data != null && item.data!.isNotEmpty) ...[
@@ -2069,7 +2101,8 @@ void _showHistoryDetails(
           if (eventType.toLowerCase() == 'grabbed')
             TextButton(
               style: TextButton.styleFrom(
-                  foregroundColor: theme.colorScheme.error,),
+                foregroundColor: theme.colorScheme.error,
+              ),
               onPressed: () async {
                 Navigator.of(context).pop();
                 try {
@@ -2148,7 +2181,8 @@ void _confirmDeleteBlocklistItem(
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                        content: Text('Item removed from blocklist.'),),
+                      content: Text('Item removed from blocklist.'),
+                    ),
                   );
                 }
               } catch (e) {
@@ -2302,7 +2336,8 @@ class _QueueBulkGrabDialog extends ConsumerWidget {
     return AlertDialog(
       title: Text('Force Grab ${selectedIds.length} Releases?'),
       content: const Text(
-          'Are you sure you want to force download the selected releases from the queue?',),
+        'Are you sure you want to force download the selected releases from the queue?',
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
@@ -2344,7 +2379,8 @@ class _QueueBulkGrabDialog extends ConsumerWidget {
 
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                  content: Text('Forced grab successfully triggered'),),
+                content: Text('Forced grab successfully triggered'),
+              ),
             );
           },
           child: const Text('Force Grab'),
@@ -2383,7 +2419,8 @@ class _QueueBulkDeleteDialogState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-              'Are you sure you want to remove these items from download client queue?',),
+            'Are you sure you want to remove these items from download client queue?',
+          ),
           const SizedBox(height: 16),
           CheckboxListTile(
             title: const Text('Add items to blocklist'),
@@ -2419,8 +2456,10 @@ class _QueueBulkDeleteDialogState
             try {
               final api =
                   await ref.read(sonarrApiProvider(widget.instance).future);
-              await api.bulkDeleteQueue(widget.selectedIds.toList(),
-                  blocklist: _blocklist,);
+              await api.bulkDeleteQueue(
+                widget.selectedIds.toList(),
+                blocklist: _blocklist,
+              );
             } catch (e) {
               error = e;
             } finally {
@@ -2465,7 +2504,8 @@ class _BlocklistBulkDeleteDialog extends ConsumerWidget {
     return AlertDialog(
       title: Text('Remove ${selectedIds.length} items from Blocklist?'),
       content: const Text(
-          'Are you sure you want to remove these items from blocklist? Sonarr will be able to search and grab these releases again.',),
+        'Are you sure you want to remove these items from blocklist? Sonarr will be able to search and grab these releases again.',
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
@@ -2511,7 +2551,8 @@ class _BlocklistBulkDeleteDialog extends ConsumerWidget {
 
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                  content: Text('Successfully removed items from blocklist'),),
+                content: Text('Successfully removed items from blocklist'),
+              ),
             );
           },
           child: const Text('Remove'),

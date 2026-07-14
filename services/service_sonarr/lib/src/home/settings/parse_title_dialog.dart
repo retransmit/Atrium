@@ -11,10 +11,12 @@ class SonarrParseTitleDialog extends ConsumerStatefulWidget {
   final Instance instance;
 
   @override
-  ConsumerState<SonarrParseTitleDialog> createState() => _SonarrParseTitleDialogState();
+  ConsumerState<SonarrParseTitleDialog> createState() =>
+      _SonarrParseTitleDialogState();
 }
 
-class _SonarrParseTitleDialogState extends ConsumerState<SonarrParseTitleDialog> {
+class _SonarrParseTitleDialogState
+    extends ConsumerState<SonarrParseTitleDialog> {
   final _controller = TextEditingController();
   String _query = '';
 
@@ -27,7 +29,7 @@ class _SonarrParseTitleDialogState extends ConsumerState<SonarrParseTitleDialog>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     final parseAsync = _query.trim().isNotEmpty
         ? ref.watch(sonarrParseResultProvider((widget.instance, _query.trim())))
         : null;
@@ -108,30 +110,44 @@ class _SonarrParseTitleDialogState extends ConsumerState<SonarrParseTitleDialog>
                   child: parseAsync.when(
                     data: (data) {
                       if (data == null) {
-                        return const Center(child: Text('Failed to parse title.'));
+                        return const Center(
+                            child: Text('Failed to parse title.'));
                       }
-                      final parsedInfo = data['parsedEpisodeInfo'] as Map<String, dynamic>?;
+                      final parsedInfo =
+                          data['parsedEpisodeInfo'] as Map<String, dynamic>?;
                       if (parsedInfo == null) {
-                        return const Center(child: Text('Could not extract episode details.'));
+                        return const Center(
+                            child: Text('Could not extract episode details.'));
                       }
 
-                      final String? parsedSeriesTitle = parsedInfo['seriesTitle'] as String?;
-                      final int? seasonNumber = parsedInfo['seasonNumber'] as int?;
-                      final List<dynamic>? episodeNumbers = parsedInfo['episodeNumbers'] as List<dynamic>?;
-                      final String? releaseGroup = parsedInfo['releaseGroup'] as String?;
-                      
-                      final qualityMap = parsedInfo['quality'] as Map<String, dynamic>?;
-                      final qualityInner = qualityMap?['quality'] as Map<String, dynamic>?;
-                      final String? qualityName = qualityInner?['name'] as String?;
-                      
-                      final languages = parsedInfo['languages'] as List<dynamic>?;
+                      final String? parsedSeriesTitle =
+                          parsedInfo['seriesTitle'] as String?;
+                      final int? seasonNumber =
+                          parsedInfo['seasonNumber'] as int?;
+                      final List<dynamic>? episodeNumbers =
+                          parsedInfo['episodeNumbers'] as List<dynamic>?;
+                      final String? releaseGroup =
+                          parsedInfo['releaseGroup'] as String?;
+
+                      final qualityMap =
+                          parsedInfo['quality'] as Map<String, dynamic>?;
+                      final qualityInner =
+                          qualityMap?['quality'] as Map<String, dynamic>?;
+                      final String? qualityName =
+                          qualityInner?['name'] as String?;
+
+                      final languages =
+                          parsedInfo['languages'] as List<dynamic>?;
                       final List<String> languageNames = languages
-                              ?.map((l) => (l as Map<String, dynamic>)['name'] as String)
+                              ?.map((l) =>
+                                  (l as Map<String, dynamic>)['name'] as String)
                               .toList() ??
                           [];
 
-                      final matchingSeries = data['series'] as Map<String, dynamic>?;
-                      final matchingSeriesTitle = matchingSeries?['title'] as String?;
+                      final matchingSeries =
+                          data['series'] as Map<String, dynamic>?;
+                      final matchingSeriesTitle =
+                          matchingSeries?['title'] as String?;
 
                       return SingleChildScrollView(
                         child: Column(
@@ -145,7 +161,8 @@ class _SonarrParseTitleDialogState extends ConsumerState<SonarrParseTitleDialog>
                               ),
                             ),
                             const SizedBox(height: Insets.sm),
-                            _buildInfoRow(theme, 'Series Name', parsedSeriesTitle ?? 'N/A'),
+                            _buildInfoRow(theme, 'Series Name',
+                                parsedSeriesTitle ?? 'N/A'),
                             _buildInfoRow(
                               theme,
                               'Season / Episode',
@@ -153,9 +170,16 @@ class _SonarrParseTitleDialogState extends ConsumerState<SonarrParseTitleDialog>
                                   ? 'Season $seasonNumber, Episode ${episodeNumbers?.join(', ') ?? ''}'
                                   : 'N/A',
                             ),
-                            _buildInfoRow(theme, 'Quality', qualityName ?? 'N/A'),
-                            _buildInfoRow(theme, 'Release Group', releaseGroup ?? 'N/A'),
-                            _buildInfoRow(theme, 'Language', languageNames.isNotEmpty ? languageNames.join(', ') : 'N/A'),
+                            _buildInfoRow(
+                                theme, 'Quality', qualityName ?? 'N/A'),
+                            _buildInfoRow(
+                                theme, 'Release Group', releaseGroup ?? 'N/A'),
+                            _buildInfoRow(
+                                theme,
+                                'Language',
+                                languageNames.isNotEmpty
+                                    ? languageNames.join(', ')
+                                    : 'N/A'),
                             const SizedBox(height: Insets.md),
                             Text(
                               'Sonarr Database Match',
@@ -199,7 +223,8 @@ class _SonarrParseTitleDialogState extends ConsumerState<SonarrParseTitleDialog>
     );
   }
 
-  Widget _buildInfoRow(ThemeData theme, String label, String value, {Color? valueColor}) {
+  Widget _buildInfoRow(ThemeData theme, String label, String value,
+      {Color? valueColor}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(

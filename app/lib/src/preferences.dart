@@ -58,9 +58,14 @@ class Preferences {
         fontFamily: fontFamily != null ? fontFamily() : this.fontFamily,
         themeSource: themeSource ?? this.themeSource,
         paletteStyle: paletteStyle ?? this.paletteStyle,
-        customSeedColorHex: customSeedColorHex != null ? customSeedColorHex() : this.customSeedColorHex,
-        customImagePath: customImagePath != null ? customImagePath() : this.customImagePath,
-        customImageColorsCsv: customImageColorsCsv != null ? customImageColorsCsv() : this.customImageColorsCsv,
+        customSeedColorHex: customSeedColorHex != null
+            ? customSeedColorHex()
+            : this.customSeedColorHex,
+        customImagePath:
+            customImagePath != null ? customImagePath() : this.customImagePath,
+        customImageColorsCsv: customImageColorsCsv != null
+            ? customImageColorsCsv()
+            : this.customImageColorsCsv,
       );
 }
 

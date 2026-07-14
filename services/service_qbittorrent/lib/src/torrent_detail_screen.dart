@@ -102,21 +102,35 @@ class TorrentDetailScreen extends ConsumerWidget {
               },
               itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
                 const PopupMenuItem<String>(
-                    value: 'pause', child: Text('Pause'),),
+                  value: 'pause',
+                  child: Text('Pause'),
+                ),
                 const PopupMenuItem<String>(
-                    value: 'resume', child: Text('Resume'),),
+                  value: 'resume',
+                  child: Text('Resume'),
+                ),
                 const PopupMenuItem<String>(
-                    value: 'forcestart', child: Text('Force Start'),),
+                  value: 'forcestart',
+                  child: Text('Force Start'),
+                ),
                 const PopupMenuDivider(),
                 const PopupMenuItem<String>(
-                    value: 'copy_magnet', child: Text('Copy Magnet Link'),),
+                  value: 'copy_magnet',
+                  child: Text('Copy Magnet Link'),
+                ),
                 const PopupMenuItem<String>(
-                    value: 'copy_hash', child: Text('Copy Hash'),),
+                  value: 'copy_hash',
+                  child: Text('Copy Hash'),
+                ),
                 const PopupMenuDivider(),
                 const PopupMenuItem<String>(
-                    value: 'recheck', child: Text('Force Recheck'),),
+                  value: 'recheck',
+                  child: Text('Force Recheck'),
+                ),
                 const PopupMenuItem<String>(
-                    value: 'reannounce', child: Text('Force Reannounce'),),
+                  value: 'reannounce',
+                  child: Text('Force Reannounce'),
+                ),
               ],
             ),
           ],
@@ -225,7 +239,8 @@ class _OverviewTab extends ConsumerWidget {
         torrent.state.contains('paused') || torrent.state.contains('stopped');
     final double progress = torrent.progress.clamp(0, 1).toDouble();
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async =>
           ref.invalidate(qbitPropertiesProvider((instance, torrent.hash))),
       child: AsyncValueView<QbitTorrentProperties>(
@@ -322,8 +337,11 @@ class _OverviewTab extends ConsumerWidget {
                         ),
                         const Spacer(),
                         if (progress < 1.0) ...<Widget>[
-                          Icon(Icons.schedule,
-                              size: 14, color: cs.onSurfaceVariant,),
+                          Icon(
+                            Icons.schedule,
+                            size: 14,
+                            color: cs.onSurfaceVariant,
+                          ),
                           const SizedBox(width: 2),
                           Text(
                             _fmtEta(torrent.eta),
@@ -346,11 +364,14 @@ class _OverviewTab extends ConsumerWidget {
                                   actionColor.withValues(alpha: 0.15),
                               foregroundColor: actionColor,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8,),
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
                             ),
                             icon: Icon(
-                                isPaused ? Icons.play_arrow : Icons.pause,
-                                size: 18,),
+                              isPaused ? Icons.play_arrow : Icons.pause,
+                              size: 18,
+                            ),
                             label: Text(isPaused ? 'Resume' : 'Pause'),
                             onPressed: () async {
                               final ScaffoldMessengerState messenger =
@@ -366,11 +387,13 @@ class _OverviewTab extends ConsumerWidget {
                                 }
                                 if (!context.mounted) return;
                                 ref.invalidate(
-                                    qbitRawTorrentsProvider(instance),);
+                                  qbitRawTorrentsProvider(instance),
+                                );
                               } catch (_) {
                                 messenger.showSnackBar(
                                   const SnackBar(
-                                      content: Text('Action failed'),),
+                                    content: Text('Action failed'),
+                                  ),
                                 );
                               }
                             },
@@ -381,7 +404,9 @@ class _OverviewTab extends ConsumerWidget {
                                   actionColor.withValues(alpha: 0.15),
                               foregroundColor: actionColor,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8,),
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
                             ),
                             icon: const Icon(Icons.fast_forward, size: 18),
                             label: const Text('Force Start'),
@@ -398,11 +423,13 @@ class _OverviewTab extends ConsumerWidget {
                                 );
                                 if (!context.mounted) return;
                                 ref.invalidate(
-                                    qbitRawTorrentsProvider(instance),);
+                                  qbitRawTorrentsProvider(instance),
+                                );
                               } catch (_) {
                                 messenger.showSnackBar(
                                   const SnackBar(
-                                      content: Text('Action failed'),),
+                                    content: Text('Action failed'),
+                                  ),
                                 );
                               }
                             },
@@ -412,7 +439,9 @@ class _OverviewTab extends ConsumerWidget {
                               backgroundColor: cs.surfaceContainerHighest,
                               foregroundColor: cs.onSurfaceVariant,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8,),
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
                             ),
                             icon: const Icon(Icons.link, size: 18),
                             label: const Text('Magnet'),
@@ -423,7 +452,8 @@ class _OverviewTab extends ConsumerWidget {
                                   ? torrent.magnetUri
                                   : 'magnet:?xt=urn:btih:${torrent.hash}&dn=${Uri.encodeComponent(torrent.name)}';
                               await Clipboard.setData(
-                                  ClipboardData(text: magnet),);
+                                ClipboardData(text: magnet),
+                              );
                               messenger.showSnackBar(
                                 const SnackBar(
                                   content: Text('Magnet link copied'),
@@ -436,7 +466,9 @@ class _OverviewTab extends ConsumerWidget {
                               backgroundColor: cs.surfaceContainerHighest,
                               foregroundColor: cs.onSurfaceVariant,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8,),
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
                             ),
                             icon: const Icon(Icons.tag, size: 18),
                             label: const Text('Hash'),
@@ -458,7 +490,9 @@ class _OverviewTab extends ConsumerWidget {
                               backgroundColor: cs.surfaceContainerHighest,
                               foregroundColor: cs.onSurfaceVariant,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8,),
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
                             ),
                             icon: const Icon(Icons.delete, size: 18),
                             label: const Text('Delete'),
@@ -469,8 +503,10 @@ class _OverviewTab extends ConsumerWidget {
                                 builder: (BuildContext context) {
                                   bool deleteFiles = false;
                                   return StatefulBuilder(
-                                    builder: (BuildContext context,
-                                        StateSetter setState,) {
+                                    builder: (
+                                      BuildContext context,
+                                      StateSetter setState,
+                                    ) {
                                       return AlertDialog(
                                         title: const Text('Delete Torrent'),
                                         content: Column(
@@ -479,18 +515,21 @@ class _OverviewTab extends ConsumerWidget {
                                               CrossAxisAlignment.start,
                                           children: <Widget>[
                                             const Text(
-                                                'Are you sure you want to delete this torrent?',),
+                                              'Are you sure you want to delete this torrent?',
+                                            ),
                                             const SizedBox(height: 16),
                                             CheckboxListTile(
                                               value: deleteFiles,
                                               onChanged: (bool? val) {
                                                 if (val != null) {
                                                   setState(
-                                                      () => deleteFiles = val,);
+                                                    () => deleteFiles = val,
+                                                  );
                                                 }
                                               },
                                               title: const Text(
-                                                  'Also delete files',),
+                                                'Also delete files',
+                                              ),
                                               contentPadding: EdgeInsets.zero,
                                               controlAffinity:
                                                   ListTileControlAffinity
@@ -509,10 +548,10 @@ class _OverviewTab extends ConsumerWidget {
                                                 Navigator.of(context)
                                                     .pop(deleteFiles),
                                             style: TextButton.styleFrom(
-                                                foregroundColor:
-                                                    Theme.of(context)
-                                                        .colorScheme
-                                                        .error,),
+                                              foregroundColor: Theme.of(context)
+                                                  .colorScheme
+                                                  .error,
+                                            ),
                                             child: const Text('Delete'),
                                           ),
                                         ],
@@ -535,12 +574,14 @@ class _OverviewTab extends ConsumerWidget {
                                 );
                                 if (!context.mounted) return;
                                 ref.invalidate(
-                                    qbitRawTorrentsProvider(instance),);
+                                  qbitRawTorrentsProvider(instance),
+                                );
                                 Navigator.of(context).pop();
                               } catch (_) {
                                 messenger.showSnackBar(
                                   const SnackBar(
-                                      content: Text('Action failed'),),
+                                    content: Text('Action failed'),
+                                  ),
                                 );
                               }
                             },
@@ -731,7 +772,9 @@ class _FileNode {
 }
 
 List<_FileNode> _buildFileTree(
-    List<QbitFile> files, Set<String> collapsedPaths,) {
+  List<QbitFile> files,
+  Set<String> collapsedPaths,
+) {
   final _BuilderNode root = _BuilderNode('', '', -1, false);
 
   for (final QbitFile f in files) {
@@ -798,7 +841,8 @@ class _FilesTabState extends ConsumerState<_FilesTab>
     final AsyncValue<List<QbitFile>> files =
         ref.watch(qbitFilesProvider((widget.instance, widget.hash)));
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async =>
           ref.invalidate(qbitFilesProvider((widget.instance, widget.hash))),
       child: AsyncValueView<List<QbitFile>>(
@@ -906,15 +950,18 @@ class _FilesTabState extends ConsumerState<_FilesTab>
                         value: f.isWanted,
                         onChanged: (bool? v) async {
                           final QbittorrentClient client = await ref.read(
-                              qbittorrentClientProvider(widget.instance)
-                                  .future,);
+                            qbittorrentClientProvider(widget.instance).future,
+                          );
                           await client.setFilePriority(
                             widget.hash,
                             f.fileIndices,
                             (v ?? false) ? 1 : 0,
                           );
-                          ref.invalidate(qbitFilesProvider(
-                              (widget.instance, widget.hash),),);
+                          ref.invalidate(
+                            qbitFilesProvider(
+                              (widget.instance, widget.hash),
+                            ),
+                          );
                         },
                       ),
                     ],
@@ -942,7 +989,8 @@ class _TrackersTab extends ConsumerWidget {
     final AsyncValue<List<QbitTracker>> trackers =
         ref.watch(qbitTrackersProvider((instance, hash)));
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async =>
           ref.invalidate(qbitTrackersProvider((instance, hash))),
       child: AsyncValueView<List<QbitTracker>>(
@@ -1055,7 +1103,8 @@ class _PeersTab extends ConsumerWidget {
     final AsyncValue<List<QbitPeer>> peers =
         ref.watch(qbitPeersProvider((instance, hash)));
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async =>
           ref.invalidate(qbitPeersProvider((instance, hash))),
       child: AsyncValueView<List<QbitPeer>>(

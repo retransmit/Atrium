@@ -78,13 +78,17 @@ class SettingsScreen extends ConsumerWidget {
           const Divider(),
           const _SectionHeader('Font'),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Insets.lg, vertical: Insets.xs),
+            padding: const EdgeInsets.symmetric(
+                horizontal: Insets.lg, vertical: Insets.xs),
             child: DropdownMenu<String?>(
               initialSelection: prefs.fontFamily,
               expandedInsets: EdgeInsets.zero,
               inputDecorationTheme: InputDecorationTheme(
                 filled: true,
-                fillColor: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                fillColor: Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest
+                    .withValues(alpha: 0.3),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(
@@ -136,8 +140,7 @@ class SettingsScreen extends ConsumerWidget {
             leading: const Icon(Icons.language_outlined),
             title: const Text('Custom Headers'),
             subtitle: const Text('Add headers for reverse-proxy auth'),
-            onTap: () =>
-                pushScreen<void>(context, const CustomHeadersScreen()),
+            onTap: () => pushScreen<void>(context, const CustomHeadersScreen()),
           ),
           const Divider(),
           const _SectionHeader('Data'),
@@ -269,7 +272,7 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
   void initState() {
     super.initState();
     final prefs = ref.read(preferencesProvider);
-    
+
     _localSource = prefs.themeSource;
     _localSeedColorHex = prefs.customSeedColorHex ?? '6750A4';
     _localImagePath = prefs.customImagePath;
@@ -282,9 +285,10 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
     } else {
       _activeTab = 2;
     }
-    
+
     // Load stored dynamic colors if available, preventing recalculation
-    if (prefs.customImageColorsCsv != null && prefs.customImageColorsCsv!.isNotEmpty) {
+    if (prefs.customImageColorsCsv != null &&
+        prefs.customImageColorsCsv!.isNotEmpty) {
       try {
         _extractedColors = prefs.customImageColorsCsv!
             .split(',')
@@ -315,11 +319,15 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
       );
       final List<Color> rawColors = <Color>{
         if (palette.vibrantColor?.color != null) palette.vibrantColor!.color,
-        if (palette.lightVibrantColor?.color != null) palette.lightVibrantColor!.color,
-        if (palette.darkVibrantColor?.color != null) palette.darkVibrantColor!.color,
+        if (palette.lightVibrantColor?.color != null)
+          palette.lightVibrantColor!.color,
+        if (palette.darkVibrantColor?.color != null)
+          palette.darkVibrantColor!.color,
         if (palette.mutedColor?.color != null) palette.mutedColor!.color,
-        if (palette.lightMutedColor?.color != null) palette.lightMutedColor!.color,
-        if (palette.darkMutedColor?.color != null) palette.darkMutedColor!.color,
+        if (palette.lightMutedColor?.color != null)
+          palette.lightMutedColor!.color,
+        if (palette.darkMutedColor?.color != null)
+          palette.darkMutedColor!.color,
         if (palette.dominantColor?.color != null) palette.dominantColor!.color,
       }.toList();
 
@@ -347,7 +355,8 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
 
       // Store colors to prevent recalculation when reloading page
       final csv = distinctColors
-          .map((c) => c.toARGB32().toRadixString(16).padLeft(8, '0').substring(2))
+          .map((c) =>
+              c.toARGB32().toRadixString(16).padLeft(8, '0').substring(2))
           .join(',');
 
       if (!mounted) return;
@@ -414,7 +423,8 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
       if (!mounted) return;
       if (_extractedColors.isNotEmpty) {
         final Color seed = _extractedColors.first;
-        final String hex = seed.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
+        final String hex =
+            seed.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
         setState(() {
           _localSeedColorHex = hex;
         });
@@ -430,7 +440,7 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
 
   Widget _buildTabButton(int index, String label, ColorScheme cs) {
     final isSelected = _activeTab == index;
-    
+
     return Expanded(
       child: GestureDetector(
         onTap: () async {
@@ -491,8 +501,8 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
           color: c,
           shape: BoxShape.circle,
           border: Border.all(
-            color: isSelected 
-                ? Theme.of(context).colorScheme.primary 
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary
                 : Colors.transparent,
             width: 3,
           ),
@@ -509,7 +519,8 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
 
   @override
   Widget build(BuildContext context) {
-    final PreferencesController controller = ref.read(preferencesProvider.notifier);
+    final PreferencesController controller =
+        ref.read(preferencesProvider.notifier);
     final systemColorScheme = ref.watch(systemColorSchemeProvider);
     final systemLight = systemColorScheme.light;
     final theme = Theme.of(context);
@@ -517,16 +528,17 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
     // Compute preview color scheme
     final ColorScheme previewColorScheme;
     Color seedColor = const Color(0xFF6750A4);
-    
+
     if (_activeTab == 0) {
       final systemScheme = theme.brightness == Brightness.dark
           ? systemColorScheme.dark
           : systemColorScheme.light;
-      previewColorScheme = systemScheme ?? colorSchemeFromSeedAndStyle(
-        seedColor,
-        _localPaletteStyle,
-        theme.brightness,
-      );
+      previewColorScheme = systemScheme ??
+          colorSchemeFromSeedAndStyle(
+            seedColor,
+            _localPaletteStyle,
+            theme.brightness,
+          );
     } else {
       if (_localSeedColorHex != null) {
         final int? val = int.tryParse(_localSeedColorHex!, radix: 16);
@@ -546,7 +558,6 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
       children: <Widget>[
         _ThemePalettePreviewGrid(colorScheme: previewColorScheme),
         const SizedBox(height: Insets.md),
-        
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -558,25 +569,28 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
           ],
         ),
         const SizedBox(height: Insets.md),
-
         if (_activeTab != 0) ...[
           DropdownButtonFormField<PaletteStyle>(
             initialValue: _localPaletteStyle,
             decoration: InputDecoration(
               labelText: 'Palette style',
               filled: true,
-              fillColor: previewColorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+              fillColor: previewColorScheme.surfaceContainerHighest
+                  .withValues(alpha: 0.3),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: previewColorScheme.outlineVariant),
+                borderSide:
+                    BorderSide(color: previewColorScheme.outlineVariant),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: previewColorScheme.outlineVariant),
+                borderSide:
+                    BorderSide(color: previewColorScheme.outlineVariant),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: previewColorScheme.primary, width: 2),
+                borderSide:
+                    BorderSide(color: previewColorScheme.primary, width: 2),
               ),
               labelStyle: TextStyle(color: previewColorScheme.onSurfaceVariant),
             ),
@@ -607,7 +621,6 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
           ),
           const SizedBox(height: Insets.md),
         ],
-        
         AnimatedSize(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
@@ -622,7 +635,8 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                     padding: const EdgeInsets.all(Insets.md),
                     child: Row(
                       children: [
-                        Icon(Icons.android, color: previewColorScheme.primary, size: 28),
+                        Icon(Icons.android,
+                            color: previewColorScheme.primary, size: 28),
                         const SizedBox(width: Insets.md),
                         Expanded(
                           child: Column(
@@ -630,12 +644,14 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                             children: [
                               Text(
                                 'System Wallpaper Colors',
-                                style: TextStyle(fontWeight: FontWeight.bold, color: previewColorScheme.onSurface),
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: previewColorScheme.onSurface),
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                systemLight != null 
-                                    ? 'Using platform dynamic color matching (Android 12+).' 
+                                systemLight != null
+                                    ? 'Using platform dynamic color matching (Android 12+).'
                                     : 'Dynamic colors unavailable. Using default theme.',
                                 style: TextStyle(
                                   fontSize: 11,
@@ -649,7 +665,6 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                     ),
                   ),
                 ),
-              
               if (_activeTab == 2) ...[
                 if (_localImagePath != null) ...[
                   Row(
@@ -675,7 +690,8 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                             child: Image.file(
                               File(_localImagePath!),
                               fit: BoxFit.contain,
-                              errorBuilder: (context, error, stackTrace) => Center(
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Center(
                                 child: Icon(
                                   Icons.broken_image_outlined,
                                   color: previewColorScheme.onSurfaceVariant,
@@ -701,7 +717,9 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              _localImagePath!.split(Platform.pathSeparator).last,
+                              _localImagePath!
+                                  .split(Platform.pathSeparator)
+                                  .last,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -716,12 +734,17 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                               style: FilledButton.styleFrom(
                                 backgroundColor: previewColorScheme.primary,
                                 foregroundColor: previewColorScheme.onPrimary,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
                                 minimumSize: Size.zero,
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
-                              icon: const Icon(Icons.change_circle_outlined, size: 16),
-                              label: const Text('Change', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              icon: const Icon(Icons.change_circle_outlined,
+                                  size: 16),
+                              label: const Text('Change',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold)),
                             ),
                           ],
                         ),
@@ -730,7 +753,6 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                   ),
                   const SizedBox(height: Insets.md),
                 ],
-                
                 if (_isExtracting) ...[
                   const Center(
                     child: Padding(
@@ -745,16 +767,23 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                       padding: const EdgeInsets.symmetric(vertical: 4.0),
                       child: Row(
                         children: _extractedColors.map((Color seed) {
-                          final String hex = seed.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
-                          final bool isSelected = _localSource == ThemeSource.customImage &&
-                              _localSeedColorHex?.toLowerCase() == hex.toLowerCase();
-                          
-                          final ColorScheme previewScheme = colorSchemeFromSeedAndStyle(
+                          final String hex = seed
+                              .toARGB32()
+                              .toRadixString(16)
+                              .padLeft(8, '0')
+                              .substring(2);
+                          final bool isSelected =
+                              _localSource == ThemeSource.customImage &&
+                                  _localSeedColorHex?.toLowerCase() ==
+                                      hex.toLowerCase();
+
+                          final ColorScheme previewScheme =
+                              colorSchemeFromSeedAndStyle(
                             seed,
                             _localPaletteStyle,
                             theme.brightness,
                           );
-                          
+
                           // Include two tertiary colors in the 6-band dynamic pill stack
                           final List<Color> pillColors = [
                             previewScheme.primary,
@@ -764,7 +793,7 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                             previewScheme.tertiaryContainer,
                             previewScheme.surfaceContainerHigh,
                           ];
-                          
+
                           return Padding(
                             padding: const EdgeInsets.only(right: 14.0),
                             child: _ColorPillStack(
@@ -776,9 +805,11 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                                   _localSource = ThemeSource.customImage;
                                   _localSeedColorHex = hex;
                                 });
-                                await controller.setThemeSource(ThemeSource.customImage);
+                                await controller
+                                    .setThemeSource(ThemeSource.customImage);
                                 await controller.setCustomSeedColorHex(hex);
-                                await controller.setCustomImagePath(_localImagePath);
+                                await controller
+                                    .setCustomImagePath(_localImagePath);
                               },
                             ),
                           );
@@ -793,21 +824,28 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                     decoration: BoxDecoration(
                       color: previewColorScheme.surfaceContainerHigh,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: previewColorScheme.outlineVariant),
+                      border:
+                          Border.all(color: previewColorScheme.outlineVariant),
                     ),
                     child: Column(
                       children: [
-                        Icon(Icons.wallpaper_outlined, size: 40, color: previewColorScheme.onSurfaceVariant),
+                        Icon(Icons.wallpaper_outlined,
+                            size: 40,
+                            color: previewColorScheme.onSurfaceVariant),
                         const SizedBox(height: Insets.sm),
                         Text(
                           'No custom wallpaper loaded',
-                          style: TextStyle(fontWeight: FontWeight.w600, color: previewColorScheme.onSurface),
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: previewColorScheme.onSurface),
                         ),
                         const SizedBox(height: Insets.xs),
                         Text(
                           'Upload an image to generate dynamic color palettes',
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 12, color: previewColorScheme.onSurfaceVariant),
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: previewColorScheme.onSurfaceVariant),
                         ),
                         const SizedBox(height: Insets.md),
                         FilledButton.icon(
@@ -824,17 +862,22 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                   ),
                 ],
               ],
-              
               if (_activeTab == 1) ...[
                 Wrap(
                   spacing: 12,
                   runSpacing: 12,
                   children: [
                     ..._presets.map((Color c) {
-                      final String hex = c.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
-                      final bool isSelected = _localSource == ThemeSource.preset &&
-                          _localSeedColorHex?.toLowerCase() == hex.toLowerCase();
-                      
+                      final String hex = c
+                          .toARGB32()
+                          .toRadixString(16)
+                          .padLeft(8, '0')
+                          .substring(2);
+                      final bool isSelected =
+                          _localSource == ThemeSource.preset &&
+                              _localSeedColorHex?.toLowerCase() ==
+                                  hex.toLowerCase();
+
                       return _buildColorCircle(c, isSelected, () async {
                         setState(() {
                           _localSource = ThemeSource.preset;
@@ -844,12 +887,18 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                         await controller.setCustomSeedColorHex(hex);
                       });
                     }),
-                    
-                    if (_localSeedColorHex != null && !_presets.any((c) => 
-                        c.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toLowerCase() == 
-                        _localSeedColorHex!.toLowerCase())) ...[
+                    if (_localSeedColorHex != null &&
+                        !_presets.any((c) =>
+                            c
+                                .toARGB32()
+                                .toRadixString(16)
+                                .padLeft(8, '0')
+                                .substring(2)
+                                .toLowerCase() ==
+                            _localSeedColorHex!.toLowerCase())) ...[
                       _buildColorCircle(
-                        Color(int.parse(_localSeedColorHex!, radix: 16) | 0xFF000000),
+                        Color(int.parse(_localSeedColorHex!, radix: 16) |
+                            0xFF000000),
                         _localSource == ThemeSource.preset,
                         () async {
                           setState(() {
@@ -859,20 +908,25 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                         },
                       ),
                     ],
-                    
                     GestureDetector(
                       onTap: () async {
                         final Color current = _localSeedColorHex != null
-                            ? Color(int.parse(_localSeedColorHex!, radix: 16) | 0xFF000000)
+                            ? Color(int.parse(_localSeedColorHex!, radix: 16) |
+                                0xFF000000)
                             : const Color(0xFF6750A4);
-                        
+
                         final Color? picked = await showDialog<Color>(
                           context: context,
-                          builder: (context) => _ColorPickerDialog(initialColor: current),
+                          builder: (context) =>
+                              _ColorPickerDialog(initialColor: current),
                         );
-                        
+
                         if (picked != null) {
-                          final String hex = picked.toARGB32().toRadixString(16).padLeft(8, '0').substring(2);
+                          final String hex = picked
+                              .toARGB32()
+                              .toRadixString(16)
+                              .padLeft(8, '0')
+                              .substring(2);
                           setState(() {
                             _localSource = ThemeSource.preset;
                             _localSeedColorHex = hex;
@@ -987,13 +1041,17 @@ class _ThemePalettePreviewGrid extends StatelessWidget {
             childAspectRatio: 2.3,
             children: [
               _buildSwatch('Primary', cs.primary, cs.onPrimary),
-              _buildSwatch('Primary Container', cs.primaryContainer, cs.onPrimaryContainer),
+              _buildSwatch('Primary Container', cs.primaryContainer,
+                  cs.onPrimaryContainer),
               _buildSwatch('Secondary', cs.secondary, cs.onSecondary),
-              _buildSwatch('Secondary Container', cs.secondaryContainer, cs.onSecondaryContainer),
+              _buildSwatch('Secondary Container', cs.secondaryContainer,
+                  cs.onSecondaryContainer),
               _buildSwatch('Tertiary', cs.tertiary, cs.onTertiary),
-              _buildSwatch('Tertiary Container', cs.tertiaryContainer, cs.onTertiaryContainer),
+              _buildSwatch('Tertiary Container', cs.tertiaryContainer,
+                  cs.onTertiaryContainer),
               _buildSwatch('Surface', cs.surface, cs.onSurface),
-              _buildSwatch('Surface Container High', cs.surfaceContainerHigh, cs.onSurfaceVariant),
+              _buildSwatch('Surface Container High', cs.surfaceContainerHigh,
+                  cs.onSurfaceVariant),
               _buildSwatch('Outline', cs.outline, cs.surface),
               _buildSwatch('Inverse Primary', cs.inversePrimary, cs.primary),
             ],
@@ -1030,9 +1088,8 @@ class _ColorPillStack extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(27),
               border: Border.all(
-                color: isSelected
-                    ? activeColorScheme.primary
-                    : Colors.transparent,
+                color:
+                    isSelected ? activeColorScheme.primary : Colors.transparent,
                 width: 3.5,
               ),
             ),
@@ -1100,7 +1157,12 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
     _saturation = hsl.saturation;
     _lightness = hsl.lightness;
     _hexController = TextEditingController(
-      text: _currentColor.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase(),
+      text: _currentColor
+          .toARGB32()
+          .toRadixString(16)
+          .padLeft(8, '0')
+          .substring(2)
+          .toUpperCase(),
     );
   }
 
@@ -1112,8 +1174,14 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
 
   void _updateColor() {
     setState(() {
-      _currentColor = HSLColor.fromAHSL(1.0, _hue, _saturation, _lightness).toColor();
-      _hexController.text = _currentColor.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase();
+      _currentColor =
+          HSLColor.fromAHSL(1.0, _hue, _saturation, _lightness).toColor();
+      _hexController.text = _currentColor
+          .toARGB32()
+          .toRadixString(16)
+          .padLeft(8, '0')
+          .substring(2)
+          .toUpperCase();
     });
   }
 
@@ -1141,7 +1209,6 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
               ),
             ),
             const SizedBox(height: Insets.lg),
-            
             const Align(
               alignment: Alignment.centerLeft,
               child: Text('Hue', style: TextStyle(fontWeight: FontWeight.w500)),
@@ -1166,10 +1233,10 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
                 },
               ),
             ),
-            
             const Align(
               alignment: Alignment.centerLeft,
-              child: Text('Saturation', style: TextStyle(fontWeight: FontWeight.w500)),
+              child: Text('Saturation',
+                  style: TextStyle(fontWeight: FontWeight.w500)),
             ),
             Slider(
               value: _saturation,
@@ -1183,10 +1250,10 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
                 });
               },
             ),
-            
             const Align(
               alignment: Alignment.centerLeft,
-              child: Text('Lightness', style: TextStyle(fontWeight: FontWeight.w500)),
+              child: Text('Lightness',
+                  style: TextStyle(fontWeight: FontWeight.w500)),
             ),
             Slider(
               value: _lightness,
@@ -1201,7 +1268,6 @@ class _ColorPickerDialogState extends State<_ColorPickerDialog> {
               },
             ),
             const SizedBox(height: Insets.md),
-            
             TextField(
               controller: _hexController,
               decoration: InputDecoration(
@@ -1259,7 +1325,8 @@ class _HueTrackShape extends SliderTrackShape {
   }) {
     final double trackHeight = sliderTheme.trackHeight ?? 12.0;
     final double trackLeft = offset.dx;
-    final double trackTop = offset.dy + (parentBox.size.height - trackHeight) / 2;
+    final double trackTop =
+        offset.dy + (parentBox.size.height - trackHeight) / 2;
     final double trackWidth = parentBox.size.width;
     return Rect.fromLTWH(trackLeft, trackTop, trackWidth, trackHeight);
   }
@@ -1283,15 +1350,15 @@ class _HueTrackShape extends SliderTrackShape {
       offset: offset,
       sliderTheme: sliderTheme,
     );
-    
+
     final List<Color> colors = List.generate(360, (index) {
       return HSLColor.fromAHSL(1.0, index.toDouble(), 1.0, 0.5).toColor();
     });
-    
+
     final Paint paint = Paint()
       ..shader = LinearGradient(colors: colors).createShader(rect)
       ..style = PaintingStyle.fill;
-    
+
     canvas.drawRRect(
       RRect.fromRectAndRadius(rect, const Radius.circular(6)),
       paint,

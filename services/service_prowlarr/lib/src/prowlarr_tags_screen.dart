@@ -29,7 +29,8 @@ class ProwlarrTagsScreen extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: const Text('Add'),
       ),
-      body: M3RefreshIndicator(
+      body: EasyRefresh(
+        header: const MaterialHeader(),
         onRefresh: () async => ref.invalidate(prowlarrProvidersProvider(_args)),
         child: AsyncValueView<List<Map<String, dynamic>>>(
           value: tags,
@@ -42,13 +43,13 @@ class ProwlarrTagsScreen extends ConsumerWidget {
                 message: 'Tap Add to create a tag.',
               );
             }
-            final List<Map<String, dynamic>> sorted =
-                <Map<String, dynamic>>[...items]..sort(
-                    (Map<String, dynamic> a, Map<String, dynamic> b) =>
-                        ((a['label'] ?? '') as String)
-                            .toLowerCase()
-                            .compareTo(((b['label'] ?? '') as String).toLowerCase()),
-                  );
+            final List<Map<String, dynamic>> sorted = <Map<String, dynamic>>[
+              ...items
+            ]..sort(
+                (Map<String, dynamic> a, Map<String, dynamic> b) =>
+                    ((a['label'] ?? '') as String).toLowerCase().compareTo(
+                        ((b['label'] ?? '') as String).toLowerCase()),
+              );
             return ListView.builder(
               padding: Insets.pageH,
               itemCount: sorted.length,

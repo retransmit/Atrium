@@ -12,19 +12,25 @@ abstract class QbitTorrent with _$QbitTorrent {
   const factory QbitTorrent({
     required String hash,
     required String name,
+
     /// Raw qBittorrent state string (downloading, stalledUP, pausedDL,
     /// stoppedUP, queuedDL, checkingUP, error, …).
     required String state,
+
     /// 0.0 - 1.0.
     @Default(0) double progress,
+
     /// Download speed, bytes/s.
     @Default(0) int dlspeed,
+
     /// Upload speed, bytes/s.
     @Default(0) int upspeed,
+
     /// Total size of selected files, bytes.
     @Default(0) int size,
     @Default(0) int downloaded,
     @Default(0) int uploaded,
+
     /// ETA in seconds; 8640000 means infinity / unknown.
     @Default(8640000) int eta,
     @JsonKey(name: 'magnet_uri') @Default('') String magnetUri,

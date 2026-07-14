@@ -93,7 +93,9 @@ class _WantedTabState extends ConsumerState<WantedTab>
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Search started for ${ids.length} selected movies.')),
+          SnackBar(
+              content:
+                  Text('Search started for ${ids.length} selected movies.')),
         );
       }
     } catch (e) {
@@ -145,7 +147,6 @@ class _WantedTabState extends ConsumerState<WantedTab>
     final Set<int> selectedMovieIds =
         ref.watch(radarrWantedSelectionProvider(widget.instance));
     final bool hasSelection = selectedMovieIds.isNotEmpty;
-    final bool isGrouped = ref.watch(radarrWantedGroupedProvider(widget.instance));
 
     ref.listen<String>(radarrWantedSearchQueryProvider(widget.instance),
         (String? previous, String next) {
@@ -163,7 +164,8 @@ class _WantedTabState extends ConsumerState<WantedTab>
       child: Scaffold(
         backgroundColor: theme.colorScheme.surface,
         body: NestedScrollView(
-          headerSliverBuilder: (BuildContext innerContext, bool innerBoxIsScrolled) {
+          headerSliverBuilder:
+              (BuildContext innerContext, bool innerBoxIsScrolled) {
             return <Widget>[
               SliverAppBar(
                 floating: true,
@@ -254,18 +256,7 @@ class _WantedTabState extends ConsumerState<WantedTab>
                         const SizedBox(width: 8),
                       ]
                     : <Widget>[
-                        IconButton(
-                          icon: Icon(
-                            isGrouped ? Icons.format_list_bulleted : Icons.group_work_outlined,
-                          ),
-                          tooltip: isGrouped ? 'Switch to plain list' : 'Switch to grouped view',
-                          onPressed: () {
-                            ref
-                                .read(radarrWantedGroupedProvider(widget.instance).notifier)
-                                .update((state) => !state);
-                          },
-                        ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 56),
                       ],
                 bottom: TabBar(
                   dividerColor: Colors.transparent,
@@ -328,7 +319,6 @@ class _WantedListView extends ConsumerWidget {
 
     final selectedIds = ref.watch(radarrWantedSelectionProvider(instance));
     final hasSelection = selectedIds.isNotEmpty;
-    final bool isGrouped = ref.watch(radarrWantedGroupedProvider(instance));
 
     return listAsync.when(
       loading: () => const Center(child: ExpressiveProgressIndicator()),
@@ -364,99 +354,49 @@ class _WantedListView extends ConsumerWidget {
           );
         }
 
-        final Widget content;
-        if (isGrouped) {
-          // Group by studio
-          final Map<String, List<RadarrMovie>> groupedMap = {};
-          for (final movie in movies) {
-            final studio = movie.studio ?? 'Unknown Studio';
-            groupedMap.putIfAbsent(studio, () => []).add(movie);
-          }
-          final studioKeys = groupedMap.keys.toList()..sort();
-
-          content = M3RefreshIndicator(
-            onRefresh: () async {
-              if (isCutoffTab) {
-                ref.invalidate(radarrWantedCutoffProvider(instance));
-                await ref.read(radarrWantedCutoffProvider(instance).future);
-              } else {
-                ref.invalidate(radarrWantedMissingProvider(instance));
-                await ref.read(radarrWantedMissingProvider(instance).future);
-              }
-            },
-            child: ListView.builder(
-              padding: const EdgeInsets.all(Insets.md),
-              itemCount: studioKeys.length + 1,
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12.0),
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        showManualImportFlow(context, ref, instance);
-                      },
-                      icon: const Icon(Icons.folder_open, size: 18),
-                      label: const Text('Manual Import'),
-                    ),
-                  );
-                }
-                final studio = studioKeys[index - 1];
-                final studioMovies = groupedMap[studio]!;
-                return _GroupedWantedCard(
-                  instance: instance,
-                  studioName: studio,
-                  movies: studioMovies,
-                  selectedIds: selectedIds,
-                  hasSelection: hasSelection,
-                  isCutoffTab: isCutoffTab,
-                );
-              },
-            ),
-          );
-        } else {
-          content = M3RefreshIndicator(
-            onRefresh: () async {
-              if (isCutoffTab) {
-                ref.invalidate(radarrWantedCutoffProvider(instance));
-                await ref.read(radarrWantedCutoffProvider(instance).future);
-              } else {
-                ref.invalidate(radarrWantedMissingProvider(instance));
-                await ref.read(radarrWantedMissingProvider(instance).future);
-              }
-            },
-            child: ListView.builder(
-              padding: const EdgeInsets.all(Insets.md),
-              itemCount: movies.length + 1,
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12.0),
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        showManualImportFlow(context, ref, instance);
-                      },
-                      icon: const Icon(Icons.folder_open, size: 18),
-                      label: const Text('Manual Import'),
-                    ),
-                  );
-                }
-                final movie = movies[index - 1];
-                final isSelected = selectedIds.contains(movie.id);
-
+        final content = EasyRefresh(
+          header: const MaterialHeader(),
+          onRefresh: () async {
+            if (isCutoffTab) {
+              ref.invalidate(radarrWantedCutoffProvider(instance));
+              await ref.read(radarrWantedCutoffProvider(instance).future);
+            } else {
+              ref.invalidate(radarrWantedMissingProvider(instance));
+              await ref.read(radarrWantedMissingProvider(instance).future);
+            }
+          },
+          child: ListView.builder(
+            padding: const EdgeInsets.all(Insets.md),
+            itemCount: movies.length + 1,
+            itemBuilder: (context, index) {
+              if (index == 0) {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12.0),
-                  child: _WantedMovieCard(
-                    instance: instance,
-                    movie: movie,
-                    isSelected: isSelected,
-                    hasSelection: hasSelection,
-                    isCutoffTab: isCutoffTab,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      showManualImportFlow(context, ref, instance);
+                    },
+                    icon: const Icon(Icons.folder_open, size: 18),
+                    label: const Text('Manual Import'),
                   ),
                 );
-              },
-            ),
-          );
-        }
+              }
+              final movie = movies[index - 1];
+              final isSelected = selectedIds.contains(movie.id);
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: _WantedMovieCard(
+                  instance: instance,
+                  movie: movie,
+                  isSelected: isSelected,
+                  hasSelection: hasSelection,
+                  isCutoffTab: isCutoffTab,
+                ),
+              );
+            },
+          ),
+        );
 
         if (totalRecords <= fetchedCount) return content;
 
@@ -535,9 +475,11 @@ class _WantedMovieCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         onTap: () {
           if (hasSelection) {
-            final notifier = ref.read(radarrWantedSelectionProvider(instance).notifier);
+            final notifier =
+                ref.read(radarrWantedSelectionProvider(instance).notifier);
             if (isSelected) {
-              notifier.state = selectedIds(ref).where((id) => id != movie.id).toSet();
+              notifier.state =
+                  selectedIds(ref).where((id) => id != movie.id).toSet();
             } else {
               notifier.state = {...selectedIds(ref), movie.id};
             }
@@ -552,9 +494,11 @@ class _WantedMovieCard extends ConsumerWidget {
           }
         },
         onLongPress: () {
-          final notifier = ref.read(radarrWantedSelectionProvider(instance).notifier);
+          final notifier =
+              ref.read(radarrWantedSelectionProvider(instance).notifier);
           if (isSelected) {
-            notifier.state = selectedIds(ref).where((id) => id != movie.id).toSet();
+            notifier.state =
+                selectedIds(ref).where((id) => id != movie.id).toSet();
           } else {
             notifier.state = {...selectedIds(ref), movie.id};
           }
@@ -651,137 +595,5 @@ class _WantedMovieCard extends ConsumerWidget {
         );
       }
     }
-  }
-}
-
-class _GroupedWantedCard extends ConsumerStatefulWidget {
-  const _GroupedWantedCard({
-    required this.instance,
-    required this.studioName,
-    required this.movies,
-    required this.selectedIds,
-    required this.hasSelection,
-    required this.isCutoffTab,
-  });
-
-  final Instance instance;
-  final String studioName;
-  final List<RadarrMovie> movies;
-  final Set<int> selectedIds;
-  final bool hasSelection;
-  final bool isCutoffTab;
-
-  @override
-  ConsumerState<_GroupedWantedCard> createState() => _GroupedWantedCardState();
-}
-
-class _GroupedWantedCardState extends ConsumerState<_GroupedWantedCard> {
-  bool _expanded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-        ),
-      ),
-      color: theme.colorScheme.surfaceContainerLow,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          InkWell(
-            borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(20),
-              topRight: const Radius.circular(20),
-              bottomLeft: Radius.circular(_expanded ? 0 : 20),
-              bottomRight: Radius.circular(_expanded ? 0 : 20),
-            ),
-            onTap: () => setState(() => _expanded = !_expanded),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.secondaryContainer,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.business_outlined,
-                      size: 18,
-                      color: theme.colorScheme.onSecondaryContainer,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      widget.studioName,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '${widget.movies.length}',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onPrimaryContainer,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    _expanded ? Icons.expand_less : Icons.expand_more,
-                    color: theme.colorScheme.outline,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_expanded) ...[
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-              child: ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: widget.movies.length,
-                itemBuilder: (context, index) {
-                  final movie = widget.movies[index];
-                  final isSelected = widget.selectedIds.contains(movie.id);
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: _WantedMovieCard(
-                      instance: widget.instance,
-                      movie: movie,
-                      isSelected: isSelected,
-                      hasSelection: widget.hasSelection,
-                      isCutoffTab: widget.isCutoffTab,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
   }
 }

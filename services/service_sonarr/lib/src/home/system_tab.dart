@@ -215,7 +215,8 @@ class _StatusTab extends ConsumerWidget {
     final healthAsync = ref.watch(sonarrHealthProvider(instance));
     final diskAsync = ref.watch(sonarrDiskSpaceProvider(instance));
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async {
         ref.invalidate(sonarrSystemStatusProvider(instance));
         ref.invalidate(sonarrHealthProvider(instance));
@@ -579,12 +580,13 @@ class _DiskSpaceCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicatorM3E(
-                  shape: ProgressM3EShape.flat,
-                  value: usedPercent,
-                  trackColor: theme.colorScheme.surfaceContainerHighest,
-                  activeColor: usedPercent > 0.9
-                      ? theme.colorScheme.error
-                      : theme.colorScheme.primary,),
+                shape: ProgressM3EShape.flat,
+                value: usedPercent,
+                trackColor: theme.colorScheme.surfaceContainerHighest,
+                activeColor: usedPercent > 0.9
+                    ? theme.colorScheme.error
+                    : theme.colorScheme.primary,
+              ),
             ),
             const SizedBox(height: Insets.xs),
             Text(
@@ -649,7 +651,8 @@ class _TasksTab extends ConsumerWidget {
     final ThemeData theme = Theme.of(context);
     final tasksAsync = ref.watch(sonarrTasksProvider(instance));
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async {
         ref.invalidate(sonarrTasksProvider(instance));
         await ref.read(sonarrTasksProvider(instance).future);
@@ -790,7 +793,8 @@ class _UpdatesTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final updatesAsync = ref.watch(sonarrUpdatesProvider(instance));
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async {
         ref.invalidate(sonarrUpdatesProvider(instance));
         await ref.read(sonarrUpdatesProvider(instance).future);
@@ -1100,7 +1104,8 @@ class _LogsTabState extends ConsumerState<_LogsTab> {
               return Column(
                 children: <Widget>[
                   Expanded(
-                    child: M3RefreshIndicator(
+                    child: EasyRefresh(
+                      header: const MaterialHeader(),
                       onRefresh: () async {
                         ref.invalidate(
                           sonarrLogsProvider(
@@ -1362,7 +1367,8 @@ class _BackupsTab extends ConsumerWidget {
     final ThemeData theme = Theme.of(context);
     final backupsAsync = ref.watch(sonarrBackupsProvider(instance));
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async {
         ref.invalidate(sonarrBackupsProvider(instance));
         await ref.read(sonarrBackupsProvider(instance).future);

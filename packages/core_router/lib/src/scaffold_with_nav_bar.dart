@@ -18,35 +18,44 @@ class ScaffoldWithNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: navigationShell,
-      drawer: drawer,
-      drawerEdgeDragWidth: drawer != null ? MediaQuery.sizeOf(context).width * 0.15 : null,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: _onTap,
-        destinations: const <NavigationDestination>[
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_today_outlined),
-            selectedIcon: Icon(Icons.calendar_today),
-            label: 'Calendar',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.swap_vert_outlined),
-            selectedIcon: Icon(Icons.swap_vert),
-            label: 'Activity',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
+    final bool isDashboard = navigationShell.currentIndex == 0;
+    return PopScope(
+      canPop: isDashboard,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (didPop) return;
+        navigationShell.goBranch(0);
+      },
+      child: Scaffold(
+        body: navigationShell,
+        drawer: drawer,
+        drawerEdgeDragWidth:
+            drawer != null ? MediaQuery.sizeOf(context).width * 0.15 : null,
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: navigationShell.currentIndex,
+          onDestinationSelected: _onTap,
+          destinations: const <NavigationDestination>[
+            NavigationDestination(
+              icon: Icon(Icons.dashboard_outlined),
+              selectedIcon: Icon(Icons.dashboard),
+              label: 'Dashboard',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.calendar_today_outlined),
+              selectedIcon: Icon(Icons.calendar_today),
+              label: 'Calendar',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.swap_vert_outlined),
+              selectedIcon: Icon(Icons.swap_vert),
+              label: 'Activity',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.settings_outlined),
+              selectedIcon: Icon(Icons.settings),
+              label: 'Settings',
+            ),
+          ],
+        ),
       ),
     );
   }

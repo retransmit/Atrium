@@ -54,7 +54,8 @@ class _QueueTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<SabQueue> queue = ref.watch(sabQueueProvider(instance));
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async => ref.invalidate(sabQueueProvider(instance)),
       child: AsyncValueView<SabQueue>(
         value: queue,
@@ -146,7 +147,9 @@ class _QueueSummary extends ConsumerWidget {
                     Text(
                       speed,
                       style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700, color: accent,),
+                        fontWeight: FontWeight.w700,
+                        color: accent,
+                      ),
                     ),
                     Text(
                       _isPaused
@@ -321,7 +324,8 @@ class _HistoryTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<SabHistory> history =
         ref.watch(sabHistoryProvider(instance));
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async => ref.invalidate(sabHistoryProvider(instance)),
       child: AsyncValueView<SabHistory>(
         value: history,
@@ -470,7 +474,8 @@ class _ServerTab extends ConsumerWidget {
     final String version = ref.watch(sabVersionProvider(instance)).value ?? '';
     final int currentLimit = int.tryParse(queue?.speedlimit ?? '') ?? 100;
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async {
         ref.invalidate(sabServerStatsProvider(instance));
         ref.invalidate(sabVersionProvider(instance));
@@ -485,17 +490,17 @@ class _ServerTab extends ConsumerWidget {
               data: (SabServerStats s) => Row(
                 children: <Widget>[
                   Expanded(
-                      child:
-                          _StatTile(label: 'Today', value: _fmtBytes(s.day)),),
+                    child: _StatTile(label: 'Today', value: _fmtBytes(s.day)),
+                  ),
                   Expanded(
-                      child:
-                          _StatTile(label: 'Week', value: _fmtBytes(s.week)),),
+                    child: _StatTile(label: 'Week', value: _fmtBytes(s.week)),
+                  ),
                   Expanded(
-                      child:
-                          _StatTile(label: 'Month', value: _fmtBytes(s.month)),),
+                    child: _StatTile(label: 'Month', value: _fmtBytes(s.month)),
+                  ),
                   Expanded(
-                      child:
-                          _StatTile(label: 'Total', value: _fmtBytes(s.total)),),
+                    child: _StatTile(label: 'Total', value: _fmtBytes(s.total)),
+                  ),
                 ],
               ),
               loading: () => const Padding(
@@ -546,8 +551,10 @@ class _ServerTab extends ConsumerWidget {
 }
 
 class _SpeedLimitControl extends ConsumerStatefulWidget {
-  const _SpeedLimitControl(
-      {required this.instance, required this.initialPercent,});
+  const _SpeedLimitControl({
+    required this.instance,
+    required this.initialPercent,
+  });
 
   final Instance instance;
   final int initialPercent;
@@ -597,8 +604,11 @@ class _SpeedLimitControlState extends ConsumerState<_SpeedLimitControl> {
 // Shared -------------------------------------------------------------------
 
 class _StatPill extends StatelessWidget {
-  const _StatPill(
-      {required this.icon, required this.label, required this.color,});
+  const _StatPill({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
 
   final IconData icon;
   final String label;

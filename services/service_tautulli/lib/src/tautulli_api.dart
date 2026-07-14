@@ -51,9 +51,8 @@ class TautulliApi {
         'api/v2',
         queryParameters: <String, dynamic>{'cmd': cmd, ...?params},
       );
-      final Map<String, dynamic> envelope =
-          (resp.data as Map<String, dynamic>)['response']
-              as Map<String, dynamic>;
+      final Map<String, dynamic> envelope = (resp.data
+          as Map<String, dynamic>)['response'] as Map<String, dynamic>;
       if (tString(envelope['result']) != 'success') {
         final String message = tString(envelope['message']);
         throw NetworkUnknownException(
@@ -75,7 +74,8 @@ class TautulliApi {
   }
 
   /// Watch history, newest first.
-  Future<TautulliHistoryPage> getHistory({int length = 100, int start = 0}) async {
+  Future<TautulliHistoryPage> getHistory(
+      {int length = 100, int start = 0}) async {
     final dynamic data = await _cmd('get_history', <String, dynamic>{
       'length': length,
       'start': start,
@@ -96,7 +96,8 @@ class TautulliApi {
       'stats_count': statsCount,
     });
     return ((data as List<dynamic>?) ?? <dynamic>[])
-        .map((dynamic e) => TautulliHomeStat.fromJson(e as Map<String, dynamic>))
+        .map(
+            (dynamic e) => TautulliHomeStat.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 

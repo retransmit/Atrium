@@ -146,8 +146,7 @@ final activityStreamsProvider =
         collect(
           instance,
           ref.watch(plexSessionsProvider(instance)),
-          (List<PlexSession> sessions) =>
-              _plexStreams(ref, instance, sessions),
+          (List<PlexSession> sessions) => _plexStreams(ref, instance, sessions),
         );
       case ServiceKind.jellyfin:
         collect(
@@ -498,8 +497,7 @@ List<ActivityDownload> _sabDownloads(Instance instance, SabQueue queue) {
         instance: instance,
         sourceKind: instance.kind,
         title: slot.filename,
-        progress:
-            ((int.tryParse(slot.percentage) ?? 0) / 100).clamp(0.0, 1.0),
+        progress: ((int.tryParse(slot.percentage) ?? 0) / 100).clamp(0.0, 1.0),
         eta: slot.timeleft.isEmpty ? null : slot.timeleft,
         status: slot.status.isEmpty ? 'Queued' : _capitalized(slot.status),
       ),

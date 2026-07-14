@@ -17,7 +17,8 @@ class ProwlarrSystemTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async {
         ref
           ..invalidate(prowlarrHealthProvider(instance))

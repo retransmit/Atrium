@@ -25,8 +25,8 @@ abstract class ProwlarrRelease with _$ProwlarrRelease {
     double? ageHours,
     DateTime? publishDate,
     String? protocol,
-    @Default(<ProwlarrReleaseCategory>[]) List<ProwlarrReleaseCategory>
-        categories,
+    @Default(<ProwlarrReleaseCategory>[])
+    List<ProwlarrReleaseCategory> categories,
     String? downloadUrl,
     String? infoUrl,
     int? grabs,

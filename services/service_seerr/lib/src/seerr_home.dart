@@ -57,7 +57,8 @@ class _SeerrRequestsTab extends ConsumerWidget {
     final AsyncValue<List<SeerrRequest>> requests =
         ref.watch(seerrRequestsProvider(instance));
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async {
         ref.invalidate(seerrRequestsProvider(instance));
         ref.invalidate(seerrRequestCountsProvider(instance));
@@ -160,12 +161,15 @@ class _RequestTileState extends ConsumerState<_RequestTile> {
       );
     }
 
-    final AsyncValue<SeerrDiscoverResult> detailsAsync =
-        ref.watch(seerrMediaDetailsProvider((
-      instance: widget.instance,
-      mediaType: mediaType,
-      tmdbId: tmdbId,
-    ),),);
+    final AsyncValue<SeerrDiscoverResult> detailsAsync = ref.watch(
+      seerrMediaDetailsProvider(
+        (
+          instance: widget.instance,
+          mediaType: mediaType,
+          tmdbId: tmdbId,
+        ),
+      ),
+    );
 
     return detailsAsync.when(
       data: (SeerrDiscoverResult item) {

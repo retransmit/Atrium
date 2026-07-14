@@ -102,10 +102,12 @@ class _BazarrLanguagesScreenState extends ConsumerState<BazarrLanguagesScreen> {
           final List<BazarrLanguage> filtered = q.isEmpty
               ? list
               : list
-                  .where((BazarrLanguage l) =>
-                      l.name.toLowerCase().contains(q) ||
-                      l.code2.toLowerCase().contains(q) ||
-                      l.code3.toLowerCase().contains(q),)
+                  .where(
+                    (BazarrLanguage l) =>
+                        l.name.toLowerCase().contains(q) ||
+                        l.code2.toLowerCase().contains(q) ||
+                        l.code3.toLowerCase().contains(q),
+                  )
                   .toList();
           return Column(
             children: <Widget>[

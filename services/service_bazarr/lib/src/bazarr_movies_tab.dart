@@ -18,7 +18,8 @@ class BazarrMoviesTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<BazarrMovie>> movies =
         ref.watch(bazarrMoviesProvider(instance));
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async => ref.invalidate(bazarrMoviesProvider(instance)),
       child: AsyncValueView<List<BazarrMovie>>(
         value: movies,

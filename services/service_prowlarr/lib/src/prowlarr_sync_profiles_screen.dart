@@ -32,7 +32,8 @@ class ProwlarrSyncProfilesScreen extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: const Text('Add'),
       ),
-      body: M3RefreshIndicator(
+      body: EasyRefresh(
+        header: const MaterialHeader(),
         onRefresh: () async => ref.invalidate(prowlarrProvidersProvider(_args)),
         child: AsyncValueView<List<Map<String, dynamic>>>(
           value: profiles,

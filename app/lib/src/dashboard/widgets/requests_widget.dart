@@ -93,8 +93,8 @@ class DashboardRequestsWidget extends ConsumerWidget {
           if (requests.length > top.length)
             Padding(
               padding: const EdgeInsets.only(top: Insets.sm),
-              child:
-                  DashboardIdleRow(text: '+${requests.length - top.length} more'),
+              child: DashboardIdleRow(
+                  text: '+${requests.length - top.length} more'),
             ),
         ],
       );

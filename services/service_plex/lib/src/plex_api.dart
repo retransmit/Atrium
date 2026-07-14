@@ -159,8 +159,7 @@ class PlexApi {
     if (thumb == null || thumb.isEmpty) {
       return null;
     }
-    final String base =
-        _dio.options.baseUrl.replaceAll(RegExp(r'/+$'), '');
+    final String base = _dio.options.baseUrl.replaceAll(RegExp(r'/+$'), '');
     return '$base$thumb?X-Plex-Token=$token';
   }
 
@@ -172,8 +171,7 @@ class PlexApi {
   /// Active playback sessions (`GET /status/sessions`). No Plex Pass needed.
   Future<List<PlexSession>> getSessions() async {
     try {
-      final Response<dynamic> resp =
-          await _dio.get<dynamic>('status/sessions');
+      final Response<dynamic> resp = await _dio.get<dynamic>('status/sessions');
       return PlexSessionsResponse.fromJson(resp.data as Map<String, dynamic>)
               .mediaContainer
               ?.metadata ??

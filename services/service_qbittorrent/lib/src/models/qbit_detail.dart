@@ -44,8 +44,10 @@ abstract class QbitFile with _$QbitFile {
     @Default(0) int index,
     @Default('') String name,
     @Default(0) int size,
+
     /// 0.0 - 1.0.
     @Default(0) double progress,
+
     /// 0 = skip, 1 = normal, 6 = high, 7 = maximal.
     @Default(1) int priority,
   }) = _QbitFile;
@@ -62,6 +64,7 @@ abstract class QbitFile with _$QbitFile {
 abstract class QbitTracker with _$QbitTracker {
   const factory QbitTracker({
     @Default('') String url,
+
     /// 0 disabled, 1 not-contacted, 2 working, 3 updating, 4 not-working.
     @Default(0) int status,
     @JsonKey(name: 'num_seeds') @Default(-1) int numSeeds,

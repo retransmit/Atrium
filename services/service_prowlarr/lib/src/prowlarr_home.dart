@@ -77,8 +77,7 @@ class _ProwlarrHomeState extends State<ProwlarrHome>
           ),
         ],
       ),
-      floatingActionButton:
-          _tab.index == 0 ? _indexerFabs(context) : null,
+      floatingActionButton: _tab.index == 0 ? _indexerFabs(context) : null,
     );
   }
 
@@ -138,7 +137,8 @@ class _IndexersTab extends ConsumerWidget {
         ref.watch(prowlarrStatsByIdProvider(instance)).value ??
             const <int, ProwlarrIndexerStat>{};
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+      header: const MaterialHeader(),
       onRefresh: () async {
         ref.invalidate(prowlarrIndexersProvider(instance));
         ref.invalidate(prowlarrStatsByIdProvider(instance));

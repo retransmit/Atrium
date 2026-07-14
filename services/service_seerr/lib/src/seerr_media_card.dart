@@ -310,8 +310,7 @@ class SeerrRequestCard extends StatelessWidget {
                         height: 114,
                         child: item.posterPath != null
                             ? CachedNetworkImage(
-                                imageUrl:
-                                    _tmdbImage(item.posterPath!, 'w342'),
+                                imageUrl: _tmdbImage(item.posterPath!, 'w342'),
                                 fit: BoxFit.cover,
                                 errorWidget: (_, __, ___) =>
                                     _posterFallback(cs),
@@ -328,8 +327,7 @@ class SeerrRequestCard extends StatelessWidget {
               ],
             ),
           ),
-          if (trailing != null)
-            Positioned(top: 4, right: 4, child: trailing!),
+          if (trailing != null) Positioned(top: 4, right: 4, child: trailing!),
         ],
       ),
     );

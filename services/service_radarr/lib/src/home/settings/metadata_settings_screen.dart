@@ -12,7 +12,10 @@ class MetadataSettingsScreen extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _showMetadataEditorDialog(
-      BuildContext context, WidgetRef ref, Map<String, dynamic> metadata,) async {
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> metadata,
+  ) async {
     final fields = (metadata['fields'] as List<dynamic>?)
             ?.map((dynamic f) => f as Map<String, dynamic>)
             .toList() ??
@@ -31,22 +34,28 @@ class MetadataSettingsScreen extends ConsumerWidget {
                 fields: fields,
                 onSave: (updatedFields) async {
                   try {
-                    final api = await ref.read(radarrApiProvider(instance).future);
+                    final api =
+                        await ref.read(radarrApiProvider(instance).future);
                     final payload = Map<String, dynamic>.from(metadata);
                     payload['fields'] = updatedFields;
 
-                    await api.updateMetadataConfig(payload, payload['id'] as int);
+                    await api.updateMetadataConfig(
+                        payload, payload['id'] as int);
                     ref.invalidate(radarrMetadataConfigsProvider(instance));
                     if (context.mounted) {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Metadata "${metadata['name']}" updated!')),
+                        SnackBar(
+                            content: Text(
+                                'Metadata "${metadata['name']}" updated!')),
                       );
                     }
                   } catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Failed to save metadata settings: $e')),
+                        SnackBar(
+                            content:
+                                Text('Failed to save metadata settings: $e')),
                       );
                     }
                   }
@@ -88,7 +97,8 @@ class MetadataSettingsScreen extends ConsumerWidget {
                 margin: const EdgeInsets.only(bottom: 12),
                 color: theme.colorScheme.surfaceContainerLow,
                 child: ListTile(
-                  title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text(name,
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text('Status: ${enable ? "Enabled" : "Disabled"}'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -97,11 +107,14 @@ class MetadataSettingsScreen extends ConsumerWidget {
                         value: enable,
                         onChanged: (val) async {
                           try {
-                            final api = await ref.read(radarrApiProvider(instance).future);
+                            final api = await ref
+                                .read(radarrApiProvider(instance).future);
                             final payload = Map<String, dynamic>.from(c);
                             payload['enable'] = val;
-                            await api.updateMetadataConfig(payload, payload['id'] as int);
-                            ref.invalidate(radarrMetadataConfigsProvider(instance));
+                            await api.updateMetadataConfig(
+                                payload, payload['id'] as int);
+                            ref.invalidate(
+                                radarrMetadataConfigsProvider(instance));
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -113,7 +126,8 @@ class MetadataSettingsScreen extends ConsumerWidget {
                       ),
                       IconButton(
                         icon: const Icon(Icons.edit_outlined),
-                        onPressed: () => _showMetadataEditorDialog(context, ref, c),
+                        onPressed: () =>
+                            _showMetadataEditorDialog(context, ref, c),
                       ),
                     ],
                   ),

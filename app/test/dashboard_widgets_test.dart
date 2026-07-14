@@ -159,24 +159,25 @@ void main() {
           ),
         ),
         jf.jellyfinSessionsProvider(jelly).overrideWith(
-          (Ref ref) => Stream<List<jf.ActiveSession>>.value(<jf.ActiveSession>[
-            const jf.ActiveSession(
-              id: 's1',
-              user: 'Bob',
-              device: 'Web',
-              status: 'Playing',
-              showTitle: 'Breaking Bad',
-              episodeName: 'Pilot',
-              progressPercent: 55,
-              timePosition: '0:10:00',
-              timeDuration: '0:45:00',
-              positionTicks: 0,
-              durationTicks: 0,
-              volumeLevel: 100,
-              isMuted: false,
+              (Ref ref) =>
+                  Stream<List<jf.ActiveSession>>.value(<jf.ActiveSession>[
+                const jf.ActiveSession(
+                  id: 's1',
+                  user: 'Bob',
+                  device: 'Web',
+                  status: 'Playing',
+                  showTitle: 'Breaking Bad',
+                  episodeName: 'Pilot',
+                  progressPercent: 55,
+                  timePosition: '0:10:00',
+                  timeDuration: '0:45:00',
+                  positionTicks: 0,
+                  durationTicks: 0,
+                  volumeLevel: 100,
+                  isMuted: false,
+                ),
+              ]),
             ),
-          ]),
-        ),
       ],
       DashboardStreamsWidget(
         tautulliInstances: <Instance>[tau],
@@ -342,8 +343,8 @@ void main() {
               packageTemp: 55,
               cores: <GlancesCpuCore>[],
             ),
-            memory:
-                GlancesMemory(percentage: 63, used: 8000000000, total: 16000000000),
+            memory: GlancesMemory(
+                percentage: 63, used: 8000000000, total: 16000000000),
             swap: GlancesSwap(percentage: 0, used: 0, total: 0),
             network: <GlancesNetwork>[],
             disks: <GlancesDisk>[

@@ -28,10 +28,14 @@ void main() {
 
   group('mergeLayout', () {
     test('keeps stored order, appends missing kinds enabled, drops dupes', () {
-      final List<DashboardWidgetConfig> merged = mergeLayout(<DashboardWidgetConfig>[
-        const DashboardWidgetConfig(kind: DashboardWidgetKind.health, enabled: false),
-        const DashboardWidgetConfig(kind: DashboardWidgetKind.downloads, enabled: true),
-        const DashboardWidgetConfig(kind: DashboardWidgetKind.health, enabled: true), // dupe
+      final List<DashboardWidgetConfig> merged =
+          mergeLayout(<DashboardWidgetConfig>[
+        const DashboardWidgetConfig(
+            kind: DashboardWidgetKind.health, enabled: false),
+        const DashboardWidgetConfig(
+            kind: DashboardWidgetKind.downloads, enabled: true),
+        const DashboardWidgetConfig(
+            kind: DashboardWidgetKind.health, enabled: true), // dupe
       ]);
       expect(merged, hasLength(DashboardWidgetKind.values.length));
       expect(merged[0].kind, DashboardWidgetKind.health);
@@ -39,11 +43,13 @@ void main() {
       expect(merged[1].kind, DashboardWidgetKind.downloads);
       // The remaining kinds follow in enum order, enabled.
       expect(merged[2].kind, DashboardWidgetKind.streams);
-      expect(merged.skip(2).every((DashboardWidgetConfig c) => c.enabled), isTrue);
+      expect(
+          merged.skip(2).every((DashboardWidgetConfig c) => c.enabled), isTrue);
     });
 
     test('empty stored input yields the default layout', () {
-      final List<DashboardWidgetConfig> merged = mergeLayout(const <DashboardWidgetConfig>[]);
+      final List<DashboardWidgetConfig> merged =
+          mergeLayout(const <DashboardWidgetConfig>[]);
       expect(
         merged.map((DashboardWidgetConfig c) => c.kind).toList(),
         DashboardWidgetKind.values,
@@ -54,8 +60,10 @@ void main() {
 
   test('encodeLayout round-trips through decodeLayout', () {
     final List<DashboardWidgetConfig> layout = <DashboardWidgetConfig>[
-      const DashboardWidgetConfig(kind: DashboardWidgetKind.diskSpace, enabled: false),
-      const DashboardWidgetConfig(kind: DashboardWidgetKind.upcoming, enabled: true),
+      const DashboardWidgetConfig(
+          kind: DashboardWidgetKind.diskSpace, enabled: false),
+      const DashboardWidgetConfig(
+          kind: DashboardWidgetKind.upcoming, enabled: true),
     ];
     final List<DashboardWidgetConfig> back = decodeLayout(encodeLayout(layout));
     expect(back, hasLength(2));
@@ -77,7 +85,8 @@ void main() {
           .setEnabled(DashboardWidgetKind.requests, false);
       final DashboardWidgetConfig requests = container
           .read(dashboardLayoutProvider)
-          .firstWhere((DashboardWidgetConfig c) => c.kind == DashboardWidgetKind.requests);
+          .firstWhere((DashboardWidgetConfig c) =>
+              c.kind == DashboardWidgetKind.requests);
       expect(requests.enabled, isFalse);
     });
 
@@ -90,7 +99,7 @@ void main() {
       controller.setEnabled(DashboardWidgetKind.streams, false);
       // Enabled order is now: downloads, upcoming, recentlyAdded, health,
       // requests, serverInfo, diskSpace.
-      controller.moveEnabled(0, 3); // drag downloads down two slots
+      controller.moveEnabled(0, 2); // drag downloads down two slots
       final List<DashboardWidgetKind> enabled = container
           .read(dashboardLayoutProvider)
           .where((DashboardWidgetConfig c) => c.enabled)
@@ -106,7 +115,8 @@ void main() {
         DashboardWidgetKind.diskSpace,
       ]);
       // The disabled widget is still present, at the end.
-      final List<DashboardWidgetConfig> all = container.read(dashboardLayoutProvider);
+      final List<DashboardWidgetConfig> all =
+          container.read(dashboardLayoutProvider);
       expect(all.last.kind, DashboardWidgetKind.streams);
       expect(all.last.enabled, isFalse);
     });
