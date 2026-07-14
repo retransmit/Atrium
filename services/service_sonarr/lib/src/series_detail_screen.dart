@@ -115,7 +115,7 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
     final Widget backdrop = _Backdrop(fanartUrl: fanartUrl);
 
     return EasyRefresh(
-      header: const MaterialHeader(position: IndicatorPosition.locator),
+      header: const MaterialHeader(),
       onRefresh: () => _refresh(context),
       child: CustomScrollView(
         slivers: <Widget>[
@@ -207,7 +207,6 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
               );
             },
           ),
-          const HeaderLocator.sliver(),
 
           // -- Content --
           SliverPadding(
