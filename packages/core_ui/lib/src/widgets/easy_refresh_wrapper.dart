@@ -198,8 +198,7 @@ class _ExpressiveIndicatorState extends State<_ExpressiveIndicator>
       duration: const Duration(milliseconds: 750),
     )..addStatusListener(_onLoadCycle);
 
-    final isRefreshing = widget.state.mode == er.IndicatorMode.refresh ||
-        widget.state.mode == er.IndicatorMode.processing;
+    final isRefreshing = widget.state.mode == er.IndicatorMode.processing;
     if (isRefreshing) {
       _loadCtrl.forward();
     }
@@ -208,10 +207,8 @@ class _ExpressiveIndicatorState extends State<_ExpressiveIndicator>
   @override
   void didUpdateWidget(covariant _ExpressiveIndicator oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final wasRefreshing = oldWidget.state.mode == er.IndicatorMode.refresh ||
-        oldWidget.state.mode == er.IndicatorMode.processing;
-    final isRefreshing = widget.state.mode == er.IndicatorMode.refresh ||
-        widget.state.mode == er.IndicatorMode.processing;
+    final wasRefreshing = oldWidget.state.mode == er.IndicatorMode.processing;
+    final isRefreshing = widget.state.mode == er.IndicatorMode.processing;
 
     if (isRefreshing && !wasRefreshing) {
       _loadIndex = 0;
@@ -231,8 +228,7 @@ class _ExpressiveIndicatorState extends State<_ExpressiveIndicator>
 
   void _onLoadCycle(AnimationStatus status) {
     if (status == AnimationStatus.completed && mounted) {
-      final isRefreshing = widget.state.mode == er.IndicatorMode.refresh ||
-          widget.state.mode == er.IndicatorMode.processing;
+      final isRefreshing = widget.state.mode == er.IndicatorMode.processing;
       if (isRefreshing) {
         setState(() {
           _loadIndex = (_loadIndex + 1) % _loadingSequence.length;
