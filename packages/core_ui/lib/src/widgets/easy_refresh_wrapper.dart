@@ -65,50 +65,23 @@ class EasyRefresh extends StatelessWidget {
             return const SizedBox.shrink();
           }
 
-          final double opacity = (state.offset / 30.0).clamp(0.0, 1.0);
-          final double scale = (state.offset / 70.0).clamp(0.01, 1.0);
-
-          final double top = position == er.IndicatorPosition.locator
-              ? (state.offset - 40.0) / 2
-              : -40.0 + state.offset.clamp(0.0, 70.0);
-
-          return SizedBox(
+          return Container(
+            alignment: Alignment.center,
             height: state.offset,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Positioned(
-                  top: top,
-                  left: 0,
-                  right: 0,
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    child: Opacity(
-                      opacity: opacity,
-                      child: Transform.scale(
-                        scale: scale,
-                        child: Card(
-                          elevation: 6,
-                          shape: const CircleBorder(),
-                          color: Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHigh,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: SizedBox(
-                              width: 36,
-                              height: 36,
-                              child: M3LoadingIndicator(
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+            child: Card(
+              elevation: 6,
+              shape: const CircleBorder(),
+              color: Theme.of(context).colorScheme.surfaceContainerHigh,
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: M3LoadingIndicator(
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
-              ],
+              ),
             ),
           );
         },
