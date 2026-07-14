@@ -47,13 +47,21 @@ class EasyRefresh extends StatelessWidget {
       return child;
     }
 
-    return er.EasyRefresh(
-      header: header,
-      footer: footer,
-      controller: controller,
-      onRefresh: onRefresh,
-      onLoad: onLoad,
-      child: child,
+    return NotificationListener<ScrollNotification>(
+      onNotification: (ScrollNotification notification) {
+        if (notification.metrics.axis == Axis.horizontal) {
+          return true;
+        }
+        return false;
+      },
+      child: er.EasyRefresh(
+        header: header,
+        footer: footer,
+        controller: controller,
+        onRefresh: onRefresh,
+        onLoad: onLoad,
+        child: child,
+      ),
     );
   }
 }
