@@ -2,13 +2,13 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'models/sab_history.dart';
 import 'models/sab_queue.dart';
 import 'models/sab_stats.dart';
 import 'sabnzbd_api.dart';
 import 'sabnzbd_providers.dart';
-import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 /// SABnzbd's per-instance UI: Queue / History / Server tabs.
 class SabnzbdHome extends StatelessWidget {
@@ -146,7 +146,7 @@ class _QueueSummary extends ConsumerWidget {
                     Text(
                       speed,
                       style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700, color: accent),
+                          fontWeight: FontWeight.w700, color: accent,),
                     ),
                     Text(
                       _isPaused
@@ -486,16 +486,16 @@ class _ServerTab extends ConsumerWidget {
                 children: <Widget>[
                   Expanded(
                       child:
-                          _StatTile(label: 'Today', value: _fmtBytes(s.day))),
+                          _StatTile(label: 'Today', value: _fmtBytes(s.day)),),
                   Expanded(
                       child:
-                          _StatTile(label: 'Week', value: _fmtBytes(s.week))),
+                          _StatTile(label: 'Week', value: _fmtBytes(s.week)),),
                   Expanded(
                       child:
-                          _StatTile(label: 'Month', value: _fmtBytes(s.month))),
+                          _StatTile(label: 'Month', value: _fmtBytes(s.month)),),
                   Expanded(
                       child:
-                          _StatTile(label: 'Total', value: _fmtBytes(s.total))),
+                          _StatTile(label: 'Total', value: _fmtBytes(s.total)),),
                 ],
               ),
               loading: () => const Padding(
@@ -547,7 +547,7 @@ class _ServerTab extends ConsumerWidget {
 
 class _SpeedLimitControl extends ConsumerStatefulWidget {
   const _SpeedLimitControl(
-      {required this.instance, required this.initialPercent});
+      {required this.instance, required this.initialPercent,});
 
   final Instance instance;
   final int initialPercent;
@@ -598,7 +598,7 @@ class _SpeedLimitControlState extends ConsumerState<_SpeedLimitControl> {
 
 class _StatPill extends StatelessWidget {
   const _StatPill(
-      {required this.icon, required this.label, required this.color});
+      {required this.icon, required this.label, required this.color,});
 
   final IconData icon;
   final String label;

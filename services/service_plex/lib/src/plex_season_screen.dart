@@ -3,12 +3,12 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'models/plex_models.dart';
 import 'plex_api.dart';
 import 'plex_item_detail.dart';
 import 'plex_providers.dart';
-import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 /// Season and episode browsing for a Plex show. Browse/manage only: episodes
 /// carry a watched toggle; playback stays with the official Plex app. Seasons
@@ -125,7 +125,7 @@ class PlexSeasonCard extends StatelessWidget {
 /// Tapping a row opens the episode detail screen.
 class PlexEpisodeList extends ConsumerWidget {
   const PlexEpisodeList(
-      {required this.instance, required this.season, super.key});
+      {required this.instance, required this.season, super.key,});
 
   final Instance instance;
   final PlexMetadata season;

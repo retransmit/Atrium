@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:palette_generator_plus/palette_generator_plus.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'emby_client.dart';
 import 'emby_identify_screen.dart';
@@ -17,7 +18,6 @@ import 'emby_session_detail_screen.dart';
 import 'models/emby_item.dart';
 import 'models/emby_session.dart';
 import 'models/emby_view.dart';
-import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 /// Container types - tapping drills into children. Everything else plays.
 /// (See the note in JellyfinHome: we dispatch on "is it a container?" so an
@@ -1659,7 +1659,7 @@ class _SessionCardState extends State<_SessionCard> {
                                       theme.colorScheme.surfaceContainerHighest,
                                   activeColor: playing
                                       ? theme.colorScheme.primary
-                                      : theme.colorScheme.outline),
+                                      : theme.colorScheme.outline,),
                             ),
                           ],
                         ),

@@ -8,6 +8,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:palette_generator_plus/palette_generator_plus.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'models/plex_session.dart';
 import 'plex_api.dart';

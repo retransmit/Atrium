@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'models/plex_models.dart';
 import 'models/plex_session.dart';
@@ -13,7 +14,6 @@ import 'plex_item_detail.dart';
 import 'plex_music_screens.dart';
 import 'plex_providers.dart';
 import 'plex_session_detail_screen.dart';
-import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 /// Plex item types that open the detail screen; everything else is a container
 /// we drill into. Plex types are reliable and lowercase, so an allowlist is
@@ -578,7 +578,7 @@ class _SessionCard extends ConsumerWidget {
           onTap: () => pushScreen<void>(
             context,
             PlexSessionDetailScreen(
-                instance: instance, initialSession: session),
+                instance: instance, initialSession: session,),
           ),
           child: Stack(
             fit: StackFit.expand,

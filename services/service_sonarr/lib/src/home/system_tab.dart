@@ -4,11 +4,11 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../sonarr_api.dart';
 import '../sonarr_providers.dart';
-import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 class SystemTab extends ConsumerStatefulWidget {
   const SystemTab({required this.instance, super.key});
@@ -584,7 +584,7 @@ class _DiskSpaceCard extends StatelessWidget {
                   trackColor: theme.colorScheme.surfaceContainerHighest,
                   activeColor: usedPercent > 0.9
                       ? theme.colorScheme.error
-                      : theme.colorScheme.primary),
+                      : theme.colorScheme.primary,),
             ),
             const SizedBox(height: Insets.xs),
             Text(

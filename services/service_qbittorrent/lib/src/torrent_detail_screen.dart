@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'models/qbit_detail.dart';
 import 'models/qbit_torrent.dart';
 import 'qbittorrent_client.dart';
 import 'qbittorrent_home.dart' show fmtBytes, friendlyState;
 import 'qbittorrent_providers.dart';
-import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 /// Detail view for a single torrent: Overview / Files / Trackers / Peers tabs.
 ///
@@ -102,21 +102,21 @@ class TorrentDetailScreen extends ConsumerWidget {
               },
               itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
                 const PopupMenuItem<String>(
-                    value: 'pause', child: Text('Pause')),
+                    value: 'pause', child: Text('Pause'),),
                 const PopupMenuItem<String>(
-                    value: 'resume', child: Text('Resume')),
+                    value: 'resume', child: Text('Resume'),),
                 const PopupMenuItem<String>(
-                    value: 'forcestart', child: Text('Force Start')),
+                    value: 'forcestart', child: Text('Force Start'),),
                 const PopupMenuDivider(),
                 const PopupMenuItem<String>(
-                    value: 'copy_magnet', child: Text('Copy Magnet Link')),
+                    value: 'copy_magnet', child: Text('Copy Magnet Link'),),
                 const PopupMenuItem<String>(
-                    value: 'copy_hash', child: Text('Copy Hash')),
+                    value: 'copy_hash', child: Text('Copy Hash'),),
                 const PopupMenuDivider(),
                 const PopupMenuItem<String>(
-                    value: 'recheck', child: Text('Force Recheck')),
+                    value: 'recheck', child: Text('Force Recheck'),),
                 const PopupMenuItem<String>(
-                    value: 'reannounce', child: Text('Force Reannounce')),
+                    value: 'reannounce', child: Text('Force Reannounce'),),
               ],
             ),
           ],
@@ -323,7 +323,7 @@ class _OverviewTab extends ConsumerWidget {
                         const Spacer(),
                         if (progress < 1.0) ...<Widget>[
                           Icon(Icons.schedule,
-                              size: 14, color: cs.onSurfaceVariant),
+                              size: 14, color: cs.onSurfaceVariant,),
                           const SizedBox(width: 2),
                           Text(
                             _fmtEta(torrent.eta),
@@ -346,11 +346,11 @@ class _OverviewTab extends ConsumerWidget {
                                   actionColor.withValues(alpha: 0.15),
                               foregroundColor: actionColor,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
+                                  horizontal: 16, vertical: 8,),
                             ),
                             icon: Icon(
                                 isPaused ? Icons.play_arrow : Icons.pause,
-                                size: 18),
+                                size: 18,),
                             label: Text(isPaused ? 'Resume' : 'Pause'),
                             onPressed: () async {
                               final ScaffoldMessengerState messenger =
@@ -366,11 +366,11 @@ class _OverviewTab extends ConsumerWidget {
                                 }
                                 if (!context.mounted) return;
                                 ref.invalidate(
-                                    qbitRawTorrentsProvider(instance));
+                                    qbitRawTorrentsProvider(instance),);
                               } catch (_) {
                                 messenger.showSnackBar(
                                   const SnackBar(
-                                      content: Text('Action failed')),
+                                      content: Text('Action failed'),),
                                 );
                               }
                             },
@@ -381,7 +381,7 @@ class _OverviewTab extends ConsumerWidget {
                                   actionColor.withValues(alpha: 0.15),
                               foregroundColor: actionColor,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
+                                  horizontal: 16, vertical: 8,),
                             ),
                             icon: const Icon(Icons.fast_forward, size: 18),
                             label: const Text('Force Start'),
@@ -398,11 +398,11 @@ class _OverviewTab extends ConsumerWidget {
                                 );
                                 if (!context.mounted) return;
                                 ref.invalidate(
-                                    qbitRawTorrentsProvider(instance));
+                                    qbitRawTorrentsProvider(instance),);
                               } catch (_) {
                                 messenger.showSnackBar(
                                   const SnackBar(
-                                      content: Text('Action failed')),
+                                      content: Text('Action failed'),),
                                 );
                               }
                             },
@@ -412,7 +412,7 @@ class _OverviewTab extends ConsumerWidget {
                               backgroundColor: cs.surfaceContainerHighest,
                               foregroundColor: cs.onSurfaceVariant,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
+                                  horizontal: 16, vertical: 8,),
                             ),
                             icon: const Icon(Icons.link, size: 18),
                             label: const Text('Magnet'),
@@ -423,7 +423,7 @@ class _OverviewTab extends ConsumerWidget {
                                   ? torrent.magnetUri
                                   : 'magnet:?xt=urn:btih:${torrent.hash}&dn=${Uri.encodeComponent(torrent.name)}';
                               await Clipboard.setData(
-                                  ClipboardData(text: magnet));
+                                  ClipboardData(text: magnet),);
                               messenger.showSnackBar(
                                 const SnackBar(
                                   content: Text('Magnet link copied'),
@@ -436,7 +436,7 @@ class _OverviewTab extends ConsumerWidget {
                               backgroundColor: cs.surfaceContainerHighest,
                               foregroundColor: cs.onSurfaceVariant,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
+                                  horizontal: 16, vertical: 8,),
                             ),
                             icon: const Icon(Icons.tag, size: 18),
                             label: const Text('Hash'),
@@ -458,7 +458,7 @@ class _OverviewTab extends ConsumerWidget {
                               backgroundColor: cs.surfaceContainerHighest,
                               foregroundColor: cs.onSurfaceVariant,
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
+                                  horizontal: 16, vertical: 8,),
                             ),
                             icon: const Icon(Icons.delete, size: 18),
                             label: const Text('Delete'),
@@ -470,7 +470,7 @@ class _OverviewTab extends ConsumerWidget {
                                   bool deleteFiles = false;
                                   return StatefulBuilder(
                                     builder: (BuildContext context,
-                                        StateSetter setState) {
+                                        StateSetter setState,) {
                                       return AlertDialog(
                                         title: const Text('Delete Torrent'),
                                         content: Column(
@@ -479,18 +479,18 @@ class _OverviewTab extends ConsumerWidget {
                                               CrossAxisAlignment.start,
                                           children: <Widget>[
                                             const Text(
-                                                'Are you sure you want to delete this torrent?'),
+                                                'Are you sure you want to delete this torrent?',),
                                             const SizedBox(height: 16),
                                             CheckboxListTile(
                                               value: deleteFiles,
                                               onChanged: (bool? val) {
                                                 if (val != null) {
                                                   setState(
-                                                      () => deleteFiles = val);
+                                                      () => deleteFiles = val,);
                                                 }
                                               },
                                               title: const Text(
-                                                  'Also delete files'),
+                                                  'Also delete files',),
                                               contentPadding: EdgeInsets.zero,
                                               controlAffinity:
                                                   ListTileControlAffinity
@@ -512,7 +512,7 @@ class _OverviewTab extends ConsumerWidget {
                                                 foregroundColor:
                                                     Theme.of(context)
                                                         .colorScheme
-                                                        .error),
+                                                        .error,),
                                             child: const Text('Delete'),
                                           ),
                                         ],
@@ -535,12 +535,12 @@ class _OverviewTab extends ConsumerWidget {
                                 );
                                 if (!context.mounted) return;
                                 ref.invalidate(
-                                    qbitRawTorrentsProvider(instance));
+                                    qbitRawTorrentsProvider(instance),);
                                 Navigator.of(context).pop();
                               } catch (_) {
                                 messenger.showSnackBar(
                                   const SnackBar(
-                                      content: Text('Action failed')),
+                                      content: Text('Action failed'),),
                                 );
                               }
                             },
@@ -731,7 +731,7 @@ class _FileNode {
 }
 
 List<_FileNode> _buildFileTree(
-    List<QbitFile> files, Set<String> collapsedPaths) {
+    List<QbitFile> files, Set<String> collapsedPaths,) {
   final _BuilderNode root = _BuilderNode('', '', -1, false);
 
   for (final QbitFile f in files) {
@@ -907,14 +907,14 @@ class _FilesTabState extends ConsumerState<_FilesTab>
                         onChanged: (bool? v) async {
                           final QbittorrentClient client = await ref.read(
                               qbittorrentClientProvider(widget.instance)
-                                  .future);
+                                  .future,);
                           await client.setFilePriority(
                             widget.hash,
                             f.fileIndices,
                             (v ?? false) ? 1 : 0,
                           );
                           ref.invalidate(qbitFilesProvider(
-                              (widget.instance, widget.hash)));
+                              (widget.instance, widget.hash),),);
                         },
                       ),
                     ],

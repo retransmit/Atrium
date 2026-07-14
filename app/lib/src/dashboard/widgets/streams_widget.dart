@@ -12,8 +12,8 @@ import 'package:service_tautulli/service_tautulli.dart';
 
 import '../dashboard_widget_card.dart';
 import '../dashboard_widget_kind.dart';
+import 'package:palette_generator_plus/palette_generator_plus.dart';
 import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
-import 'package:palette_generator/palette_generator.dart';
 
 /// Live count of active sessions across every Tautulli, Jellyfin and Emby
 /// instance. Instances still loading or in error contribute 0, so the

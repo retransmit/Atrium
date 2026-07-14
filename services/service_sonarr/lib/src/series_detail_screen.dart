@@ -4,6 +4,7 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'home/sonarr_rename_dialog.dart';
 import 'models/sonarr_episode.dart';
@@ -12,7 +13,6 @@ import 'sonarr_api.dart';
 import 'sonarr_providers.dart';
 import 'sonarr_release_search_screen.dart';
 import 'sonarr_settings_form_screen.dart';
-import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 class SeriesDetailScreen extends ConsumerWidget {
   const SeriesDetailScreen({
@@ -87,7 +87,7 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
 
   void _invalidateProviders() {
     ref.invalidate(
-        sonarrSeriesByIdProvider((widget.instance, widget.series.id)));
+        sonarrSeriesByIdProvider((widget.instance, widget.series.id)),);
     ref.invalidate(sonarrEpisodesProvider((widget.instance, widget.series.id)));
     ref.invalidate(sonarrSeriesProvider(widget.instance));
   }
@@ -342,7 +342,7 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
                                           Scrollable.ensureVisible(
                                             key!.currentContext!,
                                             duration: const Duration(
-                                                milliseconds: 500),
+                                                milliseconds: 500,),
                                             curve: Curves.easeInOut,
                                           );
                                         }
@@ -358,7 +358,7 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
                       ],
                       Column(
                         children: _buildSeasonCards(
-                            context, episodesBySeason, sortedSeasons),
+                            context, episodesBySeason, sortedSeasons,),
                       ),
                     ];
                   },
@@ -388,7 +388,7 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
                             FilledButton.tonal(
                               onPressed: () => ref.invalidate(
                                 sonarrEpisodesProvider(
-                                    (widget.instance, widget.series.id)),
+                                    (widget.instance, widget.series.id),),
                               ),
                               child: const Text('Retry'),
                             ),
@@ -624,7 +624,7 @@ class _StatsCard extends StatelessWidget {
                 shape: ProgressM3EShape.flat,
                 value: progress,
                 trackColor: cs.surfaceContainerHighest,
-                activeColor: progress >= 1.0 ? cs.tertiary : cs.primary),
+                activeColor: progress >= 1.0 ? cs.tertiary : cs.primary,),
           ),
         ],
       ),
@@ -1049,7 +1049,7 @@ class _SeasonCard extends ConsumerWidget {
                                     trackColor: cs.surfaceContainerHighest,
                                     activeColor: progress >= 1.0
                                         ? cs.tertiary
-                                        : cs.primary),
+                                        : cs.primary,),
                               ),
                             ),
                             const SizedBox(width: Insets.sm),
@@ -1122,7 +1122,7 @@ class _SeasonCard extends ConsumerWidget {
                         Expanded(
                           child: TextButton.icon(
                             icon: Icon(Icons.delete_outline,
-                                color: cs.error, size: 16),
+                                color: cs.error, size: 16,),
                             label: Text(
                               'Delete',
                               style: TextStyle(color: cs.error, fontSize: 12),
@@ -1161,7 +1161,7 @@ class _SeasonCard extends ConsumerWidget {
   }
 
   Future<void> _toggleSeasonMonitoring(
-      BuildContext context, WidgetRef ref, bool currentMonitored) async {
+      BuildContext context, WidgetRef ref, bool currentMonitored,) async {
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
       final raw = await api.getSeriesRaw(series.id);
@@ -1201,7 +1201,7 @@ class _SeasonCard extends ConsumerWidget {
   }
 
   Future<void> _confirmDeleteSeasonFiles(
-      BuildContext context, WidgetRef ref) async {
+      BuildContext context, WidgetRef ref,) async {
     final theme = Theme.of(context);
     final confirm = await showDialog<bool>(
       context: context,
@@ -1274,7 +1274,7 @@ class _SeasonCard extends ConsumerWidget {
         if (failedCount == 0) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text('Successfully deleted $deletedCount file(s).')),
+                content: Text('Successfully deleted $deletedCount file(s).'),),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1290,7 +1290,7 @@ class _SeasonCard extends ConsumerWidget {
   }
 
   Future<void> _searchSeason(
-      BuildContext context, WidgetRef ref, int seasonNum) async {
+      BuildContext context, WidgetRef ref, int seasonNum,) async {
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
       await api.runCommand(<String, dynamic>{
@@ -1340,7 +1340,7 @@ class _EpisodeRow extends ConsumerWidget {
   final SonarrEpisode episode;
 
   Future<void> _toggleEpisodeMonitored(
-      BuildContext context, WidgetRef ref) async {
+      BuildContext context, WidgetRef ref,) async {
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
       final updated = episode.copyWith(monitored: !episode.monitored);
@@ -1607,7 +1607,7 @@ void _showEpisodeBottomSheet({
                                 episode.copyWith(monitored: !episode.monitored);
                             await api.updateEpisode(updated.toJson());
                             ref.invalidate(
-                                sonarrEpisodesProvider((instance, series.id)));
+                                sonarrEpisodesProvider((instance, series.id)),);
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -1641,7 +1641,7 @@ void _showEpisodeBottomSheet({
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                     content:
-                                        Text('Search queued for episode.')),
+                                        Text('Search queued for episode.'),),
                               );
                             }
                           } catch (e) {
@@ -1649,7 +1649,7 @@ void _showEpisodeBottomSheet({
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                     content:
-                                        Text('Failed to queue search: $e')),
+                                        Text('Failed to queue search: $e'),),
                               );
                             }
                           }
@@ -1715,18 +1715,18 @@ void _showEpisodeBottomSheet({
                               await api
                                   .deleteEpisodeFile(episode.episodeFileId!);
                               ref.invalidate(sonarrEpisodesProvider(
-                                  (instance, series.id)));
+                                  (instance, series.id),),);
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                      content: Text('File deleted.')),
+                                      content: Text('File deleted.'),),
                                 );
                               }
                             } catch (e) {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                      content: Text('Failed to delete: $e')),
+                                      content: Text('Failed to delete: $e'),),
                                 );
                               }
                             }
@@ -2018,7 +2018,7 @@ void _showMonitorSeriesDialog({
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text('Failed to update monitoring: $e')),
+                            content: Text('Failed to update monitoring: $e'),),
                       );
                     }
                   }

@@ -7,12 +7,12 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'models/tautulli_activity.dart';
 import 'models/tautulli_models.dart';
 import 'tautulli_api.dart';
 import 'tautulli_providers.dart';
-import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 /// Tautulli's per-instance UI: Activity (live streams w/ detail + terminate),
 /// History, Stats, and Users tabs - all poster-rich via Tautulli's image proxy.
@@ -512,7 +512,7 @@ class _SessionSheetState extends ConsumerState<_SessionSheet> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 _Poster(
-                    url: api?.imageUrl(s.posterThumb), width: 64, height: 96),
+                    url: api?.imageUrl(s.posterThumb), width: 64, height: 96,),
                 const SizedBox(width: Insets.md),
                 Expanded(
                   child: Column(

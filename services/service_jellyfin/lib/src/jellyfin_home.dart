@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:palette_generator_plus/palette_generator_plus.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'jellyfin_client.dart';
 import 'jellyfin_identify_screen.dart';
@@ -16,7 +17,6 @@ import 'jellyfin_session_detail_screen.dart';
 import 'models/jellyfin_item.dart';
 import 'models/jellyfin_session.dart';
 import 'models/jellyfin_view.dart';
-import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 /// Container types - tapping drills into children. Everything else plays.
 /// (See the note in JellyfinHome: we dispatch on "is it a container?" so an
@@ -873,7 +873,7 @@ class JellyfinBannerCard extends ConsumerWidget {
                             ref.invalidate(jellyfinItemsProvider);
                             ref.invalidate(jellyfinNextUpProvider(instance));
                             ref.invalidate(
-                                jellyfinResumeItemsProvider(instance));
+                                jellyfinResumeItemsProvider(instance),);
                           } catch (_) {
                             // Action failed; no revert needed.
                           }
@@ -902,7 +902,7 @@ class JellyfinBannerCard extends ConsumerWidget {
                             ref.invalidate(jellyfinItemsProvider);
                             ref.invalidate(jellyfinNextUpProvider(instance));
                             ref.invalidate(
-                                jellyfinResumeItemsProvider(instance));
+                                jellyfinResumeItemsProvider(instance),);
                           }
                         },
                       ),
@@ -1622,7 +1622,7 @@ class _SessionCardState extends State<_SessionCard> {
                                       theme.colorScheme.surfaceContainerHighest,
                                   activeColor: playing
                                       ? theme.colorScheme.primary
-                                      : theme.colorScheme.outline),
+                                      : theme.colorScheme.outline,),
                             ),
                           ],
                         ),
