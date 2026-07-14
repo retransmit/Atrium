@@ -1,4 +1,4 @@
-
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +10,9 @@ import 'src/bootstrap.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Use the classic pull-to-refresh style globally.
+  EasyRefresh.defaultHeaderBuilder = () => const ClassicHeader();
+  EasyRefresh.defaultFooterBuilder = () => const ClassicFooter();
   // Never fetch fonts from the network; only bundled assets are used.
   GoogleFonts.config.allowRuntimeFetching = false;
   await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
