@@ -114,7 +114,7 @@ class _DownloadClientsTab extends ConsumerWidget {
                       onTap: () {
                         Navigator.pop(context);
                         _showClientEditorDialog(context, ref, preset,
-                            isNew: true);
+                            isNew: true,);
                       },
                     );
                   },
@@ -168,7 +168,7 @@ class _DownloadClientsTab extends ConsumerWidget {
                       await api.createDownloadClient(payload);
                     } else {
                       await api.updateDownloadClient(
-                          payload, payload['id'] as int);
+                          payload, payload['id'] as int,);
                     }
 
                     ref.invalidate(radarrDownloadClientsProvider(instance));
@@ -177,7 +177,7 @@ class _DownloadClientsTab extends ConsumerWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                              'Download client ${isNew ? 'added' : 'updated'}!'),
+                              'Download client ${isNew ? 'added' : 'updated'}!',),
                         ),
                       );
                     }
@@ -186,7 +186,7 @@ class _DownloadClientsTab extends ConsumerWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                             content:
-                                Text('Failed to save download client: $e')),
+                                Text('Failed to save download client: $e'),),
                       );
                     }
                   }
@@ -262,7 +262,7 @@ class _DownloadClientsTab extends ConsumerWidget {
                 color: theme.colorScheme.surfaceContainerLow,
                 child: ListTile(
                   title: Text(name,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                      style: const TextStyle(fontWeight: FontWeight.bold),),
                   subtitle: Text('Protocol: ${proto.toUpperCase()}'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -274,7 +274,7 @@ class _DownloadClientsTab extends ConsumerWidget {
                       ),
                       IconButton(
                         icon: Icon(Icons.delete_outline,
-                            color: theme.colorScheme.error),
+                            color: theme.colorScheme.error,),
                         onPressed: () => _deleteClient(context, ref, id, name),
                       ),
                     ],
@@ -363,7 +363,7 @@ class _RemotePathMappingsTab extends ConsumerWidget {
 
                   if (isEdit) {
                     await api.updateRemotePathMapping(
-                        payload, payload['id'] as int);
+                        payload, payload['id'] as int,);
                   } else {
                     await api.createRemotePathMapping(payload);
                   }
@@ -434,7 +434,7 @@ class _RemotePathMappingsTab extends ConsumerWidget {
         data: (mappings) {
           if (mappings.isEmpty) {
             return const Center(
-                child: Text('No path mappings configured. Tap + to add one.'));
+                child: Text('No path mappings configured. Tap + to add one.'),);
           }
 
           return ListView.builder(
@@ -465,7 +465,7 @@ class _RemotePathMappingsTab extends ConsumerWidget {
                       ),
                       IconButton(
                         icon: Icon(Icons.delete_outline,
-                            color: theme.colorScheme.error),
+                            color: theme.colorScheme.error,),
                         onPressed: () => _deleteMapping(context, ref, id, host),
                       ),
                     ],

@@ -281,7 +281,7 @@ class _JellyfinSessionDetailScreenState
                           Flexible(
                             child: ConstrainedBox(
                               constraints: const BoxConstraints(
-                                  maxHeight: 420, maxWidth: 420),
+                                  maxHeight: 420, maxWidth: 420,),
                               child: AspectRatio(
                                 aspectRatio: session.aspectRatio != null &&
                                         session.aspectRatio! > 0.0
@@ -414,7 +414,7 @@ class _JellyfinSessionDetailScreenState
                                   if (!mounted) return;
                                   ref.invalidate(
                                     jellyfinFastSessionsProvider(
-                                        widget.instance),
+                                        widget.instance,),
                                   );
                                 } catch (_) {
                                   messenger.showSnackBar(
@@ -484,7 +484,7 @@ class _JellyfinSessionDetailScreenState
                                 final int targetTicks =
                                     session.positionTicks - 10000000;
                                 await client.seekSession(session.id,
-                                    targetTicks < 0 ? 0 : targetTicks);
+                                    targetTicks < 0 ? 0 : targetTicks,);
                                 if (!mounted) return;
                                 ref.invalidate(
                                   jellyfinFastSessionsProvider(widget.instance),
@@ -567,7 +567,7 @@ class _JellyfinSessionDetailScreenState
                                     session.positionTicks + 10000000;
                                 if (targetTicks < session.durationTicks) {
                                   await client.seekSession(
-                                      session.id, targetTicks);
+                                      session.id, targetTicks,);
                                 }
                                 if (!mounted) return;
                                 ref.invalidate(

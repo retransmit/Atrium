@@ -150,7 +150,7 @@ class __ManualImportSetupDialogState
         builder: (BuildContext context) => AlertDialog(
           title: const Text('No Files Found'),
           content: Text(
-              'No videos were found in "$folder" that are eligible for import.'),
+              'No videos were found in "$folder" that are eligible for import.',),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -206,7 +206,7 @@ class __ManualImportSetupDialogState
                     onChanged: (String val) {
                       ref
                           .read(radarrManualImportPathProvider(widget.instance)
-                              .notifier)
+                              .notifier,)
                           .state = val;
                     },
                   ),
@@ -240,7 +240,7 @@ class __ManualImportSetupDialogState
                 if (val != null) {
                   ref
                       .read(radarrManualImportModeProvider(widget.instance)
-                          .notifier)
+                          .notifier,)
                       .state = val;
                 }
               },
@@ -254,7 +254,7 @@ class __ManualImportSetupDialogState
               onChanged: (bool val) {
                 ref
                     .read(radarrManualImportFilterProvider(widget.instance)
-                        .notifier)
+                        .notifier,)
                     .state = val;
               },
             ),
@@ -639,7 +639,7 @@ class __ManualImportMappingScreenState
     if (_selectedPaths.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Please select at least one file to import.')),
+            content: Text('Please select at least one file to import.'),),
       );
       return;
     }
@@ -869,7 +869,7 @@ class __ManualImportMappingScreenState
                                 children: <Widget>[
                                   ActionChip(
                                     avatar: const Icon(Icons.movie_outlined,
-                                        size: 14),
+                                        size: 14,),
                                     label: Text(
                                       movie != null
                                           ? (movie['title'] as String)

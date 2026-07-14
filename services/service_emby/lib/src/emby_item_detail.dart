@@ -92,7 +92,7 @@ class EmbyItemDetailScreen extends ConsumerWidget {
                     );
                     if (changed == true && context.mounted) {
                       ref.invalidate(
-                          embyItemDetailsProvider((instance, itemId)));
+                          embyItemDetailsProvider((instance, itemId)),);
                     }
                   } else if (choice == 'refresh') {
                     try {
@@ -105,7 +105,7 @@ class EmbyItemDetailScreen extends ConsumerWidget {
                           const SnackBar(content: Text('Refresh queued')),
                         );
                         ref.invalidate(
-                            embyItemDetailsProvider((instance, itemId)));
+                            embyItemDetailsProvider((instance, itemId)),);
                       }
                     } catch (e) {
                       if (context.mounted) {

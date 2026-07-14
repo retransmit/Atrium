@@ -666,20 +666,20 @@ class _ReleaseDatesSection extends StatelessWidget {
             const SizedBox(height: Insets.md),
             if (inCinemasDate != null)
               _buildReleaseRow(context, 'In Cinemas',
-                  formatter.format(inCinemasDate), Icons.local_play_outlined),
+                  formatter.format(inCinemasDate), Icons.local_play_outlined,),
             if (digitalReleaseDate != null) ...[
               if (inCinemasDate != null) const Divider(height: 24),
               _buildReleaseRow(
                   context,
                   'Digital Release',
                   formatter.format(digitalReleaseDate),
-                  Icons.language_outlined),
+                  Icons.language_outlined,),
             ],
             if (physicalReleaseDate != null) ...[
               if (inCinemasDate != null || digitalReleaseDate != null)
                 const Divider(height: 24),
               _buildReleaseRow(context, 'Physical Release',
-                  formatter.format(physicalReleaseDate), Icons.album_outlined),
+                  formatter.format(physicalReleaseDate), Icons.album_outlined,),
             ],
           ],
         ),
@@ -688,7 +688,7 @@ class _ReleaseDatesSection extends StatelessWidget {
   }
 
   Widget _buildReleaseRow(
-      BuildContext context, String label, String value, IconData icon) {
+      BuildContext context, String label, String value, IconData icon,) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
 

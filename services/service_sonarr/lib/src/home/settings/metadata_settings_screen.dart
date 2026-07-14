@@ -63,7 +63,7 @@ class MetadataSettingsScreen extends ConsumerWidget {
                             await api.updateMetadataConfig(payload);
 
                             ref.invalidate(
-                                sonarrMetadataConfigsProvider(instance));
+                                sonarrMetadataConfigsProvider(instance),);
                             if (context.mounted) {
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -112,7 +112,7 @@ class MetadataSettingsScreen extends ConsumerWidget {
         data: (configs) {
           if (configs.isEmpty) {
             return const Center(
-                child: Text('No metadata consumers configured.'));
+                child: Text('No metadata consumers configured.'),);
           }
 
           return ListView.builder(
@@ -151,7 +151,7 @@ class MetadataSettingsScreen extends ConsumerWidget {
                     ),
                   ),
                   subtitle: Text(
-                      '$implementation • Status: ${isEnabled ? 'Enabled' : 'Disabled'}'),
+                      '$implementation • Status: ${isEnabled ? 'Enabled' : 'Disabled'}',),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -165,7 +165,7 @@ class MetadataSettingsScreen extends ConsumerWidget {
                             payload['enable'] = val;
                             await api.updateMetadataConfig(payload);
                             ref.invalidate(
-                                sonarrMetadataConfigsProvider(instance));
+                                sonarrMetadataConfigsProvider(instance),);
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(

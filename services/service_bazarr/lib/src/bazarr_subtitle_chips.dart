@@ -53,7 +53,7 @@ class BazarrSubtitleChips extends StatelessWidget {
   }
 
   Widget _chip(BuildContext context, BazarrSubtitle s,
-      {required bool present}) {
+      {required bool present,}) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     // Present subtitles read as a soft tertiary "have it" tone; missing ones as

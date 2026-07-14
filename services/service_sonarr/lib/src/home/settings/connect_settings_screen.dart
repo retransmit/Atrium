@@ -161,21 +161,21 @@ class ConnectSettingsScreen extends ConsumerWidget {
                                 title: const Text('On Download'),
                                 value: onDownload,
                                 onChanged: (val) => setDialogState(
-                                    () => onDownload = val ?? false),
+                                    () => onDownload = val ?? false,),
                               ),
                               CheckboxListTile(
                                 contentPadding: EdgeInsets.zero,
                                 title: const Text('On Upgrade'),
                                 value: onUpgrade,
                                 onChanged: (val) => setDialogState(
-                                    () => onUpgrade = val ?? false),
+                                    () => onUpgrade = val ?? false,),
                               ),
                               CheckboxListTile(
                                 contentPadding: EdgeInsets.zero,
                                 title: const Text('On Rename'),
                                 value: onRename,
                                 onChanged: (val) => setDialogState(
-                                    () => onRename = val ?? false),
+                                    () => onRename = val ?? false,),
                               ),
                               CheckboxListTile(
                                 contentPadding: EdgeInsets.zero,
@@ -259,7 +259,7 @@ class ConnectSettingsScreen extends ConsumerWidget {
                             }
 
                             ref.invalidate(
-                                sonarrNotificationsProvider(instance));
+                                sonarrNotificationsProvider(instance),);
                             if (context.mounted) {
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -354,16 +354,18 @@ class ConnectSettingsScreen extends ConsumerWidget {
                   (notification['implementationName'] as String?) ?? '';
 
               final List<String> activeEvents = [];
-              if (notification['onGrab'] as bool? ?? false)
+              if (notification['onGrab'] as bool? ?? false) {
                 activeEvents.add('Grab');
+              }
               if (notification['onDownload'] as bool? ?? false) {
                 activeEvents.add('Download');
               }
               if (notification['onUpgrade'] as bool? ?? false) {
                 activeEvents.add('Upgrade');
               }
-              if (notification['onRename'] as bool? ?? false)
+              if (notification['onRename'] as bool? ?? false) {
                 activeEvents.add('Rename');
+              }
               if (notification['onSeriesAdd'] as bool? ?? false) {
                 activeEvents.add('Series Add');
               }

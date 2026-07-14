@@ -54,7 +54,7 @@ class TagsSettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _deleteTag(
-      BuildContext context, WidgetRef ref, int id, String label) async {
+      BuildContext context, WidgetRef ref, int id, String label,) async {
     final ok = await confirmDelete(context, 'Tag "$label"');
     if (ok) {
       try {
@@ -90,7 +90,7 @@ class TagsSettingsScreen extends ConsumerWidget {
         data: (tags) {
           if (tags.isEmpty) {
             return const Center(
-                child: Text('No tags defined. Tap + to add one.'));
+                child: Text('No tags defined. Tap + to add one.'),);
           }
 
           return ListView.builder(
@@ -106,10 +106,10 @@ class TagsSettingsScreen extends ConsumerWidget {
                 color: theme.colorScheme.surfaceContainerLow,
                 child: ListTile(
                   title: Text(label,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                      style: const TextStyle(fontWeight: FontWeight.bold),),
                   trailing: IconButton(
                     icon: Icon(Icons.delete_outline,
-                        color: theme.colorScheme.error),
+                        color: theme.colorScheme.error,),
                     onPressed: () => _deleteTag(context, ref, id, label),
                   ),
                 ),

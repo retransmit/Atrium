@@ -246,7 +246,7 @@ class __ManualImportSetupDialogState
                     onChanged: (String val) {
                       ref
                           .read(sonarrManualImportPathProvider(widget.instance)
-                              .notifier)
+                              .notifier,)
                           .state = val;
                     },
                   ),
@@ -280,7 +280,7 @@ class __ManualImportSetupDialogState
                 if (val != null) {
                   ref
                       .read(sonarrManualImportModeProvider(widget.instance)
-                          .notifier)
+                          .notifier,)
                       .state = val;
                 }
               },
@@ -294,7 +294,7 @@ class __ManualImportSetupDialogState
               onChanged: (bool val) {
                 ref
                     .read(sonarrManualImportFilterProvider(widget.instance)
-                        .notifier)
+                        .notifier,)
                     .state = val;
               },
             ),
@@ -858,7 +858,7 @@ class __ManualImportMappingScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content: Text(
-                  'Import command triggered for ${importList.length} files.')),
+                  'Import command triggered for ${importList.length} files.',),),
         );
         Navigator.pop(context); // Close the mapping screen
       }
@@ -1103,7 +1103,7 @@ class __ManualImportMappingScreenState
                                     ActionChip(
                                       avatar: const Icon(
                                           Icons.calendar_view_day,
-                                          size: 14),
+                                          size: 14,),
                                       label: Text(
                                         season != null
                                             ? 'Season $season'

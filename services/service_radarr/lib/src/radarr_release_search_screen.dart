@@ -144,7 +144,7 @@ class _RadarrReleaseSearchScreenState
           const SnackBar(content: Text('Release grabbed successfully!')),
         );
         ref.invalidate(
-            radarrMovieByIdProvider((widget.instance, widget.movie.id)));
+            radarrMovieByIdProvider((widget.instance, widget.movie.id)),);
         ref.invalidate(radarrQueueProvider(widget.instance));
         Navigator.pop(context);
       }
@@ -583,7 +583,7 @@ class _RadarrReleaseSearchScreenState
                                   width: 24,
                                   height: 24,
                                   child: ExpressiveProgressIndicator(
-                                      strokeWidth: 2),
+                                      strokeWidth: 2,),
                                 )
                               : IconButton(
                                   icon: Icon(

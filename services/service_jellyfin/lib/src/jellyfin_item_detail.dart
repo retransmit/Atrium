@@ -85,7 +85,7 @@ class JellyfinItemDetailScreen extends ConsumerWidget {
                     );
                     if (changed == true && context.mounted) {
                       ref.invalidate(
-                          jellyfinItemDetailsProvider((instance, itemId)));
+                          jellyfinItemDetailsProvider((instance, itemId)),);
                     }
                   } else if (choice == 'refresh') {
                     try {
@@ -98,7 +98,7 @@ class JellyfinItemDetailScreen extends ConsumerWidget {
                           const SnackBar(content: Text('Refresh queued')),
                         );
                         ref.invalidate(
-                            jellyfinItemDetailsProvider((instance, itemId)));
+                            jellyfinItemDetailsProvider((instance, itemId)),);
                       }
                     } catch (e) {
                       if (context.mounted) {

@@ -40,14 +40,14 @@ class MetadataSettingsScreen extends ConsumerWidget {
                     payload['fields'] = updatedFields;
 
                     await api.updateMetadataConfig(
-                        payload, payload['id'] as int);
+                        payload, payload['id'] as int,);
                     ref.invalidate(radarrMetadataConfigsProvider(instance));
                     if (context.mounted) {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                             content: Text(
-                                'Metadata "${metadata['name']}" updated!')),
+                                'Metadata "${metadata['name']}" updated!',),),
                       );
                     }
                   } catch (e) {
@@ -55,7 +55,7 @@ class MetadataSettingsScreen extends ConsumerWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                             content:
-                                Text('Failed to save metadata settings: $e')),
+                                Text('Failed to save metadata settings: $e'),),
                       );
                     }
                   }
@@ -98,7 +98,7 @@ class MetadataSettingsScreen extends ConsumerWidget {
                 color: theme.colorScheme.surfaceContainerLow,
                 child: ListTile(
                   title: Text(name,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                      style: const TextStyle(fontWeight: FontWeight.bold),),
                   subtitle: Text('Status: ${enable ? "Enabled" : "Disabled"}'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -112,9 +112,9 @@ class MetadataSettingsScreen extends ConsumerWidget {
                             final payload = Map<String, dynamic>.from(c);
                             payload['enable'] = val;
                             await api.updateMetadataConfig(
-                                payload, payload['id'] as int);
+                                payload, payload['id'] as int,);
                             ref.invalidate(
-                                radarrMetadataConfigsProvider(instance));
+                                radarrMetadataConfigsProvider(instance),);
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(

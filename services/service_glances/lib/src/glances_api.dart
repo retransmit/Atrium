@@ -120,7 +120,7 @@ class GlancesApi {
       }).toList();
 
       final RegExp uptimeRegex = RegExp(
-          r'(?:(?<days>[0-9]+) days?, )?(?<hours>[0-9]+):(?<minutes>[0-9]+):(?<seconds>[0-9]+)');
+          r'(?:(?<days>[0-9]+) days?, )?(?<hours>[0-9]+):(?<minutes>[0-9]+):(?<seconds>[0-9]+)',);
       final RegExpMatch? match = uptimeRegex.firstMatch(uptimeStr);
       int days = 0;
       int hours = 0;

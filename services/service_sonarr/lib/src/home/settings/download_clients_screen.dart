@@ -117,7 +117,7 @@ class _DownloadClientsTab extends ConsumerWidget {
                       onTap: () {
                         Navigator.pop(context);
                         _showClientEditorDialog(context, ref, preset,
-                            isNew: true);
+                            isNew: true,);
                       },
                     );
                   },
@@ -314,7 +314,7 @@ class _DownloadClientsTab extends ConsumerWidget {
                             payload['enable'] = val;
                             await api.updateDownloadClient(payload);
                             ref.invalidate(
-                                sonarrDownloadClientsProvider(instance));
+                                sonarrDownloadClientsProvider(instance),);
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -649,7 +649,7 @@ class _DownloadClientOptionsTabState
                         value: _enableCompletedDownloadHandling,
                         onChanged: (val) {
                           setState(
-                              () => _enableCompletedDownloadHandling = val);
+                              () => _enableCompletedDownloadHandling = val,);
                         },
                       ),
                       SwitchListTile(

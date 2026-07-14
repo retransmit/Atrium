@@ -215,7 +215,7 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                             onTap: () {
                               if (client != null) {
                                 launchJellyfinDeepLink(
-                                    context, client, song.id);
+                                    context, client, song.id,);
                               }
                             },
                             leading: Row(

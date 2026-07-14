@@ -11,7 +11,7 @@ void main(List<String> args) async {
       args.isEmpty ? ['build', '--delete-conflicting-outputs'] : args;
 
   print(
-      'Starting build_runner in workspace packages with arguments: ${commandArgs.join(' ')}\n');
+      'Starting build_runner in workspace packages with arguments: ${commandArgs.join(' ')}\n',);
 
   final rootDir = Directory.current;
   final workspaceDirs = <Directory>[];
@@ -60,10 +60,10 @@ void main(List<String> args) async {
     final relativePath =
         dir.path.replaceFirst(rootDir.path + Platform.pathSeparator, '');
     print(
-        '========================================================================');
+        '========================================================================',);
     print('Running build_runner in: $relativePath');
     print(
-        '========================================================================');
+        '========================================================================',);
 
     final process = await Process.start(
       'dart',
@@ -86,14 +86,14 @@ void main(List<String> args) async {
   final duration = stopwatch.elapsed;
 
   print(
-      '========================================================================');
+      '========================================================================',);
   print('Summary:');
   print('  Total packages: ${workspaceDirs.length}');
   print('  Success: $successCount');
   print('  Failed: $failureCount');
   print('  Time elapsed: ${duration.inMinutes}m ${duration.inSeconds % 60}s');
   print(
-      '========================================================================');
+      '========================================================================',);
 
   if (failureCount > 0) {
     exit(1);

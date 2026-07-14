@@ -130,7 +130,7 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
               onClear: () {
                 ref
                     .read(
-                        sonarrSeriesSelectionProvider(widget.instance).notifier)
+                        sonarrSeriesSelectionProvider(widget.instance).notifier,)
                     .state = {};
               },
             )
@@ -170,7 +170,7 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                       FadePageRoute<void>(
                         builder: (BuildContext context) =>
                             SonarrAddSeriesSearchScreen(
-                                instance: widget.instance),
+                                instance: widget.instance,),
                       ),
                     );
                   },
@@ -212,8 +212,8 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                             onPressed: () {
                               ref
                                   .read(sonarrSeriesSelectionProvider(
-                                          widget.instance)
-                                      .notifier)
+                                          widget.instance,)
+                                      .notifier,)
                                   .state = {};
                             },
                           )
@@ -283,8 +283,8 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                               onPressed: () {
                                 ref
                                     .read(sonarrSeriesSelectionProvider(
-                                            widget.instance)
-                                        .notifier)
+                                            widget.instance,)
+                                        .notifier,)
                                     .state = list.map((s) => s.id).toSet();
                               },
                             )
@@ -295,8 +295,8 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                               onPressed: () {
                                 ref
                                     .read(sonarrSeriesSelectionProvider(
-                                            widget.instance)
-                                        .notifier)
+                                            widget.instance,)
+                                        .notifier,)
                                     .state = {};
                               },
                             ),
@@ -370,8 +370,8 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                               onLongPress: () {
                                 final notifier = ref.read(
                                     sonarrSeriesSelectionProvider(
-                                            widget.instance)
-                                        .notifier);
+                                            widget.instance,)
+                                        .notifier,);
                                 if (isSelected) {
                                   notifier.state = selection
                                       .where((id) => id != s.id)
@@ -384,8 +384,8 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                                 if (isSelecting) {
                                   final notifier = ref.read(
                                       sonarrSeriesSelectionProvider(
-                                              widget.instance)
-                                          .notifier);
+                                              widget.instance,)
+                                          .notifier,);
                                   if (isSelected) {
                                     notifier.state = selection
                                         .where((id) => id != s.id)
@@ -434,8 +434,8 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                                   final isSelected = selection.contains(s.id);
                                   final notifier = ref.read(
                                       sonarrSeriesSelectionProvider(
-                                              widget.instance)
-                                          .notifier);
+                                              widget.instance,)
+                                          .notifier,);
                                   if (isSelected) {
                                     notifier.state = selection
                                         .where((id) => id != s.id)
@@ -449,8 +449,8 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                                   if (isSelecting) {
                                     final notifier = ref.read(
                                         sonarrSeriesSelectionProvider(
-                                                widget.instance)
-                                            .notifier);
+                                                widget.instance,)
+                                            .notifier,);
                                     if (isSelected) {
                                       notifier.state = selection
                                           .where((id) => id != s.id)
@@ -1154,7 +1154,7 @@ class _BulkDeleteDialogState extends ConsumerState<_BulkDeleteDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-              'Are you sure you want to delete these series? This action cannot be undone.'),
+              'Are you sure you want to delete these series? This action cannot be undone.',),
           const SizedBox(height: 16),
           CheckboxListTile(
             title: const Text('Delete all files from disk'),
@@ -1193,7 +1193,7 @@ class _BulkDeleteDialogState extends ConsumerState<_BulkDeleteDialog> {
               final api =
                   await ref.read(sonarrApiProvider(widget.instance).future);
               await api.bulkDeleteSeries(widget.selectedIds.toList(),
-                  deleteFiles: _deleteFiles);
+                  deleteFiles: _deleteFiles,);
             } catch (e) {
               error = e;
             } finally {
@@ -1311,7 +1311,7 @@ class _SortFilterBottomSheet extends ConsumerWidget {
                       if (val) {
                         ref
                             .read(sonarrSeriesSortFieldProvider(instance)
-                                .notifier)
+                                .notifier,)
                             .state = field;
                       }
                     },
@@ -1343,7 +1343,7 @@ class _SortFilterBottomSheet extends ConsumerWidget {
                 onSelectionChanged: (val) {
                   ref
                       .read(
-                          sonarrSeriesSortAscendingProvider(instance).notifier)
+                          sonarrSeriesSortAscendingProvider(instance).notifier,)
                       .state = val.first;
                 },
               ),

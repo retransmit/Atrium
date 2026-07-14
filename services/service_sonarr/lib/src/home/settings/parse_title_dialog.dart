@@ -111,13 +111,13 @@ class _SonarrParseTitleDialogState
                     data: (data) {
                       if (data == null) {
                         return const Center(
-                            child: Text('Failed to parse title.'));
+                            child: Text('Failed to parse title.'),);
                       }
                       final parsedInfo =
                           data['parsedEpisodeInfo'] as Map<String, dynamic>?;
                       if (parsedInfo == null) {
                         return const Center(
-                            child: Text('Could not extract episode details.'));
+                            child: Text('Could not extract episode details.'),);
                       }
 
                       final String? parsedSeriesTitle =
@@ -140,7 +140,7 @@ class _SonarrParseTitleDialogState
                           parsedInfo['languages'] as List<dynamic>?;
                       final List<String> languageNames = languages
                               ?.map((l) =>
-                                  (l as Map<String, dynamic>)['name'] as String)
+                                  (l as Map<String, dynamic>)['name'] as String,)
                               .toList() ??
                           [];
 
@@ -162,7 +162,7 @@ class _SonarrParseTitleDialogState
                             ),
                             const SizedBox(height: Insets.sm),
                             _buildInfoRow(theme, 'Series Name',
-                                parsedSeriesTitle ?? 'N/A'),
+                                parsedSeriesTitle ?? 'N/A',),
                             _buildInfoRow(
                               theme,
                               'Season / Episode',
@@ -171,15 +171,15 @@ class _SonarrParseTitleDialogState
                                   : 'N/A',
                             ),
                             _buildInfoRow(
-                                theme, 'Quality', qualityName ?? 'N/A'),
+                                theme, 'Quality', qualityName ?? 'N/A',),
                             _buildInfoRow(
-                                theme, 'Release Group', releaseGroup ?? 'N/A'),
+                                theme, 'Release Group', releaseGroup ?? 'N/A',),
                             _buildInfoRow(
                                 theme,
                                 'Language',
                                 languageNames.isNotEmpty
                                     ? languageNames.join(', ')
-                                    : 'N/A'),
+                                    : 'N/A',),
                             const SizedBox(height: Insets.md),
                             Text(
                               'Sonarr Database Match',
@@ -224,7 +224,7 @@ class _SonarrParseTitleDialogState
   }
 
   Widget _buildInfoRow(ThemeData theme, String label, String value,
-      {Color? valueColor}) {
+      {Color? valueColor,}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(

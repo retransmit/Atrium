@@ -170,7 +170,7 @@ class _UiSettingsScreenState extends ConsumerState<UiSettingsScreen> {
                             DropdownMenuItem(value: 1, child: Text('Monday')),
                             DropdownMenuItem(value: 2, child: Text('Tuesday')),
                             DropdownMenuItem(
-                                value: 3, child: Text('Wednesday')),
+                                value: 3, child: Text('Wednesday'),),
                             DropdownMenuItem(value: 4, child: Text('Thursday')),
                             DropdownMenuItem(value: 5, child: Text('Friday')),
                             DropdownMenuItem(value: 6, child: Text('Saturday')),
@@ -186,7 +186,7 @@ class _UiSettingsScreenState extends ConsumerState<UiSettingsScreen> {
                           contentPadding: EdgeInsets.zero,
                           title: const Text('Show Relative Dates'),
                           subtitle: const Text(
-                              'Show relative terms like "Yesterday", "Today", or "In 2 days"'),
+                              'Show relative terms like "Yesterday", "Today", or "In 2 days"',),
                           value: _showRelativeDates,
                           onChanged: (val) =>
                               setState(() => _showRelativeDates = val),
@@ -282,7 +282,7 @@ class _UiSettingsScreenState extends ConsumerState<UiSettingsScreen> {
                           contentPadding: EdgeInsets.zero,
                           title: const Text('Enable Color-Impaired Mode'),
                           subtitle: const Text(
-                              'Uses high-contrast borders and symbols instead of green/red/orange'),
+                              'Uses high-contrast borders and symbols instead of green/red/orange',),
                           value: _enableColorImpairedMode,
                           onChanged: (val) =>
                               setState(() => _enableColorImpairedMode = val),

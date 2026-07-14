@@ -116,7 +116,7 @@ class _IndexersTab extends ConsumerWidget {
                       onTap: () {
                         Navigator.pop(context);
                         _showIndexerEditorDialog(context, ref, preset,
-                            isNew: true);
+                            isNew: true,);
                       },
                     );
                   },
@@ -146,7 +146,7 @@ class _IndexersTab extends ConsumerWidget {
       builder: (context) {
         return AlertDialog(
           title: Text(
-              isNew ? 'Add ${indexer['name']}' : 'Edit ${indexer['name']}'),
+              isNew ? 'Add ${indexer['name']}' : 'Edit ${indexer['name']}',),
           content: SizedBox(
             width: double.maxFinite,
             child: SingleChildScrollView(
@@ -268,7 +268,7 @@ class _IndexersTab extends ConsumerWidget {
                     ),
                   ),
                   subtitle: Text(
-                      '$implementation • Protocol: ${protocol.toUpperCase()}'),
+                      '$implementation • Protocol: ${protocol.toUpperCase()}',),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -347,7 +347,7 @@ class _ImportListsTab extends ConsumerWidget {
                       onTap: () {
                         Navigator.pop(context);
                         _showImportListEditorDialog(context, ref, preset,
-                            isNew: true);
+                            isNew: true,);
                       },
                     );
                   },
@@ -450,7 +450,7 @@ class _ImportListsTab extends ConsumerWidget {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text('Failed to save import list: $e')),
+                            content: Text('Failed to save import list: $e'),),
                       );
                     }
                   }

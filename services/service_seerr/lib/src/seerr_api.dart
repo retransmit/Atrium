@@ -238,7 +238,7 @@ class SeerrApi {
   // --- Seerr / Discover Endpoints ---
 
   Future<SeerrDiscoverResult> getMediaDetails(
-      String mediaType, int tmdbId) async {
+      String mediaType, int tmdbId,) async {
     try {
       final Response<dynamic> resp =
           await _dio.get<dynamic>('$_base/$mediaType/$tmdbId');

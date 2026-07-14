@@ -110,7 +110,7 @@ class RadarrApi {
   }
 
   Future<void> bulkDeleteMovies(List<int> ids,
-      {bool deleteFiles = false}) async {
+      {bool deleteFiles = false,}) async {
     try {
       await _dio.delete<dynamic>(
         '$_base/movie/editor',
@@ -964,7 +964,7 @@ class RadarrApi {
   }
 
   Future<void> updateMetadataConfig(
-      Map<String, dynamic> payload, int id) async {
+      Map<String, dynamic> payload, int id,) async {
     try {
       await _dio.put<dynamic>(
         '$_base/metadata/$id',

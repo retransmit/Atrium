@@ -206,7 +206,7 @@ class _ProviderFormScreenState extends ConsumerState<_ProviderFormScreen> {
         '';
     _fields = ((source['fields'] as List<dynamic>?) ?? <dynamic>[])
         .map((dynamic f) =>
-            Map<String, dynamic>.from(f as Map<dynamic, dynamic>))
+            Map<String, dynamic>.from(f as Map<dynamic, dynamic>),)
         .toList();
   }
 

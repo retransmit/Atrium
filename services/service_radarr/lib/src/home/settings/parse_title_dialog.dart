@@ -111,13 +111,13 @@ class _RadarrParseTitleDialogState
                     data: (data) {
                       if (data == null) {
                         return const Center(
-                            child: Text('Failed to parse title.'));
+                            child: Text('Failed to parse title.'),);
                       }
                       final parsedInfo =
                           data['parsedMovieInfo'] as Map<String, dynamic>?;
                       if (parsedInfo == null) {
                         return const Center(
-                            child: Text('Could not extract movie details.'));
+                            child: Text('Could not extract movie details.'),);
                       }
 
                       final String? movieTitle =
@@ -137,7 +137,7 @@ class _RadarrParseTitleDialogState
                           parsedInfo['languages'] as List<dynamic>?;
                       final List<String> languageNames = languages
                               ?.map((l) =>
-                                  (l as Map<String, dynamic>)['name'] as String)
+                                  (l as Map<String, dynamic>)['name'] as String,)
                               .toList() ??
                           [];
 
@@ -159,19 +159,19 @@ class _RadarrParseTitleDialogState
                             ),
                             const SizedBox(height: Insets.sm),
                             _buildInfoRow(
-                                theme, 'Movie Title', movieTitle ?? 'N/A'),
+                                theme, 'Movie Title', movieTitle ?? 'N/A',),
                             _buildInfoRow(
-                                theme, 'Year', year?.toString() ?? 'N/A'),
+                                theme, 'Year', year?.toString() ?? 'N/A',),
                             _buildInfoRow(
-                                theme, 'Quality', qualityName ?? 'N/A'),
+                                theme, 'Quality', qualityName ?? 'N/A',),
                             _buildInfoRow(
-                                theme, 'Release Group', releaseGroup ?? 'N/A'),
+                                theme, 'Release Group', releaseGroup ?? 'N/A',),
                             _buildInfoRow(
                                 theme,
                                 'Language',
                                 languageNames.isNotEmpty
                                     ? languageNames.join(', ')
-                                    : 'N/A'),
+                                    : 'N/A',),
                             const SizedBox(height: Insets.md),
                             Text(
                               'Radarr Database Match',
@@ -216,7 +216,7 @@ class _RadarrParseTitleDialogState
   }
 
   Widget _buildInfoRow(ThemeData theme, String label, String value,
-      {Color? valueColor}) {
+      {Color? valueColor,}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(

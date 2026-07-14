@@ -148,7 +148,7 @@ class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('General configuration settings saved!')),
+              content: Text('General configuration settings saved!'),),
         );
         Navigator.pop(context);
       }

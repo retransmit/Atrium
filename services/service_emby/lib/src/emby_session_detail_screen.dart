@@ -281,7 +281,7 @@ class _EmbySessionDetailScreenState
                           Flexible(
                             child: ConstrainedBox(
                               constraints: const BoxConstraints(
-                                  maxHeight: 420, maxWidth: 420),
+                                  maxHeight: 420, maxWidth: 420,),
                               child: AspectRatio(
                                 aspectRatio: session.aspectRatio != null &&
                                         session.aspectRatio! > 0.0
@@ -481,7 +481,7 @@ class _EmbySessionDetailScreenState
                                 final int targetTicks =
                                     session.positionTicks - 100000000;
                                 await client.seekSession(session.id,
-                                    targetTicks < 0 ? 0 : targetTicks);
+                                    targetTicks < 0 ? 0 : targetTicks,);
                                 if (!mounted) return;
                                 ref.invalidate(
                                   embyFastSessionsProvider(widget.instance),
@@ -562,7 +562,7 @@ class _EmbySessionDetailScreenState
                                     session.positionTicks + 100000000;
                                 if (targetTicks < session.durationTicks) {
                                   await client.seekSession(
-                                      session.id, targetTicks);
+                                      session.id, targetTicks,);
                                 }
                                 if (!mounted) return;
                                 ref.invalidate(

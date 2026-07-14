@@ -814,7 +814,7 @@ class EmbyClient {
 
         if (getResp.statusCode != null && getResp.statusCode! >= 400) {
           throw Exception(
-              'Failed to fetch remote images. Status code: ${getResp.statusCode}');
+              'Failed to fetch remote images. Status code: ${getResp.statusCode}',);
         }
 
         final EmbyRemoteImagesResult result = EmbyRemoteImagesResult.fromJson(
@@ -846,7 +846,7 @@ class EmbyClient {
 
         if (postResp.statusCode != null && postResp.statusCode! >= 400) {
           throw Exception(
-              'Failed to download remote image. Status code: ${postResp.statusCode}');
+              'Failed to download remote image. Status code: ${postResp.statusCode}',);
         }
       });
 
@@ -912,7 +912,7 @@ class EmbyClient {
         final List<dynamic> list = res.data as List<dynamic>;
         return list
             .map((dynamic e) =>
-                EmbyRemoteSearchResult.fromJson(e as Map<String, dynamic>))
+                EmbyRemoteSearchResult.fromJson(e as Map<String, dynamic>),)
             .toList();
       });
 

@@ -49,22 +49,13 @@ class EasyRefresh extends StatelessWidget {
 
     final er.Header effectiveHeader = header ?? const er.MaterialHeader();
 
-    return NotificationListener<ScrollNotification>(
-      onNotification: (ScrollNotification notification) {
-        if (notification.depth > 0 ||
-            notification.metrics.axis == Axis.horizontal) {
-          return true;
-        }
-        return false;
-      },
-      child: er.EasyRefresh(
-        header: effectiveHeader,
-        footer: footer,
-        controller: controller,
-        onRefresh: onRefresh,
-        onLoad: onLoad,
-        child: child,
-      ),
+    return er.EasyRefresh(
+      header: effectiveHeader,
+      footer: footer,
+      controller: controller,
+      onRefresh: onRefresh,
+      onLoad: onLoad,
+      child: child,
     );
   }
 }

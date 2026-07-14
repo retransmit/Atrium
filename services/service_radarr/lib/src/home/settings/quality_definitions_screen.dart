@@ -40,7 +40,7 @@ class _QualityDefinitionsScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Quality definitions updated successfully!')),
+              content: Text('Quality definitions updated successfully!'),),
         );
         Navigator.pop(context);
       }

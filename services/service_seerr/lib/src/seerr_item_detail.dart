@@ -220,7 +220,7 @@ class _SeerrItemDetailScreenState extends ConsumerState<SeerrItemDetailScreen> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
-                    Insets.lg, Insets.lg, Insets.lg, 0),
+                    Insets.lg, Insets.lg, Insets.lg, 0,),
                 child: Wrap(
                   spacing: 6.0,
                   runSpacing: 6.0,
@@ -251,7 +251,7 @@ class _SeerrItemDetailScreenState extends ConsumerState<SeerrItemDetailScreen> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(
-                    Insets.lg, Insets.lg, Insets.lg, 0),
+                    Insets.lg, Insets.lg, Insets.lg, 0,),
                 child: OverviewBox(overview: full.overview!),
               ),
             ),

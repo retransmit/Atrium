@@ -114,7 +114,7 @@ class _IndexersTab extends ConsumerWidget {
                       onTap: () {
                         Navigator.pop(context);
                         _showIndexerEditorDialog(context, ref, preset,
-                            isNew: true);
+                            isNew: true,);
                       },
                     );
                   },
@@ -144,7 +144,7 @@ class _IndexersTab extends ConsumerWidget {
       builder: (context) {
         return AlertDialog(
           title: Text(
-              isNew ? 'Add ${indexer['name']}' : 'Edit ${indexer['name']}'),
+              isNew ? 'Add ${indexer['name']}' : 'Edit ${indexer['name']}',),
           content: SizedBox(
             width: double.maxFinite,
             child: SingleChildScrollView(
@@ -242,7 +242,7 @@ class _IndexersTab extends ConsumerWidget {
         data: (indexers) {
           if (indexers.isEmpty) {
             return const Center(
-                child: Text('No indexers configured. Tap + to add one.'));
+                child: Text('No indexers configured. Tap + to add one.'),);
           }
 
           return ListView.builder(
@@ -259,7 +259,7 @@ class _IndexersTab extends ConsumerWidget {
                 color: theme.colorScheme.surfaceContainerLow,
                 child: ListTile(
                   title: Text(name,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                      style: const TextStyle(fontWeight: FontWeight.bold),),
                   subtitle: Text('Protocol: ${proto.toUpperCase()}'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -271,7 +271,7 @@ class _IndexersTab extends ConsumerWidget {
                       ),
                       IconButton(
                         icon: Icon(Icons.delete_outline,
-                            color: theme.colorScheme.error),
+                            color: theme.colorScheme.error,),
                         onPressed: () => _deleteIndexer(context, ref, id, name),
                       ),
                     ],
@@ -335,7 +335,7 @@ class _ImportListsTab extends ConsumerWidget {
                       onTap: () {
                         Navigator.pop(context);
                         _showImportListEditorDialog(context, ref, preset,
-                            isNew: true);
+                            isNew: true,);
                       },
                     );
                   },
@@ -432,7 +432,7 @@ class _ImportListsTab extends ConsumerWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                              'Import list ${isNew ? 'added' : 'updated'}!'),
+                              'Import list ${isNew ? 'added' : 'updated'}!',),
                         ),
                       );
                     }
@@ -440,7 +440,7 @@ class _ImportListsTab extends ConsumerWidget {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text('Failed to save import list: $e')),
+                            content: Text('Failed to save import list: $e'),),
                       );
                     }
                   }
@@ -498,7 +498,7 @@ class _ImportListsTab extends ConsumerWidget {
         data: (lists) {
           if (lists.isEmpty) {
             return const Center(
-                child: Text('No import lists configured. Tap + to add one.'));
+                child: Text('No import lists configured. Tap + to add one.'),);
           }
 
           return ListView.builder(
@@ -514,7 +514,7 @@ class _ImportListsTab extends ConsumerWidget {
                 color: theme.colorScheme.surfaceContainerLow,
                 child: ListTile(
                   title: Text(name,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                      style: const TextStyle(fontWeight: FontWeight.bold),),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -525,7 +525,7 @@ class _ImportListsTab extends ConsumerWidget {
                       ),
                       IconButton(
                         icon: Icon(Icons.delete_outline,
-                            color: theme.colorScheme.error),
+                            color: theme.colorScheme.error,),
                         onPressed: () =>
                             _deleteImportList(context, ref, id, name),
                       ),

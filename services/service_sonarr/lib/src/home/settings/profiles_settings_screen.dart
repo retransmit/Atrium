@@ -86,7 +86,7 @@ class _QualityProfilesTab extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Failed to load quality profile schema')),
+              content: Text('Failed to load quality profile schema'),),
         );
       }
       return;
@@ -105,7 +105,7 @@ class _QualityProfilesTab extends ConsumerWidget {
     // Deep copy so we can toggle allowed flags
     final editableItems = sourceItems
         .map(
-            (dynamic e) => Map<String, dynamic>.from(e as Map<String, dynamic>))
+            (dynamic e) => Map<String, dynamic>.from(e as Map<String, dynamic>),)
         .toList();
 
     // Deep copy nested quality groups
@@ -114,7 +114,7 @@ class _QualityProfilesTab extends ConsumerWidget {
       if (subItems != null && subItems.isNotEmpty) {
         editableItems[i]['items'] = subItems
             .map((dynamic e) =>
-                Map<String, dynamic>.from(e as Map<String, dynamic>))
+                Map<String, dynamic>.from(e as Map<String, dynamic>),)
             .toList();
       }
     }
@@ -185,8 +185,9 @@ class _QualityProfilesTab extends ConsumerWidget {
                             );
                           }).toList(),
                           onChanged: (val) {
-                            if (val != null)
+                            if (val != null) {
                               setDialogState(() => cutoffId = val);
+                            }
                           },
                         ),
                       ],
@@ -302,7 +303,7 @@ class _QualityProfilesTab extends ConsumerWidget {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                               content: Text(
-                                  'Quality profile ${isEdit ? 'updated' : 'created'}!')),
+                                  'Quality profile ${isEdit ? 'updated' : 'created'}!',),),
                         );
                       }
                     } catch (e) {
@@ -324,7 +325,7 @@ class _QualityProfilesTab extends ConsumerWidget {
   }
 
   Future<void> _deleteProfile(
-      BuildContext context, WidgetRef ref, int id) async {
+      BuildContext context, WidgetRef ref, int id,) async {
     if (!await confirmDelete(context, 'this quality profile')) return;
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
@@ -656,7 +657,7 @@ class _DelayProfilesTab extends ConsumerWidget {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                               content: Text(
-                                  'Delay profile ${isEdit ? 'updated' : 'created'}!')),
+                                  'Delay profile ${isEdit ? 'updated' : 'created'}!',),),
                         );
                       }
                     } catch (e) {
@@ -893,7 +894,7 @@ class _ReleaseProfilesTab extends ConsumerWidget {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                               content: Text(
-                                  'Release profile ${isEdit ? 'updated' : 'created'}!')),
+                                  'Release profile ${isEdit ? 'updated' : 'created'}!',),),
                         );
                       }
                     } catch (e) {
@@ -1054,7 +1055,7 @@ class _CustomFormatsTab extends ConsumerWidget {
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Include in Rename'),
                       subtitle: const Text(
-                          'Incorporate format in renaming output tokens'),
+                          'Incorporate format in renaming output tokens',),
                       value: includeWhenRenaming,
                       onChanged: (val) =>
                           setDialogState(() => includeWhenRenaming = val),
@@ -1096,12 +1097,12 @@ class _CustomFormatsTab extends ConsumerWidget {
                             await api.updateCustomFormat(payload);
 
                             ref.invalidate(
-                                sonarrCustomFormatsProvider(instance));
+                                sonarrCustomFormatsProvider(instance),);
                             if (context.mounted) {
                               Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                    content: Text('Custom format updated!')),
+                                    content: Text('Custom format updated!'),),
                               );
                             }
                           } catch (e) {

@@ -24,7 +24,7 @@ class SeerrGenreScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<SeerrDiscoverResult>> items = ref.watch(
       seerrItemsByGenreProvider(
-          (instance: instance, genreId: genre.id, isMovie: isMovie)),
+          (instance: instance, genreId: genre.id, isMovie: isMovie),),
     );
 
     return Scaffold(
@@ -34,7 +34,7 @@ class SeerrGenreScreen extends ConsumerWidget {
       body: AsyncValueView<List<SeerrDiscoverResult>>(
         value: items,
         onRetry: () => ref.invalidate(seerrItemsByGenreProvider(
-            (instance: instance, genreId: genre.id, isMovie: isMovie))),
+            (instance: instance, genreId: genre.id, isMovie: isMovie),),),
         data: (List<SeerrDiscoverResult> list) {
           if (list.isEmpty) {
             return const EmptyView(
@@ -120,7 +120,7 @@ class _SeerrGenrePosterCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,),
             ),
         ],
       ),

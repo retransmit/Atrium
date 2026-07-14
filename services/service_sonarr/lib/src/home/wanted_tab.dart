@@ -107,7 +107,7 @@ class _WantedTabState extends ConsumerState<WantedTab>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content:
-                  Text('Search started for ${ids.length} selected episodes.')),
+                  Text('Search started for ${ids.length} selected episodes.'),),
         );
       }
     } catch (e) {
@@ -317,7 +317,7 @@ class _WantedTabState extends ConsumerState<WantedTab>
                             ref
                                 .read(
                                     sonarrWantedGroupedProvider(widget.instance)
-                                        .notifier)
+                                        .notifier,)
                                 .update((state) => !state);
                           },
                         ),
@@ -449,7 +449,7 @@ class _EpisodeListLayout extends ConsumerWidget {
   final VoidCallback onBulkSearch;
 
   Future<void> _triggerSingleSearch(
-      BuildContext context, WidgetRef ref, int episodeId) async {
+      BuildContext context, WidgetRef ref, int episodeId,) async {
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
       await api.performEpisodeSearch([episodeId]);
@@ -468,7 +468,7 @@ class _EpisodeListLayout extends ConsumerWidget {
   }
 
   void _showEpisodeDetails(
-      BuildContext context, WidgetRef ref, SonarrEpisode episode) {
+      BuildContext context, WidgetRef ref, SonarrEpisode episode,) {
     showModalBottomSheet<void>(
       context: context,
       useRootNavigator: true,
@@ -502,7 +502,7 @@ class _EpisodeListLayout extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               Icon(Icons.error_outline,
-                  size: 48, color: theme.colorScheme.error),
+                  size: 48, color: theme.colorScheme.error,),
               const SizedBox(height: 16),
               Text(
                 'Failed to load episodes',
@@ -797,11 +797,11 @@ class _EpisodeListLayout extends ConsumerWidget {
                               icon: const Icon(Icons.search, size: 20),
                               tooltip: 'Automatic Search',
                               onPressed: () => _triggerSingleSearch(
-                                  context, ref, episode.id),
+                                  context, ref, episode.id,),
                             ),
                             IconButton(
                               icon: const Icon(Icons.person_search_outlined,
-                                  size: 20),
+                                  size: 20,),
                               tooltip: 'Interactive Search',
                               onPressed: () {
                                 pushScreen<void>(
@@ -1104,7 +1104,7 @@ class _GroupedEpisodeCardState extends ConsumerState<_GroupedEpisodeCard> {
                       onTap: () => widget.onShowDetails(episode),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 8),
+                            horizontal: 8, vertical: 8,),
                         child: Row(
                           children: <Widget>[
                             Checkbox(
@@ -1123,7 +1123,7 @@ class _GroupedEpisodeCardState extends ConsumerState<_GroupedEpisodeCard> {
                             const SizedBox(width: 4),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
+                                  horizontal: 6, vertical: 2,),
                               decoration: BoxDecoration(
                                 color: theme.colorScheme.secondaryContainer,
                                 borderRadius: BorderRadius.circular(6),
@@ -1436,7 +1436,7 @@ class _EpisodeDetailsSheetState extends ConsumerState<_EpisodeDetailsSheet> {
                           : _history.isEmpty
                               ? const Center(
                                   child: Text(
-                                      'No history items for this episode.'))
+                                      'No history items for this episode.',),)
                               : ListView.builder(
                                   padding: const EdgeInsets.all(16),
                                   itemCount: _history.length,

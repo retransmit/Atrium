@@ -44,11 +44,11 @@ class ProwlarrTagsScreen extends ConsumerWidget {
               );
             }
             final List<Map<String, dynamic>> sorted = <Map<String, dynamic>>[
-              ...items
+              ...items,
             ]..sort(
                 (Map<String, dynamic> a, Map<String, dynamic> b) =>
                     ((a['label'] ?? '') as String).toLowerCase().compareTo(
-                        ((b['label'] ?? '') as String).toLowerCase()),
+                        ((b['label'] ?? '') as String).toLowerCase(),),
               );
             return ListView.builder(
               padding: Insets.pageH,

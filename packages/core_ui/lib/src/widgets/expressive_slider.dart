@@ -122,7 +122,7 @@ class ExpressiveSliderTrackShape extends SliderTrackShape {
       );
       context.canvas.drawRRect(
         RRect.fromRectAndRadius(
-            activeRect, Radius.circular(activeRect.width / 2)),
+            activeRect, Radius.circular(activeRect.width / 2),),
         activePaint,
       );
     }
@@ -160,7 +160,7 @@ class ExpressiveSliderTrackShape extends SliderTrackShape {
       );
       context.canvas.drawRRect(
         RRect.fromRectAndRadius(
-            inactiveRect, Radius.circular(inactiveRect.width / 2)),
+            inactiveRect, Radius.circular(inactiveRect.width / 2),),
         inactivePaint,
       );
     }

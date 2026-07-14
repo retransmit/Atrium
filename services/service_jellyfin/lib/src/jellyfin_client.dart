@@ -145,7 +145,7 @@ class JellyfinClient {
             (resp.data as List<dynamic>?) ?? <dynamic>[];
         return items
             .map((dynamic e) =>
-                JellyfinVirtualFolder.fromJson(e as Map<String, dynamic>))
+                JellyfinVirtualFolder.fromJson(e as Map<String, dynamic>),)
             .toList();
       });
 
@@ -868,7 +868,7 @@ class JellyfinClient {
         }
         return users
             .map(
-                (dynamic u) => JellyfinUser.fromJson(u as Map<String, dynamic>))
+                (dynamic u) => JellyfinUser.fromJson(u as Map<String, dynamic>),)
             .toList();
       });
 
@@ -940,7 +940,7 @@ class JellyfinClient {
         final List<dynamic> list = res.data as List<dynamic>;
         return list
             .map((dynamic e) =>
-                JellyfinRemoteSearchResult.fromJson(e as Map<String, dynamic>))
+                JellyfinRemoteSearchResult.fromJson(e as Map<String, dynamic>),)
             .toList();
       });
 

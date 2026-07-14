@@ -31,7 +31,7 @@ class JellyfinSettingsScreen extends ConsumerWidget {
                   return const Text('Ready');
                 }
                 return Text(
-                    '${data.state} - ${data.progress.toStringAsFixed(1)}%');
+                    '${data.state} - ${data.progress.toStringAsFixed(1)}%',);
               },
               loading: () => const Text('Checking status...'),
               error: (Object err, StackTrace stack) =>

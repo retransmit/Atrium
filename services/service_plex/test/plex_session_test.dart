@@ -16,7 +16,7 @@ void main() {
               'duration': 6000000,
               'User': <String, dynamic>{
                 'title': 'alice',
-                'thumb': 'http://x/y.png'
+                'thumb': 'http://x/y.png',
               },
               'Player': <String, dynamic>{
                 'title': 'Living Room',
@@ -29,7 +29,7 @@ void main() {
               'Session': <String, dynamic>{
                 'id': 'sess-1',
                 'bandwidth': 4200,
-                'location': 'lan'
+                'location': 'lan',
               },
             },
           ],
@@ -81,7 +81,7 @@ void main() {
 
     test('empty container -> empty list', () {
       final PlexSessionsResponse r = PlexSessionsResponse.fromJson(
-          <String, dynamic>{'MediaContainer': <String, dynamic>{}});
+          <String, dynamic>{'MediaContainer': <String, dynamic>{}},);
       expect(r.mediaContainer!.metadata, isEmpty);
     });
   });

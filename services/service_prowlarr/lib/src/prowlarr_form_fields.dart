@@ -146,7 +146,7 @@ class _ProwlarrDynamicFieldState extends State<ProwlarrDynamicField> {
     final List<String> names = options
         .where((Map<String, dynamic> o) => selected.contains(o['value']))
         .map((Map<String, dynamic> o) =>
-            (o['name'] ?? o['value'] ?? '').toString())
+            (o['name'] ?? o['value'] ?? '').toString(),)
         .toList();
     return Container(
       margin: const EdgeInsets.only(bottom: Insets.md),

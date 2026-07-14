@@ -8,7 +8,7 @@ class PerformanceLogger {
     if (kDebugMode || kProfileMode) {
       developer.Timeline.startSync('Image Decode: $imageUrl');
       developer.log('Started decoding image: $imageUrl',
-          name: 'PerformanceLogger');
+          name: 'PerformanceLogger',);
     }
   }
 
@@ -16,7 +16,7 @@ class PerformanceLogger {
     if (kDebugMode || kProfileMode) {
       developer.Timeline.finishSync();
       developer.log('Finished decoding image: $imageUrl',
-          name: 'PerformanceLogger');
+          name: 'PerformanceLogger',);
     }
   }
 
@@ -24,7 +24,7 @@ class PerformanceLogger {
     if (kDebugMode || kProfileMode) {
       developer.log(
           'Widget $widgetName took ${duration.inMilliseconds}ms to build',
-          name: 'PerformanceLogger');
+          name: 'PerformanceLogger',);
     }
   }
 }

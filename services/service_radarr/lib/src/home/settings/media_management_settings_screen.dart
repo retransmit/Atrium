@@ -294,7 +294,7 @@ class _MediaManagementSettingsScreenState
                                 title: const Text('Replace Illegal Characters'),
                                 value: _replaceIllegalCharacters,
                                 onChanged: (val) => setState(
-                                    () => _replaceIllegalCharacters = val),
+                                    () => _replaceIllegalCharacters = val,),
                               ),
                               if (_replaceIllegalCharacters) ...[
                                 const SizedBox(height: Insets.md),
@@ -324,13 +324,13 @@ class _MediaManagementSettingsScreenState
                                     DropdownMenuItem(
                                       value: 'smart',
                                       child: Text(
-                                          'Smart (Replace with Dash or Space Dash)'),
+                                          'Smart (Replace with Dash or Space Dash)',),
                                     ),
                                   ],
                                   onChanged: (val) {
                                     if (val != null) {
                                       setState(
-                                          () => _colonReplacementFormat = val);
+                                          () => _colonReplacementFormat = val,);
                                     }
                                   },
                                 ),
@@ -365,7 +365,7 @@ class _MediaManagementSettingsScreenState
                               title: const Text('Create Empty Movie Folders'),
                               value: _createEmptyMovieFolders,
                               onChanged: (val) => setState(
-                                  () => _createEmptyMovieFolders = val),
+                                  () => _createEmptyMovieFolders = val,),
                             ),
                             SwitchListTile(
                               contentPadding: EdgeInsets.zero,

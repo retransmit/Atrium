@@ -247,7 +247,7 @@ class _EmbyIdentifyScreenState extends ConsumerState<EmbyIdentifyScreen> {
                         : const Icon(Icons.movie),
                     title: Text(res.name ?? 'Unknown'),
                     subtitle: Text(
-                        '${res.productionYear ?? ''} • ${res.searchProviderName ?? ''}'),
+                        '${res.productionYear ?? ''} • ${res.searchProviderName ?? ''}',),
                     onTap: () => _apply(res),
                   );
                 },

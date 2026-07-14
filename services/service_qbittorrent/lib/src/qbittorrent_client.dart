@@ -173,7 +173,7 @@ class QbittorrentClient {
           'api/v2/torrents/delete',
           data: <String, dynamic>{
             'hashes': hashes.join('|'),
-            'deleteFiles': deleteFiles
+            'deleteFiles': deleteFiles,
           },
           options: Options(contentType: Headers.formUrlEncodedContentType),
         );
@@ -336,7 +336,7 @@ class QbittorrentClient {
           'api/v2/torrents/setCategory',
           data: <String, dynamic>{
             'hashes': hashes.join('|'),
-            'category': category
+            'category': category,
           },
           options: Options(contentType: Headers.formUrlEncodedContentType),
         );
@@ -395,7 +395,7 @@ class QbittorrentClient {
           'api/v2/torrents/setLocation',
           data: <String, dynamic>{
             'hashes': hashes.join('|'),
-            'location': location
+            'location': location,
           },
           options: Options(contentType: Headers.formUrlEncodedContentType),
         );

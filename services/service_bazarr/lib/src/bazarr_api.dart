@@ -480,7 +480,7 @@ class BazarrApi {
       final Response<dynamic> resp = await _dio.get<dynamic>('api/system/logs');
       return _listFrom(resp.data)
           .map(
-              (dynamic e) => BazarrLogEntry.fromJson(e as Map<String, dynamic>))
+              (dynamic e) => BazarrLogEntry.fromJson(e as Map<String, dynamic>),)
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -505,7 +505,7 @@ class BazarrApi {
           await _dio.get<dynamic>('api/system/languages');
       return _listFrom(resp.data)
           .map(
-              (dynamic e) => BazarrLanguage.fromJson(e as Map<String, dynamic>))
+              (dynamic e) => BazarrLanguage.fromJson(e as Map<String, dynamic>),)
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);

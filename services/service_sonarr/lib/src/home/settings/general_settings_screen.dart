@@ -148,7 +148,7 @@ class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('General configuration settings saved!')),
+              content: Text('General configuration settings saved!'),),
         );
         Navigator.pop(context);
       }
@@ -341,11 +341,11 @@ class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
                               tooltip: 'Copy API Key',
                               onPressed: () {
                                 Clipboard.setData(ClipboardData(
-                                    text: _apiKeyController.text));
+                                    text: _apiKeyController.text,),);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                       content:
-                                          Text('API Key copied to clipboard!')),
+                                          Text('API Key copied to clipboard!'),),
                                 );
                               },
                             ),

@@ -173,7 +173,7 @@ class QbittorrentFilterDrawer extends ConsumerWidget {
                         onTap: () {
                           ref
                               .read(
-                                  qbitFilterCategoryProvider(instance).notifier)
+                                  qbitFilterCategoryProvider(instance).notifier,)
                               .state = cat;
                         },
                       ),
@@ -215,7 +215,7 @@ class _FilterTile extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
         leading: Icon(icon),
         title: Text('$title ($count)',
-            style: TextStyle(fontWeight: isSelected ? FontWeight.bold : null)),
+            style: TextStyle(fontWeight: isSelected ? FontWeight.bold : null),),
         onTap: onTap,
         selected: isSelected,
         selectedColor: Theme.of(context).colorScheme.onSecondaryContainer,

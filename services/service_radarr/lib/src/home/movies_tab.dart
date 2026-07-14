@@ -129,7 +129,7 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
               onClear: () {
                 ref
                     .read(
-                        radarrMoviesSelectionProvider(widget.instance).notifier)
+                        radarrMoviesSelectionProvider(widget.instance).notifier,)
                     .state = {};
               },
             )
@@ -209,8 +209,8 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                             onPressed: () {
                               ref
                                   .read(radarrMoviesSelectionProvider(
-                                          widget.instance)
-                                      .notifier)
+                                          widget.instance,)
+                                      .notifier,)
                                   .state = {};
                             },
                           )
@@ -280,8 +280,8 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                               onPressed: () {
                                 ref
                                     .read(radarrMoviesSelectionProvider(
-                                            widget.instance)
-                                        .notifier)
+                                            widget.instance,)
+                                        .notifier,)
                                     .state = list.map((m) => m.id).toSet();
                               },
                             )
@@ -292,8 +292,8 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                               onPressed: () {
                                 ref
                                     .read(radarrMoviesSelectionProvider(
-                                            widget.instance)
-                                        .notifier)
+                                            widget.instance,)
+                                        .notifier,)
                                     .state = {};
                               },
                             ),
@@ -367,8 +367,8 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                               onLongPress: () {
                                 final notifier = ref.read(
                                     radarrMoviesSelectionProvider(
-                                            widget.instance)
-                                        .notifier);
+                                            widget.instance,)
+                                        .notifier,);
                                 if (isSelected) {
                                   notifier.state = selection
                                       .where((id) => id != m.id)
@@ -381,8 +381,8 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                                 if (isSelecting) {
                                   final notifier = ref.read(
                                       radarrMoviesSelectionProvider(
-                                              widget.instance)
-                                          .notifier);
+                                              widget.instance,)
+                                          .notifier,);
                                   if (isSelected) {
                                     notifier.state = selection
                                         .where((id) => id != m.id)
@@ -431,8 +431,8 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                                   final isSelected = selection.contains(m.id);
                                   final notifier = ref.read(
                                       radarrMoviesSelectionProvider(
-                                              widget.instance)
-                                          .notifier);
+                                              widget.instance,)
+                                          .notifier,);
                                   if (isSelected) {
                                     notifier.state = selection
                                         .where((id) => id != m.id)
@@ -446,8 +446,8 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                                   if (isSelecting) {
                                     final notifier = ref.read(
                                         radarrMoviesSelectionProvider(
-                                                widget.instance)
-                                            .notifier);
+                                                widget.instance,)
+                                            .notifier,);
                                     if (isSelected) {
                                       notifier.state = selection
                                           .where((id) => id != m.id)
@@ -743,7 +743,7 @@ class _MovieBannerCard extends ConsumerWidget {
                                   color:
                                       theme.colorScheme.surfaceContainerHighest,
                                   child: const Icon(Icons.movie_outlined,
-                                      size: 20),
+                                      size: 20,),
                                 ),
                               ),
                             )
@@ -1162,7 +1162,7 @@ class _BulkDeleteDialogState extends ConsumerState<_BulkDeleteDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-              'Are you sure you want to delete these movies? This action cannot be undone.'),
+              'Are you sure you want to delete these movies? This action cannot be undone.',),
           const SizedBox(height: 16),
           CheckboxListTile(
             title: const Text('Delete all files from disk'),
@@ -1201,7 +1201,7 @@ class _BulkDeleteDialogState extends ConsumerState<_BulkDeleteDialog> {
               final api =
                   await ref.read(radarrApiProvider(widget.instance).future);
               await api.bulkDeleteMovies(widget.selectedIds.toList(),
-                  deleteFiles: _deleteFiles);
+                  deleteFiles: _deleteFiles,);
             } catch (e) {
               error = e;
             } finally {
@@ -1268,50 +1268,55 @@ class _SortFilterBottomSheet extends ConsumerWidget {
                     label: const Text('All Status'),
                     selected: filter == RadarrMovieFilter.all,
                     onSelected: (val) {
-                      if (val)
+                      if (val) {
                         ref
                             .read(radarrMovieFilterProvider(instance).notifier)
                             .state = RadarrMovieFilter.all;
+                      }
                     },
                   ),
                   ChoiceChip(
                     label: const Text('Downloaded Only'),
                     selected: filter == RadarrMovieFilter.downloaded,
                     onSelected: (val) {
-                      if (val)
+                      if (val) {
                         ref
                             .read(radarrMovieFilterProvider(instance).notifier)
                             .state = RadarrMovieFilter.downloaded;
+                      }
                     },
                   ),
                   ChoiceChip(
                     label: const Text('Missing Only'),
                     selected: filter == RadarrMovieFilter.missing,
                     onSelected: (val) {
-                      if (val)
+                      if (val) {
                         ref
                             .read(radarrMovieFilterProvider(instance).notifier)
                             .state = RadarrMovieFilter.missing;
+                      }
                     },
                   ),
                   ChoiceChip(
                     label: const Text('Monitored Only'),
                     selected: filter == RadarrMovieFilter.monitoredOnly,
                     onSelected: (val) {
-                      if (val)
+                      if (val) {
                         ref
                             .read(radarrMovieFilterProvider(instance).notifier)
                             .state = RadarrMovieFilter.monitoredOnly;
+                      }
                     },
                   ),
                   ChoiceChip(
                     label: const Text('Unmonitored Only'),
                     selected: filter == RadarrMovieFilter.unmonitoredOnly,
                     onSelected: (val) {
-                      if (val)
+                      if (val) {
                         ref
                             .read(radarrMovieFilterProvider(instance).notifier)
                             .state = RadarrMovieFilter.unmonitoredOnly;
+                      }
                     },
                   ),
                 ],
@@ -1336,16 +1341,16 @@ class _SortFilterBottomSheet extends ConsumerWidget {
                         if (sortOption == RadarrMovieSortField.title) {
                           ref
                               .read(radarrMovieSortAscendingProvider(instance)
-                                  .notifier)
+                                  .notifier,)
                               .state = !sortAscending;
                         } else {
                           ref
                               .read(radarrMovieSortFieldProvider(instance)
-                                  .notifier)
+                                  .notifier,)
                               .state = RadarrMovieSortField.title;
                           ref
                               .read(radarrMovieSortAscendingProvider(instance)
-                                  .notifier)
+                                  .notifier,)
                               .state = true;
                         }
                       }
@@ -1359,16 +1364,16 @@ class _SortFilterBottomSheet extends ConsumerWidget {
                         if (sortOption == RadarrMovieSortField.year) {
                           ref
                               .read(radarrMovieSortAscendingProvider(instance)
-                                  .notifier)
+                                  .notifier,)
                               .state = !sortAscending;
                         } else {
                           ref
                               .read(radarrMovieSortFieldProvider(instance)
-                                  .notifier)
+                                  .notifier,)
                               .state = RadarrMovieSortField.year;
                           ref
                               .read(radarrMovieSortAscendingProvider(instance)
-                                  .notifier)
+                                  .notifier,)
                               .state = false;
                         }
                       }
@@ -1382,16 +1387,16 @@ class _SortFilterBottomSheet extends ConsumerWidget {
                         if (sortOption == RadarrMovieSortField.added) {
                           ref
                               .read(radarrMovieSortAscendingProvider(instance)
-                                  .notifier)
+                                  .notifier,)
                               .state = !sortAscending;
                         } else {
                           ref
                               .read(radarrMovieSortFieldProvider(instance)
-                                  .notifier)
+                                  .notifier,)
                               .state = RadarrMovieSortField.added;
                           ref
                               .read(radarrMovieSortAscendingProvider(instance)
-                                  .notifier)
+                                  .notifier,)
                               .state = false;
                         }
                       }
@@ -1405,16 +1410,16 @@ class _SortFilterBottomSheet extends ConsumerWidget {
                         if (sortOption == RadarrMovieSortField.sizeOnDisk) {
                           ref
                               .read(radarrMovieSortAscendingProvider(instance)
-                                  .notifier)
+                                  .notifier,)
                               .state = !sortAscending;
                         } else {
                           ref
                               .read(radarrMovieSortFieldProvider(instance)
-                                  .notifier)
+                                  .notifier,)
                               .state = RadarrMovieSortField.sizeOnDisk;
                           ref
                               .read(radarrMovieSortAscendingProvider(instance)
-                                  .notifier)
+                                  .notifier,)
                               .state = false;
                         }
                       }
@@ -1430,16 +1435,16 @@ class _SortFilterBottomSheet extends ConsumerWidget {
                             RadarrMovieSortField.monitoredStatus) {
                           ref
                               .read(radarrMovieSortAscendingProvider(instance)
-                                  .notifier)
+                                  .notifier,)
                               .state = !sortAscending;
                         } else {
                           ref
                               .read(radarrMovieSortFieldProvider(instance)
-                                  .notifier)
+                                  .notifier,)
                               .state = RadarrMovieSortField.monitoredStatus;
                           ref
                               .read(radarrMovieSortAscendingProvider(instance)
-                                  .notifier)
+                                  .notifier,)
                               .state = true;
                         }
                       }

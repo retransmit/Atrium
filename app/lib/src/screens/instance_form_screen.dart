@@ -323,8 +323,9 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                 keyboardType: TextInputType.number,
                 validator: (String? v) {
                   final int? val = int.tryParse(v?.trim() ?? '');
-                  if (val == null || val < 1)
+                  if (val == null || val < 1) {
                     return 'Must be at least 1 second';
+                  }
                   return null;
                 },
               ),

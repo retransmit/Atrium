@@ -369,7 +369,7 @@ final radarrWantedFilteredMissingProvider = Provider.autoDispose
     final String lowercaseQuery = query.toLowerCase();
     return page.records
         .where(
-            (RadarrMovie m) => m.title.toLowerCase().contains(lowercaseQuery))
+            (RadarrMovie m) => m.title.toLowerCase().contains(lowercaseQuery),)
         .toList();
   });
 });
@@ -388,7 +388,7 @@ final radarrWantedFilteredCutoffProvider = Provider.autoDispose
     final String lowercaseQuery = query.toLowerCase();
     return page.records
         .where(
-            (RadarrMovie m) => m.title.toLowerCase().contains(lowercaseQuery))
+            (RadarrMovie m) => m.title.toLowerCase().contains(lowercaseQuery),)
         .toList();
   });
 });

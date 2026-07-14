@@ -22,7 +22,7 @@ Future<void> launchPlexDeepLink(BuildContext context, {String? webUrl}) async {
         try {
           const MethodChannel channel = MethodChannel('app.atrium/launcher');
           if (await channel.invokeMethod<bool>(
-                  'launchDeepLink', <String, dynamic>{'url': webUrl}) ??
+                  'launchDeepLink', <String, dynamic>{'url': webUrl},) ??
               false) {
             return;
           }

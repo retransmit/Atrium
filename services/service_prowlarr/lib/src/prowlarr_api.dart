@@ -77,7 +77,7 @@ class ProwlarrApi {
           await _dio.get<dynamic>('$_base/indexer/schema');
       return (resp.data as List<dynamic>)
           .map((dynamic e) =>
-              Map<String, dynamic>.from(e as Map<dynamic, dynamic>))
+              Map<String, dynamic>.from(e as Map<dynamic, dynamic>),)
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -115,7 +115,7 @@ class ProwlarrApi {
           await _dio.get<dynamic>('$_base/appprofile');
       return (resp.data as List<dynamic>)
           .map((dynamic e) =>
-              Map<String, dynamic>.from(e as Map<dynamic, dynamic>))
+              Map<String, dynamic>.from(e as Map<dynamic, dynamic>),)
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -236,7 +236,7 @@ class ProwlarrApi {
           await _dio.get<dynamic>('$_base/applications/schema');
       return (resp.data as List<dynamic>)
           .map((dynamic e) =>
-              Map<String, dynamic>.from(e as Map<dynamic, dynamic>))
+              Map<String, dynamic>.from(e as Map<dynamic, dynamic>),)
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -319,7 +319,7 @@ class ProwlarrApi {
           await _dio.get<dynamic>('$_base/$endpoint');
       return (resp.data as List<dynamic>)
           .map((dynamic e) =>
-              Map<String, dynamic>.from(e as Map<dynamic, dynamic>))
+              Map<String, dynamic>.from(e as Map<dynamic, dynamic>),)
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -333,7 +333,7 @@ class ProwlarrApi {
           await _dio.get<dynamic>('$_base/$endpoint/schema');
       return (resp.data as List<dynamic>)
           .map((dynamic e) =>
-              Map<String, dynamic>.from(e as Map<dynamic, dynamic>))
+              Map<String, dynamic>.from(e as Map<dynamic, dynamic>),)
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -353,7 +353,7 @@ class ProwlarrApi {
 
   /// Creates a provider (`POST /{endpoint}`, `forceSave=true`).
   Future<void> createProvider(
-      String endpoint, Map<String, dynamic> body) async {
+      String endpoint, Map<String, dynamic> body,) async {
     try {
       await _dio.post<dynamic>(
         '$_base/$endpoint',
@@ -367,7 +367,7 @@ class ProwlarrApi {
 
   /// Updates a provider (`PUT /{endpoint}/{id}`, `forceSave=true`).
   Future<void> updateProvider(
-      String endpoint, Map<String, dynamic> body) async {
+      String endpoint, Map<String, dynamic> body,) async {
     try {
       await _dio.put<dynamic>(
         '$_base/$endpoint/${body['id']}',

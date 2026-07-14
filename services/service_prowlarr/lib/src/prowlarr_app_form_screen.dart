@@ -88,7 +88,7 @@ class _ProwlarrAppFormScreenState extends ConsumerState<ProwlarrAppFormScreen> {
         '';
     _fields = ((source['fields'] as List<dynamic>?) ?? <dynamic>[])
         .map((dynamic f) =>
-            Map<String, dynamic>.from(f as Map<dynamic, dynamic>))
+            Map<String, dynamic>.from(f as Map<dynamic, dynamic>),)
         .toList();
     final String? lvl = source['syncLevel'] as String?;
     _syncLevel = (lvl == null || lvl.isEmpty) ? 'addOnly' : lvl;

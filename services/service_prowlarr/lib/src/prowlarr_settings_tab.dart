@@ -156,7 +156,7 @@ final ProwlarrProviderConfig _downloadClientConfig = ProwlarrProviderConfig(
   resourceLabel: 'download client',
   icon: Icons.download_outlined,
   topLevel: (BuildContext context, Map<String, dynamic> raw,
-          VoidCallback onChanged) =>
+          VoidCallback onChanged,) =>
       <Widget>[
     ProwlarrSwitchTile(
       label: 'Enabled',
@@ -227,7 +227,7 @@ final ProwlarrProviderConfig _indexerProxyConfig = ProwlarrProviderConfig(
   resourceLabel: 'indexer proxy',
   icon: Icons.vpn_lock_outlined,
   topLevel: (BuildContext context, Map<String, dynamic> raw,
-          VoidCallback onChanged) =>
+          VoidCallback onChanged,) =>
       <Widget>[
     if (raw['supportsOnHealthIssue'] == true)
       ProwlarrSwitchTile(

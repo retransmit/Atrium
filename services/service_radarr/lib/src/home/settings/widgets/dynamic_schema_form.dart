@@ -187,7 +187,7 @@ class _DynamicSchemaFormState extends State<DynamicSchemaForm> {
               child: Row(
                 children: [
                   Icon(Icons.check_circle_outline,
-                      color: theme.colorScheme.onPrimaryContainer),
+                      color: theme.colorScheme.onPrimaryContainer,),
                   const SizedBox(width: Insets.sm),
                   Text(
                     'Connection Test Successful!',
@@ -325,7 +325,7 @@ class _DynamicSchemaFormState extends State<DynamicSchemaForm> {
       if (selectOptions
           .any((opt) => (opt['value'] as Object).toString() == valStr)) {
         matchedValue = selectOptions.firstWhere(
-            (opt) => (opt['value'] as Object).toString() == valStr)['value'];
+            (opt) => (opt['value'] as Object).toString() == valStr,)['value'];
       } else if (selectOptions.isNotEmpty) {
         matchedValue = selectOptions.first['value'];
       }

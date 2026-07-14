@@ -95,7 +95,7 @@ class _WantedTabState extends ConsumerState<WantedTab>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
               content:
-                  Text('Search started for ${ids.length} selected movies.')),
+                  Text('Search started for ${ids.length} selected movies.'),),
         );
       }
     } catch (e) {

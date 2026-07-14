@@ -470,7 +470,7 @@ class _MediaManagementSettingsScreenState
                               ),
                               value: _createEmptySeriesFolders,
                               onChanged: (val) => setState(
-                                  () => _createEmptySeriesFolders = val),
+                                  () => _createEmptySeriesFolders = val,),
                             ),
                             SwitchListTile(
                               contentPadding: EdgeInsets.zero,
@@ -555,7 +555,7 @@ class _MediaManagementSettingsScreenState
                               onChanged: (val) {
                                 if (val != null) {
                                   setState(
-                                      () => _downloadPropersAndRepacks = val);
+                                      () => _downloadPropersAndRepacks = val,);
                                 }
                               },
                             ),

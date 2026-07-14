@@ -253,7 +253,7 @@ class PlexAlbumScreen extends ConsumerWidget {
               child: AsyncValueView<List<PlexMetadata>>(
                 value: tracks,
                 onRetry: () => ref.invalidate(
-                    plexChildrenProvider((instance, album.ratingKey))),
+                    plexChildrenProvider((instance, album.ratingKey)),),
                 data: (List<PlexMetadata> list) {
                   if (list.isEmpty) {
                     return const EmptyView(

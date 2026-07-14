@@ -75,7 +75,7 @@ class TautulliApi {
 
   /// Watch history, newest first.
   Future<TautulliHistoryPage> getHistory(
-      {int length = 100, int start = 0}) async {
+      {int length = 100, int start = 0,}) async {
     final dynamic data = await _cmd('get_history', <String, dynamic>{
       'length': length,
       'start': start,
@@ -97,7 +97,7 @@ class TautulliApi {
     });
     return ((data as List<dynamic>?) ?? <dynamic>[])
         .map(
-            (dynamic e) => TautulliHomeStat.fromJson(e as Map<String, dynamic>))
+            (dynamic e) => TautulliHomeStat.fromJson(e as Map<String, dynamic>),)
         .toList();
   }
 

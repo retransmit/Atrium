@@ -79,7 +79,7 @@ class _QualityProfilesTab extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Failed to load quality profile schema')),
+              content: Text('Failed to load quality profile schema'),),
         );
       }
       return;
@@ -96,7 +96,7 @@ class _QualityProfilesTab extends ConsumerWidget {
         (profile?['items'] ?? schema!['items']) as List<dynamic>;
     final editableItems = sourceItems
         .map(
-            (dynamic e) => Map<String, dynamic>.from(e as Map<String, dynamic>))
+            (dynamic e) => Map<String, dynamic>.from(e as Map<String, dynamic>),)
         .toList();
 
     bool upgradeAllowed = profile?['upgradeAllowed'] as bool? ?? false;
@@ -241,7 +241,7 @@ class _QualityProfilesTab extends ConsumerWidget {
 
                       if (isEdit) {
                         await api.updateQualityProfile(
-                            payload, payload['id'] as int);
+                            payload, payload['id'] as int,);
                       } else {
                         // Remove id for creation
                         payload.remove('id');
@@ -301,7 +301,7 @@ class _QualityProfilesTab extends ConsumerWidget {
                 color: theme.colorScheme.surfaceContainerLow,
                 child: ListTile(
                   title: Text(name,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                      style: const TextStyle(fontWeight: FontWeight.bold),),
                   subtitle: Text(upgrade ? 'Upgrades Allowed' : 'No Upgrades'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -312,22 +312,22 @@ class _QualityProfilesTab extends ConsumerWidget {
                       ),
                       IconButton(
                         icon: Icon(Icons.delete_outline,
-                            color: theme.colorScheme.error),
+                            color: theme.colorScheme.error,),
                         onPressed: () async {
                           final ok = await confirmDelete(
-                              context, 'Quality Profile "$name"');
+                              context, 'Quality Profile "$name"',);
                           if (ok) {
                             try {
                               final api = await ref
                                   .read(radarrApiProvider(instance).future);
                               await api.deleteQualityProfile(p['id'] as int);
                               ref.invalidate(
-                                  radarrQualityProfilesProvider(instance));
+                                  radarrQualityProfilesProvider(instance),);
                             } catch (e) {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                      content: Text('Failed to delete: $e')),
+                                      content: Text('Failed to delete: $e'),),
                                 );
                               }
                             }
@@ -377,9 +377,9 @@ class _DelayProfilesTab extends ConsumerWidget {
               color: theme.colorScheme.surfaceContainerLow,
               child: ListTile(
                 title: Text(
-                    'Delay Profile (Usenet: ${usenet}m, Torrent: ${torrent}m)'),
+                    'Delay Profile (Usenet: ${usenet}m, Torrent: ${torrent}m)',),
                 subtitle: Text(
-                    'Protocol preference: ${p['preferredProtocol'] ?? 'None'}'),
+                    'Protocol preference: ${p['preferredProtocol'] ?? 'None'}',),
               ),
             );
           },
@@ -419,7 +419,7 @@ class _CustomFormatsTab extends ConsumerWidget {
               color: theme.colorScheme.surfaceContainerLow,
               child: ListTile(
                 title: Text(name,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                    style: const TextStyle(fontWeight: FontWeight.bold),),
                 subtitle: Text(f['description'] as String? ?? ''),
               ),
             );

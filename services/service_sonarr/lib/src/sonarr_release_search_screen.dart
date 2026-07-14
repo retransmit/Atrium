@@ -624,7 +624,7 @@ class _SonarrReleaseSearchScreenState
                                   width: 24,
                                   height: 24,
                                   child: ExpressiveProgressIndicator(
-                                      strokeWidth: 2),
+                                      strokeWidth: 2,),
                                 )
                               : IconButton(
                                   icon: Icon(

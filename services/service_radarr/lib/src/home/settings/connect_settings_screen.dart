@@ -59,7 +59,7 @@ class ConnectSettingsScreen extends ConsumerWidget {
                       onTap: () {
                         Navigator.pop(context);
                         _showNotificationEditorDialog(context, ref, preset,
-                            isNew: true);
+                            isNew: true,);
                       },
                     );
                   },
@@ -90,7 +90,7 @@ class ConnectSettingsScreen extends ConsumerWidget {
         return AlertDialog(
           title: Text(isNew
               ? 'Add ${notification['name']}'
-              : 'Edit ${notification['name']}'),
+              : 'Edit ${notification['name']}',),
           content: SizedBox(
             width: double.maxFinite,
             child: SingleChildScrollView(
@@ -114,7 +114,7 @@ class ConnectSettingsScreen extends ConsumerWidget {
                       await api.createNotification(payload);
                     } else {
                       await api.updateNotification(
-                          payload, payload['id'] as int);
+                          payload, payload['id'] as int,);
                     }
 
                     ref.invalidate(radarrNotificationsProvider(instance));
@@ -123,7 +123,7 @@ class ConnectSettingsScreen extends ConsumerWidget {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                              'Notification ${isNew ? 'added' : 'updated'}!'),
+                              'Notification ${isNew ? 'added' : 'updated'}!',),
                         ),
                       );
                     }
@@ -131,7 +131,7 @@ class ConnectSettingsScreen extends ConsumerWidget {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text('Failed to save notification: $e')),
+                            content: Text('Failed to save notification: $e'),),
                       );
                     }
                   }
@@ -193,7 +193,7 @@ class ConnectSettingsScreen extends ConsumerWidget {
           if (notifications.isEmpty) {
             return const Center(
               child: Text(
-                  'No connection notifications configured. Tap + to add one.'),
+                  'No connection notifications configured. Tap + to add one.',),
             );
           }
 
@@ -211,7 +211,7 @@ class ConnectSettingsScreen extends ConsumerWidget {
                 color: theme.colorScheme.surfaceContainerLow,
                 child: ListTile(
                   title: Text(name,
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                      style: const TextStyle(fontWeight: FontWeight.bold),),
                   subtitle: Text('Type: $impl'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -223,7 +223,7 @@ class ConnectSettingsScreen extends ConsumerWidget {
                       ),
                       IconButton(
                         icon: Icon(Icons.delete_outline,
-                            color: theme.colorScheme.error),
+                            color: theme.colorScheme.error,),
                         onPressed: () =>
                             _deleteNotification(context, ref, id, name),
                       ),
