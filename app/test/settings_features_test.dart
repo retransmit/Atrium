@@ -1,5 +1,6 @@
 import 'package:atrium/src/preferences.dart';
 import 'package:atrium/src/screens/custom_headers_screen.dart';
+import 'package:atrium/src/screens/reorder_sidebar_screen.dart';
 import 'package:atrium/src/screens/settings_screen.dart';
 import 'package:atrium/src/screens/wake_on_lan_screen.dart';
 import 'package:core_models/core_models.dart';
@@ -116,5 +117,45 @@ void main() {
     expect(wol, findsOneWidget);
     expect(find.text('1 device configured'), findsOneWidget);
     expect(find.text('Custom Headers'), findsOneWidget);
+  });
+
+  testWidgets('ReorderSidebarScreen renders drag items',
+      (WidgetTester tester) async {
+    await _pump(
+      tester,
+      <Override>[activeProfileProvider.overrideWithValue(_profile())],
+      const ReorderSidebarScreen(),
+    );
+
+    expect(find.text('Reorder Sidebar'), findsOneWidget);
+    expect(find.text('Media Box'), findsOneWidget);
+    expect(find.text('Automation • Sonarr'), findsOneWidget);
+    expect(find.byIcon(Icons.drag_handle_rounded), findsOneWidget);
+  });
+
+  testWidgets('SettingsScreen renders the Sidebar section tile',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await _pump(
+      tester,
+      <Override>[
+        activeProfileProvider.overrideWithValue(_profile()),
+        preferencesProvider.overrideWith(_FakePreferencesController.new),
+      ],
+      const SettingsScreen(),
+    );
+
+    final Finder reorderTile = find.text('Reorder sidebar services');
+    await tester.scrollUntilVisible(
+      reorderTile,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(reorderTile, findsOneWidget);
   });
 }
