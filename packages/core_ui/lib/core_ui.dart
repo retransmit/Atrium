@@ -5,9 +5,9 @@
 /// module.
 library;
 
-// M3 pull-to-refresh from m3_expressive, surfaced through core_ui so modules
-// use it without each taking a direct m3_expressive dependency.
-export 'package:easy_refresh/easy_refresh.dart' hide EasyRefresh;
+// Pull-to-refresh surfaced through core_ui so modules
+// use it without each taking a direct easy_refresh dependency.
+export 'package:easy_refresh/easy_refresh.dart';
 
 export 'src/design_tokens.dart';
 export 'src/navigation.dart';
@@ -15,7 +15,7 @@ export 'src/performance_logger.dart';
 export 'src/service_visuals.dart';
 export 'src/theme.dart';
 export 'src/widgets/async_value_view.dart';
-export 'src/widgets/easy_refresh_wrapper.dart';
+
 export 'src/widgets/expressive_progress_indicator.dart';
 export 'src/widgets/expressive_slider.dart';
 export 'src/widgets/overview_box.dart';
