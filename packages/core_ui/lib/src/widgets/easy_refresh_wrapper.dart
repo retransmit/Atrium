@@ -65,8 +65,7 @@ class EasyRefresh extends StatelessWidget {
           final double value =
               (state.offset / state.triggerOffset).clamp(0.0, 1.0);
           final bool isRefreshing = state.mode == er.IndicatorMode.ready ||
-              state.mode == er.IndicatorMode.processing ||
-              state.mode == er.IndicatorMode.refreshing;
+              state.mode == er.IndicatorMode.processing;
           final double scale = isRefreshing ? 1.0 : value;
           final double opacity = (state.offset / 30.0).clamp(0.0, 1.0);
 
