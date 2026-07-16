@@ -1,0 +1,6 @@
+Nothing changes in the app itself.
+
+Releases are now built by a server rather than by hand, so that F-Droid can
+rebuild them and check they match. That lets F-Droid ship the same signature the
+GitHub release page uses, which means you can move between the two without
+uninstalling and losing your profiles.
