@@ -14,6 +14,15 @@ class _Release {
 /// Newest first. Update alongside the version in the app's pubspec.
 const List<_Release> _releases = <_Release>[
   _Release(
+    version: '1.0.3',
+    changes: <String>[
+      'Nothing changes in the app itself. Releases are now built by a server '
+          'rather than by hand, so that F-Droid can rebuild them and check they '
+          'match. That lets F-Droid ship the same signature this release page '
+          'uses, and means you can move between the two without reinstalling.',
+    ],
+  ),
+  _Release(
     version: '1.0.2',
     changes: <String>[
       'The Android build tools were writing an encrypted list of the app\'s '

@@ -1,0 +1,98 @@
+name: Release APKs
+
+# Builds the release APKs that get published to GitHub Releases.
+#
+# These builds are the reference F-Droid verifies against, so they have to be
+# byte-reproducible on their Debian builders. That constrains this workflow more
+# than a normal one:
+#
+#   * BUILD_DIR is load-bearing. Flutter writes the absolute path of
+#     .dart_tool/flutter_build/dart_plugin_registrant.dart into the AOT snapshot
+#     as a string constant, so a build at a different path produces a different
+#     APK. metadata/app.atrium.yml in fdroiddata moves its checkout to the same
+#     path. Change one and you must change the other.
+#   * Every toolchain version is pinned. A different Flutter, JDK or NDK emits
+#     different bytes.
+#   * The APKs land here unsigned. They are signed by hand afterwards, so the
+#     keystore never has to live in GitHub. See docs/RELEASING.md.
+#
+# Nothing here publishes on its own; it uploads artifacts to download, sign and
+# attach to a release.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Must match the path fdroiddata's recipe builds at.
+  BUILD_DIR: /tmp/build
+  FLUTTER_VERSION: 3.41.9
+  JAVA_VERSION: '17'
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      # Relocate before building. The checkout path ends up inside the APK, so
+      # it has to be the path F-Droid rebuilds at, not the runner's default.
+      - name: Move the checkout to the reproducible build path
+        run: |
+          mkdir -p "$(dirname "$BUILD_DIR")"
+          cp -a "$GITHUB_WORKSPACE" "$BUILD_DIR"
+
+      - name: Resolve dependencies
+        working-directory: ${{ env.BUILD_DIR }}/app
+        run: |
+          export PUB_CACHE="$(pwd)/.pub-cache"
+          flutter config --no-analytics
+          flutter pub get --enforce-lockfile
+
+      - name: Generate freezed and json_serializable sources
+        working-directory: ${{ env.BUILD_DIR }}
+        run: |
+          export PUB_CACHE="$BUILD_DIR/app/.pub-cache"
+          dart run tool/build_all.dart
+
+      - name: Build the release APKs
+        working-directory: ${{ env.BUILD_DIR }}/app
+        run: |
+          export PUB_CACHE="$(pwd)/.pub-cache"
+          flutter build apk --release --split-per-abi
+
+      # Prove the workflow did not quietly sign them. An APK with a signature
+      # here means key material leaked into CI, and it would also fail F-Droid's
+      # verification.
+      - name: Check the APKs are unsigned
+        working-directory: ${{ env.BUILD_DIR }}/app/build/app/outputs/flutter-apk
+        run: |
+          for apk in app-*-release.apk; do
+            if unzip -l "$apk" | grep -q 'META-INF/.*\.\(RSA\|DSA\|EC\|SF\)$'; then
+              echo "$apk carries a signature; it must be unsigned here"
+              exit 1
+            fi
+            echo "$apk is unsigned"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-apks
+          path: ${{ env.BUILD_DIR }}/app/build/app/outputs/flutter-apk/app-*-release.apk
+          if-no-files-found: error
