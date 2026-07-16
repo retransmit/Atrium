@@ -9,10 +9,17 @@ import 'package:intl/intl.dart';
 import 'package:service_radarr/service_radarr.dart';
 import 'package:service_sonarr/service_sonarr.dart';
 
+import '../arr_artwork.dart';
+
 /// Aggregated calendar event representation.
 sealed class CalendarEvent {
-  const CalendarEvent(this.instance);
+  const CalendarEvent(this.instance, {this.posterUrl, this.backdropUrl});
   final Instance instance;
+
+  /// Artwork served by the instance itself, resolved when the event is built
+  /// because that is where the API lives. Null renders a plain fallback.
+  final String? posterUrl;
+  final String? backdropUrl;
 
   String get title;
   DateTime get date;
@@ -24,15 +31,16 @@ sealed class CalendarEvent {
 
   /// Episode code + name (or year marker), for artwork-rich rows.
   String get subtitle;
-
-  /// Public artwork URLs (TMDB/fanart CDN remote urls), when the API included
-  /// them; null renders a plain fallback.
-  String? get posterUrl;
-  String? get backdropUrl;
 }
 
 class RadarrCalendarEvent extends CalendarEvent {
-  RadarrCalendarEvent(this.movie, super.instance, this.month);
+  RadarrCalendarEvent(
+    this.movie,
+    super.instance,
+    this.month, {
+    super.posterUrl,
+    super.backdropUrl,
+  });
   final RadarrMovie movie;
   final DateTime month;
 
@@ -76,16 +84,6 @@ class RadarrCalendarEvent extends CalendarEvent {
   @override
   String get subtitle => movie.year == null ? 'Movie' : '${movie.year} - Movie';
 
-  @override
-  String? get posterUrl => _image('poster');
-
-  @override
-  String? get backdropUrl => _image('fanart');
-
-  String? _image(String type) => movie.images
-      .firstWhereOrNull((RadarrImage i) => i.coverType == type)
-      ?.remoteUrl;
-
   static DateTime? _parseDate(String? s) {
     if (s == null || s.isEmpty) return null;
     return DateTime.tryParse(s)?.toLocal();
@@ -93,7 +91,12 @@ class RadarrCalendarEvent extends CalendarEvent {
 }
 
 class SonarrCalendarEvent extends CalendarEvent {
-  SonarrCalendarEvent(this.episode, super.instance);
+  SonarrCalendarEvent(
+    this.episode,
+    super.instance, {
+    super.posterUrl,
+    super.backdropUrl,
+  });
   final SonarrEpisode episode;
 
   @override
@@ -124,16 +127,6 @@ class SonarrCalendarEvent extends CalendarEvent {
     final String e = episode.episodeNumber.toString().padLeft(2, '0');
     return episode.title.isEmpty ? 'S${s}E$e' : 'S${s}E$e - ${episode.title}';
   }
-
-  @override
-  String? get posterUrl => _image('poster');
-
-  @override
-  String? get backdropUrl => _image('fanart');
-
-  String? _image(String type) => episode.series?.images
-      .firstWhereOrNull((SonarrImage i) => i.coverType == type)
-      ?.remoteUrl;
 }
 
 /// Aggregated calendar provider for all active Sonarr and Radarr instances.
@@ -150,48 +143,55 @@ final globalCalendarProvider =
     if (instance.kind == ServiceKind.radarr) {
       final AsyncValue<List<RadarrMovie>> state =
           ref.watch(radarrCalendarProvider((instance, month)));
+      final RadarrApi? api = ref.watch(radarrApiProvider(instance)).value;
+
+      RadarrCalendarEvent build(RadarrMovie m) => RadarrCalendarEvent(
+            m,
+            instance,
+            month,
+            posterUrl: radarrPosterUrl(api, m.images),
+            backdropUrl: radarrFanartUrl(api, m.images),
+          );
 
       if (state is AsyncLoading) {
         futures.add(
           ref
               .read(radarrCalendarProvider((instance, month)).future)
               .then((List<RadarrMovie> movies) {
-            allEvents.addAll(
-              movies.map(
-                  (RadarrMovie m) => RadarrCalendarEvent(m, instance, month)),
-            );
+            allEvents.addAll(movies.map(build));
           }).catchError((Object e) {
             // Ignore error
           }),
         );
       } else if (state is AsyncData<List<RadarrMovie>>) {
-        allEvents.addAll(
-          state.value
-              .map((RadarrMovie m) => RadarrCalendarEvent(m, instance, month)),
-        );
+        allEvents.addAll(state.value.map(build));
       }
     } else if (instance.kind == ServiceKind.sonarr) {
       final AsyncValue<List<SonarrEpisode>> state =
           ref.watch(sonarrCalendarProvider((instance, month)));
+      final SonarrApi? api = ref.watch(sonarrApiProvider(instance)).value;
+
+      SonarrCalendarEvent build(SonarrEpisode e) => SonarrCalendarEvent(
+            e,
+            instance,
+            posterUrl:
+                sonarrPosterUrl(api, e.series?.images ?? const <SonarrImage>[]),
+            backdropUrl:
+                sonarrFanartUrl(api, e.series?.images ?? const <SonarrImage>[]),
+          );
 
       if (state is AsyncLoading) {
         futures.add(
           ref
               .read(sonarrCalendarProvider((instance, month)).future)
               .then((List<SonarrEpisode> episodes) {
-            allEvents.addAll(
-              episodes
-                  .map((SonarrEpisode e) => SonarrCalendarEvent(e, instance)),
-            );
+            allEvents.addAll(episodes.map(build));
           }).catchError((Object e) {
             // Ignore error
           }),
         );
       } else if (state is AsyncData<List<SonarrEpisode>>) {
-        allEvents.addAll(
-          state.value
-              .map((SonarrEpisode e) => SonarrCalendarEvent(e, instance)),
-        );
+        allEvents.addAll(state.value.map(build));
       }
     }
   }
