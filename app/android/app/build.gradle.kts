@@ -84,10 +84,17 @@ android {
             // No signing config at all leaves the APK unsigned. A config
             // carrying a null storeFile is rejected outright by the Android
             // Gradle Plugin, so the absence has to be expressed here.
-            signingConfig = if (hasReleaseSigning) {
-                signingConfigs.getByName("release")
-            } else {
-                null
+            signingConfig = when {
+                hasReleaseSigning -> signingConfigs.getByName("release")
+                // An unsigned APK cannot be installed, which is unhelpful when
+                // you only want to try a release build. Opt into the debug key
+                // with `flutter build apk --release -PdebugSignRelease=true`.
+                // Never set it for a published build: F-Droid rebuilds this
+                // source and needs the result unsigned to verify it against the
+                // released APK.
+                project.hasProperty("debugSignRelease") ->
+                    signingConfigs.getByName("debug")
+                else -> null
             }
         }
     }
