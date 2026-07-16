@@ -10,8 +10,10 @@ import 'package:palette_generator_plus/palette_generator_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../custom_theme_providers.dart';
+import '../external_links.dart';
 import '../preferences.dart';
 import '../profile_io.dart';
+import 'changelog_screen.dart';
 import 'custom_headers_screen.dart';
 import 'wake_on_lan_screen.dart';
 
@@ -165,6 +167,40 @@ class SettingsScreen extends ConsumerWidget {
             leading: Icon(Icons.info_outline),
             title: Text('Atrium'),
             subtitle: Text('Version 0.1.0 • GPL-3.0-or-later'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.code),
+            title: const Text('GitHub'),
+            subtitle: const Text('github.com/retransmit/Atrium'),
+            trailing: const Icon(Icons.open_in_new, size: 18),
+            onTap: () =>
+                openExternal(ScaffoldMessenger.of(context), AtriumLinks.repo),
+          ),
+          ListTile(
+            leading: const Icon(Icons.bug_report_outlined),
+            title: const Text('Report a bug'),
+            subtitle: const Text('Open an issue on GitHub'),
+            trailing: const Icon(Icons.open_in_new, size: 18),
+            onTap: () => openExternal(
+              ScaffoldMessenger.of(context),
+              AtriumLinks.bugReport,
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.lightbulb_outline),
+            title: const Text('Request a feature'),
+            subtitle: const Text('Suggest an idea on GitHub'),
+            trailing: const Icon(Icons.open_in_new, size: 18),
+            onTap: () => openExternal(
+              ScaffoldMessenger.of(context),
+              AtriumLinks.featureRequest,
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.history),
+            title: const Text('Change log'),
+            subtitle: const Text("What's new in each version"),
+            onTap: () => pushScreen<void>(context, const ChangelogScreen()),
           ),
         ],
       ),
