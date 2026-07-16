@@ -14,11 +14,11 @@ class _Release {
 /// Newest first. Update alongside the version in the app's pubspec.
 const List<_Release> _releases = <_Release>[
   _Release(
-    version: '0.1.0',
+    version: '1.0.0',
     changes: <String>[
       'Dashboard board of at-a-glance widgets: active downloads, now streaming, '
-          'upcoming releases, recently added, service health, requests, server '
-          'info and disk usage, reorderable from an inline edit mode.',
+          'upcoming releases, recently added, recently downloaded, requests and '
+          'server info, reorderable from an inline edit mode.',
       'Sonarr and Radarr management across library, queue, wanted, history, '
           'blocklist, system and settings.',
       'qBittorrent, SABnzbd, Prowlarr, Bazarr, Seerr, Tautulli and Glances '

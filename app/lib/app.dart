@@ -7,7 +7,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'src/custom_theme_providers.dart';
 import 'src/preferences.dart';
@@ -45,13 +44,6 @@ class AtriumApp extends ConsumerWidget {
     // profile changes after this widget is built.
     syncGlobalHeaders(ref.read(activeProfileProvider));
 
-    String? resolvedFontFamily = fontFamily;
-    if (fontFamily != null && fontFamily != 'JetBrainsMono Nerd Font') {
-      try {
-        resolvedFontFamily = GoogleFonts.getFont(fontFamily).fontFamily;
-      } catch (_) {}
-    }
-
     final ThemeSource themeSource =
         ref.watch(preferencesProvider.select((Preferences p) => p.themeSource));
     final (ColorScheme customLight, ColorScheme customDark) =
@@ -80,9 +72,9 @@ class AtriumApp extends ConsumerWidget {
         return MaterialApp.router(
           title: 'Atrium',
           debugShowCheckedModeBanner: false,
-          theme: AtriumTheme.light(activeLight, fontFamily: resolvedFontFamily),
+          theme: AtriumTheme.light(activeLight, fontFamily: fontFamily),
           darkTheme:
-              AtriumTheme.dark(activeDark, fontFamily: resolvedFontFamily),
+              AtriumTheme.dark(activeDark, fontFamily: fontFamily),
           themeMode: themeMode,
           routerConfig: router,
           // Overlay the opt-in biometric lock above every route.
