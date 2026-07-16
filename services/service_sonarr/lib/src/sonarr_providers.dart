@@ -42,6 +42,8 @@ final sonarrSeriesProvider =
   return series;
 });
 
+
+
 /// One series by id. Refreshed on demand.
 final sonarrSeriesByIdProvider =
     FutureProvider.autoDispose.family<SonarrSeries, (Instance, int)>((

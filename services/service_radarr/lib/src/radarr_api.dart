@@ -32,6 +32,8 @@ class RadarrApi {
     }
   }
 
+
+
   Future<RadarrMovie> getMovieById(int id) async {
     try {
       final Response<dynamic> resp =
@@ -277,6 +279,9 @@ class RadarrApi {
     int page = 1,
     int pageSize = 20,
     int? movieId,
+    int? eventType,
+    String? sortKey,
+    String? sortDirection,
   }) async {
     try {
       final Response<dynamic> resp = await _dio.get<dynamic>(
@@ -286,6 +291,9 @@ class RadarrApi {
           'pageSize': pageSize,
           'includeMovie': true,
           if (movieId != null) 'movieId': movieId,
+          if (eventType != null) 'eventType': eventType,
+          if (sortKey != null) 'sortKey': sortKey,
+          if (sortDirection != null) 'sortDirection': sortDirection,
         },
       );
       final dynamic records = (resp.data as Map<String, dynamic>)['records'];

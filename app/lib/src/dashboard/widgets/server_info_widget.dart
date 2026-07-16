@@ -200,22 +200,30 @@ class _MetricTile extends StatelessWidget {
         SizedBox(
           width: 52,
           height: 52,
-          child: Stack(
-            alignment: Alignment.center,
-            children: <Widget>[
-              CircularProgressIndicatorM3E(
-                value: (percent / 100).clamp(0, 1).toDouble(),
-                size: CircularProgressM3ESize.m,
-                shape: ProgressM3EShape.flat,
-                activeColor: color,
-                trackColor: cs.surfaceContainerHighest,
-              ),
-              Text(
-                '${percent.round()}%',
-                style: theme.textTheme.labelLarge
-                    ?.copyWith(fontWeight: FontWeight.w800),
-              ),
-            ],
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: percent),
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeOutCubic,
+            builder: (BuildContext context, double value, Widget? child) {
+              final Color activeColor = _loadColor(value, cs);
+              return Stack(
+                alignment: Alignment.center,
+                children: <Widget>[
+                  CircularProgressIndicatorM3E(
+                    value: (value / 100).clamp(0, 1).toDouble(),
+                    size: CircularProgressM3ESize.m,
+                    shape: ProgressM3EShape.flat,
+                    activeColor: activeColor,
+                    trackColor: cs.surfaceContainerHighest,
+                  ),
+                  Text(
+                    '${value.round()}%',
+                    style: theme.textTheme.labelLarge
+                        ?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ],
+              );
+            },
           ),
         ),
         const SizedBox(height: 8),
@@ -275,13 +283,20 @@ class _DiskBar extends StatelessWidget {
           const SizedBox(height: 4),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicatorM3E(
-              value: fraction,
-              shape: ProgressM3EShape.flat,
-              size: LinearProgressM3ESize.s,
-              activeColor: _loadColor(disk.percentage, cs),
-              trackColor: cs.surfaceContainerHighest,
-              inset: 0.0,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0, end: disk.percentage),
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOutCubic,
+              builder: (BuildContext context, double value, Widget? child) {
+                return LinearProgressIndicatorM3E(
+                  value: (value / 100).clamp(0, 1).toDouble(),
+                  shape: ProgressM3EShape.flat,
+                  size: LinearProgressM3ESize.s,
+                  activeColor: _loadColor(value, cs),
+                  trackColor: cs.surfaceContainerHighest,
+                  inset: 0.0,
+                );
+              },
             ),
           ),
         ],

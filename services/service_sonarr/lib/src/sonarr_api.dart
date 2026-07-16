@@ -465,6 +465,9 @@ class SonarrApi {
     int page = 1,
     int pageSize = 20,
     int? episodeId,
+    int? eventType,
+    String? sortKey,
+    String? sortDirection,
   }) async {
     try {
       final Response<dynamic> resp = await _dio.get<dynamic>(
@@ -475,6 +478,9 @@ class SonarrApi {
           'includeSeries': true,
           'includeEpisode': true,
           if (episodeId != null) 'episodeId': episodeId,
+          if (eventType != null) 'eventType': eventType,
+          if (sortKey != null) 'sortKey': sortKey,
+          if (sortDirection != null) 'sortDirection': sortDirection,
         },
       );
       final dynamic records = (resp.data as Map<String, dynamic>)['records'];
