@@ -20,6 +20,7 @@ import 'dashboard_layout.dart';
 import 'dashboard_widget_kind.dart';
 import 'widgets/downloads_widget.dart';
 import 'widgets/recently_added_widget.dart';
+import 'widgets/recently_downloaded_widget.dart';
 import 'widgets/requests_widget.dart';
 import 'widgets/server_info_widget.dart';
 import 'widgets/streams_widget.dart';
@@ -116,6 +117,11 @@ class DashboardBoard extends ConsumerWidget {
           sonarrInstances: _byKind(instances, ServiceKind.sonarr),
           radarrInstances: _byKind(instances, ServiceKind.radarr),
         );
+      case DashboardWidgetKind.recentlyDownloaded:
+        return DashboardRecentlyDownloadedWidget(
+          sonarrInstances: _byKind(instances, ServiceKind.sonarr),
+          radarrInstances: _byKind(instances, ServiceKind.radarr),
+        );
       case DashboardWidgetKind.requests:
         return DashboardRequestsWidget(
           instances: _byKind(instances, ServiceKind.seerr),
@@ -133,8 +139,10 @@ class DashboardBoard extends ConsumerWidget {
       switch (i.kind) {
         case ServiceKind.sonarr:
           ref.invalidate(sonarrSeriesProvider(i));
+          ref.invalidate(sonarrHistoryProvider(i));
         case ServiceKind.radarr:
           ref.invalidate(radarrMoviesProvider(i));
+          ref.invalidate(radarrHistoryProvider(i));
         case ServiceKind.qbittorrent:
           ref.invalidate(qbitRawTorrentsProvider(i));
           ref.invalidate(qbitTransferProvider(i));

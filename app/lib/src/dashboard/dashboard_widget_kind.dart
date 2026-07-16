@@ -7,6 +7,7 @@ enum DashboardWidgetKind {
   streams,
   upcoming,
   recentlyAdded,
+  recentlyDownloaded,
   requests,
   serverInfo,
 }
@@ -17,6 +18,7 @@ extension DashboardWidgetKindX on DashboardWidgetKind {
         DashboardWidgetKind.streams => 'Now streaming',
         DashboardWidgetKind.upcoming => 'Upcoming releases',
         DashboardWidgetKind.recentlyAdded => 'Recently added',
+        DashboardWidgetKind.recentlyDownloaded => 'Recently downloaded',
         DashboardWidgetKind.requests => 'Requests',
         DashboardWidgetKind.serverInfo => 'Server info',
       };
@@ -26,6 +28,7 @@ extension DashboardWidgetKindX on DashboardWidgetKind {
         DashboardWidgetKind.streams => Icons.play_circle_outline,
         DashboardWidgetKind.upcoming => Icons.event_outlined,
         DashboardWidgetKind.recentlyAdded => Icons.new_releases_outlined,
+        DashboardWidgetKind.recentlyDownloaded => Icons.history,
         DashboardWidgetKind.requests => Icons.bookmark_added_outlined,
         DashboardWidgetKind.serverInfo => Icons.memory,
       };
@@ -42,6 +45,8 @@ extension DashboardWidgetKindX on DashboardWidgetKind {
         DashboardWidgetKind.upcoming =>
           const <ServiceKind>[ServiceKind.sonarr, ServiceKind.radarr],
         DashboardWidgetKind.recentlyAdded =>
+          const <ServiceKind>[ServiceKind.sonarr, ServiceKind.radarr],
+        DashboardWidgetKind.recentlyDownloaded =>
           const <ServiceKind>[ServiceKind.sonarr, ServiceKind.radarr],
         DashboardWidgetKind.requests => const <ServiceKind>[ServiceKind.seerr],
         DashboardWidgetKind.serverInfo =>

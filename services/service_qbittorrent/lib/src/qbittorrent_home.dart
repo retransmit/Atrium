@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +10,7 @@ import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 import 'add_torrent_sheet.dart';
 import 'models/qbit_torrent.dart';
 import 'models/qbit_transfer_info.dart';
+import 'qbittorrent_action_utils.dart';
 import 'qbittorrent_client.dart';
 import 'qbittorrent_providers.dart';
 import 'torrent_detail_screen.dart';
@@ -64,6 +67,7 @@ class QbittorrentHome extends ConsumerWidget {
       floatingActionButton: _ExpandableFab(
         builder: (BuildContext context, VoidCallback close) => <Widget>[
           FloatingActionButton(
+            heroTag: null,
             tooltip: 'Magnet link',
             onPressed: () async {
               close();
@@ -78,6 +82,7 @@ class QbittorrentHome extends ConsumerWidget {
             child: const Icon(Icons.link),
           ),
           FloatingActionButton(
+            heroTag: null,
             tooltip: 'Torrent file',
             onPressed: () async {
               close();
@@ -226,173 +231,6 @@ class QbittorrentAppBarActions extends ConsumerWidget {
 
   final Instance instance;
 
-  Future<void> _run(
-      WidgetRef ref, Future<void> Function(QbittorrentClient) action,) async {
-    final QbittorrentClient client =
-        await ref.read(qbittorrentClientProvider(instance).future);
-    await action(client);
-    ref.invalidate(qbitRawTorrentsProvider(instance));
-    ref.invalidate(qbitSelectionProvider(instance));
-  }
-
-  Future<void> _confirmDelete(
-      BuildContext context, WidgetRef ref, Set<String> selectedHashes,) async {
-    bool deleteFiles = false;
-    final bool? ok = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) => StatefulBuilder(
-        builder: (BuildContext context, StateSetter setState) => AlertDialog(
-          title: const Text('Delete select Torrents?'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Text(
-                  'Are you sure to delete the selected ${selectedHashes.length} torrents?',),
-              const SizedBox(height: Insets.md),
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Delete files'),
-                value: deleteFiles,
-                onChanged: (bool? v) =>
-                    setState(() => deleteFiles = v ?? false),
-              ),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('CANCEL'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('CONFIRM'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (ok ?? false) {
-      final QbittorrentClient client =
-          await ref.read(qbittorrentClientProvider(instance).future);
-      await client.delete(selectedHashes.toList(), deleteFiles: deleteFiles);
-      ref.invalidate(qbitSelectionProvider(instance));
-      ref.invalidate(qbitRawTorrentsProvider(instance));
-    }
-  }
-
-  Future<void> _editCategory(
-      BuildContext context, WidgetRef ref, Set<String> selectedHashes,) async {
-    final List<String> cats =
-        await ref.read(qbitCategoriesProvider(instance).future);
-    if (!context.mounted) return;
-    final String? chosen = await showDialog<String>(
-      context: context,
-      builder: (BuildContext context) => SimpleDialog(
-        title: const Text('Set category'),
-        children: <Widget>[
-          SimpleDialogOption(
-            onPressed: () => Navigator.of(context).pop(''),
-            child: const Text('None'),
-          ),
-          for (final String c in cats)
-            SimpleDialogOption(
-              onPressed: () => Navigator.of(context).pop(c),
-              child: Text(c),
-            ),
-        ],
-      ),
-    );
-    if (chosen != null) {
-      await _run(
-          ref,
-          (QbittorrentClient c) =>
-              c.setCategory(selectedHashes.toList(), chosen),);
-    }
-  }
-
-  Future<void> _editTags(
-      BuildContext context, WidgetRef ref, Set<String> selectedHashes,) async {
-    final TextEditingController ctrl = TextEditingController();
-    final String? chosen = await showDialog<String>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: const Text('Set tags'),
-        content: TextField(
-          controller: ctrl,
-          decoration: const InputDecoration(hintText: 'tag1, tag2'),
-        ),
-        actions: <Widget>[
-          TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),),
-          FilledButton(
-              onPressed: () => Navigator.of(context).pop(ctrl.text),
-              child: const Text('Save'),),
-        ],
-      ),
-    );
-    if (chosen != null && chosen.isNotEmpty) {
-      await _run(ref,
-          (QbittorrentClient c) => c.addTags(selectedHashes.toList(), chosen),);
-    }
-  }
-
-  Future<void> _editSavePath(
-      BuildContext context, WidgetRef ref, Set<String> selectedHashes,) async {
-    final TextEditingController ctrl = TextEditingController();
-    final String? chosen = await showDialog<String>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: const Text('Set save path'),
-        content: TextField(
-          controller: ctrl,
-          decoration: const InputDecoration(hintText: '/downloads/new_path'),
-        ),
-        actions: <Widget>[
-          TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),),
-          FilledButton(
-              onPressed: () => Navigator.of(context).pop(ctrl.text),
-              child: const Text('Save'),),
-        ],
-      ),
-    );
-    if (chosen != null && chosen.isNotEmpty) {
-      await _run(
-          ref,
-          (QbittorrentClient c) =>
-              c.setLocation(selectedHashes.toList(), chosen),);
-    }
-  }
-
-  Future<void> _rename(
-      BuildContext context, WidgetRef ref, Set<String> selectedHashes,) async {
-    final TextEditingController ctrl = TextEditingController();
-    final String? chosen = await showDialog<String>(
-      context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: const Text('Rename'),
-        content: TextField(
-          controller: ctrl,
-          decoration: const InputDecoration(hintText: 'New name'),
-        ),
-        actions: <Widget>[
-          TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),),
-          FilledButton(
-              onPressed: () => Navigator.of(context).pop(ctrl.text),
-              child: const Text('Save'),),
-        ],
-      ),
-    );
-    if (chosen != null && chosen.isNotEmpty) {
-      await _run(
-          ref, (QbittorrentClient c) => c.rename(selectedHashes.first, chosen),);
-    }
-  }
-
   void _showSortMenu(BuildContext context, WidgetRef ref) {
     showModalBottomSheet<void>(
       context: context,
@@ -488,7 +326,7 @@ class QbittorrentAppBarActions extends ConsumerWidget {
         IconButton(
           tooltip: 'Delete Selected',
           icon: const Icon(Icons.delete),
-          onPressed: () => _confirmDelete(context, ref, selectedHashes),
+          onPressed: () => QbittorrentActionUtils.confirmDelete(context, ref, instance, selectedHashes),
         ),
         PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert),
@@ -496,9 +334,9 @@ class QbittorrentAppBarActions extends ConsumerWidget {
             final List<String> hashes = selectedHashes.toList();
             switch (value) {
               case 'pause':
-                await _run(ref, (QbittorrentClient c) => c.pause(hashes));
+                await QbittorrentActionUtils.run(ref, instance, (QbittorrentClient c) => c.pause(hashes));
               case 'resume':
-                await _run(ref, (QbittorrentClient c) => c.resume(hashes));
+                await QbittorrentActionUtils.run(ref, instance, (QbittorrentClient c) => c.resume(hashes));
               case 'copy':
                 await Clipboard.setData(ClipboardData(text: hashes.join('\n')));
                 if (context.mounted) {
@@ -506,22 +344,23 @@ class QbittorrentAppBarActions extends ConsumerWidget {
                       const SnackBar(content: Text('Hashes copied')),);
                 }
               case 'recheck':
-                await _run(ref, (QbittorrentClient c) => c.recheck(hashes));
+                await QbittorrentActionUtils.run(ref, instance, (QbittorrentClient c) => c.recheck(hashes));
               case 'reannounce':
-                await _run(ref, (QbittorrentClient c) => c.reannounce(hashes));
+                await QbittorrentActionUtils.run(ref, instance, (QbittorrentClient c) => c.reannounce(hashes));
               case 'forcestart':
-                await _run(
+                await QbittorrentActionUtils.run(
                     ref,
+                    instance,
                     (QbittorrentClient c) =>
                         c.setForceStart(hashes, value: true),);
               case 'rename':
-                await _rename(context, ref, selectedHashes);
+                await QbittorrentActionUtils.rename(context, ref, instance, selectedHashes);
               case 'savepath':
-                await _editSavePath(context, ref, selectedHashes);
+                await QbittorrentActionUtils.editSavePath(context, ref, instance, selectedHashes);
               case 'category':
-                await _editCategory(context, ref, selectedHashes);
+                await QbittorrentActionUtils.editCategory(context, ref, instance, selectedHashes);
               case 'tags':
-                await _editTags(context, ref, selectedHashes);
+                await QbittorrentActionUtils.editTags(context, ref, instance, selectedHashes);
               case 'export':
                 try {
                   final QbittorrentClient client = await ref
@@ -571,11 +410,26 @@ class QbittorrentAppBarActions extends ConsumerWidget {
   }
 }
 
-class _TorrentTile extends ConsumerWidget {
+class _TorrentTile extends ConsumerStatefulWidget {
   const _TorrentTile({required this.instance, required this.torrent});
 
   final Instance instance;
   final QbitTorrent torrent;
+
+  @override
+  ConsumerState<_TorrentTile> createState() => _TorrentTileState();
+}
+
+class _TorrentTileState extends ConsumerState<_TorrentTile> {
+  Timer? _longPressTimer;
+  Offset? _tapPosition;
+  bool _menuShown = false;
+
+  @override
+  void dispose() {
+    _longPressTimer?.cancel();
+    super.dispose();
+  }
 
   String _formatEta(int eta) {
     if (eta >= 8640000 || eta < 0) {
@@ -589,7 +443,9 @@ class _TorrentTile extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final QbitTorrent torrent = widget.torrent;
+    final Instance instance = widget.instance;
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final Set<String> selection = ref.watch(qbitSelectionProvider(instance));
@@ -601,22 +457,29 @@ class _TorrentTile extends ConsumerWidget {
     final bool dlActive = torrent.dlspeed > 0;
     final bool upActive = torrent.upspeed > 0;
 
-    return Padding(
-      padding:
-          const EdgeInsets.fromLTRB(Insets.md, Insets.xs, Insets.md, Insets.xs),
-      child: Material(
-        color: isSelected ? cs.primaryContainer : cs.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(20),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onLongPress: () {
-            if (!selectionMode) {
-              ref.read(qbitSelectionProvider(instance).notifier).update(
-                    (Set<String> s) => <String>{...s, torrent.hash},
-                  );
-            }
-          },
-          onTap: () {
+    final Widget tile = Material(
+      color: isSelected ? cs.primaryContainer : cs.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTapDown: (TapDownDetails details) {
+          _tapPosition = details.globalPosition;
+          _menuShown = false;
+          if (!selectionMode) {
+            _longPressTimer?.cancel();
+            _longPressTimer = Timer(const Duration(milliseconds: 250), () {
+              if (_tapPosition != null && mounted) {
+                _menuShown = true;
+                _showContextMenu(context);
+              }
+            });
+          }
+        },
+        onTapCancel: () => _longPressTimer?.cancel(),
+        onTap: () {
+            _longPressTimer?.cancel();
+            if (_menuShown) return;
+            
             if (selectionMode) {
               ref
                   .read(qbitSelectionProvider(instance).notifier)
@@ -774,7 +637,100 @@ class _TorrentTile extends ConsumerWidget {
             ),
           ),
         ),
-      ),
+    );
+
+    if (selectionMode) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(Insets.md, Insets.xs, Insets.md, Insets.xs),
+        child: tile,
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Insets.md, Insets.xs, Insets.md, Insets.xs),
+      child: tile,
+    );
+  }
+
+  void _showContextMenu(BuildContext context) {
+    final Instance inst = widget.instance;
+    final String hash = widget.torrent.hash;
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    
+    Widget buildItem(IconData icon, String label, VoidCallback onTap, {Color? color}) {
+      return ListTile(
+        leading: Icon(icon, color: color ?? cs.onSurfaceVariant),
+        title: Text(label, style: TextStyle(color: color)),
+        onTap: () {
+          Navigator.of(context).pop();
+          onTap();
+        },
+      );
+    }
+
+    showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss',
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) {
+        return Dialog(
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  buildItem(Icons.check_circle_outline, 'Select', () {
+                    ref.read(qbitSelectionProvider(inst).notifier).update(
+                          (Set<String> s) => <String>{...s, hash},
+                        );
+                  }),
+                  buildItem(Icons.pause, 'Pause', () {
+                    QbittorrentActionUtils.run(ref, inst, (QbittorrentClient c) => c.pause(<String>[hash]));
+                  }),
+                  buildItem(Icons.play_arrow, 'Resume', () {
+                    QbittorrentActionUtils.run(ref, inst, (QbittorrentClient c) => c.resume(<String>[hash]));
+                  }),
+                  buildItem(Icons.copy, 'Copy Hash', () async {
+                    await Clipboard.setData(ClipboardData(text: hash));
+                  }),
+                  buildItem(Icons.refresh, 'Force Recheck', () {
+                    QbittorrentActionUtils.run(ref, inst, (QbittorrentClient c) => c.recheck(<String>[hash]));
+                  }),
+                  buildItem(Icons.edit, 'Rename', () {
+                    QbittorrentActionUtils.rename(context, ref, inst, <String>{hash});
+                  }),
+                  buildItem(Icons.folder, 'Set SavePath', () {
+                    QbittorrentActionUtils.editSavePath(context, ref, inst, <String>{hash});
+                  }),
+                  buildItem(Icons.label, 'Set Category', () {
+                    QbittorrentActionUtils.editCategory(context, ref, inst, <String>{hash});
+                  }),
+                  buildItem(Icons.delete, 'Delete', () {
+                    QbittorrentActionUtils.confirmDelete(context, ref, inst, <String>{hash});
+                  }, color: Colors.red,),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation, Widget child) {
+        return ScaleTransition(
+          scale: CurvedAnimation(
+            parent: animation,
+            curve: Curves.fastOutSlowIn,
+          ),
+          child: FadeTransition(
+            opacity: animation,
+            child: child,
+          ),
+        );
+      },
     );
   }
 }
@@ -1053,6 +1009,7 @@ class _ExpandableFabState extends State<_ExpandableFab>
         children: <Widget>[
           ..._buildExpandingActionButtons(),
           FloatingActionButton(
+            heroTag: null,
             onPressed: _toggle,
             child: AnimatedBuilder(
               animation: _expandAnimation,
