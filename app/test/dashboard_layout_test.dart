@@ -88,8 +88,8 @@ void main() {
           container.read(dashboardLayoutProvider.notifier);
       // Hide one widget so enabled != full list.
       controller.setEnabled(DashboardWidgetKind.streams, false);
-      // Enabled order is now: downloads, upcoming, recentlyAdded, requests,
-      // serverInfo.
+      // Enabled order is now: downloads, upcoming, recentlyAdded,
+      // recentlyDownloaded, requests, serverInfo.
       controller.moveEnabled(0, 3); // drag downloads down two slots
       final List<DashboardWidgetKind> enabled = container
           .read(dashboardLayoutProvider)
@@ -100,6 +100,7 @@ void main() {
         DashboardWidgetKind.upcoming,
         DashboardWidgetKind.recentlyAdded,
         DashboardWidgetKind.downloads,
+        DashboardWidgetKind.recentlyDownloaded,
         DashboardWidgetKind.requests,
         DashboardWidgetKind.serverInfo,
       ]);

@@ -32,14 +32,17 @@ class GlancesHome extends ConsumerWidget {
               shape: RoundedRectangleBorder(
                 borderRadius: Radii.card,
                 side: BorderSide(
-                    color: Theme.of(context).colorScheme.outlineVariant,),
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(Insets.md),
                 child: Row(
                   children: <Widget>[
-                    const Icon(Icons.schedule_outlined,
-                        color: Color(0xFF3B82F6),),
+                    const Icon(
+                      Icons.schedule_outlined,
+                      color: Color(0xFF3B82F6),
+                    ),
                     const SizedBox(width: Insets.md),
                     Expanded(
                       child: Text(
@@ -63,8 +66,10 @@ class GlancesHome extends ConsumerWidget {
             const SizedBox(height: Insets.md),
             _buildNetworkSectionHeader(context, ref, stats.network),
             ...stats.network
-                .where((GlancesNetwork n) =>
-                    pinnedNets.isEmpty || pinnedNets.contains(n.interface),)
+                .where(
+                  (GlancesNetwork n) =>
+                      pinnedNets.isEmpty || pinnedNets.contains(n.interface),
+                )
                 .map((GlancesNetwork n) => _buildNetworkCard(context, n)),
             const SizedBox(height: Insets.md),
             _buildSectionHeader(context, 'Disks', Icons.storage_outlined),
@@ -112,7 +117,10 @@ class GlancesHome extends ConsumerWidget {
   }
 
   Widget _buildSectionHeader(
-      BuildContext context, String title, IconData icon,) {
+    BuildContext context,
+    String title,
+    IconData icon,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: Insets.sm),
       child: Row(
@@ -132,7 +140,10 @@ class GlancesHome extends ConsumerWidget {
   }
 
   Widget _buildNetworkSectionHeader(
-      BuildContext context, WidgetRef ref, List<GlancesNetwork> networks,) {
+    BuildContext context,
+    WidgetRef ref,
+    List<GlancesNetwork> networks,
+  ) {
     final Set<String> pinnedNets =
         ref.watch(glancesPinnedNetworkProvider(instance));
 
@@ -140,8 +151,11 @@ class GlancesHome extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(vertical: Insets.sm),
       child: Row(
         children: <Widget>[
-          Icon(Icons.network_check_outlined,
-              size: 20, color: Theme.of(context).colorScheme.primary,),
+          Icon(
+            Icons.network_check_outlined,
+            size: 20,
+            color: Theme.of(context).colorScheme.primary,
+          ),
           const SizedBox(width: Insets.sm),
           Text(
             'Network',
@@ -180,8 +194,11 @@ class GlancesHome extends ConsumerWidget {
     );
   }
 
-  void _showNetworkFilterDialog(BuildContext context, WidgetRef parentRef,
-      List<GlancesNetwork> networks,) {
+  void _showNetworkFilterDialog(
+    BuildContext context,
+    WidgetRef parentRef,
+    List<GlancesNetwork> networks,
+  ) {
     showDialog<void>(
       context: context,
       builder: (BuildContext dialogContext) {
@@ -205,8 +222,9 @@ class GlancesHome extends ConsumerWidget {
                         final Set<String> newSet = Set<String>.from(pinnedNets);
                         if (pinnedNets.isEmpty) {
                           if (checked != true) {
-                            newSet.addAll(networks
-                                .map((GlancesNetwork e) => e.interface),);
+                            newSet.addAll(
+                              networks.map((GlancesNetwork e) => e.interface),
+                            );
                             newSet.remove(net.interface);
                           }
                         } else {
@@ -221,7 +239,8 @@ class GlancesHome extends ConsumerWidget {
                         }
                         ref
                             .read(
-                                glancesPinnedNetworkProvider(instance).notifier,)
+                              glancesPinnedNetworkProvider(instance).notifier,
+                            )
                             .set(newSet);
                       },
                     );
@@ -296,8 +315,10 @@ class GlancesHome extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text('Swap',
-                          style: Theme.of(context).textTheme.titleSmall,),
+                      Text(
+                        'Swap',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
                       const SizedBox(height: 6),
                       LinearProgressIndicatorM3E(
                         shape: ProgressM3EShape.flat,
@@ -349,8 +370,11 @@ class GlancesHome extends ConsumerWidget {
           children: <Widget>[
             Row(
               children: <Widget>[
-                Icon(Icons.developer_board,
-                    size: 20, color: theme.colorScheme.primary,),
+                Icon(
+                  Icons.developer_board,
+                  size: 20,
+                  color: theme.colorScheme.primary,
+                ),
                 const SizedBox(width: Insets.sm),
                 Text(
                   'Cores (${cpu.physicalCores} Phys, ${cpu.logicalCores} Log)',
@@ -368,35 +392,47 @@ class GlancesHome extends ConsumerWidget {
                   children: <Widget>[
                     SizedBox(
                       width: 60,
-                      child: Text('Core ${core.id}',
-                          style: theme.textTheme.labelMedium,),
+                      child: Text(
+                        'Core ${core.id}',
+                        style: theme.textTheme.labelMedium,
+                      ),
                     ),
                     Expanded(
                       child: TweenAnimationBuilder<double>(
                         tween: Tween<double>(
-                            begin: 0.0,
-                            end: (core.usage / 100.0).clamp(0.0, 1.0),),
+                          begin: 0.0,
+                          end: (core.usage / 100.0).clamp(0.0, 1.0),
+                        ),
                         duration: const Duration(milliseconds: 600),
                         curve: Curves.easeOutCubic,
-                        builder: (BuildContext context, double value,
-                            Widget? child,) {
-                          return LinearProgressIndicatorM3E(
-                            shape: ProgressM3EShape.flat,
-                            value: value,
-                            trackColor: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.1),
-                            activeColor: theme.colorScheme.primary,
+                        builder: (
+                          BuildContext context,
+                          double value,
+                          Widget? child,
+                        ) {
+                          return Row(
+                            children: <Widget>[
+                              Expanded(
+                                child: LinearProgressIndicatorM3E(
+                                  shape: ProgressM3EShape.flat,
+                                  value: value,
+                                  trackColor: theme.colorScheme.onSurface
+                                      .withValues(alpha: 0.1),
+                                  activeColor: theme.colorScheme.primary,
+                                ),
+                              ),
+                              const SizedBox(width: Insets.sm),
+                              SizedBox(
+                                width: 50,
+                                child: Text(
+                                  '${(value * 100).toStringAsFixed(1)}%',
+                                  textAlign: TextAlign.end,
+                                  style: theme.textTheme.labelMedium,
+                                ),
+                              ),
+                            ],
                           );
                         },
-                      ),
-                    ),
-                    const SizedBox(width: Insets.sm),
-                    SizedBox(
-                      width: 50,
-                      child: Text(
-                        '${core.usage.toStringAsFixed(1)}%',
-                        textAlign: TextAlign.end,
-                        style: theme.textTheme.labelMedium,
                       ),
                     ),
                   ],
@@ -420,50 +456,56 @@ class GlancesHome extends ConsumerWidget {
       ),
       child: Padding(
         padding: Insets.page,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
+        child: TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 0.0, end: pct.clamp(0.0, 1.0)),
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeOutCubic,
+          builder: (BuildContext context, double value, Widget? child) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Icon(Icons.dns_outlined, size: 20),
-                const SizedBox(width: Insets.sm),
-                Expanded(
-                  child: Text(
-                    disk.path,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
+                Row(
+                  children: <Widget>[
+                    const Icon(Icons.dns_outlined, size: 20),
+                    const SizedBox(width: Insets.sm),
+                    Expanded(
+                      child: Text(
+                        disk.path,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                    ),
+                    Text(
+                      '${(value * 100).toStringAsFixed(1)}%',
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                  ],
                 ),
-                Text(
-                  '${disk.percentage.toStringAsFixed(1)}%',
-                  style: Theme.of(context).textTheme.labelLarge,
+                const SizedBox(height: Insets.md),
+                LinearProgressIndicatorM3E(
+                  shape: ProgressM3EShape.flat,
+                  value: value,
+                  trackColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  activeColor: value > 0.9
+                      ? Theme.of(context).colorScheme.error
+                      : Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(height: Insets.sm),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: <Widget>[
+                    Text(
+                      '${(disk.used / 1024 / 1024 / 1024).toStringAsFixed(2)} GB used',
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                    Text(
+                      '${(disk.total / 1024 / 1024 / 1024).toStringAsFixed(2)} GB total',
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                  ],
                 ),
               ],
-            ),
-            const SizedBox(height: Insets.md),
-            LinearProgressIndicatorM3E(
-              shape: ProgressM3EShape.flat,
-              value: pct.clamp(0.0, 1.0),
-              trackColor:
-                  Theme.of(context).colorScheme.surfaceContainerHighest,
-              activeColor: pct > 0.9
-                  ? Theme.of(context).colorScheme.error
-                  : Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: Insets.sm),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: <Widget>[
-                Text(
-                  '${(disk.used / 1024 / 1024 / 1024).toStringAsFixed(2)} GB used',
-                  style: Theme.of(context).textTheme.labelSmall,
-                ),
-                Text(
-                  '${(disk.total / 1024 / 1024 / 1024).toStringAsFixed(2)} GB total',
-                  style: Theme.of(context).textTheme.labelSmall,
-                ),
-              ],
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
@@ -502,16 +544,22 @@ class GlancesHome extends ConsumerWidget {
                   const SizedBox(height: 6),
                   Row(
                     children: <Widget>[
-                      Icon(Icons.arrow_upward,
-                          size: 14, color: theme.colorScheme.tertiary,),
+                      Icon(
+                        Icons.arrow_upward,
+                        size: 14,
+                        color: theme.colorScheme.tertiary,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         '${_formatBytes(net.txSpeed)}/s',
                         style: theme.textTheme.labelMedium,
                       ),
                       const SizedBox(width: Insets.lg),
-                      Icon(Icons.arrow_downward,
-                          size: 14, color: theme.colorScheme.primary,),
+                      Icon(
+                        Icons.arrow_downward,
+                        size: 14,
+                        color: theme.colorScheme.primary,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         '${_formatBytes(net.rxSpeed)}/s',
@@ -565,7 +613,9 @@ class _GaugeCard extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(
-            vertical: Insets.lg, horizontal: Insets.md,),
+          vertical: Insets.lg,
+          horizontal: Insets.md,
+        ),
         child: Column(
           children: <Widget>[
             Row(
@@ -577,35 +627,33 @@ class _GaugeCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: Insets.lg),
-            Stack(
-              alignment: Alignment.center,
-              children: <Widget>[
-                SizedBox(
-                  width: 80,
-                  height: 80,
-                  child: TweenAnimationBuilder<double>(
-                    tween:
-                        Tween<double>(begin: 0.0, end: percent.clamp(0.0, 1.0)),
-                    duration: const Duration(milliseconds: 600),
-                    curve: Curves.easeOutCubic,
-                    builder:
-                        (BuildContext context, double value, Widget? child) {
-                      return CircularProgressIndicatorM3E(
+            TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0.0, end: percent.clamp(0.0, 1.0)),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOutCubic,
+              builder: (BuildContext context, double value, Widget? child) {
+                return Stack(
+                  alignment: Alignment.center,
+                  children: <Widget>[
+                    SizedBox(
+                      width: 80,
+                      height: 80,
+                      child: CircularProgressIndicatorM3E(
                         shape: ProgressM3EShape.flat,
                         value: value,
                         trackColor: color.withValues(alpha: 0.15),
                         activeColor: color,
-                      );
-                    },
-                  ),
-                ),
-                Text(
-                  '${(percent * 100).toStringAsFixed(0)}%',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
                       ),
-                ),
-              ],
+                    ),
+                    Text(
+                      '${(value * 100).toStringAsFixed(0)}%',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: Insets.lg),
             Row(
