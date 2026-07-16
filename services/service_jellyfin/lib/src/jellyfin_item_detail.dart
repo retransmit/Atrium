@@ -84,16 +84,23 @@ class JellyfinItemDetailScreen extends ConsumerWidget {
                       ),
                     );
                     if (changed == true && context.mounted) {
-                      ref.invalidate(jellyfinItemDetailsProvider((instance, itemId)));
+                      ref.invalidate(
+                        jellyfinItemDetailsProvider((instance, itemId)),
+                      );
                     }
                   } else if (choice == 'refresh') {
                     try {
-                      await ref.read(jellyfinClientProvider(instance)).value?.refreshMetadata(itemId);
+                      await ref
+                          .read(jellyfinClientProvider(instance))
+                          .value
+                          ?.refreshMetadata(itemId);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Refresh queued')),
                         );
-                        ref.invalidate(jellyfinItemDetailsProvider((instance, itemId)));
+                        ref.invalidate(
+                          jellyfinItemDetailsProvider((instance, itemId)),
+                        );
                       }
                     } catch (e) {
                       if (context.mounted) {
@@ -223,7 +230,9 @@ class JellyfinItemDetailScreen extends ConsumerWidget {
                       children: item.genres.map((String g) {
                         return Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4,),
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Theme.of(context)
                                 .colorScheme

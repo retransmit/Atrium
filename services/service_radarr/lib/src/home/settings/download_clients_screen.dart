@@ -68,7 +68,9 @@ class _DownloadClientsTab extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _selectClientPresetAndAdd(
-      BuildContext context, WidgetRef ref,) async {
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final schemasAsync = ref.read(radarrDownloadClientSchemaProvider(instance));
     final presets = schemasAsync.value ?? [];
     if (presets.isEmpty) {
@@ -111,7 +113,12 @@ class _DownloadClientsTab extends ConsumerWidget {
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         Navigator.pop(context);
-                        _showClientEditorDialog(context, ref, preset, isNew: true);
+                        _showClientEditorDialog(
+                          context,
+                          ref,
+                          preset,
+                          isNew: true,
+                        );
                       },
                     );
                   },
@@ -125,8 +132,11 @@ class _DownloadClientsTab extends ConsumerWidget {
   }
 
   Future<void> _showClientEditorDialog(
-      BuildContext context, WidgetRef ref, Map<String, dynamic> client,
-      {bool isNew = false,}) async {
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> client, {
+    bool isNew = false,
+  }) async {
     final fields = (client['fields'] as List<dynamic>?)
             ?.map((dynamic f) => f as Map<String, dynamic>)
             .toList() ??
@@ -137,28 +147,34 @@ class _DownloadClientsTab extends ConsumerWidget {
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          title: Text(isNew ? 'Add ${client['name']}' : 'Edit ${client['name']}'),
+          title:
+              Text(isNew ? 'Add ${client['name']}' : 'Edit ${client['name']}'),
           content: SizedBox(
             width: double.maxFinite,
             child: SingleChildScrollView(
               child: DynamicSchemaForm(
                 fields: fields,
                 onTest: (updatedFields) async {
-                  final api = await ref.read(radarrApiProvider(instance).future);
+                  final api =
+                      await ref.read(radarrApiProvider(instance).future);
                   final payload = Map<String, dynamic>.from(client);
                   payload['fields'] = updatedFields;
                   await api.testDownloadClient(payload);
                 },
                 onSave: (updatedFields) async {
                   try {
-                    final api = await ref.read(radarrApiProvider(instance).future);
+                    final api =
+                        await ref.read(radarrApiProvider(instance).future);
                     final payload = Map<String, dynamic>.from(client);
                     payload['fields'] = updatedFields;
 
                     if (isNew) {
                       await api.createDownloadClient(payload);
                     } else {
-                      await api.updateDownloadClient(payload, payload['id'] as int);
+                      await api.updateDownloadClient(
+                        payload,
+                        payload['id'] as int,
+                      );
                     }
 
                     ref.invalidate(radarrDownloadClientsProvider(instance));
@@ -166,14 +182,18 @@ class _DownloadClientsTab extends ConsumerWidget {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Download client ${isNew ? 'added' : 'updated'}!'),
+                          content: Text(
+                            'Download client ${isNew ? 'added' : 'updated'}!',
+                          ),
                         ),
                       );
                     }
                   } catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Failed to save download client: $e')),
+                        SnackBar(
+                          content: Text('Failed to save download client: $e'),
+                        ),
                       );
                     }
                   }
@@ -187,7 +207,11 @@ class _DownloadClientsTab extends ConsumerWidget {
   }
 
   Future<void> _deleteClient(
-      BuildContext context, WidgetRef ref, int id, String name,) async {
+    BuildContext context,
+    WidgetRef ref,
+    int id,
+    String name,
+  ) async {
     final confirmed = await confirmDelete(context, 'Download Client "$name"');
     if (!confirmed) return;
 
@@ -244,17 +268,24 @@ class _DownloadClientsTab extends ConsumerWidget {
                 margin: const EdgeInsets.only(bottom: 12),
                 color: theme.colorScheme.surfaceContainerLow,
                 child: ListTile(
-                  title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text(
+                    name,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   subtitle: Text('Protocol: ${proto.toUpperCase()}'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
                         icon: const Icon(Icons.edit_outlined),
-                        onPressed: () => _showClientEditorDialog(context, ref, c),
+                        onPressed: () =>
+                            _showClientEditorDialog(context, ref, c),
                       ),
                       IconButton(
-                        icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
+                        icon: Icon(
+                          Icons.delete_outline,
+                          color: theme.colorScheme.error,
+                        ),
                         onPressed: () => _deleteClient(context, ref, id, name),
                       ),
                     ],
@@ -275,11 +306,17 @@ class _RemotePathMappingsTab extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _showMappingDialog(
-      BuildContext context, WidgetRef ref, [Map<String, dynamic>? mapping,]) async {
+    BuildContext context,
+    WidgetRef ref, [
+    Map<String, dynamic>? mapping,
+  ]) async {
     final isEdit = mapping != null;
-    final hostController = TextEditingController(text: mapping?['host'] as String? ?? '');
-    final remoteController = TextEditingController(text: mapping?['remotePath'] as String? ?? '');
-    final localController = TextEditingController(text: mapping?['localPath'] as String? ?? '');
+    final hostController =
+        TextEditingController(text: mapping?['host'] as String? ?? '');
+    final remoteController =
+        TextEditingController(text: mapping?['remotePath'] as String? ?? '');
+    final localController =
+        TextEditingController(text: mapping?['localPath'] as String? ?? '');
 
     await showDialog<void>(
       context: context,
@@ -325,7 +362,8 @@ class _RemotePathMappingsTab extends ConsumerWidget {
             ElevatedButton(
               onPressed: () async {
                 try {
-                  final api = await ref.read(radarrApiProvider(instance).future);
+                  final api =
+                      await ref.read(radarrApiProvider(instance).future);
                   final payload = mapping != null
                       ? Map<String, dynamic>.from(mapping)
                       : <String, dynamic>{};
@@ -335,7 +373,10 @@ class _RemotePathMappingsTab extends ConsumerWidget {
                   payload['localPath'] = localController.text.trim();
 
                   if (isEdit) {
-                    await api.updateRemotePathMapping(payload, payload['id'] as int);
+                    await api.updateRemotePathMapping(
+                      payload,
+                      payload['id'] as int,
+                    );
                   } else {
                     await api.createRemotePathMapping(payload);
                   }
@@ -364,7 +405,11 @@ class _RemotePathMappingsTab extends ConsumerWidget {
   }
 
   Future<void> _deleteMapping(
-      BuildContext context, WidgetRef ref, int id, String host,) async {
+    BuildContext context,
+    WidgetRef ref,
+    int id,
+    String host,
+  ) async {
     final confirmed = await confirmDelete(context, 'Path Mapping for "$host"');
     if (!confirmed) return;
 
@@ -401,7 +446,9 @@ class _RemotePathMappingsTab extends ConsumerWidget {
         error: (err, _) => Center(child: Text('Error: $err')),
         data: (mappings) {
           if (mappings.isEmpty) {
-            return const Center(child: Text('No path mappings configured. Tap + to add one.'));
+            return const Center(
+              child: Text('No path mappings configured. Tap + to add one.'),
+            );
           }
 
           return ListView.builder(
@@ -431,7 +478,10 @@ class _RemotePathMappingsTab extends ConsumerWidget {
                         onPressed: () => _showMappingDialog(context, ref, m),
                       ),
                       IconButton(
-                        icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
+                        icon: Icon(
+                          Icons.delete_outline,
+                          color: theme.colorScheme.error,
+                        ),
                         onPressed: () => _deleteMapping(context, ref, id, host),
                       ),
                     ],
@@ -550,7 +600,8 @@ class _DownloadClientOptionsTabState
                         ),
                         value: _enableCompletedDownloadHandling,
                         onChanged: (val) => setState(
-                            () => _enableCompletedDownloadHandling = val,),
+                          () => _enableCompletedDownloadHandling = val,
+                        ),
                       ),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,

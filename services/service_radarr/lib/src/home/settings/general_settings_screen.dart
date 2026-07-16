@@ -147,7 +147,9 @@ class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('General configuration settings saved!')),
+          const SnackBar(
+            content: Text('General configuration settings saved!'),
+          ),
         );
         Navigator.pop(context);
       }
@@ -165,7 +167,8 @@ class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final hostConfigAsync = ref.watch(radarrHostConfigProvider(widget.instance));
+    final hostConfigAsync =
+        ref.watch(radarrHostConfigProvider(widget.instance));
 
     return Scaffold(
       appBar: AppBar(
@@ -327,7 +330,8 @@ class _GeneralSettingsScreenState extends ConsumerState<GeneralSettingsScreen> {
                                 );
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('API Key copied to clipboard!'),
+                                    content:
+                                        Text('API Key copied to clipboard!'),
                                   ),
                                 );
                               },

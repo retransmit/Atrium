@@ -52,8 +52,7 @@ class SeerrReportIssueSheet extends ConsumerStatefulWidget {
       _SeerrReportIssueSheetState();
 }
 
-class _SeerrReportIssueSheetState
-    extends ConsumerState<SeerrReportIssueSheet> {
+class _SeerrReportIssueSheetState extends ConsumerState<SeerrReportIssueSheet> {
   static const List<(int, String)> _types = <(int, String)>[
     (1, 'Video'),
     (2, 'Audio'),

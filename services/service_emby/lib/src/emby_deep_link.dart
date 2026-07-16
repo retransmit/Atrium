@@ -30,9 +30,11 @@ Future<void> launchEmbyDeepLink(
   if (Platform.isAndroid) {
     try {
       const MethodChannel channel = MethodChannel('app.atrium/launcher');
-      final bool launched = await channel.invokeMethod<bool>('launchDeepLink', <String, dynamic>{
-        'url': urlStr,
-      }) ?? false;
+      final bool launched =
+          await channel.invokeMethod<bool>('launchDeepLink', <String, dynamic>{
+                'url': urlStr,
+              }) ??
+              false;
       if (launched) return;
     } catch (_) {}
   }

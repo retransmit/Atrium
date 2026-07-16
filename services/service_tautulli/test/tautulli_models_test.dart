@@ -161,7 +161,9 @@ void main() {
 
   test('parses home stats with per-stat row shapes', () {
     final List<TautulliHomeStat> stats = homeStatsJson
-        .map((dynamic e) => TautulliHomeStat.fromJson(e as Map<String, dynamic>))
+        .map(
+          (dynamic e) => TautulliHomeStat.fromJson(e as Map<String, dynamic>),
+        )
         .toList();
     expect(stats, hasLength(4));
 

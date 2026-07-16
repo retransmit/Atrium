@@ -37,7 +37,6 @@ class _ProfilesSettingsScreenState extends ConsumerState<ProfilesSettingsScreen>
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profiles & Formats'),
@@ -74,15 +73,21 @@ class _QualityProfilesTab extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _showProfileDialog(
-      BuildContext context, WidgetRef ref, [Map<String, dynamic>? profile,]) async {
+    BuildContext context,
+    WidgetRef ref, [
+    Map<String, dynamic>? profile,
+  ]) async {
     // Fetch schema to get all available quality items
     Map<String, dynamic>? schema;
     try {
-      schema = await ref.read(sonarrQualityProfileSchemaProvider(instance).future);
+      schema =
+          await ref.read(sonarrQualityProfileSchemaProvider(instance).future);
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to load quality profile schema')),
+          const SnackBar(
+            content: Text('Failed to load quality profile schema'),
+          ),
         );
       }
       return;
@@ -96,10 +101,13 @@ class _QualityProfilesTab extends ConsumerWidget {
     );
 
     // Build the items list from profile (edit) or schema (new)
-    final sourceItems = (profile?['items'] ?? schema!['items']) as List<dynamic>;
+    final sourceItems =
+        (profile?['items'] ?? schema!['items']) as List<dynamic>;
     // Deep copy so we can toggle allowed flags
     final editableItems = sourceItems
-        .map((dynamic e) => Map<String, dynamic>.from(e as Map<String, dynamic>))
+        .map(
+          (dynamic e) => Map<String, dynamic>.from(e as Map<String, dynamic>),
+        )
         .toList();
 
     // Deep copy nested quality groups
@@ -107,7 +115,10 @@ class _QualityProfilesTab extends ConsumerWidget {
       final subItems = editableItems[i]['items'] as List<dynamic>?;
       if (subItems != null && subItems.isNotEmpty) {
         editableItems[i]['items'] = subItems
-            .map((dynamic e) => Map<String, dynamic>.from(e as Map<String, dynamic>))
+            .map(
+              (dynamic e) =>
+                  Map<String, dynamic>.from(e as Map<String, dynamic>),
+            )
             .toList();
       }
     }
@@ -136,7 +147,8 @@ class _QualityProfilesTab extends ConsumerWidget {
             }
 
             return AlertDialog(
-              title: Text(isEdit ? 'Edit Quality Profile' : 'Add Quality Profile'),
+              title:
+                  Text(isEdit ? 'Edit Quality Profile' : 'Add Quality Profile'),
               content: SizedBox(
                 width: double.maxFinite,
                 child: SingleChildScrollView(
@@ -156,7 +168,8 @@ class _QualityProfilesTab extends ConsumerWidget {
                         contentPadding: EdgeInsets.zero,
                         title: const Text('Allow Upgrades'),
                         value: upgradeAllowed,
-                        onChanged: (val) => setDialogState(() => upgradeAllowed = val),
+                        onChanged: (val) =>
+                            setDialogState(() => upgradeAllowed = val),
                       ),
                       if (upgradeAllowed) ...[
                         const SizedBox(height: 8),
@@ -165,7 +178,10 @@ class _QualityProfilesTab extends ConsumerWidget {
                             labelText: 'Upgrade Until (Cutoff)',
                             border: OutlineInputBorder(),
                           ),
-                          initialValue: cutoffOptions.any((q) => q['id'] == cutoffId) ? cutoffId : null,
+                          initialValue:
+                              cutoffOptions.any((q) => q['id'] == cutoffId)
+                                  ? cutoffId
+                                  : null,
                           items: cutoffOptions.map((q) {
                             return DropdownMenuItem<int>(
                               value: q['id'] as int,
@@ -173,7 +189,9 @@ class _QualityProfilesTab extends ConsumerWidget {
                             );
                           }).toList(),
                           onChanged: (val) {
-                            if (val != null) setDialogState(() => cutoffId = val);
+                            if (val != null) {
+                              setDialogState(() => cutoffId = val);
+                            }
                           },
                         ),
                       ],
@@ -181,13 +199,14 @@ class _QualityProfilesTab extends ConsumerWidget {
                       Text(
                         'Qualities',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
                       const SizedBox(height: 8),
                       // Render each quality item with a checkbox
                       ...editableItems.map((item) {
-                        final quality = item['quality'] as Map<String, dynamic>?;
+                        final quality =
+                            item['quality'] as Map<String, dynamic>?;
                         final isGroup = quality == null;
                         final name = isGroup
                             ? (item['name'] as String? ?? 'Group')
@@ -195,11 +214,13 @@ class _QualityProfilesTab extends ConsumerWidget {
                         final allowed = item['allowed'] as bool? ?? false;
 
                         return CheckboxListTile(
-                          contentPadding: EdgeInsets.only(left: isGroup ? 0 : 16),
+                          contentPadding:
+                              EdgeInsets.only(left: isGroup ? 0 : 16),
                           title: Text(
                             name,
                             style: TextStyle(
-                              fontWeight: isGroup ? FontWeight.bold : FontWeight.normal,
+                              fontWeight:
+                                  isGroup ? FontWeight.bold : FontWeight.normal,
                             ),
                           ),
                           value: allowed,
@@ -208,10 +229,12 @@ class _QualityProfilesTab extends ConsumerWidget {
                               item['allowed'] = val ?? false;
                               // If it's a group, propagate to sub-items
                               if (isGroup) {
-                                final subItems = item['items'] as List<dynamic>?;
+                                final subItems =
+                                    item['items'] as List<dynamic>?;
                                 if (subItems != null) {
                                   for (final sub in subItems) {
-                                    (sub as Map<String, dynamic>)['allowed'] = val ?? false;
+                                    (sub as Map<String, dynamic>)['allowed'] =
+                                        val ?? false;
                                   }
                                 }
                               }
@@ -259,7 +282,8 @@ class _QualityProfilesTab extends ConsumerWidget {
                         : allowedIds.first;
 
                     try {
-                      final api = await ref.read(sonarrApiProvider(instance).future);
+                      final api =
+                          await ref.read(sonarrApiProvider(instance).future);
                       final payload = isEdit
                           ? Map<String, dynamic>.from(profile)
                           : Map<String, dynamic>.from(schema!);
@@ -281,7 +305,11 @@ class _QualityProfilesTab extends ConsumerWidget {
                       if (context.mounted) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Quality profile ${isEdit ? 'updated' : 'created'}!')),
+                          SnackBar(
+                            content: Text(
+                              'Quality profile ${isEdit ? 'updated' : 'created'}!',
+                            ),
+                          ),
                         );
                       }
                     } catch (e) {
@@ -302,7 +330,11 @@ class _QualityProfilesTab extends ConsumerWidget {
     );
   }
 
-  Future<void> _deleteProfile(BuildContext context, WidgetRef ref, int id) async {
+  Future<void> _deleteProfile(
+    BuildContext context,
+    WidgetRef ref,
+    int id,
+  ) async {
     if (!await confirmDelete(context, 'this quality profile')) return;
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
@@ -358,14 +390,14 @@ class _QualityProfilesTab extends ConsumerWidget {
               final cutoffMap = itemsList?.firstWhere(
                 (item) {
                   final quality = item['quality'] as Map<String, dynamic>?;
-                  return quality?['id'] == cutoffItem || item['id'] == cutoffItem;
+                  return quality?['id'] == cutoffItem ||
+                      item['id'] == cutoffItem;
                 },
                 orElse: () => <String, dynamic>{},
               );
               final cutoffQuality =
                   cutoffMap?['quality'] as Map<String, dynamic>?;
-              final cutoffName =
-                  (cutoffQuality?['name'] as String?) ??
+              final cutoffName = (cutoffQuality?['name'] as String?) ??
                   (cutoffMap?['name'] as String?) ??
                   'Unknown';
 
@@ -373,12 +405,11 @@ class _QualityProfilesTab extends ConsumerWidget {
               final enabledQualities = rawItems
                   .where((item) => item['allowed'] as bool? ?? false)
                   .map((item) {
-                    final quality = item['quality'] as Map<String, dynamic>?;
-                    return (quality?['name'] as String?) ??
-                        (item['name'] as String?) ??
-                        'Unknown';
-                  })
-                  .toList();
+                final quality = item['quality'] as Map<String, dynamic>?;
+                return (quality?['name'] as String?) ??
+                    (item['name'] as String?) ??
+                    'Unknown';
+              }).toList();
 
               return Card(
                 margin: const EdgeInsets.only(bottom: Insets.md),
@@ -430,8 +461,8 @@ class _QualityProfilesTab extends ConsumerWidget {
                                     q,
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: isCutoff
-                                          ? theme.colorScheme
-                                              .onSecondaryContainer
+                                          ? theme
+                                              .colorScheme.onSecondaryContainer
                                           : null,
                                       fontWeight:
                                           isCutoff ? FontWeight.bold : null,
@@ -460,11 +491,11 @@ class _QualityProfilesTab extends ConsumerWidget {
                               TextButton.icon(
                                 onPressed: () =>
                                     _deleteProfile(context, ref, id),
-                                icon: const Icon(Icons.delete_outline, size: 18),
+                                icon:
+                                    const Icon(Icons.delete_outline, size: 18),
                                 label: const Text('Delete'),
                                 style: TextButton.styleFrom(
-                                  foregroundColor:
-                                      theme.colorScheme.error,
+                                  foregroundColor: theme.colorScheme.error,
                                 ),
                               ),
                             ],
@@ -483,7 +514,6 @@ class _QualityProfilesTab extends ConsumerWidget {
   }
 }
 
-
 // ==========================================
 // 2. DELAY PROFILES TAB
 // ==========================================
@@ -493,16 +523,22 @@ class _DelayProfilesTab extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _showDelayProfileDialog(
-      BuildContext context, WidgetRef ref, [Map<String, dynamic>? profile,]) async {
+    BuildContext context,
+    WidgetRef ref, [
+    Map<String, dynamic>? profile,
+  ]) async {
     final isEdit = profile != null;
-    
+
     bool enableUsenet = profile?['enableUsenet'] as bool? ?? true;
     bool enableTorrent = profile?['enableTorrent'] as bool? ?? true;
-    String preferredProtocol = profile?['preferredProtocol'] as String? ?? 'usenet';
+    String preferredProtocol =
+        profile?['preferredProtocol'] as String? ?? 'usenet';
     final usenetDelayController = TextEditingController(
-        text: (profile?['usenetDelay'] as int? ?? 0).toString(),);
+      text: (profile?['usenetDelay'] as int? ?? 0).toString(),
+    );
     final torrentDelayController = TextEditingController(
-        text: (profile?['torrentDelay'] as int? ?? 0).toString(),);
+      text: (profile?['torrentDelay'] as int? ?? 0).toString(),
+    );
     bool bypassIfHighest = profile?['bypassIfHighestQuality'] as bool? ?? true;
 
     await showDialog<void>(
@@ -520,7 +556,8 @@ class _DelayProfilesTab extends ConsumerWidget {
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Enable Usenet'),
                       value: enableUsenet,
-                      onChanged: (val) => setDialogState(() => enableUsenet = val),
+                      onChanged: (val) =>
+                          setDialogState(() => enableUsenet = val),
                     ),
                     if (enableUsenet)
                       TextField(
@@ -536,7 +573,8 @@ class _DelayProfilesTab extends ConsumerWidget {
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Enable Torrent'),
                       value: enableTorrent,
-                      onChanged: (val) => setDialogState(() => enableTorrent = val),
+                      onChanged: (val) =>
+                          setDialogState(() => enableTorrent = val),
                     ),
                     if (enableTorrent)
                       TextField(
@@ -559,9 +597,13 @@ class _DelayProfilesTab extends ConsumerWidget {
                       // never hits the missing-value assert.
                       items: [
                         const DropdownMenuItem(
-                            value: 'usenet', child: Text('Usenet'),),
+                          value: 'usenet',
+                          child: Text('Usenet'),
+                        ),
                         const DropdownMenuItem(
-                            value: 'torrent', child: Text('Torrent'),),
+                          value: 'torrent',
+                          child: Text('Torrent'),
+                        ),
                         if (preferredProtocol != 'usenet' &&
                             preferredProtocol != 'torrent')
                           DropdownMenuItem(
@@ -580,7 +622,8 @@ class _DelayProfilesTab extends ConsumerWidget {
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Bypass if Highest Quality'),
                       value: bypassIfHighest,
-                      onChanged: (val) => setDialogState(() => bypassIfHighest = val),
+                      onChanged: (val) =>
+                          setDialogState(() => bypassIfHighest = val),
                     ),
                   ],
                 ),
@@ -593,18 +636,21 @@ class _DelayProfilesTab extends ConsumerWidget {
                 ElevatedButton(
                   onPressed: () async {
                     try {
-                      final api = await ref.read(sonarrApiProvider(instance).future);
+                      final api =
+                          await ref.read(sonarrApiProvider(instance).future);
                       final payload = profile != null
                           ? Map<String, dynamic>.from(profile)
                           : <String, dynamic>{
                               'order': 1,
                               'tags': <int>[],
                             };
-                      
+
                       payload['enableUsenet'] = enableUsenet;
                       payload['enableTorrent'] = enableTorrent;
-                      payload['usenetDelay'] = int.tryParse(usenetDelayController.text) ?? 0;
-                      payload['torrentDelay'] = int.tryParse(torrentDelayController.text) ?? 0;
+                      payload['usenetDelay'] =
+                          int.tryParse(usenetDelayController.text) ?? 0;
+                      payload['torrentDelay'] =
+                          int.tryParse(torrentDelayController.text) ?? 0;
                       payload['preferredProtocol'] = preferredProtocol;
                       payload['bypassIfHighestQuality'] = bypassIfHighest;
 
@@ -618,7 +664,11 @@ class _DelayProfilesTab extends ConsumerWidget {
                       if (context.mounted) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Delay profile ${isEdit ? 'updated' : 'created'}!')),
+                          SnackBar(
+                            content: Text(
+                              'Delay profile ${isEdit ? 'updated' : 'created'}!',
+                            ),
+                          ),
                         );
                       }
                     } catch (e) {
@@ -640,7 +690,10 @@ class _DelayProfilesTab extends ConsumerWidget {
   }
 
   Future<void> _deleteDelayProfile(
-      BuildContext context, WidgetRef ref, int id,) async {
+    BuildContext context,
+    WidgetRef ref,
+    int id,
+  ) async {
     if (!await confirmDelete(context, 'this delay profile')) return;
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
@@ -686,8 +739,10 @@ class _DelayProfilesTab extends ConsumerWidget {
               final id = profile['id'] as int;
               final usenetDelay = profile['usenetDelay'] as int? ?? 0;
               final torrentDelay = profile['torrentDelay'] as int? ?? 0;
-              final preferred = profile['preferredProtocol'] as String? ?? 'usenet';
-              final bypass = profile['bypassIfHighestQuality'] as bool? ?? false;
+              final preferred =
+                  profile['preferredProtocol'] as String? ?? 'usenet';
+              final bypass =
+                  profile['bypassIfHighestQuality'] as bool? ?? false;
 
               return Card(
                 margin: const EdgeInsets.only(bottom: Insets.md),
@@ -712,7 +767,8 @@ class _DelayProfilesTab extends ConsumerWidget {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.edit_outlined),
-                        onPressed: () => _showDelayProfileDialog(context, ref, profile),
+                        onPressed: () =>
+                            _showDelayProfileDialog(context, ref, profile),
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete_outline),
@@ -753,14 +809,20 @@ class _ReleaseProfilesTab extends ConsumerWidget {
       .toList();
 
   Future<void> _showReleaseProfileDialog(
-      BuildContext context, WidgetRef ref, [Map<String, dynamic>? profile,]) async {
+    BuildContext context,
+    WidgetRef ref, [
+    Map<String, dynamic>? profile,
+  ]) async {
     final isEdit = profile != null;
 
-    final nameController = TextEditingController(text: profile?['name'] as String? ?? '');
+    final nameController =
+        TextEditingController(text: profile?['name'] as String? ?? '');
     final requiredController = TextEditingController(
-        text: _termsToText(profile?['required']),);
+      text: _termsToText(profile?['required']),
+    );
     final ignoredController = TextEditingController(
-        text: _termsToText(profile?['ignored']),);
+      text: _termsToText(profile?['ignored']),
+    );
     bool enabled = profile?['enabled'] as bool? ?? true;
 
     await showDialog<void>(
@@ -769,7 +831,8 @@ class _ReleaseProfilesTab extends ConsumerWidget {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text(isEdit ? 'Edit Release Profile' : 'Add Release Profile'),
+              title:
+                  Text(isEdit ? 'Edit Release Profile' : 'Add Release Profile'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -815,7 +878,8 @@ class _ReleaseProfilesTab extends ConsumerWidget {
                 ElevatedButton(
                   onPressed: () async {
                     try {
-                      final api = await ref.read(sonarrApiProvider(instance).future);
+                      final api =
+                          await ref.read(sonarrApiProvider(instance).future);
                       final payload = profile != null
                           ? Map<String, dynamic>.from(profile)
                           : <String, dynamic>{
@@ -824,7 +888,8 @@ class _ReleaseProfilesTab extends ConsumerWidget {
                             };
 
                       payload['name'] = nameController.text.trim();
-                      payload['required'] = _textToTerms(requiredController.text);
+                      payload['required'] =
+                          _textToTerms(requiredController.text);
                       payload['ignored'] = _textToTerms(ignoredController.text);
                       payload['enabled'] = enabled;
 
@@ -838,7 +903,11 @@ class _ReleaseProfilesTab extends ConsumerWidget {
                       if (context.mounted) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Release profile ${isEdit ? 'updated' : 'created'}!')),
+                          SnackBar(
+                            content: Text(
+                              'Release profile ${isEdit ? 'updated' : 'created'}!',
+                            ),
+                          ),
                         );
                       }
                     } catch (e) {
@@ -860,7 +929,10 @@ class _ReleaseProfilesTab extends ConsumerWidget {
   }
 
   Future<void> _deleteReleaseProfile(
-      BuildContext context, WidgetRef ref, int id,) async {
+    BuildContext context,
+    WidgetRef ref,
+    int id,
+  ) async {
     if (!await confirmDelete(context, 'this release profile')) return;
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
@@ -883,7 +955,8 @@ class _ReleaseProfilesTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final releaseProfilesAsync = ref.watch(sonarrReleaseProfilesProvider(instance));
+    final releaseProfilesAsync =
+        ref.watch(sonarrReleaseProfilesProvider(instance));
 
     return Scaffold(
       floatingActionButton: FloatingActionButton(
@@ -932,11 +1005,13 @@ class _ReleaseProfilesTab extends ConsumerWidget {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.edit_outlined),
-                        onPressed: () => _showReleaseProfileDialog(context, ref, profile),
+                        onPressed: () =>
+                            _showReleaseProfileDialog(context, ref, profile),
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete_outline),
-                        onPressed: () => _deleteReleaseProfile(context, ref, id),
+                        onPressed: () =>
+                            _deleteReleaseProfile(context, ref, id),
                       ),
                     ],
                   ),
@@ -959,11 +1034,16 @@ class _CustomFormatsTab extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _showCustomFormatDialog(
-      BuildContext context, WidgetRef ref, [Map<String, dynamic>? format,]) async {
+    BuildContext context,
+    WidgetRef ref, [
+    Map<String, dynamic>? format,
+  ]) async {
     final isEdit = format != null;
-    
-    final nameController = TextEditingController(text: format?['name'] as String? ?? '');
-    bool includeWhenRenaming = format?['includeCustomFormatWhenRenaming'] as bool? ?? false;
+
+    final nameController =
+        TextEditingController(text: format?['name'] as String? ?? '');
+    bool includeWhenRenaming =
+        format?['includeCustomFormatWhenRenaming'] as bool? ?? false;
 
     await showDialog<void>(
       context: context,
@@ -987,9 +1067,12 @@ class _CustomFormatsTab extends ConsumerWidget {
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Include in Rename'),
-                      subtitle: const Text('Incorporate format in renaming output tokens'),
+                      subtitle: const Text(
+                        'Incorporate format in renaming output tokens',
+                      ),
                       value: includeWhenRenaming,
-                      onChanged: (val) => setDialogState(() => includeWhenRenaming = val),
+                      onChanged: (val) =>
+                          setDialogState(() => includeWhenRenaming = val),
                     ),
                     if (!isEdit) ...[
                       const SizedBox(height: Insets.md),
@@ -1016,30 +1099,36 @@ class _CustomFormatsTab extends ConsumerWidget {
                   onPressed: !isEdit
                       ? null
                       : () async {
-                    try {
-                      final api = await ref.read(sonarrApiProvider(instance).future);
-                      final payload = Map<String, dynamic>.from(format);
+                          try {
+                            final api = await ref
+                                .read(sonarrApiProvider(instance).future);
+                            final payload = Map<String, dynamic>.from(format);
 
-                      payload['name'] = nameController.text.trim();
-                      payload['includeCustomFormatWhenRenaming'] = includeWhenRenaming;
+                            payload['name'] = nameController.text.trim();
+                            payload['includeCustomFormatWhenRenaming'] =
+                                includeWhenRenaming;
 
-                      await api.updateCustomFormat(payload);
+                            await api.updateCustomFormat(payload);
 
-                      ref.invalidate(sonarrCustomFormatsProvider(instance));
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Custom format updated!')),
-                        );
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error: $e')),
-                        );
-                      }
-                    }
-                  },
+                            ref.invalidate(
+                              sonarrCustomFormatsProvider(instance),
+                            );
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Custom format updated!'),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error: $e')),
+                              );
+                            }
+                          }
+                        },
                   child: const Text('Save'),
                 ),
               ],
@@ -1051,7 +1140,10 @@ class _CustomFormatsTab extends ConsumerWidget {
   }
 
   Future<void> _deleteCustomFormat(
-      BuildContext context, WidgetRef ref, int id,) async {
+    BuildContext context,
+    WidgetRef ref,
+    int id,
+  ) async {
     if (!await confirmDelete(context, 'this custom format')) return;
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
@@ -1096,7 +1188,8 @@ class _CustomFormatsTab extends ConsumerWidget {
               final format = formats[index];
               final id = format['id'] as int;
               final name = (format['name'] as String?) ?? 'Custom Format';
-              final includeRename = format['includeCustomFormatWhenRenaming'] as bool? ?? false;
+              final includeRename =
+                  format['includeCustomFormatWhenRenaming'] as bool? ?? false;
 
               return Card(
                 margin: const EdgeInsets.only(bottom: Insets.md),
@@ -1121,7 +1214,8 @@ class _CustomFormatsTab extends ConsumerWidget {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.edit_outlined),
-                        onPressed: () => _showCustomFormatDialog(context, ref, format),
+                        onPressed: () =>
+                            _showCustomFormatDialog(context, ref, format),
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete_outline),

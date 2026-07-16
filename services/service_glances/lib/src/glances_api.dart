@@ -10,7 +10,8 @@ class GlancesApi {
 
   Future<GlancesStats> getStats() async {
     try {
-      final List<Response<dynamic>> responses = await Future.wait(<Future<Response<dynamic>>>[
+      final List<Response<dynamic>> responses =
+          await Future.wait(<Future<Response<dynamic>>>[
         _dio.get<dynamic>('api/4/cpu'),
         _dio.get<dynamic>('api/4/percpu'),
         _dio.get<dynamic>('api/4/core'),
@@ -22,12 +23,16 @@ class GlancesApi {
         _dio.get<dynamic>('api/4/uptime'),
       ]);
 
-      final Map<String, dynamic> cpuData = responses[0].data as Map<String, dynamic>;
+      final Map<String, dynamic> cpuData =
+          responses[0].data as Map<String, dynamic>;
       final List<dynamic> perCpuData = responses[1].data as List<dynamic>;
-      final Map<String, dynamic> coreData = responses[2].data as Map<String, dynamic>;
+      final Map<String, dynamic> coreData =
+          responses[2].data as Map<String, dynamic>;
       final List<dynamic> sensorsData = responses[3].data as List<dynamic>;
-      final Map<String, dynamic> memData = responses[4].data as Map<String, dynamic>;
-      final Map<String, dynamic> swapData = responses[5].data as Map<String, dynamic>;
+      final Map<String, dynamic> memData =
+          responses[4].data as Map<String, dynamic>;
+      final Map<String, dynamic> swapData =
+          responses[5].data as Map<String, dynamic>;
       final List<dynamic> networkData = responses[6].data as List<dynamic>;
       final List<dynamic> fsData = responses[7].data as List<dynamic>;
       final String uptimeStr = responses[8].data.toString();
@@ -39,13 +44,19 @@ class GlancesApi {
       double packageTemp = 0.0;
       if (sensorsData.isNotEmpty) {
         final Iterable<dynamic> packageSensors = sensorsData.where(
-          (dynamic s) => ((s as Map<String, dynamic>)['label'] as String).toLowerCase().contains('package'),
+          (dynamic s) => ((s as Map<String, dynamic>)['label'] as String)
+              .toLowerCase()
+              .contains('package'),
         );
         if (packageSensors.isNotEmpty) {
-          packageTemp = ((packageSensors.first as Map<String, dynamic>)['value'] as num).toDouble();
+          packageTemp =
+              ((packageSensors.first as Map<String, dynamic>)['value'] as num)
+                  .toDouble();
         } else {
           final Iterable<dynamic> coreSensors = sensorsData.where(
-            (dynamic s) => ((s as Map<String, dynamic>)['label'] as String).toLowerCase().contains('core'),
+            (dynamic s) => ((s as Map<String, dynamic>)['label'] as String)
+                .toLowerCase()
+                .contains('core'),
           );
           if (coreSensors.isNotEmpty) {
             double sum = 0;
@@ -64,10 +75,14 @@ class GlancesApi {
 
         double coreTemp = 0.0;
         final Iterable<dynamic> coreSensor = sensorsData.where(
-          (dynamic s) => ((s as Map<String, dynamic>)['label'] as String).toLowerCase() == 'core $id',
+          (dynamic s) =>
+              ((s as Map<String, dynamic>)['label'] as String).toLowerCase() ==
+              'core $id',
         );
         if (coreSensor.isNotEmpty) {
-          coreTemp = ((coreSensor.first as Map<String, dynamic>)['value'] as num).toDouble();
+          coreTemp =
+              ((coreSensor.first as Map<String, dynamic>)['value'] as num)
+                  .toDouble();
         }
 
         return GlancesCpuCore(id: id, usage: usage, temp: coreTemp);
@@ -104,7 +119,9 @@ class GlancesApi {
         );
       }).toList();
 
-      final RegExp uptimeRegex = RegExp(r'(?:(?<days>[0-9]+) days?, )?(?<hours>[0-9]+):(?<minutes>[0-9]+):(?<seconds>[0-9]+)');
+      final RegExp uptimeRegex = RegExp(
+        r'(?:(?<days>[0-9]+) days?, )?(?<hours>[0-9]+):(?<minutes>[0-9]+):(?<seconds>[0-9]+)',
+      );
       final RegExpMatch? match = uptimeRegex.firstMatch(uptimeStr);
       int days = 0;
       int hours = 0;
@@ -116,7 +133,8 @@ class GlancesApi {
         minutes = int.tryParse(match.namedGroup('minutes') ?? '0') ?? 0;
         seconds = int.tryParse(match.namedGroup('seconds') ?? '0') ?? 0;
       }
-      final int totalSeconds = (days * 86400) + (hours * 3600) + (minutes * 60) + seconds;
+      final int totalSeconds =
+          (days * 86400) + (hours * 3600) + (minutes * 60) + seconds;
 
       final GlancesUptime uptime = GlancesUptime(
         days: days,

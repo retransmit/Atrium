@@ -160,12 +160,15 @@ class _RequestTileState extends ConsumerState<_RequestTile> {
       );
     }
 
-    final AsyncValue<SeerrDiscoverResult> detailsAsync =
-        ref.watch(seerrMediaDetailsProvider((
-      instance: widget.instance,
-      mediaType: mediaType,
-      tmdbId: tmdbId,
-    ),),);
+    final AsyncValue<SeerrDiscoverResult> detailsAsync = ref.watch(
+      seerrMediaDetailsProvider(
+        (
+          instance: widget.instance,
+          mediaType: mediaType,
+          tmdbId: tmdbId,
+        ),
+      ),
+    );
 
     return detailsAsync.when(
       data: (SeerrDiscoverResult item) {

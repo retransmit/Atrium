@@ -26,8 +26,7 @@ extension PollingRef on Ref {
   /// spinner.
   void pollEvery(Duration interval) {
     final Timer timer = Timer.periodic(interval, (_) {
-      final AppLifecycleState? state =
-          SchedulerBinding.instance.lifecycleState;
+      final AppLifecycleState? state = SchedulerBinding.instance.lifecycleState;
       if (state == null || state == AppLifecycleState.resumed) {
         invalidateSelf();
       }

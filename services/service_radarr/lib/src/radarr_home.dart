@@ -88,18 +88,21 @@ class RadarrHome extends ConsumerWidget {
     ];
 
     return Scaffold(
-      drawerEdgeDragWidth: drawer != null ? MediaQuery.sizeOf(context).width * 0.15 : null,
+      drawerEdgeDragWidth:
+          drawer != null ? MediaQuery.sizeOf(context).width * 0.15 : null,
       drawer: drawer,
       body: NotificationListener<UserScrollNotification>(
         onNotification: (UserScrollNotification notification) {
           if (notification.metrics.axis == Axis.vertical) {
             final ScrollDirection direction = notification.direction;
             if (direction == ScrollDirection.reverse) {
-              ref.read(radarrBottomNavVisibleProvider(instance).notifier).state =
-                  false;
+              ref
+                  .read(radarrBottomNavVisibleProvider(instance).notifier)
+                  .state = false;
             } else if (direction == ScrollDirection.forward) {
-              ref.read(radarrBottomNavVisibleProvider(instance).notifier).state =
-                  true;
+              ref
+                  .read(radarrBottomNavVisibleProvider(instance).notifier)
+                  .state = true;
             }
           }
           return false;

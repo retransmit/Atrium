@@ -32,7 +32,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
   /// qBittorrent 5.2+ supports both username/password and API-key auth; this
   /// tracks which the user picked (qBit only).
   bool _qbitUseApiKey = false;
-  final TextEditingController _pollingInterval = TextEditingController(text: '5');
+  final TextEditingController _pollingInterval =
+      TextEditingController(text: '5');
 
   ServiceKind _kind = ServiceKind.sonarr;
   UrlMode _urlMode = UrlMode.auto;
@@ -85,8 +86,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
   InstanceAuth _buildAuth() {
     return switch (_kind.authStyle) {
       AuthStyle.apiKey => InstanceAuth.apiKey(apiKey: _apiKey.text.trim()),
-      AuthStyle.plexToken =>
-        InstanceAuth.plexToken(token: _apiKey.text.trim()),
+      AuthStyle.plexToken => InstanceAuth.plexToken(token: _apiKey.text.trim()),
       AuthStyle.userPass => InstanceAuth.userPass(
           username: _username.text.trim(),
           password: _password.text,
@@ -113,8 +113,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     // After creating, make it active.
     await ref.read(activeProfileIdProvider.notifier).select(profile.id);
 
-    final String id =
-        widget.instanceId ?? ref.read(profileRepositoryProvider).newInstanceId();
+    final String id = widget.instanceId ??
+        ref.read(profileRepositoryProvider).newInstanceId();
     final Instance instance = Instance(
       id: id,
       name: _name.text.trim(),
@@ -287,7 +287,9 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                 keyboardType: TextInputType.number,
                 validator: (String? v) {
                   final int? val = int.tryParse(v?.trim() ?? '');
-                  if (val == null || val < 1) return 'Must be at least 1 second';
+                  if (val == null || val < 1) {
+                    return 'Must be at least 1 second';
+                  }
                   return null;
                 },
               ),

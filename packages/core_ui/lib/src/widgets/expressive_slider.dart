@@ -44,7 +44,7 @@ class ExpressiveSliderThumbShape extends SliderComponentShape {
 
 class ExpressiveSliderTrackShape extends SliderTrackShape {
   const ExpressiveSliderTrackShape({
-    this.gap = 8.0, 
+    this.gap = 8.0,
   });
 
   final double gap;
@@ -57,11 +57,16 @@ class ExpressiveSliderTrackShape extends SliderTrackShape {
     bool isEnabled = false,
     bool isDiscrete = false,
   }) {
-    final double overlayWidth = sliderTheme.overlayShape?.getPreferredSize(isEnabled, isDiscrete).width ?? 32.0;
+    final double overlayWidth = sliderTheme.overlayShape
+            ?.getPreferredSize(isEnabled, isDiscrete)
+            .width ??
+        32.0;
     final double trackHeight = sliderTheme.trackHeight ?? 16.0;
     final double trackLeft = offset.dx + overlayWidth / 2;
-    final double trackTop = offset.dy + (parentBox.size.height - trackHeight) / 2;
-    final double trackWidth = math.max(0.0, parentBox.size.width - overlayWidth);
+    final double trackTop =
+        offset.dy + (parentBox.size.height - trackHeight) / 2;
+    final double trackWidth =
+        math.max(0.0, parentBox.size.width - overlayWidth);
     return Rect.fromLTWH(trackLeft, trackTop, trackWidth, trackHeight);
   }
 
@@ -86,9 +91,11 @@ class ExpressiveSliderTrackShape extends SliderTrackShape {
       isEnabled: isEnabled,
       isDiscrete: isDiscrete,
     );
-    
-    final Paint activePaint = Paint()..color = sliderTheme.activeTrackColor ?? Colors.blue;
-    final Paint inactivePaint = Paint()..color = sliderTheme.inactiveTrackColor ?? Colors.grey;
+
+    final Paint activePaint = Paint()
+      ..color = sliderTheme.activeTrackColor ?? Colors.blue;
+    final Paint inactivePaint = Paint()
+      ..color = sliderTheme.inactiveTrackColor ?? Colors.grey;
     final Radius radius = Radius.circular(trackRect.height / 2);
 
     final double minTrackWidth = trackRect.height;
@@ -114,7 +121,10 @@ class ExpressiveSliderTrackShape extends SliderTrackShape {
         trackRect.bottom,
       );
       context.canvas.drawRRect(
-        RRect.fromRectAndRadius(activeRect, Radius.circular(activeRect.width / 2)),
+        RRect.fromRectAndRadius(
+          activeRect,
+          Radius.circular(activeRect.width / 2),
+        ),
         activePaint,
       );
     }
@@ -132,8 +142,9 @@ class ExpressiveSliderTrackShape extends SliderTrackShape {
         RRect.fromRectAndRadius(inactiveRect, radius),
         inactivePaint,
       );
-      
-      final Paint dotPaint = Paint()..color = sliderTheme.thumbColor ?? Colors.white;
+
+      final Paint dotPaint = Paint()
+        ..color = sliderTheme.thumbColor ?? Colors.white;
       final double dotRadius = trackRect.height / 8;
       if (trackRect.right - inactiveTrackLeft > dotRadius * 4) {
         context.canvas.drawCircle(
@@ -150,7 +161,10 @@ class ExpressiveSliderTrackShape extends SliderTrackShape {
         trackRect.bottom,
       );
       context.canvas.drawRRect(
-        RRect.fromRectAndRadius(inactiveRect, Radius.circular(inactiveRect.width / 2)),
+        RRect.fromRectAndRadius(
+          inactiveRect,
+          Radius.circular(inactiveRect.width / 2),
+        ),
         inactivePaint,
       );
     }

@@ -114,7 +114,9 @@ class _AtriumDynamicColorBuilderState
 
       if (corePalette != null) {
         if (kDebugMode) {
-          debugPrint('dynamic_color: Core palette detected (bypassed schemes).');
+          debugPrint(
+            'dynamic_color: Core palette detected (bypassed schemes).',
+          );
         }
         setState(() {
           _light = corePalette.toColorScheme();

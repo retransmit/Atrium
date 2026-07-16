@@ -143,7 +143,9 @@ class _RadarrReleaseSearchScreenState
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Release grabbed successfully!')),
         );
-        ref.invalidate(radarrMovieByIdProvider((widget.instance, widget.movie.id)));
+        ref.invalidate(
+          radarrMovieByIdProvider((widget.instance, widget.movie.id)),
+        );
         ref.invalidate(radarrQueueProvider(widget.instance));
         Navigator.pop(context);
       }
@@ -581,8 +583,9 @@ class _RadarrReleaseSearchScreenState
                               ? const SizedBox(
                                   width: 24,
                                   height: 24,
-                                  child:
-                                      ExpressiveProgressIndicator(strokeWidth: 2),
+                                  child: ExpressiveProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 )
                               : IconButton(
                                   icon: Icon(

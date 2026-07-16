@@ -578,7 +578,9 @@ class _SessionCard extends ConsumerWidget {
           onTap: () => pushScreen<void>(
             context,
             PlexSessionDetailScreen(
-                instance: instance, initialSession: session,),
+              instance: instance,
+              initialSession: session,
+            ),
           ),
           child: Stack(
             fit: StackFit.expand,

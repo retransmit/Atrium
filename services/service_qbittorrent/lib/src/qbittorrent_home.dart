@@ -243,9 +243,11 @@ class QbittorrentAppBarActions extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(vertical: Insets.md),
               children: <Widget>[
                 ListTile(
-                  leading: Icon(config.ascending
-                      ? Icons.arrow_upward
-                      : Icons.arrow_downward,),
+                  leading: Icon(
+                    config.ascending
+                        ? Icons.arrow_upward
+                        : Icons.arrow_downward,
+                  ),
                   title: Text(config.ascending ? 'Ascending' : 'Descending'),
                   onTap: () {
                     ref.read(qbitSortProvider(instance).notifier).state =
@@ -326,7 +328,12 @@ class QbittorrentAppBarActions extends ConsumerWidget {
         IconButton(
           tooltip: 'Delete Selected',
           icon: const Icon(Icons.delete),
-          onPressed: () => QbittorrentActionUtils.confirmDelete(context, ref, instance, selectedHashes),
+          onPressed: () => QbittorrentActionUtils.confirmDelete(
+            context,
+            ref,
+            instance,
+            selectedHashes,
+          ),
         ),
         PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert),
@@ -334,46 +341,87 @@ class QbittorrentAppBarActions extends ConsumerWidget {
             final List<String> hashes = selectedHashes.toList();
             switch (value) {
               case 'pause':
-                await QbittorrentActionUtils.run(ref, instance, (QbittorrentClient c) => c.pause(hashes));
+                await QbittorrentActionUtils.run(
+                  ref,
+                  instance,
+                  (QbittorrentClient c) => c.pause(hashes),
+                );
               case 'resume':
-                await QbittorrentActionUtils.run(ref, instance, (QbittorrentClient c) => c.resume(hashes));
+                await QbittorrentActionUtils.run(
+                  ref,
+                  instance,
+                  (QbittorrentClient c) => c.resume(hashes),
+                );
               case 'copy':
                 await Clipboard.setData(ClipboardData(text: hashes.join('\n')));
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Hashes copied')),);
+                    const SnackBar(content: Text('Hashes copied')),
+                  );
                 }
               case 'recheck':
-                await QbittorrentActionUtils.run(ref, instance, (QbittorrentClient c) => c.recheck(hashes));
+                await QbittorrentActionUtils.run(
+                  ref,
+                  instance,
+                  (QbittorrentClient c) => c.recheck(hashes),
+                );
               case 'reannounce':
-                await QbittorrentActionUtils.run(ref, instance, (QbittorrentClient c) => c.reannounce(hashes));
+                await QbittorrentActionUtils.run(
+                  ref,
+                  instance,
+                  (QbittorrentClient c) => c.reannounce(hashes),
+                );
               case 'forcestart':
                 await QbittorrentActionUtils.run(
-                    ref,
-                    instance,
-                    (QbittorrentClient c) =>
-                        c.setForceStart(hashes, value: true),);
+                  ref,
+                  instance,
+                  (QbittorrentClient c) => c.setForceStart(hashes, value: true),
+                );
               case 'rename':
-                await QbittorrentActionUtils.rename(context, ref, instance, selectedHashes);
+                await QbittorrentActionUtils.rename(
+                  context,
+                  ref,
+                  instance,
+                  selectedHashes,
+                );
               case 'savepath':
-                await QbittorrentActionUtils.editSavePath(context, ref, instance, selectedHashes);
+                await QbittorrentActionUtils.editSavePath(
+                  context,
+                  ref,
+                  instance,
+                  selectedHashes,
+                );
               case 'category':
-                await QbittorrentActionUtils.editCategory(context, ref, instance, selectedHashes);
+                await QbittorrentActionUtils.editCategory(
+                  context,
+                  ref,
+                  instance,
+                  selectedHashes,
+                );
               case 'tags':
-                await QbittorrentActionUtils.editTags(context, ref, instance, selectedHashes);
+                await QbittorrentActionUtils.editTags(
+                  context,
+                  ref,
+                  instance,
+                  selectedHashes,
+                );
               case 'export':
                 try {
                   final QbittorrentClient client = await ref
                       .read(qbittorrentClientProvider(instance).future);
                   await client.exportTorrent(hashes.first);
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Torrent exported successfully'),),);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Torrent exported successfully'),
+                      ),
+                    );
                   }
                 } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Export failed: $e')),);
+                      SnackBar(content: Text('Export failed: $e')),
+                    );
                   }
                 }
             }
@@ -383,20 +431,30 @@ class QbittorrentAppBarActions extends ConsumerWidget {
             const PopupMenuItem<String>(value: 'resume', child: Text('Resume')),
             const PopupMenuItem<String>(value: 'copy', child: Text('Copy')),
             const PopupMenuItem<String>(
-                value: 'recheck', child: Text('Force Recheck'),),
+              value: 'recheck',
+              child: Text('Force Recheck'),
+            ),
             const PopupMenuItem<String>(
-                value: 'reannounce', child: Text('Force Reannounce'),),
+              value: 'reannounce',
+              child: Text('Force Reannounce'),
+            ),
             const PopupMenuItem<String>(
-                value: 'forcestart', child: Text('Force Start'),),
+              value: 'forcestart',
+              child: Text('Force Start'),
+            ),
             PopupMenuItem<String>(
               value: 'rename',
               enabled: selectedHashes.length == 1,
               child: const Text('Rename'),
             ),
             const PopupMenuItem<String>(
-                value: 'savepath', child: Text('Set SavePath'),),
+              value: 'savepath',
+              child: Text('Set SavePath'),
+            ),
             const PopupMenuItem<String>(
-                value: 'category', child: Text('Set Category'),),
+              value: 'category',
+              child: Text('Set Category'),
+            ),
             const PopupMenuItem<String>(value: 'tags', child: Text('Set Tags')),
             PopupMenuItem<String>(
               value: 'export',
@@ -477,177 +535,185 @@ class _TorrentTileState extends ConsumerState<_TorrentTile> {
         },
         onTapCancel: () => _longPressTimer?.cancel(),
         onTap: () {
-            _longPressTimer?.cancel();
-            if (_menuShown) return;
-            
-            if (selectionMode) {
-              ref
-                  .read(qbitSelectionProvider(instance).notifier)
-                  .update((Set<String> s) {
-                final Set<String> next = Set<String>.of(s);
-                if (next.contains(torrent.hash)) {
-                  next.remove(torrent.hash);
-                } else {
-                  next.add(torrent.hash);
-                }
-                return next;
-              });
-            } else {
-              Navigator.of(context, rootNavigator: true).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => TorrentDetailScreen(
-                    instance: instance,
-                    torrent: torrent,
-                  ),
+          _longPressTimer?.cancel();
+          if (_menuShown) return;
+
+          if (selectionMode) {
+            ref
+                .read(qbitSelectionProvider(instance).notifier)
+                .update((Set<String> s) {
+              final Set<String> next = Set<String>.of(s);
+              if (next.contains(torrent.hash)) {
+                next.remove(torrent.hash);
+              } else {
+                next.add(torrent.hash);
+              }
+              return next;
+            });
+          } else {
+            Navigator.of(context, rootNavigator: true).push(
+              MaterialPageRoute<void>(
+                builder: (_) => TorrentDetailScreen(
+                  instance: instance,
+                  torrent: torrent,
                 ),
-              );
-            }
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(Insets.md),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Container(
-                      width: 44,
-                      height: 44,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? cs.onPrimaryContainer.withValues(alpha: 0.15)
-                            : v.container,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Icon(
-                        isSelected ? Icons.check : v.icon,
-                        size: 22,
-                        color:
-                            isSelected ? cs.onPrimaryContainer : v.onContainer,
-                      ),
+              ),
+            );
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(Insets.md),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Container(
+                    width: 44,
+                    height: 44,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? cs.onPrimaryContainer.withValues(alpha: 0.15)
+                          : v.container,
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                    const SizedBox(width: Insets.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            torrent.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: isSelected ? cs.onPrimaryContainer : null,
-                            ),
+                    child: Icon(
+                      isSelected ? Icons.check : v.icon,
+                      size: 22,
+                      color: isSelected ? cs.onPrimaryContainer : v.onContainer,
+                    ),
+                  ),
+                  const SizedBox(width: Insets.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          torrent.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: isSelected ? cs.onPrimaryContainer : null,
                           ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: <Widget>[
-                              _StatePill(
-                                label: friendlyState(torrent.state),
-                                visual: v,
-                              ),
-                              const SizedBox(width: Insets.sm),
-                              Expanded(
-                                child: Text(
-                                  '${fmtBytes(torrent.downloaded)} / ${fmtBytes(torrent.size)}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: isSelected
-                                        ? cs.onPrimaryContainer
-                                            .withValues(alpha: 0.8)
-                                        : cs.onSurfaceVariant,
-                                  ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: <Widget>[
+                            _StatePill(
+                              label: friendlyState(torrent.state),
+                              visual: v,
+                            ),
+                            const SizedBox(width: Insets.sm),
+                            Expanded(
+                              child: Text(
+                                '${fmtBytes(torrent.downloaded)} / ${fmtBytes(torrent.size)}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: isSelected
+                                      ? cs.onPrimaryContainer
+                                          .withValues(alpha: 0.8)
+                                      : cs.onSurfaceVariant,
                                 ),
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: Insets.md),
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: LinearProgressIndicatorM3E(
-                          shape: ProgressM3EShape.flat,
-                          value: progress,
-                          activeColor: complete ? cs.tertiary : v.color,
-                          trackColor: isSelected
-                              ? cs.onPrimaryContainer.withValues(alpha: 0.15)
-                              : cs.surfaceContainerHighest,
+                            ),
+                          ],
                         ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: Insets.md),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicatorM3E(
+                        shape: ProgressM3EShape.flat,
+                        value: progress,
+                        activeColor: complete ? cs.tertiary : v.color,
+                        trackColor: isSelected
+                            ? cs.onPrimaryContainer.withValues(alpha: 0.15)
+                            : cs.surfaceContainerHighest,
                       ),
                     ),
+                  ),
+                  const SizedBox(width: Insets.sm),
+                  Text(
+                    '${(progress * 100).toStringAsFixed(0)}%',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: isSelected ? cs.onPrimaryContainer : v.color,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: Insets.md),
+              Row(
+                children: <Widget>[
+                  _SpeedPill(
+                    icon: Icons.south,
+                    label: '${fmtBytes(torrent.dlspeed)}/s',
+                    color: cs.primary,
+                    active: dlActive,
+                  ),
+                  const SizedBox(width: Insets.sm),
+                  _SpeedPill(
+                    icon: Icons.north,
+                    label: '${fmtBytes(torrent.upspeed)}/s',
+                    color: cs.tertiary,
+                    active: upActive,
+                  ),
+                  const Spacer(),
+                  Icon(Icons.swap_vert, size: 14, color: cs.onSurfaceVariant),
+                  const SizedBox(width: 2),
+                  Text(
+                    torrent.ratio.toStringAsFixed(2),
+                    style: theme.textTheme.labelSmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  if (!complete) ...<Widget>[
                     const SizedBox(width: Insets.sm),
-                    Text(
-                      '${(progress * 100).toStringAsFixed(0)}%',
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: isSelected ? cs.onPrimaryContainer : v.color,
-                      ),
+                    Icon(
+                      Icons.schedule,
+                      size: 14,
+                      color: cs.onSurfaceVariant,
                     ),
-                  ],
-                ),
-                const SizedBox(height: Insets.md),
-                Row(
-                  children: <Widget>[
-                    _SpeedPill(
-                      icon: Icons.south,
-                      label: '${fmtBytes(torrent.dlspeed)}/s',
-                      color: cs.primary,
-                      active: dlActive,
-                    ),
-                    const SizedBox(width: Insets.sm),
-                    _SpeedPill(
-                      icon: Icons.north,
-                      label: '${fmtBytes(torrent.upspeed)}/s',
-                      color: cs.tertiary,
-                      active: upActive,
-                    ),
-                    const Spacer(),
-                    Icon(Icons.swap_vert, size: 14, color: cs.onSurfaceVariant),
                     const SizedBox(width: 2),
                     Text(
-                      torrent.ratio.toStringAsFixed(2),
+                      _formatEta(torrent.eta),
                       style: theme.textTheme.labelSmall
                           ?.copyWith(color: cs.onSurfaceVariant),
                     ),
-                    if (!complete) ...<Widget>[
-                      const SizedBox(width: Insets.sm),
-                      Icon(Icons.schedule,
-                          size: 14, color: cs.onSurfaceVariant,),
-                      const SizedBox(width: 2),
-                      Text(
-                        _formatEta(torrent.eta),
-                        style: theme.textTheme.labelSmall
-                            ?.copyWith(color: cs.onSurfaceVariant),
-                      ),
-                    ],
                   ],
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ),
         ),
+      ),
     );
 
     if (selectionMode) {
       return Padding(
-        padding: const EdgeInsets.fromLTRB(Insets.md, Insets.xs, Insets.md, Insets.xs),
+        padding: const EdgeInsets.fromLTRB(
+          Insets.md,
+          Insets.xs,
+          Insets.md,
+          Insets.xs,
+        ),
         child: tile,
       );
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(Insets.md, Insets.xs, Insets.md, Insets.xs),
+      padding:
+          const EdgeInsets.fromLTRB(Insets.md, Insets.xs, Insets.md, Insets.xs),
       child: tile,
     );
   }
@@ -657,8 +723,13 @@ class _TorrentTileState extends ConsumerState<_TorrentTile> {
     final String hash = widget.torrent.hash;
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
-    
-    Widget buildItem(IconData icon, String label, VoidCallback onTap, {Color? color}) {
+
+    Widget buildItem(
+      IconData icon,
+      String label,
+      VoidCallback onTap, {
+      Color? color,
+    }) {
       return ListTile(
         leading: Icon(icon, color: color ?? cs.onSurfaceVariant),
         title: Text(label, style: TextStyle(color: color)),
@@ -674,10 +745,15 @@ class _TorrentTileState extends ConsumerState<_TorrentTile> {
       barrierDismissible: true,
       barrierLabel: 'Dismiss',
       transitionDuration: const Duration(milliseconds: 250),
-      pageBuilder: (BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation) {
+      pageBuilder: (
+        BuildContext context,
+        Animation<double> animation,
+        Animation<double> secondaryAnimation,
+      ) {
         return Dialog(
           clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           child: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -690,36 +766,78 @@ class _TorrentTileState extends ConsumerState<_TorrentTile> {
                         );
                   }),
                   buildItem(Icons.pause, 'Pause', () {
-                    QbittorrentActionUtils.run(ref, inst, (QbittorrentClient c) => c.pause(<String>[hash]));
+                    QbittorrentActionUtils.run(
+                      ref,
+                      inst,
+                      (QbittorrentClient c) => c.pause(<String>[hash]),
+                    );
                   }),
                   buildItem(Icons.play_arrow, 'Resume', () {
-                    QbittorrentActionUtils.run(ref, inst, (QbittorrentClient c) => c.resume(<String>[hash]));
+                    QbittorrentActionUtils.run(
+                      ref,
+                      inst,
+                      (QbittorrentClient c) => c.resume(<String>[hash]),
+                    );
                   }),
                   buildItem(Icons.copy, 'Copy Hash', () async {
                     await Clipboard.setData(ClipboardData(text: hash));
                   }),
                   buildItem(Icons.refresh, 'Force Recheck', () {
-                    QbittorrentActionUtils.run(ref, inst, (QbittorrentClient c) => c.recheck(<String>[hash]));
+                    QbittorrentActionUtils.run(
+                      ref,
+                      inst,
+                      (QbittorrentClient c) => c.recheck(<String>[hash]),
+                    );
                   }),
                   buildItem(Icons.edit, 'Rename', () {
-                    QbittorrentActionUtils.rename(context, ref, inst, <String>{hash});
+                    QbittorrentActionUtils.rename(
+                      context,
+                      ref,
+                      inst,
+                      <String>{hash},
+                    );
                   }),
                   buildItem(Icons.folder, 'Set SavePath', () {
-                    QbittorrentActionUtils.editSavePath(context, ref, inst, <String>{hash});
+                    QbittorrentActionUtils.editSavePath(
+                      context,
+                      ref,
+                      inst,
+                      <String>{hash},
+                    );
                   }),
                   buildItem(Icons.label, 'Set Category', () {
-                    QbittorrentActionUtils.editCategory(context, ref, inst, <String>{hash});
+                    QbittorrentActionUtils.editCategory(
+                      context,
+                      ref,
+                      inst,
+                      <String>{hash},
+                    );
                   }),
-                  buildItem(Icons.delete, 'Delete', () {
-                    QbittorrentActionUtils.confirmDelete(context, ref, inst, <String>{hash});
-                  }, color: Colors.red,),
+                  buildItem(
+                    Icons.delete,
+                    'Delete',
+                    () {
+                      QbittorrentActionUtils.confirmDelete(
+                        context,
+                        ref,
+                        inst,
+                        <String>{hash},
+                      );
+                    },
+                    color: Colors.red,
+                  ),
                 ],
               ),
             ),
           ),
         );
       },
-      transitionBuilder: (BuildContext context, Animation<double> animation, Animation<double> secondaryAnimation, Widget child) {
+      transitionBuilder: (
+        BuildContext context,
+        Animation<double> animation,
+        Animation<double> secondaryAnimation,
+        Widget child,
+      ) {
         return ScaleTransition(
           scale: CurvedAnimation(
             parent: animation,

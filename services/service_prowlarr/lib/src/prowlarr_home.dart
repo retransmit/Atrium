@@ -77,8 +77,7 @@ class _ProwlarrHomeState extends State<ProwlarrHome>
           ),
         ],
       ),
-      floatingActionButton:
-          _tab.index == 0 ? _indexerFabs(context) : null,
+      floatingActionButton: _tab.index == 0 ? _indexerFabs(context) : null,
     );
   }
 

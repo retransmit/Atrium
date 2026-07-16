@@ -42,7 +42,8 @@ class QbittorrentActionUtils {
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Delete files'),
                 value: deleteFiles,
-                onChanged: (bool? v) => setState(() => deleteFiles = v ?? false),
+                onChanged: (bool? v) =>
+                    setState(() => deleteFiles = v ?? false),
               ),
             ],
           ),

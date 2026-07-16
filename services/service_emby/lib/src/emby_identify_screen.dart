@@ -66,7 +66,7 @@ class _EmbyIdentifyScreenState extends ConsumerState<EmbyIdentifyScreen> {
     try {
       final yearText = _yearController.text.trim();
       final year = yearText.isNotEmpty ? int.tryParse(yearText) : null;
-      
+
       final providerIds = <String, String>{};
       if (_imdbController.text.trim().isNotEmpty) {
         providerIds['Imdb'] = _imdbController.text.trim();
@@ -139,7 +139,7 @@ class _EmbyIdentifyScreenState extends ConsumerState<EmbyIdentifyScreen> {
         result,
         replaceAllImages: replace,
       );
-      
+
       if (mounted) {
         Navigator.pop(context); // close loading
         Navigator.pop(context, true); // close identify screen
@@ -221,7 +221,8 @@ class _EmbyIdentifyScreenState extends ConsumerState<EmbyIdentifyScreen> {
                     const SizedBox(height: Insets.md),
                     Text(
                       _error!,
-                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      style:
+                          TextStyle(color: Theme.of(context).colorScheme.error),
                     ),
                   ],
                 ],
@@ -240,11 +241,14 @@ class _EmbyIdentifyScreenState extends ConsumerState<EmbyIdentifyScreen> {
                             width: 40,
                             height: 60,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(Icons.image),
+                            errorBuilder: (_, __, ___) =>
+                                const Icon(Icons.image),
                           )
                         : const Icon(Icons.movie),
                     title: Text(res.name ?? 'Unknown'),
-                    subtitle: Text('${res.productionYear ?? ''} • ${res.searchProviderName ?? ''}'),
+                    subtitle: Text(
+                      '${res.productionYear ?? ''} • ${res.searchProviderName ?? ''}',
+                    ),
                     onTap: () => _apply(res),
                   );
                 },

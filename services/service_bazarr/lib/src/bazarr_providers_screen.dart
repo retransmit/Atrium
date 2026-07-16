@@ -154,14 +154,19 @@ class _BazarrProvidersScreenState extends ConsumerState<BazarrProvidersScreen> {
             _seeded = true;
           }
           final String q = _query.text.trim().toLowerCase();
-          final List<MapEntry<String, String>> entries = kBazarrProviders.entries
-              .where((MapEntry<String, String> e) =>
-                  q.isEmpty ||
-                  e.value.toLowerCase().contains(q) ||
-                  e.key.toLowerCase().contains(q),)
-              .toList()
-            ..sort((MapEntry<String, String> a, MapEntry<String, String> b) =>
-                a.value.toLowerCase().compareTo(b.value.toLowerCase()),);
+          final List<MapEntry<String, String>> entries =
+              kBazarrProviders.entries
+                  .where(
+                    (MapEntry<String, String> e) =>
+                        q.isEmpty ||
+                        e.value.toLowerCase().contains(q) ||
+                        e.key.toLowerCase().contains(q),
+                  )
+                  .toList()
+                ..sort(
+                  (MapEntry<String, String> a, MapEntry<String, String> b) =>
+                      a.value.toLowerCase().compareTo(b.value.toLowerCase()),
+                );
           return Column(
             children: <Widget>[
               Padding(
@@ -194,14 +199,16 @@ class _BazarrProvidersScreenState extends ConsumerState<BazarrProvidersScreen> {
                           }
                         }),
                       ),
-                      onTap: () => Navigator.of(context, rootNavigator: true)
-                          .push(MaterialPageRoute<void>(
-                        builder: (_) => BazarrProviderConfigScreen(
-                          instance: widget.instance,
-                          providerKey: p.key,
-                          providerName: p.value,
+                      onTap: () =>
+                          Navigator.of(context, rootNavigator: true).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => BazarrProviderConfigScreen(
+                            instance: widget.instance,
+                            providerKey: p.key,
+                            providerName: p.value,
+                          ),
                         ),
-                      ),),
+                      ),
                     );
                   },
                 ),
@@ -317,11 +324,15 @@ class _BazarrProviderConfigScreenState
                   <String, dynamic>{};
           // Only scalar fields are editable generically.
           final List<MapEntry<String, dynamic>> fields = section.entries
-              .where((MapEntry<String, dynamic> e) =>
-                  e.value is bool || e.value is String || e.value is num,)
+              .where(
+                (MapEntry<String, dynamic> e) =>
+                    e.value is bool || e.value is String || e.value is num,
+              )
               .toList()
-            ..sort((MapEntry<String, dynamic> a, MapEntry<String, dynamic> b) =>
-                a.key.compareTo(b.key),);
+            ..sort(
+              (MapEntry<String, dynamic> a, MapEntry<String, dynamic> b) =>
+                  a.key.compareTo(b.key),
+            );
           if (!_seeded) {
             _values.clear();
             for (final MapEntry<String, dynamic> e in fields) {
@@ -346,8 +357,7 @@ class _BazarrProviderConfigScreenState
                     ?.copyWith(color: theme.colorScheme.outline),
               ),
               const SizedBox(height: Insets.md),
-              for (final MapEntry<String, dynamic> e in fields)
-                _field(e.key),
+              for (final MapEntry<String, dynamic> e in fields) _field(e.key),
             ],
           );
         },

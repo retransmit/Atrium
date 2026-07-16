@@ -76,7 +76,10 @@ class ProwlarrApi {
       final Response<dynamic> resp =
           await _dio.get<dynamic>('$_base/indexer/schema');
       return (resp.data as List<dynamic>)
-          .map((dynamic e) => Map<String, dynamic>.from(e as Map<dynamic, dynamic>))
+          .map(
+            (dynamic e) =>
+                Map<String, dynamic>.from(e as Map<dynamic, dynamic>),
+          )
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -113,7 +116,10 @@ class ProwlarrApi {
       final Response<dynamic> resp =
           await _dio.get<dynamic>('$_base/appprofile');
       return (resp.data as List<dynamic>)
-          .map((dynamic e) => Map<String, dynamic>.from(e as Map<dynamic, dynamic>))
+          .map(
+            (dynamic e) =>
+                Map<String, dynamic>.from(e as Map<dynamic, dynamic>),
+          )
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -233,7 +239,10 @@ class ProwlarrApi {
       final Response<dynamic> resp =
           await _dio.get<dynamic>('$_base/applications/schema');
       return (resp.data as List<dynamic>)
-          .map((dynamic e) => Map<String, dynamic>.from(e as Map<dynamic, dynamic>))
+          .map(
+            (dynamic e) =>
+                Map<String, dynamic>.from(e as Map<dynamic, dynamic>),
+          )
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -312,9 +321,13 @@ class ProwlarrApi {
   /// Configured instances of a provider resource (`GET /{endpoint}`).
   Future<List<Map<String, dynamic>>> getProviders(String endpoint) async {
     try {
-      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/$endpoint');
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/$endpoint');
       return (resp.data as List<dynamic>)
-          .map((dynamic e) => Map<String, dynamic>.from(e as Map<dynamic, dynamic>))
+          .map(
+            (dynamic e) =>
+                Map<String, dynamic>.from(e as Map<dynamic, dynamic>),
+          )
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -327,7 +340,10 @@ class ProwlarrApi {
       final Response<dynamic> resp =
           await _dio.get<dynamic>('$_base/$endpoint/schema');
       return (resp.data as List<dynamic>)
-          .map((dynamic e) => Map<String, dynamic>.from(e as Map<dynamic, dynamic>))
+          .map(
+            (dynamic e) =>
+                Map<String, dynamic>.from(e as Map<dynamic, dynamic>),
+          )
           .toList();
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -346,7 +362,10 @@ class ProwlarrApi {
   }
 
   /// Creates a provider (`POST /{endpoint}`, `forceSave=true`).
-  Future<void> createProvider(String endpoint, Map<String, dynamic> body) async {
+  Future<void> createProvider(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
     try {
       await _dio.post<dynamic>(
         '$_base/$endpoint',
@@ -359,7 +378,10 @@ class ProwlarrApi {
   }
 
   /// Updates a provider (`PUT /{endpoint}/{id}`, `forceSave=true`).
-  Future<void> updateProvider(String endpoint, Map<String, dynamic> body) async {
+  Future<void> updateProvider(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
     try {
       await _dio.put<dynamic>(
         '$_base/$endpoint/${body['id']}',

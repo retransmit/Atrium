@@ -73,8 +73,7 @@ void main() {
     expect(find.text('AA:BB:CC:DD:EE:FF - 255.255.255.255:9'), findsOneWidget);
   });
 
-  testWidgets(
-      'CustomHeadersScreen renders global headers and the instance row',
+  testWidgets('CustomHeadersScreen renders global headers and the instance row',
       (WidgetTester tester) async {
     await _pump(
       tester,

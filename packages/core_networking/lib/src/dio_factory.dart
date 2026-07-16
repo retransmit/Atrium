@@ -30,7 +30,8 @@ class DioFactory {
   }) async {
     final Uri resolvedUrl = await _resolver.resolve(instance);
     final String baseUrlStr = resolvedUrl.toString();
-    final String baseUrl = baseUrlStr.endsWith('/') ? baseUrlStr : '$baseUrlStr/';
+    final String baseUrl =
+        baseUrlStr.endsWith('/') ? baseUrlStr : '$baseUrlStr/';
 
     final Dio dio = Dio(
       BaseOptions(
@@ -52,10 +53,11 @@ class DioFactory {
     if (instance.allowSelfSignedCerts) {
       // The user has explicitly chosen to skip cert validation for this
       // instance - common with private IPs on self-signed certs.
-      final IOHttpClientAdapter adapter = dio.httpClientAdapter as IOHttpClientAdapter;
+      final IOHttpClientAdapter adapter =
+          dio.httpClientAdapter as IOHttpClientAdapter;
       adapter.createHttpClient = () => HttpClient()
-        ..badCertificateCallback = (X509Certificate _, String __, int ___) =>
-            true;
+        ..badCertificateCallback =
+            (X509Certificate _, String __, int ___) => true;
     }
 
     dio.interceptors.add(

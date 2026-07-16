@@ -37,7 +37,8 @@ class MovieDetailScreen extends ConsumerWidget {
           body: ErrorView(
             title: 'Failed to load movie details',
             message: error.toString(),
-            onRetry: () => ref.invalidate(radarrMovieByIdProvider((instance, movieId))),
+            onRetry: () =>
+                ref.invalidate(radarrMovieByIdProvider((instance, movieId))),
           ),
         ),
       ),
@@ -117,7 +118,11 @@ class _MovieDetailBodyState extends ConsumerState<_MovieDetailBody> {
                   color: Colors.black.withValues(alpha: 0.35),
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.arrow_back, size: 20, color: Colors.white),
+                  icon: const Icon(
+                    Icons.arrow_back,
+                    size: 20,
+                    color: Colors.white,
+                  ),
                   onPressed: () => Navigator.maybePop(context),
                   padding: EdgeInsets.zero,
                 ),
@@ -426,12 +431,8 @@ class _StatusPill extends StatelessWidget {
     final ColorScheme cs = theme.colorScheme;
 
     final bool hasFile = movie.hasFile;
-    final Color background = hasFile
-        ? cs.primaryContainer
-        : cs.errorContainer;
-    final Color tint = hasFile
-        ? cs.onPrimaryContainer
-        : cs.onErrorContainer;
+    final Color background = hasFile ? cs.primaryContainer : cs.errorContainer;
+    final Color tint = hasFile ? cs.onPrimaryContainer : cs.onErrorContainer;
     final String label = hasFile ? 'Downloaded' : 'Missing';
     final IconData icon = hasFile ? Icons.check : Icons.warning_amber_rounded;
 
@@ -526,7 +527,9 @@ class _FileSection extends StatelessWidget {
               context,
               'Status',
               movie.hasFile ? 'File downloaded' : 'File missing',
-              icon: movie.hasFile ? Icons.check_circle_outline : Icons.error_outline,
+              icon: movie.hasFile
+                  ? Icons.check_circle_outline
+                  : Icons.error_outline,
               iconColor: movie.hasFile ? cs.primary : cs.error,
             ),
             if (movie.hasFile && movie.sizeOnDisk > 0) ...[
@@ -610,14 +613,17 @@ class _ReleaseDatesSection extends StatelessWidget {
     }
     DateTime? physicalReleaseDate;
     if (movie.physicalRelease != null && movie.physicalRelease!.isNotEmpty) {
-      physicalReleaseDate = DateTime.tryParse(movie.physicalRelease!)?.toLocal();
+      physicalReleaseDate =
+          DateTime.tryParse(movie.physicalRelease!)?.toLocal();
     }
     DateTime? digitalReleaseDate;
     if (movie.digitalRelease != null && movie.digitalRelease!.isNotEmpty) {
       digitalReleaseDate = DateTime.tryParse(movie.digitalRelease!)?.toLocal();
     }
 
-    if (inCinemasDate == null && physicalReleaseDate == null && digitalReleaseDate == null) {
+    if (inCinemasDate == null &&
+        physicalReleaseDate == null &&
+        digitalReleaseDate == null) {
       return const SizedBox.shrink();
     }
 
@@ -639,14 +645,30 @@ class _ReleaseDatesSection extends StatelessWidget {
             ),
             const SizedBox(height: Insets.md),
             if (inCinemasDate != null)
-              _buildReleaseRow(context, 'In Cinemas', formatter.format(inCinemasDate), Icons.local_play_outlined),
+              _buildReleaseRow(
+                context,
+                'In Cinemas',
+                formatter.format(inCinemasDate),
+                Icons.local_play_outlined,
+              ),
             if (digitalReleaseDate != null) ...[
               if (inCinemasDate != null) const Divider(height: 24),
-              _buildReleaseRow(context, 'Digital Release', formatter.format(digitalReleaseDate), Icons.language_outlined),
+              _buildReleaseRow(
+                context,
+                'Digital Release',
+                formatter.format(digitalReleaseDate),
+                Icons.language_outlined,
+              ),
             ],
             if (physicalReleaseDate != null) ...[
-              if (inCinemasDate != null || digitalReleaseDate != null) const Divider(height: 24),
-              _buildReleaseRow(context, 'Physical Release', formatter.format(physicalReleaseDate), Icons.album_outlined),
+              if (inCinemasDate != null || digitalReleaseDate != null)
+                const Divider(height: 24),
+              _buildReleaseRow(
+                context,
+                'Physical Release',
+                formatter.format(physicalReleaseDate),
+                Icons.album_outlined,
+              ),
             ],
           ],
         ),
@@ -654,7 +676,12 @@ class _ReleaseDatesSection extends StatelessWidget {
     );
   }
 
-  Widget _buildReleaseRow(BuildContext context, String label, String value, IconData icon) {
+  Widget _buildReleaseRow(
+    BuildContext context,
+    String label,
+    String value,
+    IconData icon,
+  ) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
 
@@ -707,8 +734,8 @@ class _ActionsRow extends ConsumerWidget {
           child: movie.monitored
               ? FilledButton.tonalIcon(
                   style: FilledButton.styleFrom(
-                    backgroundColor:
-                        theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
+                    backgroundColor: theme.colorScheme.primaryContainer
+                        .withValues(alpha: 0.8),
                     foregroundColor: theme.colorScheme.onPrimaryContainer,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(

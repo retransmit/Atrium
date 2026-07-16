@@ -124,8 +124,11 @@ class PlexSeasonCard extends StatelessWidget {
 /// a trailing toggle that scrobbles/unscrobbles the episode on the server.
 /// Tapping a row opens the episode detail screen.
 class PlexEpisodeList extends ConsumerWidget {
-  const PlexEpisodeList(
-      {required this.instance, required this.season, super.key,});
+  const PlexEpisodeList({
+    required this.instance,
+    required this.season,
+    super.key,
+  });
 
   final Instance instance;
   final PlexMetadata season;

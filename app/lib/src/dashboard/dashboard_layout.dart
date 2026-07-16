@@ -41,7 +41,8 @@ List<DashboardWidgetConfig> decodeLayout(String? raw) {
     if (kind == null) {
       continue;
     }
-    out.add(DashboardWidgetConfig(kind: kind, enabled: item['enabled'] != false));
+    out.add(
+        DashboardWidgetConfig(kind: kind, enabled: item['enabled'] != false));
   }
   return out;
 }

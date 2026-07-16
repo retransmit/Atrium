@@ -18,7 +18,8 @@ int tInt(dynamic v) {
   if (v is num) {
     return v.toInt();
   }
-  return int.tryParse(v.toString()) ?? (double.tryParse(v.toString())?.toInt() ?? 0);
+  return int.tryParse(v.toString()) ??
+      (double.tryParse(v.toString())?.toInt() ?? 0);
 }
 
 double tDouble(dynamic v) {

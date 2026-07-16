@@ -345,7 +345,8 @@ final radarrCalendarProvider =
 
   // Calculate local month boundaries
   final DateTime start = DateTime(month.year, month.month);
-  final DateTime end = DateTime(month.year, month.month + 1).subtract(const Duration(seconds: 1));
+  final DateTime end = DateTime(month.year, month.month + 1)
+      .subtract(const Duration(seconds: 1));
 
   return api.getCalendar(start: start, end: end);
 });
@@ -367,7 +368,9 @@ final radarrWantedFilteredMissingProvider = Provider.autoDispose
     }
     final String lowercaseQuery = query.toLowerCase();
     return page.records
-        .where((RadarrMovie m) => m.title.toLowerCase().contains(lowercaseQuery))
+        .where(
+          (RadarrMovie m) => m.title.toLowerCase().contains(lowercaseQuery),
+        )
         .toList();
   });
 });
@@ -385,7 +388,9 @@ final radarrWantedFilteredCutoffProvider = Provider.autoDispose
     }
     final String lowercaseQuery = query.toLowerCase();
     return page.records
-        .where((RadarrMovie m) => m.title.toLowerCase().contains(lowercaseQuery))
+        .where(
+          (RadarrMovie m) => m.title.toLowerCase().contains(lowercaseQuery),
+        )
         .toList();
   });
 });
@@ -447,8 +452,8 @@ final radarrUiConfigProvider =
 });
 
 /// Quality definitions provider.
-final radarrQualityDefinitionsProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final radarrQualityDefinitionsProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -457,8 +462,8 @@ final radarrQualityDefinitionsProvider = FutureProvider.autoDispose
 });
 
 /// Indexers configuration provider.
-final radarrIndexersProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final radarrIndexersProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -467,8 +472,8 @@ final radarrIndexersProvider = FutureProvider.autoDispose
 });
 
 /// Download Clients configuration provider.
-final radarrDownloadClientsProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final radarrDownloadClientsProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -487,8 +492,8 @@ final radarrDownloadClientConfigProvider =
 });
 
 /// Indexer schemas provider.
-final radarrIndexerSchemaProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final radarrIndexerSchemaProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -497,8 +502,8 @@ final radarrIndexerSchemaProvider = FutureProvider.autoDispose
 });
 
 /// Import lists provider.
-final radarrImportListsProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final radarrImportListsProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -527,8 +532,8 @@ final radarrIndexerConfigProvider =
 });
 
 /// Import list schemas provider.
-final radarrImportListSchemaProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final radarrImportListSchemaProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -537,8 +542,8 @@ final radarrImportListSchemaProvider = FutureProvider.autoDispose
 });
 
 /// Download client schemas provider.
-final radarrDownloadClientSchemaProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final radarrDownloadClientSchemaProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -547,8 +552,8 @@ final radarrDownloadClientSchemaProvider = FutureProvider.autoDispose
 });
 
 /// Remote path mappings provider.
-final radarrRemotePathMappingsProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final radarrRemotePathMappingsProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -557,8 +562,8 @@ final radarrRemotePathMappingsProvider = FutureProvider.autoDispose
 });
 
 /// Notifications provider.
-final radarrNotificationsProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final radarrNotificationsProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -567,8 +572,8 @@ final radarrNotificationsProvider = FutureProvider.autoDispose
 });
 
 /// Notification schemas provider.
-final radarrNotificationSchemaProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final radarrNotificationSchemaProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -577,8 +582,8 @@ final radarrNotificationSchemaProvider = FutureProvider.autoDispose
 });
 
 /// Metadata configurations provider.
-final radarrMetadataConfigsProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final radarrMetadataConfigsProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -587,8 +592,8 @@ final radarrMetadataConfigsProvider = FutureProvider.autoDispose
 });
 
 /// Metadata schemas provider.
-final radarrMetadataSchemaProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final radarrMetadataSchemaProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -597,8 +602,8 @@ final radarrMetadataSchemaProvider = FutureProvider.autoDispose
 });
 
 /// Delay profiles provider.
-final radarrDelayProfilesProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final radarrDelayProfilesProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -607,8 +612,8 @@ final radarrDelayProfilesProvider = FutureProvider.autoDispose
 });
 
 /// Custom formats provider.
-final radarrCustomFormatsProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final radarrCustomFormatsProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -617,8 +622,8 @@ final radarrCustomFormatsProvider = FutureProvider.autoDispose
 });
 
 /// Custom format schemas provider.
-final radarrCustomFormatSchemaProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final radarrCustomFormatSchemaProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -631,8 +636,8 @@ final radarrCustomFormatSchemaProvider = FutureProvider.autoDispose
 // ==========================================
 
 /// System status (version, OS, uptime, etc.).
-final radarrSystemStatusProvider = FutureProvider.autoDispose
-    .family<Map<String, dynamic>, Instance>((
+final radarrSystemStatusProvider =
+    FutureProvider.autoDispose.family<Map<String, dynamic>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -641,8 +646,8 @@ final radarrSystemStatusProvider = FutureProvider.autoDispose
 });
 
 /// Health check warnings/errors.
-final radarrHealthProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final radarrHealthProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -651,8 +656,8 @@ final radarrHealthProvider = FutureProvider.autoDispose
 });
 
 /// Disk space for all root paths.
-final radarrDiskSpaceProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final radarrDiskSpaceProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -661,8 +666,8 @@ final radarrDiskSpaceProvider = FutureProvider.autoDispose
 });
 
 /// Scheduled tasks list.
-final radarrTasksProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final radarrTasksProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -671,8 +676,8 @@ final radarrTasksProvider = FutureProvider.autoDispose
 });
 
 /// Available software updates.
-final radarrUpdatesProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final radarrUpdatesProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -681,9 +686,8 @@ final radarrUpdatesProvider = FutureProvider.autoDispose
 });
 
 /// Paginated logs. Key is (instance, page, pageSize, level).
-final radarrLogsProvider = FutureProvider.autoDispose
-    .family<Map<String, dynamic>,
-        (Instance, {int page, int pageSize, String? level})>((
+final radarrLogsProvider = FutureProvider.autoDispose.family<
+    Map<String, dynamic>, (Instance, {int page, int pageSize, String? level})>((
   Ref ref,
   (Instance, {int page, int pageSize, String? level}) key,
 ) async {
@@ -699,8 +703,8 @@ final radarrLogsProvider = FutureProvider.autoDispose
 });
 
 /// Log files list.
-final radarrLogFilesProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final radarrLogFilesProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -709,8 +713,8 @@ final radarrLogFilesProvider = FutureProvider.autoDispose
 });
 
 /// Backups list.
-final radarrBackupsProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, Instance>((
+final radarrBackupsProvider =
+    FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
@@ -745,6 +749,3 @@ final radarrParseResultProvider = FutureProvider.autoDispose
   final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
   return api.parseTitle(title);
 });
-
-
-

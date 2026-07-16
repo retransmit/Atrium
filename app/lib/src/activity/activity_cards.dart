@@ -267,8 +267,7 @@ class ActivityDownloadCard extends StatelessWidget {
     final String meta = <String>[
       '${(download.progress * 100).round()}%',
       if (download.speedBps != null) '↓ ${fmtSpeedBps(download.speedBps!)}',
-      if (download.upSpeedBps != null)
-        '↑ ${fmtSpeedBps(download.upSpeedBps!)}',
+      if (download.upSpeedBps != null) '↑ ${fmtSpeedBps(download.upSpeedBps!)}',
       if (download.eta != null) download.eta!,
       if (instanceLabel != null) instanceLabel!,
     ].join(' · ');

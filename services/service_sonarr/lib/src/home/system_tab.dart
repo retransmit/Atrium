@@ -579,12 +579,13 @@ class _DiskSpaceCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicatorM3E(
-                  shape: ProgressM3EShape.flat,
-                  value: usedPercent,
-                  trackColor: theme.colorScheme.surfaceContainerHighest,
-                  activeColor: usedPercent > 0.9
-                      ? theme.colorScheme.error
-                      : theme.colorScheme.primary,),
+                shape: ProgressM3EShape.flat,
+                value: usedPercent,
+                trackColor: theme.colorScheme.surfaceContainerHighest,
+                activeColor: usedPercent > 0.9
+                    ? theme.colorScheme.error
+                    : theme.colorScheme.primary,
+              ),
             ),
             const SizedBox(height: Insets.xs),
             Text(

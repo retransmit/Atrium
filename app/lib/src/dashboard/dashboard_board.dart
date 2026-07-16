@@ -85,7 +85,8 @@ class DashboardBoard extends ConsumerWidget {
   /// configured.
   static bool _hasLiveContent(WidgetRef ref, DashboardWidgetKind kind) {
     return switch (kind) {
-      DashboardWidgetKind.downloads => ref.watch(activeDownloadCountProvider) > 0,
+      DashboardWidgetKind.downloads =>
+        ref.watch(activeDownloadCountProvider) > 0,
       DashboardWidgetKind.streams => ref.watch(activeStreamCountProvider) > 0,
       _ => true,
     };

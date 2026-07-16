@@ -13,7 +13,9 @@ class ConnectSettingsScreen extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _selectNotificationPresetAndAdd(
-      BuildContext context, WidgetRef ref,) async {
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final schemasAsync = ref.read(radarrNotificationSchemaProvider(instance));
     final presets = schemasAsync.value ?? [];
     if (presets.isEmpty) {
@@ -56,7 +58,12 @@ class ConnectSettingsScreen extends ConsumerWidget {
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         Navigator.pop(context);
-                        _showNotificationEditorDialog(context, ref, preset, isNew: true);
+                        _showNotificationEditorDialog(
+                          context,
+                          ref,
+                          preset,
+                          isNew: true,
+                        );
                       },
                     );
                   },
@@ -70,8 +77,11 @@ class ConnectSettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _showNotificationEditorDialog(
-      BuildContext context, WidgetRef ref, Map<String, dynamic> notification,
-      {bool isNew = false,}) async {
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> notification, {
+    bool isNew = false,
+  }) async {
     final fields = (notification['fields'] as List<dynamic>?)
             ?.map((dynamic f) => f as Map<String, dynamic>)
             .toList() ??
@@ -82,28 +92,37 @@ class ConnectSettingsScreen extends ConsumerWidget {
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          title: Text(isNew ? 'Add ${notification['name']}' : 'Edit ${notification['name']}'),
+          title: Text(
+            isNew
+                ? 'Add ${notification['name']}'
+                : 'Edit ${notification['name']}',
+          ),
           content: SizedBox(
             width: double.maxFinite,
             child: SingleChildScrollView(
               child: DynamicSchemaForm(
                 fields: fields,
                 onTest: (updatedFields) async {
-                  final api = await ref.read(radarrApiProvider(instance).future);
+                  final api =
+                      await ref.read(radarrApiProvider(instance).future);
                   final payload = Map<String, dynamic>.from(notification);
                   payload['fields'] = updatedFields;
                   await api.testNotification(payload);
                 },
                 onSave: (updatedFields) async {
                   try {
-                    final api = await ref.read(radarrApiProvider(instance).future);
+                    final api =
+                        await ref.read(radarrApiProvider(instance).future);
                     final payload = Map<String, dynamic>.from(notification);
                     payload['fields'] = updatedFields;
 
                     if (isNew) {
                       await api.createNotification(payload);
                     } else {
-                      await api.updateNotification(payload, payload['id'] as int);
+                      await api.updateNotification(
+                        payload,
+                        payload['id'] as int,
+                      );
                     }
 
                     ref.invalidate(radarrNotificationsProvider(instance));
@@ -111,14 +130,18 @@ class ConnectSettingsScreen extends ConsumerWidget {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Notification ${isNew ? 'added' : 'updated'}!'),
+                          content: Text(
+                            'Notification ${isNew ? 'added' : 'updated'}!',
+                          ),
                         ),
                       );
                     }
                   } catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Failed to save notification: $e')),
+                        SnackBar(
+                          content: Text('Failed to save notification: $e'),
+                        ),
                       );
                     }
                   }
@@ -132,7 +155,11 @@ class ConnectSettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _deleteNotification(
-      BuildContext context, WidgetRef ref, int id, String name,) async {
+    BuildContext context,
+    WidgetRef ref,
+    int id,
+    String name,
+  ) async {
     final confirmed = await confirmDelete(context, 'Notification "$name"');
     if (!confirmed) return;
 
@@ -175,7 +202,9 @@ class ConnectSettingsScreen extends ConsumerWidget {
         data: (notifications) {
           if (notifications.isEmpty) {
             return const Center(
-              child: Text('No connection notifications configured. Tap + to add one.'),
+              child: Text(
+                'No connection notifications configured. Tap + to add one.',
+              ),
             );
           }
 
@@ -192,18 +221,26 @@ class ConnectSettingsScreen extends ConsumerWidget {
                 margin: const EdgeInsets.only(bottom: 12),
                 color: theme.colorScheme.surfaceContainerLow,
                 child: ListTile(
-                  title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text(
+                    name,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   subtitle: Text('Type: $impl'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
                         icon: const Icon(Icons.edit_outlined),
-                        onPressed: () => _showNotificationEditorDialog(context, ref, n),
+                        onPressed: () =>
+                            _showNotificationEditorDialog(context, ref, n),
                       ),
                       IconButton(
-                        icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
-                        onPressed: () => _deleteNotification(context, ref, id, name),
+                        icon: Icon(
+                          Icons.delete_outline,
+                          color: theme.colorScheme.error,
+                        ),
+                        onPressed: () =>
+                            _deleteNotification(context, ref, id, name),
                       ),
                     ],
                   ),

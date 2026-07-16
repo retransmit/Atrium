@@ -50,12 +50,10 @@ class DashboardUpcomingWidget extends ConsumerWidget {
       }
     }
 
-    final List<CalendarEvent> upcoming = events
-        .where((CalendarEvent e) {
-          final DateTime d = e.date.toLocal();
-          return !d.isBefore(windowStart) && d.isBefore(windowEnd);
-        })
-        .toList()
+    final List<CalendarEvent> upcoming = events.where((CalendarEvent e) {
+      final DateTime d = e.date.toLocal();
+      return !d.isBefore(windowStart) && d.isBefore(windowEnd);
+    }).toList()
       ..sort((CalendarEvent a, CalendarEvent b) => a.date.compareTo(b.date));
     final List<CalendarEvent> top = upcoming.take(5).toList();
 
@@ -126,7 +124,8 @@ class DashboardUpcomingWidget extends ConsumerWidget {
       if (upcoming.length > top.length) {
         rows.add(Padding(
           padding: const EdgeInsets.only(top: Insets.sm),
-          child: DashboardIdleRow(text: '+${upcoming.length - top.length} more'),
+          child:
+              DashboardIdleRow(text: '+${upcoming.length - top.length} more'),
         ));
       }
       body = Column(

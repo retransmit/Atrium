@@ -86,7 +86,8 @@ class ServicesDrawer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
-    final List<Profile> profiles = ref.watch(profileListProvider).value ?? <Profile>[];
+    final List<Profile> profiles =
+        ref.watch(profileListProvider).value ?? <Profile>[];
 
     return Drawer(
       child: SafeArea(
@@ -186,12 +187,20 @@ class ServicesDrawer extends ConsumerWidget {
                         return _ProfilePill(
                           label: profile?.name ?? 'Default',
                           onTap: () async {
-                            final RenderBox button = pillContext.findRenderObject()! as RenderBox;
-                            final RenderBox overlay = Navigator.of(context, rootNavigator: true).overlay!.context.findRenderObject()! as RenderBox;
+                            final RenderBox button =
+                                pillContext.findRenderObject()! as RenderBox;
+                            final RenderBox overlay =
+                                Navigator.of(context, rootNavigator: true)
+                                    .overlay!
+                                    .context
+                                    .findRenderObject()! as RenderBox;
                             final RelativeRect position = RelativeRect.fromRect(
                               Rect.fromPoints(
-                                button.localToGlobal(const Offset(0, -100), ancestor: overlay),
-                                button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
+                                button.localToGlobal(const Offset(0, -100),
+                                    ancestor: overlay),
+                                button.localToGlobal(
+                                    button.size.bottomRight(Offset.zero),
+                                    ancestor: overlay),
                               ),
                               Offset.zero & overlay.size,
                             );
@@ -238,7 +247,8 @@ class ServicesDrawer extends ConsumerWidget {
                                   value: 'manage',
                                   child: Row(
                                     children: <Widget>[
-                                      Icon(Icons.manage_accounts_outlined, size: 16),
+                                      Icon(Icons.manage_accounts_outlined,
+                                          size: 16),
                                       SizedBox(width: Insets.sm),
                                       Text('Manage profiles'),
                                     ],
@@ -253,7 +263,8 @@ class ServicesDrawer extends ConsumerWidget {
                               } else {
                                 // Capture before the await: switching profiles
                                 // rebuilds the tree under this context.
-                                final GoRouter router = GoRouter.of(pillContext);
+                                final GoRouter router =
+                                    GoRouter.of(pillContext);
                                 final ScaffoldState? scaffold =
                                     Scaffold.maybeOf(pillContext);
                                 await ref

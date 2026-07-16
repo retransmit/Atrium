@@ -71,7 +71,9 @@ class _DownloadClientsTab extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _selectClientPresetAndAdd(
-      BuildContext context, WidgetRef ref,) async {
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final schemasAsync = ref.read(sonarrDownloadClientSchemaProvider(instance));
     final presets = schemasAsync.value ?? [];
     if (presets.isEmpty) {
@@ -114,7 +116,12 @@ class _DownloadClientsTab extends ConsumerWidget {
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         Navigator.pop(context);
-                        _showClientEditorDialog(context, ref, preset, isNew: true);
+                        _showClientEditorDialog(
+                          context,
+                          ref,
+                          preset,
+                          isNew: true,
+                        );
                       },
                     );
                   },
@@ -128,8 +135,11 @@ class _DownloadClientsTab extends ConsumerWidget {
   }
 
   Future<void> _showClientEditorDialog(
-      BuildContext context, WidgetRef ref, Map<String, dynamic> client,
-      {bool isNew = false,}) async {
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> client, {
+    bool isNew = false,
+  }) async {
     final fields = (client['fields'] as List<dynamic>?)
             ?.map((dynamic f) => f as Map<String, dynamic>)
             .toList() ??
@@ -140,21 +150,24 @@ class _DownloadClientsTab extends ConsumerWidget {
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
-          title: Text(isNew ? 'Add ${client['name']}' : 'Edit ${client['name']}'),
+          title:
+              Text(isNew ? 'Add ${client['name']}' : 'Edit ${client['name']}'),
           content: SizedBox(
             width: double.maxFinite,
             child: SingleChildScrollView(
               child: DynamicSchemaForm(
                 fields: fields,
                 onTest: (updatedFields) async {
-                  final api = await ref.read(sonarrApiProvider(instance).future);
+                  final api =
+                      await ref.read(sonarrApiProvider(instance).future);
                   final payload = Map<String, dynamic>.from(client);
                   payload['fields'] = updatedFields;
                   await api.testDownloadClient(payload);
                 },
                 onSave: (updatedFields) async {
                   try {
-                    final api = await ref.read(sonarrApiProvider(instance).future);
+                    final api =
+                        await ref.read(sonarrApiProvider(instance).future);
                     final payload = Map<String, dynamic>.from(client);
                     payload['fields'] = updatedFields;
 
@@ -169,8 +182,10 @@ class _DownloadClientsTab extends ConsumerWidget {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text(
-                                'Download client ${isNew ? 'added' : 'updated'}!',),),
+                          content: Text(
+                            'Download client ${isNew ? 'added' : 'updated'}!',
+                          ),
+                        ),
                       );
                     }
                   } catch (e) {
@@ -190,7 +205,10 @@ class _DownloadClientsTab extends ConsumerWidget {
   }
 
   Future<void> _deleteClient(
-      BuildContext context, WidgetRef ref, int id,) async {
+    BuildContext context,
+    WidgetRef ref,
+    int id,
+  ) async {
     if (!await confirmDelete(context, 'this download client')) return;
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
@@ -210,8 +228,11 @@ class _DownloadClientsTab extends ConsumerWidget {
     }
   }
 
-  String _extractField(Map<String, dynamic> client, String fieldName,
-      [String fallback = '',]) {
+  String _extractField(
+    Map<String, dynamic> client,
+    String fieldName, [
+    String fallback = '',
+  ]) {
     final fields = client['fields'] as List<dynamic>?;
     if (fields == null) return fallback;
     final typedFields = fields.cast<Map<String, dynamic>>();
@@ -296,13 +317,17 @@ class _DownloadClientsTab extends ConsumerWidget {
                             final payload = Map<String, dynamic>.from(client);
                             payload['enable'] = val;
                             await api.updateDownloadClient(payload);
-                            ref.invalidate(sonarrDownloadClientsProvider(instance));
+                            ref.invalidate(
+                              sonarrDownloadClientsProvider(instance),
+                            );
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                    content: Text(
-                                        'Failed to update client status: $e',),),
+                                  content: Text(
+                                    'Failed to update client status: $e',
+                                  ),
+                                ),
                               );
                             }
                           }
@@ -338,11 +363,17 @@ class _RemotePathMappingsTab extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _showMappingDialog(
-      BuildContext context, WidgetRef ref, [Map<String, dynamic>? mapping,]) async {
+    BuildContext context,
+    WidgetRef ref, [
+    Map<String, dynamic>? mapping,
+  ]) async {
     final isEdit = mapping != null;
-    final hostController = TextEditingController(text: mapping?['host'] as String? ?? '');
-    final remoteController = TextEditingController(text: mapping?['remotePath'] as String? ?? '');
-    final localController = TextEditingController(text: mapping?['localPath'] as String? ?? '');
+    final hostController =
+        TextEditingController(text: mapping?['host'] as String? ?? '');
+    final remoteController =
+        TextEditingController(text: mapping?['remotePath'] as String? ?? '');
+    final localController =
+        TextEditingController(text: mapping?['localPath'] as String? ?? '');
 
     await showDialog<void>(
       context: context,
@@ -388,7 +419,8 @@ class _RemotePathMappingsTab extends ConsumerWidget {
             ElevatedButton(
               onPressed: () async {
                 try {
-                  final api = await ref.read(sonarrApiProvider(instance).future);
+                  final api =
+                      await ref.read(sonarrApiProvider(instance).future);
                   final payload = mapping != null
                       ? Map<String, dynamic>.from(mapping)
                       : <String, dynamic>{};
@@ -427,7 +459,10 @@ class _RemotePathMappingsTab extends ConsumerWidget {
   }
 
   Future<void> _deleteMapping(
-      BuildContext context, WidgetRef ref, int id,) async {
+    BuildContext context,
+    WidgetRef ref,
+    int id,
+  ) async {
     if (!await confirmDelete(context, 'this path mapping')) return;
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
@@ -495,7 +530,8 @@ class _RemotePathMappingsTab extends ConsumerWidget {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.edit_outlined),
-                        onPressed: () => _showMappingDialog(context, ref, mapping),
+                        onPressed: () =>
+                            _showMappingDialog(context, ref, mapping),
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete_outline),
@@ -553,10 +589,10 @@ class _DownloadClientOptionsTabState
       payload['enableCompletedDownloadHandling'] =
           _enableCompletedDownloadHandling;
       payload['autoRedownloadFailed'] = _autoRedownloadFailed;
-      
+
       await api.updateDownloadClientConfig(payload);
       ref.invalidate(sonarrDownloadClientConfigProvider(widget.instance));
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Completed download options saved!')),
@@ -613,17 +649,21 @@ class _DownloadClientOptionsTabState
                         contentPadding: EdgeInsets.zero,
                         title: const Text('Enable Completed Download Handling'),
                         subtitle: const Text(
-                            'Automatically import finished downloads from clients',),
+                          'Automatically import finished downloads from clients',
+                        ),
                         value: _enableCompletedDownloadHandling,
                         onChanged: (val) {
-                          setState(() => _enableCompletedDownloadHandling = val);
+                          setState(
+                            () => _enableCompletedDownloadHandling = val,
+                          );
                         },
                       ),
                       SwitchListTile(
                         contentPadding: EdgeInsets.zero,
                         title: const Text('Redownload Failed'),
                         subtitle: const Text(
-                            'Search for a release alternative if download reports failure',),
+                          'Search for a release alternative if download reports failure',
+                        ),
                         value: _autoRedownloadFailed,
                         onChanged: (val) {
                           setState(() => _autoRedownloadFailed = val);

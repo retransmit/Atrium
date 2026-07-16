@@ -67,14 +67,20 @@ class _QualityProfilesTab extends ConsumerWidget {
   final Instance instance;
 
   Future<void> _showProfileDialog(
-      BuildContext context, WidgetRef ref, [Map<String, dynamic>? profile,]) async {
+    BuildContext context,
+    WidgetRef ref, [
+    Map<String, dynamic>? profile,
+  ]) async {
     Map<String, dynamic>? schema;
     try {
-      schema = await ref.read(radarrQualityProfileSchemaProvider(instance).future);
+      schema =
+          await ref.read(radarrQualityProfileSchemaProvider(instance).future);
     } catch (_) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to load quality profile schema')),
+          const SnackBar(
+            content: Text('Failed to load quality profile schema'),
+          ),
         );
       }
       return;
@@ -87,9 +93,12 @@ class _QualityProfilesTab extends ConsumerWidget {
       text: (profile?['name'] as String?) ?? '',
     );
 
-    final sourceItems = (profile?['items'] ?? schema!['items']) as List<dynamic>;
+    final sourceItems =
+        (profile?['items'] ?? schema!['items']) as List<dynamic>;
     final editableItems = sourceItems
-        .map((dynamic e) => Map<String, dynamic>.from(e as Map<String, dynamic>))
+        .map(
+          (dynamic e) => Map<String, dynamic>.from(e as Map<String, dynamic>),
+        )
         .toList();
 
     bool upgradeAllowed = profile?['upgradeAllowed'] as bool? ?? false;
@@ -114,7 +123,8 @@ class _QualityProfilesTab extends ConsumerWidget {
             }
 
             return AlertDialog(
-              title: Text(isEdit ? 'Edit Quality Profile' : 'Add Quality Profile'),
+              title:
+                  Text(isEdit ? 'Edit Quality Profile' : 'Add Quality Profile'),
               content: SizedBox(
                 width: double.maxFinite,
                 child: SingleChildScrollView(
@@ -134,12 +144,16 @@ class _QualityProfilesTab extends ConsumerWidget {
                         contentPadding: EdgeInsets.zero,
                         title: const Text('Upgrades Allowed'),
                         value: upgradeAllowed,
-                        onChanged: (val) => setDialogState(() => upgradeAllowed = val),
+                        onChanged: (val) =>
+                            setDialogState(() => upgradeAllowed = val),
                       ),
                       if (upgradeAllowed && cutoffOptions.isNotEmpty) ...[
                         const SizedBox(height: Insets.md),
                         DropdownButtonFormField<int>(
-                          initialValue: cutoffOptions.any((q) => q['id'] == cutoffId) ? cutoffId : null,
+                          initialValue:
+                              cutoffOptions.any((q) => q['id'] == cutoffId)
+                                  ? cutoffId
+                                  : null,
                           decoration: const InputDecoration(
                             labelText: 'Upgrade Cutoff',
                             border: OutlineInputBorder(),
@@ -216,7 +230,8 @@ class _QualityProfilesTab extends ConsumerWidget {
                         : allowedIds.first;
 
                     try {
-                      final api = await ref.read(radarrApiProvider(instance).future);
+                      final api =
+                          await ref.read(radarrApiProvider(instance).future);
                       final payload = isEdit
                           ? Map<String, dynamic>.from(profile)
                           : Map<String, dynamic>.from(schema!);
@@ -227,7 +242,10 @@ class _QualityProfilesTab extends ConsumerWidget {
                       payload['items'] = editableItems;
 
                       if (isEdit) {
-                        await api.updateQualityProfile(payload, payload['id'] as int);
+                        await api.updateQualityProfile(
+                          payload,
+                          payload['id'] as int,
+                        );
                       } else {
                         // Remove id for creation
                         payload.remove('id');
@@ -286,7 +304,10 @@ class _QualityProfilesTab extends ConsumerWidget {
                 margin: const EdgeInsets.only(bottom: 12),
                 color: theme.colorScheme.surfaceContainerLow,
                 child: ListTile(
-                  title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text(
+                    name,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   subtitle: Text(upgrade ? 'Upgrades Allowed' : 'No Upgrades'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -296,18 +317,29 @@ class _QualityProfilesTab extends ConsumerWidget {
                         onPressed: () => _showProfileDialog(context, ref, p),
                       ),
                       IconButton(
-                        icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
+                        icon: Icon(
+                          Icons.delete_outline,
+                          color: theme.colorScheme.error,
+                        ),
                         onPressed: () async {
-                          final ok = await confirmDelete(context, 'Quality Profile "$name"');
+                          final ok = await confirmDelete(
+                            context,
+                            'Quality Profile "$name"',
+                          );
                           if (ok) {
                             try {
-                              final api = await ref.read(radarrApiProvider(instance).future);
+                              final api = await ref
+                                  .read(radarrApiProvider(instance).future);
                               await api.deleteQualityProfile(p['id'] as int);
-                              ref.invalidate(radarrQualityProfilesProvider(instance));
+                              ref.invalidate(
+                                radarrQualityProfilesProvider(instance),
+                              );
                             } catch (e) {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Failed to delete: $e')),
+                                  SnackBar(
+                                    content: Text('Failed to delete: $e'),
+                                  ),
                                 );
                               }
                             }
@@ -356,8 +388,12 @@ class _DelayProfilesTab extends ConsumerWidget {
               margin: const EdgeInsets.only(bottom: 12),
               color: theme.colorScheme.surfaceContainerLow,
               child: ListTile(
-                title: Text('Delay Profile (Usenet: ${usenet}m, Torrent: ${torrent}m)'),
-                subtitle: Text('Protocol preference: ${p['preferredProtocol'] ?? 'None'}'),
+                title: Text(
+                  'Delay Profile (Usenet: ${usenet}m, Torrent: ${torrent}m)',
+                ),
+                subtitle: Text(
+                  'Protocol preference: ${p['preferredProtocol'] ?? 'None'}',
+                ),
               ),
             );
           },
@@ -396,7 +432,10 @@ class _CustomFormatsTab extends ConsumerWidget {
               margin: const EdgeInsets.only(bottom: 12),
               color: theme.colorScheme.surfaceContainerLow,
               child: ListTile(
-                title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                title: Text(
+                  name,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
                 subtitle: Text(f['description'] as String? ?? ''),
               ),
             );

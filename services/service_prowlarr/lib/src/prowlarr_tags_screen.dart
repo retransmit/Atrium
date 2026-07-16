@@ -42,13 +42,14 @@ class ProwlarrTagsScreen extends ConsumerWidget {
                 message: 'Tap Add to create a tag.',
               );
             }
-            final List<Map<String, dynamic>> sorted =
-                <Map<String, dynamic>>[...items]..sort(
-                    (Map<String, dynamic> a, Map<String, dynamic> b) =>
-                        ((a['label'] ?? '') as String)
-                            .toLowerCase()
-                            .compareTo(((b['label'] ?? '') as String).toLowerCase()),
-                  );
+            final List<Map<String, dynamic>> sorted = <Map<String, dynamic>>[
+              ...items,
+            ]..sort(
+                (Map<String, dynamic> a, Map<String, dynamic> b) =>
+                    ((a['label'] ?? '') as String).toLowerCase().compareTo(
+                          ((b['label'] ?? '') as String).toLowerCase(),
+                        ),
+              );
             return ListView.builder(
               padding: Insets.pageH,
               itemCount: sorted.length,

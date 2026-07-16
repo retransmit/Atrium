@@ -29,7 +29,8 @@ class BazarrSeriesDetailScreen extends ConsumerWidget {
     final AsyncValue<List<BazarrEpisode>> episodes =
         ref.watch(bazarrEpisodesProvider(args));
     return Scaffold(
-      appBar: AppBar(title: Text(series.title, overflow: TextOverflow.ellipsis)),
+      appBar:
+          AppBar(title: Text(series.title, overflow: TextOverflow.ellipsis)),
       body: M3RefreshIndicator(
         onRefresh: () async => ref.invalidate(bazarrEpisodesProvider(args)),
         child: AsyncValueView<List<BazarrEpisode>>(
@@ -157,8 +158,7 @@ class _EpisodeCard extends ConsumerWidget {
   final Instance instance;
   final BazarrEpisode episode;
 
-  String get _code =>
-      'S${(episode.season ?? 0).toString().padLeft(2, '0')}'
+  String get _code => 'S${(episode.season ?? 0).toString().padLeft(2, '0')}'
       'E${(episode.episode ?? 0).toString().padLeft(2, '0')}';
 
   @override
@@ -190,8 +190,8 @@ class _EpisodeCard extends ConsumerWidget {
                 tooltip: 'Search subtitles',
                 visualDensity: VisualDensity.compact,
                 icon: const Icon(Icons.subtitles_outlined),
-                onPressed: () => Navigator.of(context, rootNavigator: true)
-                    .push(
+                onPressed: () =>
+                    Navigator.of(context, rootNavigator: true).push(
                   MaterialPageRoute<void>(
                     builder: (_) => BazarrSubtitleSearchScreen(
                       instance: instance,
@@ -261,8 +261,7 @@ class _EpisodeCard extends ConsumerWidget {
       return;
     }
     try {
-      final BazarrApi api =
-          await ref.read(bazarrApiProvider(instance).future);
+      final BazarrApi api = await ref.read(bazarrApiProvider(instance).future);
       await api.deleteEpisodeSubtitle(
         seriesId: episode.sonarrSeriesId,
         episodeId: episode.sonarrEpisodeId,

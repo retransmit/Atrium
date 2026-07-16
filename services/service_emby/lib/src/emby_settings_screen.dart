@@ -13,7 +13,7 @@ class EmbySettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<({double progress, String state})?> scanState = 
+    final AsyncValue<({double progress, String state})?> scanState =
         ref.watch(embyLibraryScanProvider(instance));
 
     return Scaffold(
@@ -30,10 +30,13 @@ class EmbySettingsScreen extends ConsumerWidget {
                 if (data == null || data.state == 'Idle') {
                   return const Text('Ready');
                 }
-                return Text('${data.state} - ${data.progress.toStringAsFixed(1)}%');
+                return Text(
+                  '${data.state} - ${data.progress.toStringAsFixed(1)}%',
+                );
               },
               loading: () => const Text('Checking status...'),
-              error: (Object err, StackTrace stack) => const Text('Error checking status'),
+              error: (Object err, StackTrace stack) =>
+                  const Text('Error checking status'),
             ),
             trailing: scanState.maybeWhen(
               data: (({double progress, String state})? data) {
@@ -46,7 +49,8 @@ class EmbySettingsScreen extends ConsumerWidget {
                   icon: const Icon(Icons.play_arrow),
                   onPressed: () async {
                     try {
-                      final EmbyClient client = await ref.read(embyClientProvider(instance).future);
+                      final EmbyClient client =
+                          await ref.read(embyClientProvider(instance).future);
                       await client.startLibraryScan();
                       if (!context.mounted) return;
                       ref.invalidate(embyLibraryScanProvider(instance));

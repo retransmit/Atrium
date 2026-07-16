@@ -90,7 +90,8 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
     end: _kDragSizeFactorLimit,
   );
 
-  static final Animatable<double> _oneToZeroTween = Tween<double>(begin: 1.0, end: 0.0);
+  static final Animatable<double> _oneToZeroTween =
+      Tween<double>(begin: 1.0, end: 0.0);
 
   static final _loadingSequence = <RoundedPolygon>[
     MaterialShapes.verySunny,
@@ -139,7 +140,8 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
   }
 
   bool _shouldStart(ScrollNotification notification) {
-    return ((notification is ScrollStartNotification && notification.dragDetails != null) ||
+    return ((notification is ScrollStartNotification &&
+                notification.dragDetails != null) ||
             (notification is ScrollUpdateNotification &&
                 notification.dragDetails != null &&
                 widget.triggerMode == RefreshIndicatorTriggerMode.anywhere)) &&
@@ -171,7 +173,10 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
   }
 
   void _checkDragOffset(double containerExtent) {
-    assert(_status == RefreshIndicatorStatus.drag || _status == RefreshIndicatorStatus.armed);
+    assert(
+      _status == RefreshIndicatorStatus.drag ||
+          _status == RefreshIndicatorStatus.armed,
+    );
     // Custom trigger distance mapping
     double newValue = _dragOffset! / widget.triggerDistance;
     if (_status == RefreshIndicatorStatus.armed) {
@@ -196,16 +201,19 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
       });
       return false;
     }
-    final bool? indicatorAtTopNow = switch (notification.metrics.axisDirection) {
+    final bool? indicatorAtTopNow =
+        switch (notification.metrics.axisDirection) {
       AxisDirection.down || AxisDirection.up => true,
       AxisDirection.left || AxisDirection.right => null,
     };
     if (indicatorAtTopNow != _isIndicatorAtTop) {
-      if (_status == RefreshIndicatorStatus.drag || _status == RefreshIndicatorStatus.armed) {
+      if (_status == RefreshIndicatorStatus.drag ||
+          _status == RefreshIndicatorStatus.armed) {
         _dismiss(RefreshIndicatorStatus.canceled);
       }
     } else if (notification is ScrollUpdateNotification) {
-      if (_status == RefreshIndicatorStatus.drag || _status == RefreshIndicatorStatus.armed) {
+      if (_status == RefreshIndicatorStatus.drag ||
+          _status == RefreshIndicatorStatus.armed) {
         if (notification.metrics.axisDirection == AxisDirection.down) {
           _dragOffset = _dragOffset! - notification.scrollDelta!;
         } else if (notification.metrics.axisDirection == AxisDirection.up) {
@@ -213,12 +221,14 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
         }
         _checkDragOffset(notification.metrics.viewportDimension);
       }
-      if (_status == RefreshIndicatorStatus.armed && notification.dragDetails == null) {
+      if (_status == RefreshIndicatorStatus.armed &&
+          notification.dragDetails == null) {
         // iOS bounce back release trigger
         _show();
       }
     } else if (notification is OverscrollNotification) {
-      if (_status == RefreshIndicatorStatus.drag || _status == RefreshIndicatorStatus.armed) {
+      if (_status == RefreshIndicatorStatus.drag ||
+          _status == RefreshIndicatorStatus.armed) {
         if (notification.metrics.axisDirection == AxisDirection.down) {
           _dragOffset = _dragOffset! - notification.overscroll;
         } else if (notification.metrics.axisDirection == AxisDirection.up) {
@@ -247,7 +257,9 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
     return false;
   }
 
-  bool _handleIndicatorNotification(OverscrollIndicatorNotification notification) {
+  bool _handleIndicatorNotification(
+    OverscrollIndicatorNotification notification,
+  ) {
     if (notification.depth != 0 || !notification.leading) {
       return false;
     }
@@ -260,15 +272,24 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
 
   Future<void> _dismiss(RefreshIndicatorStatus newMode) async {
     await Future<void>.value();
-    assert(newMode == RefreshIndicatorStatus.canceled || newMode == RefreshIndicatorStatus.done);
+    assert(
+      newMode == RefreshIndicatorStatus.canceled ||
+          newMode == RefreshIndicatorStatus.done,
+    );
     setState(() {
       _status = newMode;
     });
     switch (_status!) {
       case RefreshIndicatorStatus.done:
-        await _scaleController.animateTo(1.0, duration: _kIndicatorScaleDuration);
+        await _scaleController.animateTo(
+          1.0,
+          duration: _kIndicatorScaleDuration,
+        );
       case RefreshIndicatorStatus.canceled:
-        await _positionController.animateTo(0.0, duration: _kIndicatorScaleDuration);
+        await _positionController.animateTo(
+          0.0,
+          duration: _kIndicatorScaleDuration,
+        );
       case RefreshIndicatorStatus.armed:
       case RefreshIndicatorStatus.drag:
       case RefreshIndicatorStatus.refresh:
@@ -293,7 +314,10 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
     _pendingRefreshFuture = completer.future;
     _status = RefreshIndicatorStatus.snap;
     _positionController
-        .animateTo(1.0 / _kDragSizeFactorLimit, duration: _kIndicatorSnapDuration)
+        .animateTo(
+      1.0 / _kDragSizeFactorLimit,
+      duration: _kIndicatorSnapDuration,
+    )
         .then<void>((void value) {
       if (mounted && _status == RefreshIndicatorStatus.snap) {
         setState(() {
@@ -312,7 +336,8 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
   }
 
   Future<void> show({bool atTop = true}) {
-    if (_status != RefreshIndicatorStatus.refresh && _status != RefreshIndicatorStatus.snap) {
+    if (_status != RefreshIndicatorStatus.refresh &&
+        _status != RefreshIndicatorStatus.snap) {
       if (_status == null) {
         _start(atTop ? AxisDirection.down : AxisDirection.up);
       }
@@ -353,7 +378,8 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
     final sz = widget.indicatorSize;
 
     final bool showIndeterminateIndicator =
-        _status == RefreshIndicatorStatus.refresh || _status == RefreshIndicatorStatus.done;
+        _status == RefreshIndicatorStatus.refresh ||
+            _status == RefreshIndicatorStatus.done;
 
     return Stack(
       children: <Widget>[
@@ -372,7 +398,9 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
                     ? EdgeInsets.only(top: widget.displacement)
                     : EdgeInsets.only(bottom: widget.displacement),
                 child: Align(
-                  alignment: _isIndicatorAtTop! ? Alignment.topCenter : Alignment.bottomCenter,
+                  alignment: _isIndicatorAtTop!
+                      ? Alignment.topCenter
+                      : Alignment.bottomCenter,
                   child: ScaleTransition(
                     scale: _scaleFactor,
                     child: AnimatedBuilder(
@@ -384,8 +412,9 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
                         double angle;
 
                         if (!showIndeterminateIndicator) {
-                          final progress =
-                              (_positionController.value * _kDragSizeFactorLimit).clamp(0.0, 1.0);
+                          final progress = (_positionController.value *
+                                  _kDragSizeFactorLimit)
+                              .clamp(0.0, 1.0);
                           final (a, b, t) = _dragBlend(progress);
                           shapeA = a;
                           shapeB = b;
@@ -393,9 +422,13 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
                           angle = progress * math.pi * 2.2;
                         } else {
                           shapeA = _loadingSequence[_loadIndex];
-                          shapeB = _loadingSequence[(_loadIndex + 1) % _loadingSequence.length];
-                          morphT = Curves.elasticOut.transform(_loadCtrl.value).clamp(0.0, 1.0);
-                          angle = _loadCtrl.value * math.pi * 1.5 + _loadIndex * math.pi * 0.6;
+                          shapeB = _loadingSequence[
+                              (_loadIndex + 1) % _loadingSequence.length];
+                          morphT = Curves.elasticOut
+                              .transform(_loadCtrl.value)
+                              .clamp(0.0, 1.0);
+                          angle = _loadCtrl.value * math.pi * 1.5 +
+                              _loadIndex * math.pi * 0.6;
                         }
 
                         return Container(

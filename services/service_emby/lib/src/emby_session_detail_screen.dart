@@ -57,7 +57,8 @@ class _EmbySessionDetailScreenState
     final AsyncValue<List<ActiveSession>> sessionsAsync =
         ref.watch(embyFastSessionsProvider(widget.instance));
     final ActiveSession session = sessionsAsync.value?.firstWhereOrNull(
-            (ActiveSession s) => s.id == widget.initialSession.id,) ??
+          (ActiveSession s) => s.id == widget.initialSession.id,
+        ) ??
         widget.initialSession;
 
     final String? posterUrl = session.posterUrl;
@@ -70,8 +71,8 @@ class _EmbySessionDetailScreenState
       final Color vibrant = _palette!.vibrantColor?.color ??
           _palette!.lightVibrantColor?.color ??
           dominant;
-      final Color muted =
-          _palette!.mutedColor?.color ?? theme.colorScheme.surfaceContainerHighest;
+      final Color muted = _palette!.mutedColor?.color ??
+          theme.colorScheme.surfaceContainerHighest;
       final Color darkMuted = _palette!.darkMutedColor?.color ?? dominant;
       final Color titleText = _palette!.dominantColor?.titleTextColor ??
           theme.colorScheme.onSurface;
@@ -105,616 +106,690 @@ class _EmbySessionDetailScreenState
     return Theme(
       data: theme,
       child: Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.keyboard_arrow_down, size: 32),
-          onPressed: () => Navigator.of(context).pop(),
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.keyboard_arrow_down, size: 32),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          title: Column(
+            children: <Widget>[
+              Text(
+                'STREAMING ON',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  letterSpacing: 1.2,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              Text(
+                session.device,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
+          centerTitle: true,
         ),
-        title: Column(
+        body: Stack(
+          fit: StackFit.expand,
           children: <Widget>[
-            Text(
-              'STREAMING ON',
-              style: theme.textTheme.labelSmall?.copyWith(
-                letterSpacing: 1.2,
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.onSurfaceVariant,
+            // Background blurred image
+            if (session.posterUrl != null)
+              CachedNetworkImage(
+                imageUrl: session.posterUrl!,
+                fit: BoxFit.cover,
+                errorWidget: (_, __, ___) =>
+                    Container(color: theme.colorScheme.surface),
               ),
-            ),
-            Text(
-              session.device,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-          ],
-        ),
-        centerTitle: true,
-      ),
-      body: Stack(
-        fit: StackFit.expand,
-        children: <Widget>[
-          // Background blurred image
-          if (session.posterUrl != null)
-            CachedNetworkImage(
-              imageUrl: session.posterUrl!,
-              fit: BoxFit.cover,
-              errorWidget: (_, __, ___) =>
-                  Container(color: theme.colorScheme.surface),
-            ),
-          // Blur and gradient overlay
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: const <double>[0.0, 0.5, 1.0],
-                  colors: <Color>[
-                    Colors.black.withValues(alpha: 0.5),
-                    theme.colorScheme.surface.withValues(alpha: 0.8),
-                    Colors.black.withValues(alpha: 0.95),
-                  ],
+            // Blur and gradient overlay
+            BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: const <double>[0.0, 0.5, 1.0],
+                    colors: <Color>[
+                      Colors.black.withValues(alpha: 0.5),
+                      theme.colorScheme.surface.withValues(alpha: 0.8),
+                      Colors.black.withValues(alpha: 0.95),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          // Content
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Insets.xl),
-              child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: <Widget>[
-                  // Volume Control
-                  Row(
-                    children: <Widget>[
-                      IconButton(
-                        icon: Icon(
-                          session.isMuted || session.volumeLevel == 0
-                              ? Icons.volume_off
-                              : Icons.volume_up,
-                          color: theme.colorScheme.primary,
-                        ),
-                        onPressed: () async {
-                          final ScaffoldMessengerState messenger =
-                              ScaffoldMessenger.of(context);
-                          try {
-                            final EmbyClient client = await ref.read(
-                                embyClientProvider(widget.instance).future,);
-                            await client.toggleMute(session.id);
-                            if (mounted) {
-                              ref.invalidate(
-                                  embyFastSessionsProvider(widget.instance),);
+            // Content
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Insets.xl),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    // Volume Control
+                    Row(
+                      children: <Widget>[
+                        IconButton(
+                          icon: Icon(
+                            session.isMuted || session.volumeLevel == 0
+                                ? Icons.volume_off
+                                : Icons.volume_up,
+                            color: theme.colorScheme.primary,
+                          ),
+                          onPressed: () async {
+                            final ScaffoldMessengerState messenger =
+                                ScaffoldMessenger.of(context);
+                            try {
+                              final EmbyClient client = await ref.read(
+                                embyClientProvider(widget.instance).future,
+                              );
+                              await client.toggleMute(session.id);
+                              if (mounted) {
+                                ref.invalidate(
+                                  embyFastSessionsProvider(widget.instance),
+                                );
+                              }
+                            } catch (_) {
+                              messenger.showSnackBar(
+                                const SnackBar(content: Text('Action failed')),
+                              );
                             }
-                          } catch (_) {
-                            messenger.showSnackBar(
-                              const SnackBar(content: Text('Action failed')),
-                            );
-                          }
-                        },
+                          },
+                        ),
+                        Expanded(
+                          child: SliderTheme(
+                            data: SliderTheme.of(context).copyWith(
+                              trackHeight: 16,
+                              thumbShape: const ExpressiveSliderThumbShape(),
+                              trackShape: const ExpressiveSliderTrackShape(),
+                              overlayShape: const RoundSliderOverlayShape(),
+                              activeTrackColor: theme.colorScheme.primary,
+                              inactiveTrackColor:
+                                  Colors.white.withValues(alpha: 0.2),
+                              thumbColor: theme.colorScheme.primary,
+                            ),
+                            child: Slider(
+                              value: _isVolumeDragging
+                                  ? _volumeDragPct
+                                  : (session.volumeLevel / 100.0)
+                                      .clamp(0.0, 1.0),
+                              onChangeStart: (double val) {
+                                setState(() {
+                                  _isVolumeDragging = true;
+                                  _volumeDragPct = val;
+                                });
+                              },
+                              onChanged: (double val) {
+                                setState(() {
+                                  _volumeDragPct = val;
+                                });
+                              },
+                              onChangeEnd: (double val) async {
+                                setState(() {
+                                  _isVolumeDragging = false;
+                                });
+                                final int targetVol = (val * 100).round();
+                                final ScaffoldMessengerState messenger =
+                                    ScaffoldMessenger.of(context);
+                                try {
+                                  final EmbyClient client = await ref.read(
+                                    embyClientProvider(widget.instance).future,
+                                  );
+                                  await client.setVolume(session.id, targetVol);
+                                  if (mounted) {
+                                    ref.invalidate(
+                                      embyFastSessionsProvider(
+                                        widget.instance,
+                                      ),
+                                    );
+                                  }
+                                } catch (_) {
+                                  messenger.showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Action failed'),
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: Insets.md),
+                      ],
+                    ),
+
+                    const Spacer(),
+
+                    // Artwork with animated music bars
+                    Flexible(
+                      flex: 20,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          // Left animated music bars
+                          AnimatedMusicBars(
+                            color: theme.colorScheme.primary,
+                            isPlaying: playing,
+                          ),
+                          const SizedBox(width: Insets.sm),
+                          // Album art
+                          Flexible(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                maxHeight: 420,
+                                maxWidth: 420,
+                              ),
+                              child: AspectRatio(
+                                aspectRatio: session.aspectRatio != null &&
+                                        session.aspectRatio! > 0.0
+                                    ? session.aspectRatio!
+                                    : (2 / 3),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: theme
+                                        .colorScheme.surfaceContainerHighest,
+                                    borderRadius: Radii.card,
+                                    boxShadow: <BoxShadow>[
+                                      BoxShadow(
+                                        color:
+                                            Colors.black.withValues(alpha: 0.4),
+                                        blurRadius: 20,
+                                        offset: const Offset(0, 10),
+                                      ),
+                                    ],
+                                    image: session.posterUrl != null
+                                        ? DecorationImage(
+                                            image: CachedNetworkImageProvider(
+                                              session.posterUrl!,
+                                            ),
+                                            fit: BoxFit.cover,
+                                          )
+                                        : null,
+                                  ),
+                                  child: session.posterUrl == null
+                                      ? Icon(
+                                          Icons.movie_outlined,
+                                          color: theme.colorScheme.outline,
+                                          size: 80,
+                                        )
+                                      : null,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: Insets.sm),
+                          // Right animated music bars
+                          AnimatedMusicBars(
+                            color: theme.colorScheme.primary,
+                            isPlaying: playing,
+                          ),
+                        ],
                       ),
-                      Expanded(
-                        child: SliderTheme(
-                          data: SliderTheme.of(context).copyWith(
+                    ),
+
+                    const SizedBox(height: Insets.lg),
+
+                    // Track Info
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          SizedBox(
+                            height:
+                                (theme.textTheme.titleLarge?.fontSize ?? 22) *
+                                    1.5,
+                            child: AutoScrollText(
+                              text: session.showTitle,
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                height: 1.2,
+                              ),
+                            ),
+                          ),
+                          if (session.episodeName != null) ...<Widget>[
+                            const SizedBox(height: Insets.xs),
+                            SizedBox(
+                              height: (theme.textTheme.titleMedium?.fontSize ??
+                                      16) *
+                                  1.5,
+                              child: AutoScrollText(
+                                text: session.episodeName!,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+
+                    // Progress Bar & Timestamps
+                    Column(
+                      children: <Widget>[
+                        SliderTheme(
+                          data: SliderThemeData(
                             trackHeight: 16,
+                            activeTrackColor: theme.colorScheme.primary,
+                            inactiveTrackColor:
+                                theme.colorScheme.surfaceContainerHighest,
+                            thumbColor: theme.colorScheme.primary,
                             thumbShape: const ExpressiveSliderThumbShape(),
                             trackShape: const ExpressiveSliderTrackShape(),
                             overlayShape: const RoundSliderOverlayShape(),
-                            activeTrackColor: theme.colorScheme.primary,
-                            inactiveTrackColor: Colors.white.withValues(alpha: 0.2),
-                            thumbColor: theme.colorScheme.primary,
                           ),
                           child: Slider(
-                            value: _isVolumeDragging
-                                ? _volumeDragPct
-                                : (session.volumeLevel / 100.0)
-                                    .clamp(0.0, 1.0),
-                            onChangeStart: (double val) {
+                            value: pct.clamp(0.0, 1.0),
+                            onChangeStart: (_) => setState(() {
+                              _isDragging = true;
+                              _dragPct = pct;
+                            }),
+                            onChanged: (double newValue) {
                               setState(() {
-                                _isVolumeDragging = true;
-                                _volumeDragPct = val;
+                                _dragPct = newValue;
                               });
                             },
-                            onChanged: (double val) {
-                              setState(() {
-                                _volumeDragPct = val;
-                              });
+                            onChangeEnd: (double newValue) async {
+                              setState(() => _isDragging = false);
+                              if (session.durationTicks > 0) {
+                                final int targetTicks =
+                                    (session.durationTicks * newValue).round();
+                                final ScaffoldMessengerState messenger =
+                                    ScaffoldMessenger.of(context);
+                                try {
+                                  final EmbyClient client = await ref.read(
+                                    embyClientProvider(widget.instance).future,
+                                  );
+                                  await client.seekSession(
+                                    session.id,
+                                    targetTicks,
+                                  );
+                                  if (!mounted) return;
+                                  ref.invalidate(
+                                    embyFastSessionsProvider(widget.instance),
+                                  );
+                                } catch (_) {
+                                  messenger.showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Action failed'),
+                                    ),
+                                  );
+                                }
+                              }
                             },
-                            onChangeEnd: (double val) async {
-                              setState(() {
-                                _isVolumeDragging = false;
-                              });
-                              final int targetVol = (val * 100).round();
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                          ), // Align with slider track
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: <Widget>[
+                              Text(
+                                session.timePosition,
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                session.timeDuration,
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: Insets.md),
+
+                    // Row 1: 10s back, Play/Pause, 10s forward
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        SizedBox(
+                          width: 80,
+                          height: 80,
+                          child: FilledButton.tonal(
+                            style: FilledButton.styleFrom(
+                              backgroundColor:
+                                  Colors.white.withValues(alpha: 0.15),
+                              foregroundColor: theme.colorScheme.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              padding: EdgeInsets.zero,
+                            ),
+                            onPressed: () async {
                               final ScaffoldMessengerState messenger =
                                   ScaffoldMessenger.of(context);
                               try {
                                 final EmbyClient client = await ref.read(
-                                    embyClientProvider(widget.instance).future,);
-                                await client.setVolume(session.id, targetVol);
-                                if (mounted) {
-                                  ref.invalidate(embyFastSessionsProvider(
-                                      widget.instance,),);
-                                }
+                                  embyClientProvider(widget.instance).future,
+                                );
+                                final int targetTicks =
+                                    session.positionTicks - 100000000;
+                                await client.seekSession(
+                                  session.id,
+                                  targetTicks < 0 ? 0 : targetTicks,
+                                );
+                                if (!mounted) return;
+                                ref.invalidate(
+                                  embyFastSessionsProvider(widget.instance),
+                                );
                               } catch (_) {
                                 messenger.showSnackBar(
                                   const SnackBar(
-                                      content: Text('Action failed'),),
+                                    content: Text('Action failed'),
+                                  ),
                                 );
                               }
                             },
+                            child: const Icon(Icons.replay_10, size: 32),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: Insets.md),
-                    ],
-                  ),
-
-                            const Spacer(),
-
-                            // Artwork with animated music bars
-                            Flexible(
-                              flex: 20,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: <Widget>[
-                                  // Left animated music bars
-                                  AnimatedMusicBars(
-                                    color: theme.colorScheme.primary,
-                                    isPlaying: playing,
-                                  ),
-                                  const SizedBox(width: Insets.sm),
-                                  // Album art
-                                  Flexible(
-                                    child: ConstrainedBox(
-                                      constraints:
-                                          const BoxConstraints(maxHeight: 420, maxWidth: 420),
-                                      child: AspectRatio(
-                                        aspectRatio: session.aspectRatio != null &&
-                                                session.aspectRatio! > 0.0
-                                            ? session.aspectRatio!
-                                            : (2 / 3),
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            color: theme.colorScheme.surfaceContainerHighest,
-                                            borderRadius: Radii.card,
-                                            boxShadow: <BoxShadow>[
-                                              BoxShadow(
-                                                color: Colors.black.withValues(alpha: 0.4),
-                                                blurRadius: 20,
-                                                offset: const Offset(0, 10),
-                                              ),
-                                            ],
-                                            image: session.posterUrl != null
-                                                ? DecorationImage(
-                                                    image: CachedNetworkImageProvider(
-                                                        session.posterUrl!,),
-                                                    fit: BoxFit.cover,
-                                                  )
-                                                : null,
-                                          ),
-                                          child: session.posterUrl == null
-                                              ? Icon(Icons.movie_outlined,
-                                                  color: theme.colorScheme.outline, size: 80,)
-                                              : null,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: Insets.sm),
-                                  // Right animated music bars
-                                  AnimatedMusicBars(
-                                    color: theme.colorScheme.primary,
-                                    isPlaying: playing,
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                  const SizedBox(height: Insets.lg),
-
-                  // Track Info
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
+                        const SizedBox(width: Insets.lg),
                         SizedBox(
-                          height: (theme.textTheme.titleLarge?.fontSize ?? 22) *
-                              1.5,
-                          child: AutoScrollText(
-                            text: session.showTitle,
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              height: 1.2,
-                            ),
-                          ),
-                        ),
-                        if (session.episodeName != null) ...<Widget>[
-                          const SizedBox(height: Insets.xs),
-                          SizedBox(
-                            height:
-                                (theme.textTheme.titleMedium?.fontSize ?? 16) *
-                                    1.5,
-                            child: AutoScrollText(
-                              text: session.episodeName!,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: Colors.white70,
-                                fontWeight: FontWeight.w500,
+                          width: 120,
+                          height: 80,
+                          child: FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor:
+                                  Colors.white.withValues(alpha: 0.2),
+                              foregroundColor: theme.colorScheme.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(32),
                               ),
+                              padding: EdgeInsets.zero,
                             ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-
-                  // Progress Bar & Timestamps
-                  Column(
-                    children: <Widget>[
-                      SliderTheme(
-                        data: SliderThemeData(
-                          trackHeight: 16,
-                          activeTrackColor: theme.colorScheme.primary,
-                          inactiveTrackColor:
-                              theme.colorScheme.surfaceContainerHighest,
-                          thumbColor: theme.colorScheme.primary,
-                          thumbShape: const ExpressiveSliderThumbShape(),
-                          trackShape: const ExpressiveSliderTrackShape(),
-                          overlayShape: const RoundSliderOverlayShape(),
-                        ),
-                        child: Slider(
-                          value: pct.clamp(0.0, 1.0),
-                          onChangeStart: (_) => setState(() {
-                            _isDragging = true;
-                            _dragPct = pct;
-                          }),
-                          onChanged: (double newValue) {
-                            setState(() {
-                              _dragPct = newValue;
-                            });
-                          },
-                          onChangeEnd: (double newValue) async {
-                            setState(() => _isDragging = false);
-                            if (session.durationTicks > 0) {
-                              final int targetTicks =
-                                  (session.durationTicks * newValue).round();
-                              final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+                            onPressed: () async {
+                              final ScaffoldMessengerState messenger =
+                                  ScaffoldMessenger.of(context);
                               try {
                                 final EmbyClient client = await ref.read(
-                                    embyClientProvider(widget.instance)
-                                        .future,);
-                                await client.seekSession(
-                                    session.id, targetTicks,);
+                                  embyClientProvider(widget.instance).future,
+                                );
+                                await client.playPauseSession(session.id);
                                 if (!mounted) return;
                                 ref.invalidate(
-                                    embyFastSessionsProvider(widget.instance),);
+                                  embyFastSessionsProvider(widget.instance),
+                                );
                               } catch (_) {
                                 messenger.showSnackBar(
                                   const SnackBar(
-                                      content: Text('Action failed'),),
+                                    content: Text('Action failed'),
+                                  ),
                                 );
                               }
-                            }
-                          },
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 24,), // Align with slider track
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: <Widget>[
-                            Text(
-                              session.timePosition,
-                              style: theme.textTheme.labelMedium?.copyWith(
-                                color: Colors.white70,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            },
+                            child: Icon(
+                              playing ? Icons.pause : Icons.play_arrow,
+                              size: 40,
                             ),
-                            Text(
-                              session.timeDuration,
-                              style: theme.textTheme.labelMedium?.copyWith(
-                                color: Colors.white70,
-                                fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: Insets.lg),
+                        SizedBox(
+                          width: 80,
+                          height: 80,
+                          child: FilledButton.tonal(
+                            style: FilledButton.styleFrom(
+                              backgroundColor:
+                                  Colors.white.withValues(alpha: 0.15),
+                              foregroundColor: theme.colorScheme.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
                               ),
+                              padding: EdgeInsets.zero,
                             ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: Insets.md),
-
-                  // Row 1: 10s back, Play/Pause, 10s forward
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      SizedBox(
-                        width: 80,
-                        height: 80,
-                        child: FilledButton.tonal(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.white.withValues(alpha: 0.15),
-                            foregroundColor: theme.colorScheme.primary,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24),),
-                            padding: EdgeInsets.zero,
-                          ),
-                          onPressed: () async {
-                            final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-                            try {
-                              final EmbyClient client = await ref.read(
-                                  embyClientProvider(widget.instance).future,);
-                              final int targetTicks = session.positionTicks - 100000000;
-                              await client.seekSession(session.id, targetTicks < 0 ? 0 : targetTicks);
-                              if (!mounted) return;
-                              ref.invalidate(
-                                  embyFastSessionsProvider(widget.instance),);
-                            } catch (_) {
-                              messenger.showSnackBar(
-                                const SnackBar(
-                                    content: Text('Action failed'),),
-                              );
-                            }
-                          },
-                          child: const Icon(Icons.replay_10, size: 32),
-                        ),
-                      ),
-                      const SizedBox(width: Insets.lg),
-                      SizedBox(
-                        width: 120,
-                        height: 80,
-                        child: FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.white.withValues(alpha: 0.2),
-                            foregroundColor: theme.colorScheme.primary,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(32),),
-                            padding: EdgeInsets.zero,
-                          ),
-                          onPressed: () async {
-                            final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-                            try {
-                              final EmbyClient client = await ref.read(
-                                  embyClientProvider(widget.instance).future,);
-                              await client.playPauseSession(session.id);
-                              if (!mounted) return;
-                              ref.invalidate(
-                                  embyFastSessionsProvider(widget.instance),);
-                            } catch (_) {
-                              messenger.showSnackBar(
-                                const SnackBar(
-                                    content: Text('Action failed'),),
-                              );
-                            }
-                          },
-                          child: Icon(playing ? Icons.pause : Icons.play_arrow,
-                              size: 40,),
-                        ),
-                      ),
-                      const SizedBox(width: Insets.lg),
-                      SizedBox(
-                        width: 80,
-                        height: 80,
-                        child: FilledButton.tonal(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.white.withValues(alpha: 0.15),
-                            foregroundColor: theme.colorScheme.primary,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24),),
-                            padding: EdgeInsets.zero,
-                          ),
-                          onPressed: () async {
-                            final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-                            try {
-                              final EmbyClient client = await ref.read(
-                                  embyClientProvider(widget.instance).future,);
-                              final int targetTicks = session.positionTicks + 100000000;
-                              if (targetTicks < session.durationTicks) {
-                                await client.seekSession(session.id, targetTicks);
+                            onPressed: () async {
+                              final ScaffoldMessengerState messenger =
+                                  ScaffoldMessenger.of(context);
+                              try {
+                                final EmbyClient client = await ref.read(
+                                  embyClientProvider(widget.instance).future,
+                                );
+                                final int targetTicks =
+                                    session.positionTicks + 100000000;
+                                if (targetTicks < session.durationTicks) {
+                                  await client.seekSession(
+                                    session.id,
+                                    targetTicks,
+                                  );
+                                }
+                                if (!mounted) return;
+                                ref.invalidate(
+                                  embyFastSessionsProvider(widget.instance),
+                                );
+                              } catch (_) {
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Action failed'),
+                                  ),
+                                );
                               }
-                              if (!mounted) return;
-                              ref.invalidate(
-                                  embyFastSessionsProvider(widget.instance),);
-                            } catch (_) {
-                              messenger.showSnackBar(
-                                const SnackBar(
-                                    content: Text('Action failed'),),
-                              );
-                            }
-                          },
-                          child: const Icon(Icons.forward_10, size: 32),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: Insets.md),
-
-                  // Row 2: Skip Previous, Stop, Skip Next
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      SizedBox(
-                        width: 80,
-                        height: 80,
-                        child: FilledButton.tonal(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.white.withValues(alpha: 0.15),
-                            foregroundColor: theme.colorScheme.primary,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24),),
-                            padding: EdgeInsets.zero,
+                            },
+                            child: const Icon(Icons.forward_10, size: 32),
                           ),
-                          onPressed: () async {
-                            final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-                            try {
-                              final EmbyClient client = await ref.read(
-                                  embyClientProvider(widget.instance).future,);
-                              if (session.positionTicks > 50000000) {
-                                await client.seekSession(session.id, 0);
-                              } else {
-                                await client.previousTrack(session.id);
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: Insets.md),
+
+                    // Row 2: Skip Previous, Stop, Skip Next
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        SizedBox(
+                          width: 80,
+                          height: 80,
+                          child: FilledButton.tonal(
+                            style: FilledButton.styleFrom(
+                              backgroundColor:
+                                  Colors.white.withValues(alpha: 0.15),
+                              foregroundColor: theme.colorScheme.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              padding: EdgeInsets.zero,
+                            ),
+                            onPressed: () async {
+                              final ScaffoldMessengerState messenger =
+                                  ScaffoldMessenger.of(context);
+                              try {
+                                final EmbyClient client = await ref.read(
+                                  embyClientProvider(widget.instance).future,
+                                );
+                                if (session.positionTicks > 50000000) {
+                                  await client.seekSession(session.id, 0);
+                                } else {
+                                  await client.previousTrack(session.id);
+                                }
+                                if (!mounted) return;
+                                ref.invalidate(
+                                  embyFastSessionsProvider(widget.instance),
+                                );
+                              } catch (_) {
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Action failed'),
+                                  ),
+                                );
                               }
-                              if (!mounted) return;
-                              ref.invalidate(
-                                  embyFastSessionsProvider(widget.instance),);
-                            } catch (_) {
-                              messenger.showSnackBar(
-                                const SnackBar(
-                                    content: Text('Action failed'),),
-                              );
-                            }
-                          },
-                          child: const Icon(Icons.skip_previous, size: 32),
-                        ),
-                      ),
-                      const SizedBox(width: Insets.lg),
-                      SizedBox(
-                        width: 120,
-                        height: 80,
-                        child: FilledButton.tonal(
-                          style: FilledButton.styleFrom(
-                            foregroundColor: theme.colorScheme.errorContainer,
-                            backgroundColor: Colors.white.withValues(alpha: 0.2),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(32),),
-                            padding: EdgeInsets.zero,
+                            },
+                            child: const Icon(Icons.skip_previous, size: 32),
                           ),
-                          onPressed: () async {
-                            final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-                            final NavigatorState navigator = Navigator.of(context);
-                            try {
-                              final EmbyClient client = await ref.read(
-                                  embyClientProvider(widget.instance).future,);
-                              await client.stopSession(session.id);
-                              if (!mounted) return;
-                              ref.invalidate(
-                                  embyFastSessionsProvider(widget.instance),);
-                              navigator.pop();
-                            } catch (_) {
-                              messenger.showSnackBar(
-                                const SnackBar(
-                                    content: Text('Action failed'),),
-                              );
-                            }
-                          },
-                          child: const Icon(Icons.stop, size: 28),
                         ),
-                      ),
-                      const SizedBox(width: Insets.lg),
-                      SizedBox(
-                        width: 80,
-                        height: 80,
-                        child: FilledButton.tonal(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: Colors.white.withValues(alpha: 0.15),
-                            foregroundColor: theme.colorScheme.primary,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24),),
-                            padding: EdgeInsets.zero,
+                        const SizedBox(width: Insets.lg),
+                        SizedBox(
+                          width: 120,
+                          height: 80,
+                          child: FilledButton.tonal(
+                            style: FilledButton.styleFrom(
+                              foregroundColor: theme.colorScheme.errorContainer,
+                              backgroundColor:
+                                  Colors.white.withValues(alpha: 0.2),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(32),
+                              ),
+                              padding: EdgeInsets.zero,
+                            ),
+                            onPressed: () async {
+                              final ScaffoldMessengerState messenger =
+                                  ScaffoldMessenger.of(context);
+                              final NavigatorState navigator =
+                                  Navigator.of(context);
+                              try {
+                                final EmbyClient client = await ref.read(
+                                  embyClientProvider(widget.instance).future,
+                                );
+                                await client.stopSession(session.id);
+                                if (!mounted) return;
+                                ref.invalidate(
+                                  embyFastSessionsProvider(widget.instance),
+                                );
+                                navigator.pop();
+                              } catch (_) {
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Action failed'),
+                                  ),
+                                );
+                              }
+                            },
+                            child: const Icon(Icons.stop, size: 28),
                           ),
-                          onPressed: () async {
-                            final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-                            try {
-                              final EmbyClient client = await ref.read(
-                                  embyClientProvider(widget.instance).future,);
-                              await client.nextTrack(session.id);
-                              if (!mounted) return;
-                              ref.invalidate(
-                                  embyFastSessionsProvider(widget.instance),);
-                            } catch (_) {
-                              messenger.showSnackBar(
-                                const SnackBar(
-                                    content: Text('Action failed'),),
-                              );
-                            }
-                          },
-                          child: const Icon(Icons.skip_next, size: 32),
                         ),
-                      ),
-                    ],
-                  ),
-
-                  const Spacer(),
-                  const SizedBox(height: Insets.lg),
-
-                  // Footer
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: <Widget>[
-                      // Device Chip
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8,),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest
-                              .withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            const Icon(
-                              Icons.speaker,
-                              size: 16,
-                              color: Colors.white70,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              session.device,
-                              style: theme.textTheme.labelLarge?.copyWith(
-                                color: Colors.white70,
-                                fontWeight: FontWeight.w600,
+                        const SizedBox(width: Insets.lg),
+                        SizedBox(
+                          width: 80,
+                          height: 80,
+                          child: FilledButton.tonal(
+                            style: FilledButton.styleFrom(
+                              backgroundColor:
+                                  Colors.white.withValues(alpha: 0.15),
+                              foregroundColor: theme.colorScheme.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
                               ),
+                              padding: EdgeInsets.zero,
                             ),
-                          ],
+                            onPressed: () async {
+                              final ScaffoldMessengerState messenger =
+                                  ScaffoldMessenger.of(context);
+                              try {
+                                final EmbyClient client = await ref.read(
+                                  embyClientProvider(widget.instance).future,
+                                );
+                                await client.nextTrack(session.id);
+                                if (!mounted) return;
+                                ref.invalidate(
+                                  embyFastSessionsProvider(widget.instance),
+                                );
+                              } catch (_) {
+                                messenger.showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Action failed'),
+                                  ),
+                                );
+                              }
+                            },
+                            child: const Icon(Icons.skip_next, size: 32),
+                          ),
                         ),
-                      ),
-                      // User Chip
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8,),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest
-                              .withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            const Icon(
-                              Icons.person,
-                              size: 16,
-                              color: Colors.white70,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              session.user,
-                              style: theme.textTheme.labelLarge?.copyWith(
+                      ],
+                    ),
+
+                    const Spacer(),
+                    const SizedBox(height: Insets.lg),
+
+                    // Footer
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: <Widget>[
+                        // Device Chip
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerHighest
+                                .withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              const Icon(
+                                Icons.speaker,
+                                size: 16,
                                 color: Colors.white70,
-                                fontWeight: FontWeight.w600,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 8),
+                              Text(
+                                session.device,
+                                style: theme.textTheme.labelLarge?.copyWith(
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: Insets.xl),
-              ],
+                        // User Chip
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerHighest
+                                .withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              const Icon(
+                                Icons.person,
+                                size: 16,
+                                color: Colors.white70,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                session.user,
+                                style: theme.textTheme.labelLarge?.copyWith(
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: Insets.xl),
+                  ],
+                ),
+              ),
             ),
-          ),
+          ],
         ),
-        ],
-      ),
       ),
     );
   }

@@ -82,25 +82,25 @@ void main() {
           ],
         ),
         jf.jellyfinFastSessionsProvider(jellyfin).overrideWith(
-          (Ref ref) => Stream<List<jf.ActiveSession>>.value(
-            const <jf.ActiveSession>[
-              jf.ActiveSession(
-                id: 's1',
-                user: 'bob',
-                device: 'Jellyfin Web',
-                status: 'Playing',
-                showTitle: 'The Wire',
-                progressPercent: 40,
-                timePosition: '0:10:00',
-                timeDuration: '1:00:00',
-                positionTicks: 0,
-                durationTicks: 0,
-                volumeLevel: 100,
-                isMuted: false,
+              (Ref ref) => Stream<List<jf.ActiveSession>>.value(
+                const <jf.ActiveSession>[
+                  jf.ActiveSession(
+                    id: 's1',
+                    user: 'bob',
+                    device: 'Jellyfin Web',
+                    status: 'Playing',
+                    showTitle: 'The Wire',
+                    progressPercent: 40,
+                    timePosition: '0:10:00',
+                    timeDuration: '1:00:00',
+                    positionTicks: 0,
+                    durationTicks: 0,
+                    volumeLevel: 100,
+                    isMuted: false,
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
       ],
     );
     expect(find.text('Now Streaming'), findsOneWidget);

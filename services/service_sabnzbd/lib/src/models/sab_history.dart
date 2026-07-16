@@ -31,13 +31,16 @@ abstract class SabHistorySlot with _$SabHistorySlot {
   const factory SabHistorySlot({
     @JsonKey(name: 'nzo_id') @Default('') String nzoId,
     @Default('') String name,
+
     /// Completed, Failed, Extracting, Verifying, Repairing, etc.
     @Default('') String status,
     @Default('') String category,
+
     /// Human size string, e.g. "1.2 GB".
     @Default('') String size,
     @Default(0) int bytes,
     @JsonKey(name: 'fail_message') @Default('') String failMessage,
+
     /// Unix epoch seconds when the item finished.
     @Default(0) int completed,
   }) = _SabHistorySlot;

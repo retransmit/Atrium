@@ -37,7 +37,8 @@ class EmbyClient {
   final String password;
   final String deviceId;
   final String? Function(String itemId, String imageType)? getLocalOverride;
-  final void Function(String itemId, String imageType, String tag)? setLocalOverride;
+  final void Function(String itemId, String imageType, String tag)?
+      setLocalOverride;
 
   String? _token;
   String? _userId;
@@ -55,7 +56,8 @@ class EmbyClient {
     required bool allowSelfSigned,
     Map<String, String> customHeaders = const <String, String>{},
     String? Function(String itemId, String imageType)? getLocalOverride,
-    void Function(String itemId, String imageType, String tag)? setLocalOverride,
+    void Function(String itemId, String imageType, String tag)?
+        setLocalOverride,
   }) {
     final String baseUrlStr = baseUrl.toString();
     final String normalizedBaseUrl =
@@ -685,7 +687,9 @@ class EmbyClient {
     String tagParam = '';
     int targetIndex = 0;
 
-    if (item.seriesId != null && item.backdropImageTags.isEmpty && !item.imageTags.containsKey('Backdrop')) {
+    if (item.seriesId != null &&
+        item.backdropImageTags.isEmpty &&
+        !item.imageTags.containsKey('Backdrop')) {
       targetId = item.seriesId!;
     }
 
@@ -720,7 +724,9 @@ class EmbyClient {
   }
 
   Future<List<EmbyRemoteImage>> getRemoteImages(
-          String itemId, String imageType,) =>
+    String itemId,
+    String imageType,
+  ) =>
       _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
           'Items/$itemId/RemoteImages',
@@ -735,7 +741,10 @@ class EmbyClient {
       });
 
   Future<void> setRemoteImage(
-          String itemId, String imageUrl, String imageType,) =>
+    String itemId,
+    String imageUrl,
+    String imageType,
+  ) =>
       _guarded(() async {
         List<String> oldBackdrops = <String>[];
         if (imageType == 'Backdrop') {
@@ -790,7 +799,9 @@ class EmbyClient {
 
   /// Fetches available remote images and commands Emby to download the first one available.
   Future<void> downloadFirstAvailableRemoteImage(
-          String itemId, String imageType,) =>
+    String itemId,
+    String imageType,
+  ) =>
       _guarded(() async {
         // Step 1: Fetch Available Images
         final Response<dynamic> getResp = await _dio.get<dynamic>(
@@ -802,7 +813,9 @@ class EmbyClient {
         );
 
         if (getResp.statusCode != null && getResp.statusCode! >= 400) {
-          throw Exception('Failed to fetch remote images. Status code: ${getResp.statusCode}');
+          throw Exception(
+            'Failed to fetch remote images. Status code: ${getResp.statusCode}',
+          );
         }
 
         final EmbyRemoteImagesResult result = EmbyRemoteImagesResult.fromJson(
@@ -814,7 +827,8 @@ class EmbyClient {
           throw Exception('No remote images found for item $itemId.');
         }
 
-        final String? imageUrl = result.images.first.url ?? result.images.first.thumbnailUrl;
+        final String? imageUrl =
+            result.images.first.url ?? result.images.first.thumbnailUrl;
         if (imageUrl == null) {
           throw Exception('First available image has no valid URL.');
         }
@@ -832,7 +846,9 @@ class EmbyClient {
         );
 
         if (postResp.statusCode != null && postResp.statusCode! >= 400) {
-          throw Exception('Failed to download remote image. Status code: ${postResp.statusCode}');
+          throw Exception(
+            'Failed to download remote image. Status code: ${postResp.statusCode}',
+          );
         }
       });
 
@@ -844,13 +860,16 @@ class EmbyClient {
       _guarded(() async {
         final Response<dynamic> resp =
             await _dio.get<dynamic>('ScheduledTasks');
-        final List<dynamic> tasks = (resp.data as List<dynamic>?) ?? <dynamic>[];
+        final List<dynamic> tasks =
+            (resp.data as List<dynamic>?) ?? <dynamic>[];
         for (final dynamic t in tasks) {
           final Map<String, dynamic> task = t as Map<String, dynamic>;
           if (task['Key'] == 'RefreshLibrary') {
             return (
               state: (task['State'] as String?) ?? 'Idle',
-              progress: (task['CurrentProgressPercentage'] as num?)?.toDouble() ?? 0.0,
+              progress:
+                  (task['CurrentProgressPercentage'] as num?)?.toDouble() ??
+                      0.0,
             );
           }
         }
@@ -894,7 +913,10 @@ class EmbyClient {
         );
         final List<dynamic> list = res.data as List<dynamic>;
         return list
-            .map((dynamic e) => EmbyRemoteSearchResult.fromJson(e as Map<String, dynamic>))
+            .map(
+              (dynamic e) =>
+                  EmbyRemoteSearchResult.fromJson(e as Map<String, dynamic>),
+            )
             .toList();
       });
 

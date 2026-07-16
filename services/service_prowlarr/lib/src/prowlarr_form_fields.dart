@@ -145,7 +145,10 @@ class _ProwlarrDynamicFieldState extends State<ProwlarrDynamicField> {
         List<dynamic>.from((_f['value'] as List<dynamic>?) ?? <dynamic>[]);
     final List<String> names = options
         .where((Map<String, dynamic> o) => selected.contains(o['value']))
-        .map((Map<String, dynamic> o) => (o['name'] ?? o['value'] ?? '').toString())
+        .map(
+          (Map<String, dynamic> o) =>
+              (o['name'] ?? o['value'] ?? '').toString(),
+        )
         .toList();
     return Container(
       margin: const EdgeInsets.only(bottom: Insets.md),
@@ -220,10 +223,11 @@ class _ProwlarrDynamicFieldState extends State<ProwlarrDynamicField> {
     }
   }
 
-  List<Map<String, dynamic>> _options() =>
-      ((_f['selectOptions'] as List<dynamic>?) ?? <dynamic>[])
-          .map((dynamic e) => Map<String, dynamic>.from(e as Map<dynamic, dynamic>))
-          .toList();
+  List<Map<String, dynamic>> _options() => ((_f['selectOptions']
+              as List<dynamic>?) ??
+          <dynamic>[])
+      .map((dynamic e) => Map<String, dynamic>.from(e as Map<dynamic, dynamic>))
+      .toList();
 }
 
 /// A bordered switch tile for a resource's top-level boolean (a download

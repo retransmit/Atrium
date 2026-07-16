@@ -207,7 +207,8 @@ class _SeerrItemDetailScreenState extends ConsumerState<SeerrItemDetailScreen> {
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(Insets.lg, Insets.lg, Insets.lg, 0),
+              padding:
+                  const EdgeInsets.fromLTRB(Insets.lg, Insets.lg, Insets.lg, 0),
               child: _ActionRow(
                 instance: widget.instance,
                 item: full,
@@ -218,8 +219,12 @@ class _SeerrItemDetailScreenState extends ConsumerState<SeerrItemDetailScreen> {
           if (genreNames.isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
-                padding:
-                    const EdgeInsets.fromLTRB(Insets.lg, Insets.lg, Insets.lg, 0),
+                padding: const EdgeInsets.fromLTRB(
+                  Insets.lg,
+                  Insets.lg,
+                  Insets.lg,
+                  0,
+                ),
                 child: Wrap(
                   spacing: 6.0,
                   runSpacing: 6.0,
@@ -249,8 +254,12 @@ class _SeerrItemDetailScreenState extends ConsumerState<SeerrItemDetailScreen> {
           if (full.overview != null && full.overview!.isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
-                padding:
-                    const EdgeInsets.fromLTRB(Insets.lg, Insets.lg, Insets.lg, 0),
+                padding: const EdgeInsets.fromLTRB(
+                  Insets.lg,
+                  Insets.lg,
+                  Insets.lg,
+                  0,
+                ),
                 child: OverviewBox(overview: full.overview!),
               ),
             ),
@@ -639,8 +648,7 @@ class _PosterCard extends StatelessWidget {
                         ? CachedNetworkImage(
                             imageUrl: _tmdbImage(item.posterPath!, 'w342'),
                             fit: BoxFit.cover,
-                            errorWidget: (_, __, ___) =>
-                                _posterFallback(theme),
+                            errorWidget: (_, __, ___) => _posterFallback(theme),
                           )
                         : _posterFallback(theme),
                     Positioned(
@@ -996,10 +1004,12 @@ class _RequestOptionsSheetState extends ConsumerState<_RequestOptionsSheet> {
               border: OutlineInputBorder(),
             ),
             items: pool
-                .map((SeerrServer s) => DropdownMenuItem<int>(
-                      value: s.id,
-                      child: Text(s.name.isEmpty ? 'Server ${s.id}' : s.name),
-                    ),)
+                .map(
+                  (SeerrServer s) => DropdownMenuItem<int>(
+                    value: s.id,
+                    child: Text(s.name.isEmpty ? 'Server ${s.id}' : s.name),
+                  ),
+                )
                 .toList(),
             onChanged: (int? v) => setState(() {
               _serverId = v;
@@ -1076,10 +1086,12 @@ class _RequestOptionsSheetState extends ConsumerState<_RequestOptionsSheet> {
               border: OutlineInputBorder(),
             ),
             items: profiles
-                .map((SeerrProfile p) => DropdownMenuItem<int>(
-                      value: p.id,
-                      child: Text(p.name),
-                    ),)
+                .map(
+                  (SeerrProfile p) => DropdownMenuItem<int>(
+                    value: p.id,
+                    child: Text(p.name),
+                  ),
+                )
                 .toList(),
             onChanged: (int? v) => setState(() => _profileId = v),
           ),
@@ -1094,10 +1106,12 @@ class _RequestOptionsSheetState extends ConsumerState<_RequestOptionsSheet> {
               border: OutlineInputBorder(),
             ),
             items: roots
-                .map((SeerrRootFolder r) => DropdownMenuItem<String>(
-                      value: r.path,
-                      child: Text(r.path, overflow: TextOverflow.ellipsis),
-                    ),)
+                .map(
+                  (SeerrRootFolder r) => DropdownMenuItem<String>(
+                    value: r.path,
+                    child: Text(r.path, overflow: TextOverflow.ellipsis),
+                  ),
+                )
                 .toList(),
             onChanged: (String? v) => setState(() => _rootFolder = v),
           ),

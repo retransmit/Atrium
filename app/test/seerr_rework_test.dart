@@ -205,7 +205,8 @@ void main() {
     );
   });
 
-  testWidgets('Request tile renders color-coded status pills and inline actions',
+  testWidgets(
+      'Request tile renders color-coded status pills and inline actions',
       (WidgetTester tester) async {
     final Instance instance = _instance();
 

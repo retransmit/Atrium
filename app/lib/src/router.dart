@@ -44,15 +44,15 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((Ref ref) {
           StatefulNavigationShell shell,
         ) =>
             Consumer(
-              builder: (BuildContext context, WidgetRef ref, Widget? child) {
-                final List<Instance> instances = ref.watch(activeInstancesProvider);
-                final Profile? profile = ref.watch(activeProfileProvider);
-                return ScaffoldWithNavBar(
-                  navigationShell: shell,
-                  drawer: ServicesDrawer(instances: instances, profile: profile),
-                );
-              },
-            ),
+          builder: (BuildContext context, WidgetRef ref, Widget? child) {
+            final List<Instance> instances = ref.watch(activeInstancesProvider);
+            final Profile? profile = ref.watch(activeProfileProvider);
+            return ScaffoldWithNavBar(
+              navigationShell: shell,
+              drawer: ServicesDrawer(instances: instances, profile: profile),
+            );
+          },
+        ),
         branches: <StatefulShellBranch>[
           StatefulShellBranch(
             routes: <RouteBase>[

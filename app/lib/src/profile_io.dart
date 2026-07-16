@@ -33,8 +33,7 @@ class ProfileIo {
 
     final bool? includeSecrets = await showDialog<bool>(
       context: context,
-      builder: (BuildContext context) =>
-          _ExportOptionsDialog(profile: profile),
+      builder: (BuildContext context) => _ExportOptionsDialog(profile: profile),
     );
     if (includeSecrets == null) {
       return;
@@ -125,8 +124,7 @@ class ProfileIo {
     }
     final bool? confirmed = await showDialog<bool>(
       context: context,
-      builder: (BuildContext context) =>
-          _ImportConfirmDialog(profile: preview),
+      builder: (BuildContext context) => _ImportConfirmDialog(profile: preview),
     );
     if (confirmed != true) {
       return;
@@ -191,7 +189,8 @@ class _ExportOptionsDialogState extends State<_ExportOptionsDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('"${widget.profile.name}" - $n ${n == 1 ? 'instance' : 'instances'}'),
+          Text(
+              '"${widget.profile.name}" - $n ${n == 1 ? 'instance' : 'instances'}'),
           const SizedBox(height: 16),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,

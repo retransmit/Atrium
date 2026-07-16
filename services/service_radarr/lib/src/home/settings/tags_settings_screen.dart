@@ -53,7 +53,12 @@ class TagsSettingsScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _deleteTag(BuildContext context, WidgetRef ref, int id, String label) async {
+  Future<void> _deleteTag(
+    BuildContext context,
+    WidgetRef ref,
+    int id,
+    String label,
+  ) async {
     final ok = await confirmDelete(context, 'Tag "$label"');
     if (ok) {
       try {
@@ -88,7 +93,9 @@ class TagsSettingsScreen extends ConsumerWidget {
         error: (err, _) => Center(child: Text('Error: $err')),
         data: (tags) {
           if (tags.isEmpty) {
-            return const Center(child: Text('No tags defined. Tap + to add one.'));
+            return const Center(
+              child: Text('No tags defined. Tap + to add one.'),
+            );
           }
 
           return ListView.builder(
@@ -103,9 +110,15 @@ class TagsSettingsScreen extends ConsumerWidget {
                 margin: const EdgeInsets.only(bottom: 12),
                 color: theme.colorScheme.surfaceContainerLow,
                 child: ListTile(
-                  title: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  title: Text(
+                    label,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   trailing: IconButton(
-                    icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
+                    icon: Icon(
+                      Icons.delete_outline,
+                      color: theme.colorScheme.error,
+                    ),
                     onPressed: () => _deleteTag(context, ref, id, label),
                   ),
                 ),

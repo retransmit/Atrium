@@ -19,14 +19,17 @@ abstract class SabQueueResponse with _$SabQueueResponse {
 abstract class SabQueue with _$SabQueue {
   const factory SabQueue({
     @Default('') String status,
+
     /// Human speed string, e.g. "1.2 M".
     @Default('') String speed,
     @Default('') String sizeleft,
     @Default('') String timeleft,
     @Default('') String mbleft,
     @Default('') String mb,
+
     /// Active global speed limit as a percentage string, e.g. "100".
     @Default('') String speedlimit,
+
     /// Free / total disk space at the download location, in GB strings.
     @Default('') String diskspace1,
     @Default('') String diskspacetotal1,

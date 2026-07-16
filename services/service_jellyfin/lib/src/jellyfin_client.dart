@@ -40,7 +40,8 @@ class JellyfinClient {
   final String deviceId;
 
   final String? Function(String itemId, String imageType)? getLocalOverride;
-  final void Function(String itemId, String imageType, String tag)? setLocalOverride;
+  final void Function(String itemId, String imageType, String tag)?
+      setLocalOverride;
 
   String? _token;
   String? _userId;
@@ -58,7 +59,8 @@ class JellyfinClient {
     required bool allowSelfSigned,
     Map<String, String> customHeaders = const <String, String>{},
     String? Function(String itemId, String imageType)? getLocalOverride,
-    void Function(String itemId, String imageType, String tag)? setLocalOverride,
+    void Function(String itemId, String imageType, String tag)?
+        setLocalOverride,
   }) {
     final String baseUrlStr = baseUrl.toString();
     final String normalizedBaseUrl =
@@ -137,10 +139,15 @@ class JellyfinClient {
       });
 
   Future<List<JellyfinVirtualFolder>> getVirtualFolders() => _guarded(() async {
-        final Response<dynamic> resp = await _dio.get<dynamic>('Library/VirtualFolders');
-        final List<dynamic> items = (resp.data as List<dynamic>?) ?? <dynamic>[];
+        final Response<dynamic> resp =
+            await _dio.get<dynamic>('Library/VirtualFolders');
+        final List<dynamic> items =
+            (resp.data as List<dynamic>?) ?? <dynamic>[];
         return items
-            .map((dynamic e) => JellyfinVirtualFolder.fromJson(e as Map<String, dynamic>))
+            .map(
+              (dynamic e) =>
+                  JellyfinVirtualFolder.fromJson(e as Map<String, dynamic>),
+            )
             .toList();
       });
 
@@ -716,7 +723,9 @@ class JellyfinClient {
     String tagParam = '';
     int targetIndex = 0;
 
-    if (item.seriesId != null && item.backdropImageTags.isEmpty && !item.imageTags.containsKey('Backdrop')) {
+    if (item.seriesId != null &&
+        item.backdropImageTags.isEmpty &&
+        !item.imageTags.containsKey('Backdrop')) {
       targetId = item.seriesId!;
     }
 
@@ -751,7 +760,9 @@ class JellyfinClient {
   }
 
   Future<List<JellyfinRemoteImage>> getRemoteImages(
-          String itemId, String imageType,) =>
+    String itemId,
+    String imageType,
+  ) =>
       _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
           'Items/$itemId/RemoteImages',
@@ -766,7 +777,10 @@ class JellyfinClient {
       });
 
   Future<void> setRemoteImage(
-          String itemId, String imageUrl, String imageType,) =>
+    String itemId,
+    String imageUrl,
+    String imageType,
+  ) =>
       _guarded(() async {
         List<String> oldBackdrops = <String>[];
         if (imageType == 'Backdrop') {
@@ -827,13 +841,16 @@ class JellyfinClient {
       _guarded(() async {
         final Response<dynamic> resp =
             await _dio.get<dynamic>('ScheduledTasks');
-        final List<dynamic> tasks = (resp.data as List<dynamic>?) ?? <dynamic>[];
+        final List<dynamic> tasks =
+            (resp.data as List<dynamic>?) ?? <dynamic>[];
         for (final dynamic t in tasks) {
           final Map<String, dynamic> task = t as Map<String, dynamic>;
           if (task['Key'] == 'RefreshLibrary') {
             return (
               state: (task['State'] as String?) ?? 'Idle',
-              progress: (task['CurrentProgressPercentage'] as num?)?.toDouble() ?? 0.0,
+              progress:
+                  (task['CurrentProgressPercentage'] as num?)?.toDouble() ??
+                      0.0,
             );
           }
         }
@@ -851,26 +868,32 @@ class JellyfinClient {
             users = map['Items'] as List<dynamic>;
           }
         }
-        return users.map((dynamic u) => JellyfinUser.fromJson(u as Map<String, dynamic>)).toList();
+        return users
+            .map(
+              (dynamic u) => JellyfinUser.fromJson(u as Map<String, dynamic>),
+            )
+            .toList();
       });
 
   Future<List<JellyfinUser>> getPublicUsers() async {
-        try {
-          final Response<dynamic> resp = await _dio.get<dynamic>('Users/Public');
-          List<dynamic> users = <dynamic>[];
-          if (resp.data is List) {
-            users = resp.data as List<dynamic>;
-          } else if (resp.data is Map<String, dynamic>) {
-            final Map<String, dynamic> map = resp.data as Map<String, dynamic>;
-            if (map['Items'] != null) {
-              users = map['Items'] as List<dynamic>;
-            }
-          }
-          return users.map((dynamic u) => JellyfinUser.fromJson(u as Map<String, dynamic>)).toList();
-        } catch (e) {
-          return <JellyfinUser>[];
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>('Users/Public');
+      List<dynamic> users = <dynamic>[];
+      if (resp.data is List) {
+        users = resp.data as List<dynamic>;
+      } else if (resp.data is Map<String, dynamic>) {
+        final Map<String, dynamic> map = resp.data as Map<String, dynamic>;
+        if (map['Items'] != null) {
+          users = map['Items'] as List<dynamic>;
         }
       }
+      return users
+          .map((dynamic u) => JellyfinUser.fromJson(u as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      return <JellyfinUser>[];
+    }
+  }
 
   Future<JellyfinUser> getCurrentUser() => _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>('Users/Me');
@@ -919,7 +942,11 @@ class JellyfinClient {
         );
         final List<dynamic> list = res.data as List<dynamic>;
         return list
-            .map((dynamic e) => JellyfinRemoteSearchResult.fromJson(e as Map<String, dynamic>))
+            .map(
+              (dynamic e) => JellyfinRemoteSearchResult.fromJson(
+                e as Map<String, dynamic>,
+              ),
+            )
             .toList();
       });
 

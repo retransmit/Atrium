@@ -55,7 +55,8 @@ class DashboardRecentlyDownloadedWidget extends ConsumerWidget {
           ref.watch(sonarrHistoryProvider(i));
       anyLoading |= history.isLoading && !history.hasValue;
       anyError |= history.hasError;
-      for (final SonarrHistoryItem h in history.value ?? const <SonarrHistoryItem>[]) {
+      for (final SonarrHistoryItem h
+          in history.value ?? const <SonarrHistoryItem>[]) {
         final DateTime? date = DateTime.tryParse(h.date ?? '');
         if (date == null || h.series == null) {
           continue;
@@ -77,7 +78,8 @@ class DashboardRecentlyDownloadedWidget extends ConsumerWidget {
           ref.watch(radarrHistoryProvider(i));
       anyLoading |= history.isLoading && !history.hasValue;
       anyError |= history.hasError;
-      for (final RadarrHistoryItem h in history.value ?? const <RadarrHistoryItem>[]) {
+      for (final RadarrHistoryItem h
+          in history.value ?? const <RadarrHistoryItem>[]) {
         final DateTime? date = DateTime.tryParse(h.date ?? '');
         if (date == null || h.movie == null) {
           continue;
@@ -95,7 +97,8 @@ class DashboardRecentlyDownloadedWidget extends ConsumerWidget {
       }
     }
 
-    items.sort((_RecentDownloadItem a, _RecentDownloadItem b) => b.date.compareTo(a.date));
+    items.sort((_RecentDownloadItem a, _RecentDownloadItem b) =>
+        b.date.compareTo(a.date));
     final List<_RecentDownloadItem> top = items.take(15).toList();
 
     Widget body;
@@ -156,26 +159,19 @@ class DashboardRecentlyDownloadedWidget extends ConsumerWidget {
                               ? CachedNetworkImage(
                                   imageUrl: item.posterUrl!,
                                   fit: BoxFit.cover,
-                                  httpHeaders: switch (
-                                      item.instance.auth) {
+                                  httpHeaders: switch (item.instance.auth) {
                                     InstanceAuthApiKey(:final String apiKey) =>
-                                      <String, String>{
-                                        'X-Api-Key': apiKey
-                                      },
+                                      <String, String>{'X-Api-Key': apiKey},
                                     _ => const <String, String>{},
                                   },
                                   errorWidget: (_, __, ___) => Icon(
-                                    item.isMovie
-                                        ? Icons.movie
-                                        : Icons.tv,
+                                    item.isMovie ? Icons.movie : Icons.tv,
                                     color: cs.onSurfaceVariant,
                                   ),
                                 )
                               : Center(
                                   child: Icon(
-                                    item.isMovie
-                                        ? Icons.movie
-                                        : Icons.tv,
+                                    item.isMovie ? Icons.movie : Icons.tv,
                                     color: cs.onSurfaceVariant,
                                   ),
                                 ),

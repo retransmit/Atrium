@@ -33,7 +33,8 @@ class BazarrSubtitleChips extends StatelessWidget {
       spacing: Insets.xs,
       runSpacing: Insets.xs,
       children: <Widget>[
-        for (final BazarrSubtitle s in present) _chip(context, s, present: true),
+        for (final BazarrSubtitle s in present)
+          _chip(context, s, present: true),
         for (final BazarrSubtitle s in missing)
           _chip(context, s, present: false),
       ],
@@ -51,7 +52,11 @@ class BazarrSubtitleChips extends StatelessWidget {
     return tags.isEmpty ? code : '$code ${tags.join('/')}';
   }
 
-  Widget _chip(BuildContext context, BazarrSubtitle s, {required bool present}) {
+  Widget _chip(
+    BuildContext context,
+    BazarrSubtitle s, {
+    required bool present,
+  }) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     // Present subtitles read as a soft tertiary "have it" tone; missing ones as

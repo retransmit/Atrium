@@ -1653,13 +1653,14 @@ class _SessionCardState extends State<_SessionCard> {
                             ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: LinearProgressIndicatorM3E(
-                                  shape: ProgressM3EShape.flat,
-                                  value: pct.clamp(0.0, 1.0),
-                                  trackColor:
-                                      theme.colorScheme.surfaceContainerHighest,
-                                  activeColor: playing
-                                      ? theme.colorScheme.primary
-                                      : theme.colorScheme.outline,),
+                                shape: ProgressM3EShape.flat,
+                                value: pct.clamp(0.0, 1.0),
+                                trackColor:
+                                    theme.colorScheme.surfaceContainerHighest,
+                                activeColor: playing
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.outline,
+                              ),
                             ),
                           ],
                         ),

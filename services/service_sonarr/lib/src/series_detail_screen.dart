@@ -87,7 +87,8 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
 
   void _invalidateProviders() {
     ref.invalidate(
-        sonarrSeriesByIdProvider((widget.instance, widget.series.id)),);
+      sonarrSeriesByIdProvider((widget.instance, widget.series.id)),
+    );
     ref.invalidate(sonarrEpisodesProvider((widget.instance, widget.series.id)));
     ref.invalidate(sonarrSeriesProvider(widget.instance));
   }
@@ -342,7 +343,8 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
                                           Scrollable.ensureVisible(
                                             key!.currentContext!,
                                             duration: const Duration(
-                                                milliseconds: 500,),
+                                              milliseconds: 500,
+                                            ),
                                             curve: Curves.easeInOut,
                                           );
                                         }
@@ -358,7 +360,10 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
                       ],
                       Column(
                         children: _buildSeasonCards(
-                            context, episodesBySeason, sortedSeasons,),
+                          context,
+                          episodesBySeason,
+                          sortedSeasons,
+                        ),
                       ),
                     ];
                   },
@@ -388,7 +393,8 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
                             FilledButton.tonal(
                               onPressed: () => ref.invalidate(
                                 sonarrEpisodesProvider(
-                                    (widget.instance, widget.series.id),),
+                                  (widget.instance, widget.series.id),
+                                ),
                               ),
                               child: const Text('Retry'),
                             ),
@@ -621,10 +627,11 @@ class _StatsCard extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(Radii.sm),
             child: LinearProgressIndicatorM3E(
-                shape: ProgressM3EShape.flat,
-                value: progress,
-                trackColor: cs.surfaceContainerHighest,
-                activeColor: progress >= 1.0 ? cs.tertiary : cs.primary,),
+              shape: ProgressM3EShape.flat,
+              value: progress,
+              trackColor: cs.surfaceContainerHighest,
+              activeColor: progress >= 1.0 ? cs.tertiary : cs.primary,
+            ),
           ),
         ],
       ),
@@ -1044,12 +1051,13 @@ class _SeasonCard extends ConsumerWidget {
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(4),
                                 child: LinearProgressIndicatorM3E(
-                                    shape: ProgressM3EShape.flat,
-                                    value: progress,
-                                    trackColor: cs.surfaceContainerHighest,
-                                    activeColor: progress >= 1.0
-                                        ? cs.tertiary
-                                        : cs.primary,),
+                                  shape: ProgressM3EShape.flat,
+                                  value: progress,
+                                  trackColor: cs.surfaceContainerHighest,
+                                  activeColor: progress >= 1.0
+                                      ? cs.tertiary
+                                      : cs.primary,
+                                ),
                               ),
                             ),
                             const SizedBox(width: Insets.sm),
@@ -1121,8 +1129,11 @@ class _SeasonCard extends ConsumerWidget {
                         const SizedBox(width: Insets.xs),
                         Expanded(
                           child: TextButton.icon(
-                            icon: Icon(Icons.delete_outline,
-                                color: cs.error, size: 16,),
+                            icon: Icon(
+                              Icons.delete_outline,
+                              color: cs.error,
+                              size: 16,
+                            ),
                             label: Text(
                               'Delete',
                               style: TextStyle(color: cs.error, fontSize: 12),
@@ -1161,7 +1172,10 @@ class _SeasonCard extends ConsumerWidget {
   }
 
   Future<void> _toggleSeasonMonitoring(
-      BuildContext context, WidgetRef ref, bool currentMonitored,) async {
+    BuildContext context,
+    WidgetRef ref,
+    bool currentMonitored,
+  ) async {
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
       final raw = await api.getSeriesRaw(series.id);
@@ -1201,7 +1215,9 @@ class _SeasonCard extends ConsumerWidget {
   }
 
   Future<void> _confirmDeleteSeasonFiles(
-      BuildContext context, WidgetRef ref,) async {
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final theme = Theme.of(context);
     final confirm = await showDialog<bool>(
       context: context,
@@ -1274,7 +1290,8 @@ class _SeasonCard extends ConsumerWidget {
         if (failedCount == 0) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text('Successfully deleted $deletedCount file(s).'),),
+              content: Text('Successfully deleted $deletedCount file(s).'),
+            ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1290,7 +1307,10 @@ class _SeasonCard extends ConsumerWidget {
   }
 
   Future<void> _searchSeason(
-      BuildContext context, WidgetRef ref, int seasonNum,) async {
+    BuildContext context,
+    WidgetRef ref,
+    int seasonNum,
+  ) async {
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
       await api.runCommand(<String, dynamic>{
@@ -1340,7 +1360,9 @@ class _EpisodeRow extends ConsumerWidget {
   final SonarrEpisode episode;
 
   Future<void> _toggleEpisodeMonitored(
-      BuildContext context, WidgetRef ref,) async {
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     try {
       final api = await ref.read(sonarrApiProvider(instance).future);
       final updated = episode.copyWith(monitored: !episode.monitored);
@@ -1607,7 +1629,8 @@ void _showEpisodeBottomSheet({
                                 episode.copyWith(monitored: !episode.monitored);
                             await api.updateEpisode(updated.toJson());
                             ref.invalidate(
-                                sonarrEpisodesProvider((instance, series.id)),);
+                              sonarrEpisodesProvider((instance, series.id)),
+                            );
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -1640,16 +1663,16 @@ void _showEpisodeBottomSheet({
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                    content:
-                                        Text('Search queued for episode.'),),
+                                  content: Text('Search queued for episode.'),
+                                ),
                               );
                             }
                           } catch (e) {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                    content:
-                                        Text('Failed to queue search: $e'),),
+                                  content: Text('Failed to queue search: $e'),
+                                ),
                               );
                             }
                           }
@@ -1714,19 +1737,24 @@ void _showEpisodeBottomSheet({
                                   .read(sonarrApiProvider(instance).future);
                               await api
                                   .deleteEpisodeFile(episode.episodeFileId!);
-                              ref.invalidate(sonarrEpisodesProvider(
-                                  (instance, series.id),),);
+                              ref.invalidate(
+                                sonarrEpisodesProvider(
+                                  (instance, series.id),
+                                ),
+                              );
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                      content: Text('File deleted.'),),
+                                    content: Text('File deleted.'),
+                                  ),
                                 );
                               }
                             } catch (e) {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                      content: Text('Failed to delete: $e'),),
+                                    content: Text('Failed to delete: $e'),
+                                  ),
                                 );
                               }
                             }
@@ -2018,7 +2046,8 @@ void _showMonitorSeriesDialog({
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text('Failed to update monitoring: $e'),),
+                          content: Text('Failed to update monitoring: $e'),
+                        ),
                       );
                     }
                   }

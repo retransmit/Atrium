@@ -39,13 +39,17 @@ abstract class SeerrDiscoverResult with _$SeerrDiscoverResult {
     SeerrMedia? mediaInfo,
     // Detail-only fields (populated by GET /{movie|tv}/{id}).
     String? backdropPath,
+
     /// TMDB status, e.g. "Released", "Ended", "Returning Series".
     String? status,
+
     /// Movie runtime in minutes.
     int? runtime,
+
     /// TV total episode count.
     int? numberOfEpisodes,
     @Default(<SeerrGenre>[]) List<SeerrGenre> genres,
+
     /// Inline cast credits (returned by GET /{movie|tv}/{id}).
     @JsonKey(name: 'credits') SeerrCredits? credits,
   }) = _SeerrDiscoverResult;

@@ -512,7 +512,10 @@ class _SessionSheetState extends ConsumerState<_SessionSheet> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 _Poster(
-                    url: api?.imageUrl(s.posterThumb), width: 64, height: 96,),
+                  url: api?.imageUrl(s.posterThumb),
+                  width: 64,
+                  height: 96,
+                ),
                 const SizedBox(width: Insets.md),
                 Expanded(
                   child: Column(

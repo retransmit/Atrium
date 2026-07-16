@@ -19,7 +19,8 @@ class QualityDefinitionsScreen extends ConsumerStatefulWidget {
       _QualityDefinitionsScreenState();
 }
 
-class _QualityDefinitionsScreenState extends ConsumerState<QualityDefinitionsScreen> {
+class _QualityDefinitionsScreenState
+    extends ConsumerState<QualityDefinitionsScreen> {
   bool _initialized = false;
   bool _saving = false;
   late List<Map<String, dynamic>> _definitions;
@@ -38,7 +39,9 @@ class _QualityDefinitionsScreenState extends ConsumerState<QualityDefinitionsScr
       ref.invalidate(radarrQualityDefinitionsProvider(widget.instance));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Quality definitions updated successfully!')),
+          const SnackBar(
+            content: Text('Quality definitions updated successfully!'),
+          ),
         );
         Navigator.pop(context);
       }
@@ -56,7 +59,8 @@ class _QualityDefinitionsScreenState extends ConsumerState<QualityDefinitionsScr
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final definitionsAsync = ref.watch(radarrQualityDefinitionsProvider(widget.instance));
+    final definitionsAsync =
+        ref.watch(radarrQualityDefinitionsProvider(widget.instance));
 
     return Scaffold(
       appBar: AppBar(
@@ -91,10 +95,11 @@ class _QualityDefinitionsScreenState extends ConsumerState<QualityDefinitionsScr
               final def = _definitions[index];
               final qualityMap = def['quality'] as Map<String, dynamic>?;
               final qName = (qualityMap?['name'] as String?) ?? 'Unknown';
-              
+
               final double minVal = (def['minSize'] as num?)?.toDouble() ?? 0.0;
               final double? maxVal = (def['maxSize'] as num?)?.toDouble();
-              final double prefVal = (def['preferredSize'] as num?)?.toDouble() ?? minVal;
+              final double prefVal =
+                  (def['preferredSize'] as num?)?.toDouble() ?? minVal;
 
               final bool isUnlimited = maxVal == null || maxVal == 0;
 
@@ -124,7 +129,6 @@ class _QualityDefinitionsScreenState extends ConsumerState<QualityDefinitionsScr
                         ),
                       ),
                       const SizedBox(height: Insets.md),
-
                       Text(
                         'Min Size: ${minVal.toStringAsFixed(1)} GB',
                         style: theme.textTheme.bodySmall,
@@ -142,7 +146,6 @@ class _QualityDefinitionsScreenState extends ConsumerState<QualityDefinitionsScr
                           });
                         },
                       ),
-
                       Text(
                         'Preferred Size: ${prefVal.toStringAsFixed(1)} GB',
                         style: theme.textTheme.bodySmall,
@@ -158,7 +161,6 @@ class _QualityDefinitionsScreenState extends ConsumerState<QualityDefinitionsScr
                           });
                         },
                       ),
-
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [

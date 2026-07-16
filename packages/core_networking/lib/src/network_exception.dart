@@ -15,15 +15,15 @@ sealed class NetworkException implements Exception {
         const NetworkTimeoutException('Server took too long to respond.'),
       DioExceptionType.connectionError =>
         NetworkUnreachableException(e.message ?? 'Could not reach the server.'),
-      DioExceptionType.badCertificate =>
-        const NetworkTlsException(
+      DioExceptionType.badCertificate => const NetworkTlsException(
           'TLS certificate not trusted. Enable "Allow self-signed certs" '
           'in this instance\'s settings if you trust the server.',
         ),
       DioExceptionType.cancel =>
         const NetworkCancelledException('Request was cancelled.'),
       DioExceptionType.badResponse => _fromBadResponse(e),
-      DioExceptionType.unknown || _ =>
+      DioExceptionType.unknown ||
+      _ =>
         NetworkUnknownException(e.message ?? 'Unknown network error.'),
     };
   }

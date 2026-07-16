@@ -27,31 +27,41 @@ void main() {
       expect(selection, isEmpty);
 
       // Select items
-      container.read(sonarrQueueSelectionProvider(instance).notifier).state = {1, 2};
+      container.read(sonarrQueueSelectionProvider(instance).notifier).state = {
+        1,
+        2
+      };
       selection = container.read(sonarrQueueSelectionProvider(instance));
       expect(selection, containsAll([1, 2]));
 
       // Clear selection
-      container.read(sonarrQueueSelectionProvider(instance).notifier).state = {};
+      container.read(sonarrQueueSelectionProvider(instance).notifier).state =
+          {};
       selection = container.read(sonarrQueueSelectionProvider(instance));
       expect(selection, isEmpty);
     });
 
-    test('sonarrBlocklistSelectionProvider holds selection state correctly', () {
+    test('sonarrBlocklistSelectionProvider holds selection state correctly',
+        () {
       final container = ProviderContainer();
       final instance = _instance();
 
       // Read initial state
-      var selection = container.read(sonarrBlocklistSelectionProvider(instance));
+      var selection =
+          container.read(sonarrBlocklistSelectionProvider(instance));
       expect(selection, isEmpty);
 
       // Select items
-      container.read(sonarrBlocklistSelectionProvider(instance).notifier).state = {3, 4};
+      container
+          .read(sonarrBlocklistSelectionProvider(instance).notifier)
+          .state = {3, 4};
       selection = container.read(sonarrBlocklistSelectionProvider(instance));
       expect(selection, containsAll([3, 4]));
 
       // Clear selection
-      container.read(sonarrBlocklistSelectionProvider(instance).notifier).state = {};
+      container
+          .read(sonarrBlocklistSelectionProvider(instance).notifier)
+          .state = {};
       selection = container.read(sonarrBlocklistSelectionProvider(instance));
       expect(selection, isEmpty);
     });
@@ -74,7 +84,10 @@ void main() {
 
       // Check title and fields render
       expect(find.text('Parse Release Title'), findsOneWidget);
-      expect(find.text('Paste a release name or torrent title below to see how Sonarr parses season, episode, quality, and matching library details.'), findsOneWidget);
+      expect(
+          find.text(
+              'Paste a release name or torrent title below to see how Sonarr parses season, episode, quality, and matching library details.'),
+          findsOneWidget);
       expect(find.byType(TextField), findsOneWidget);
       expect(find.text('Parse'), findsOneWidget);
       expect(find.text('Clear'), findsOneWidget);

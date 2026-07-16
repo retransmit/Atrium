@@ -39,7 +39,8 @@ final embyClientProvider = FutureProvider.family<EmbyClient, Instance>((
     deviceId: instance.id,
     allowSelfSigned: instance.allowSelfSignedCerts,
     customHeaders: customHeaders,
-    getLocalOverride: (String itemId, String type) => overridesBox.get('${instance.id}_${itemId}_$type'),
+    getLocalOverride: (String itemId, String type) =>
+        overridesBox.get('${instance.id}_${itemId}_$type'),
     setLocalOverride: (String itemId, String type, String tag) {
       if (tag.isEmpty) {
         overridesBox.delete('${instance.id}_${itemId}_$type');
@@ -57,10 +58,10 @@ final embyViewsProvider = FutureProvider.family<List<EmbyView>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
-  final EmbyClient client = await ref.watch(embyClientProvider(instance).future);
+  final EmbyClient client =
+      await ref.watch(embyClientProvider(instance).future);
   return client.getViews();
 });
-
 
 /// Flattened items within a root library, using recursive fetch based on CollectionType.
 final embyLibraryItemsProvider =
@@ -158,8 +159,8 @@ final embyFastSessionsProvider =
   }
 });
 
-final embyLibraryScanProvider =
-    StreamProvider.autoDispose.family<({String state, double progress})?, Instance>((
+final embyLibraryScanProvider = StreamProvider.autoDispose
+    .family<({String state, double progress})?, Instance>((
   Ref ref,
   Instance instance,
 ) async* {
@@ -326,8 +327,8 @@ final embyArtistBioProvider =
   return client.getArtistBio(artistName);
 });
 
-final embyRemoteImagesProvider =
-    FutureProvider.autoDispose.family<List<EmbyRemoteImage>, (Instance, String, String)>((
+final embyRemoteImagesProvider = FutureProvider.autoDispose
+    .family<List<EmbyRemoteImage>, (Instance, String, String)>((
   Ref ref,
   (Instance, String, String) key,
 ) async {

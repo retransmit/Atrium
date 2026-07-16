@@ -484,7 +484,8 @@ class GlancesHome extends ConsumerWidget {
                 LinearProgressIndicatorM3E(
                   shape: ProgressM3EShape.flat,
                   value: value,
-                  trackColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  trackColor:
+                      Theme.of(context).colorScheme.surfaceContainerHighest,
                   activeColor: value > 0.9
                       ? Theme.of(context).colorScheme.error
                       : Theme.of(context).colorScheme.primary,

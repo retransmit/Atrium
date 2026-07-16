@@ -23,7 +23,9 @@ class SeerrGenreScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<SeerrDiscoverResult>> items = ref.watch(
-      seerrItemsByGenreProvider((instance: instance, genreId: genre.id, isMovie: isMovie)),
+      seerrItemsByGenreProvider(
+        (instance: instance, genreId: genre.id, isMovie: isMovie),
+      ),
     );
 
     return Scaffold(
@@ -32,7 +34,11 @@ class SeerrGenreScreen extends ConsumerWidget {
       ),
       body: AsyncValueView<List<SeerrDiscoverResult>>(
         value: items,
-        onRetry: () => ref.invalidate(seerrItemsByGenreProvider((instance: instance, genreId: genre.id, isMovie: isMovie))),
+        onRetry: () => ref.invalidate(
+          seerrItemsByGenreProvider(
+            (instance: instance, genreId: genre.id, isMovie: isMovie),
+          ),
+        ),
         data: (List<SeerrDiscoverResult> list) {
           if (list.isEmpty) {
             return const EmptyView(
@@ -107,14 +113,19 @@ class _SeerrGenrePosterCard extends StatelessWidget {
             item.displayTitle,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(fontWeight: FontWeight.bold),
           ),
           if (item.displayDate != null)
             Text(
               item.displayDate!,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
             ),
         ],
       ),

@@ -23,7 +23,7 @@ class _UiSettingsScreenState extends ConsumerState<UiSettingsScreen> {
   int _firstDayOfWeek = 0;
   bool _showRelativeDates = true;
   bool _enableColorImpairedMode = false;
-  
+
   late final TextEditingController _shortDateFormatController;
   late final TextEditingController _longDateFormatController;
   late final TextEditingController _timeFormatController;
@@ -55,10 +55,13 @@ class _UiSettingsScreenState extends ConsumerState<UiSettingsScreen> {
 
     _firstDayOfWeek = config['firstDayOfWeek'] as int? ?? 0;
     _showRelativeDates = config['showRelativeDates'] as bool? ?? true;
-    _enableColorImpairedMode = config['enableColorImpairedMode'] as bool? ?? false;
+    _enableColorImpairedMode =
+        config['enableColorImpairedMode'] as bool? ?? false;
 
-    _shortDateFormatController.text = (config['shortDateFormat'] as String?) ?? 'MMM dd yyyy';
-    _longDateFormatController.text = (config['longDateFormat'] as String?) ?? 'dddd, MMMM dd yyyy';
+    _shortDateFormatController.text =
+        (config['shortDateFormat'] as String?) ?? 'MMM dd yyyy';
+    _longDateFormatController.text =
+        (config['longDateFormat'] as String?) ?? 'dddd, MMMM dd yyyy';
     _timeFormatController.text = (config['timeFormat'] as String?) ?? 'h:mmtt';
   }
 
@@ -228,7 +231,8 @@ class _UiSettingsScreenState extends ConsumerState<UiSettingsScreen> {
                           contentPadding: EdgeInsets.zero,
                           title: const Text('Show Relative Dates'),
                           value: _showRelativeDates,
-                          onChanged: (val) => setState(() => _showRelativeDates = val),
+                          onChanged: (val) =>
+                              setState(() => _showRelativeDates = val),
                         ),
                       ],
                     ),
