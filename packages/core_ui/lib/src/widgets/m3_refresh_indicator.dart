@@ -65,6 +65,38 @@ class M3RefreshIndicator extends StatefulWidget {
   State<M3RefreshIndicator> createState() => _M3RefreshIndicatorState();
 }
 
+class _M3RefreshPhysics extends ScrollPhysics {
+  final _M3RefreshIndicatorState state;
+
+  const _M3RefreshPhysics(this.state, {super.parent});
+
+  @override
+  _M3RefreshPhysics applyTo(ScrollPhysics? ancestor) {
+    return _M3RefreshPhysics(state, parent: buildParent(ancestor));
+  }
+
+  @override
+  double applyPhysicsToUserOffset(ScrollMetrics position, double offset) {
+    if (position.axis == Axis.vertical && state._dragOffset != null && state._dragOffset! > 0.0) {
+      if (offset < 0.0) {
+        if (position.pixels >= position.minScrollExtent) {
+          final double absorbable = state._dragOffset!;
+          final double dragAmount = -offset;
+          if (dragAmount <= absorbable) {
+            state.absorbDrag(dragAmount);
+            return 0.0;
+          } else {
+            state.absorbDrag(absorbable);
+            final double remainingOffset = -(dragAmount - absorbable);
+            return super.applyPhysicsToUserOffset(position, remainingOffset);
+          }
+        }
+      }
+    }
+    return super.applyPhysicsToUserOffset(position, offset);
+  }
+}
+
 class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
     with TickerProviderStateMixin {
   late AnimationController _positionController;
@@ -76,6 +108,16 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
   late Future<void> _pendingRefreshFuture;
   bool? _isIndicatorAtTop;
   double? _dragOffset;
+  double? _lastContainerExtent;
+
+  void absorbDrag(double delta) {
+    if (_dragOffset != null) {
+      _dragOffset = math.max(0.0, _dragOffset! - delta);
+      if (_lastContainerExtent != null) {
+        _checkDragOffset(_lastContainerExtent!);
+      }
+    }
+  }
 
   // Loading animation variables
   late final AnimationController _loadCtrl;
@@ -177,20 +219,24 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
         _status == RefreshIndicatorStatus.armed);
     // Custom trigger distance mapping
     double newValue = _dragOffset! / widget.triggerDistance;
-    if (_status == RefreshIndicatorStatus.armed) {
-      newValue = math.max(newValue, 1.0 / _kDragSizeFactorLimit);
-    }
-    _positionController.value = newValue.clamp(0.0, 1.0);
-    if (_status == RefreshIndicatorStatus.drag &&
-        _positionController.value >= 1.0 / _kDragSizeFactorLimit) {
+    
+    if (_status == RefreshIndicatorStatus.armed && newValue < 1.0 / _kDragSizeFactorLimit) {
+      setState(() {
+        _status = RefreshIndicatorStatus.drag;
+      });
+    } else if (_status == RefreshIndicatorStatus.drag && newValue >= 1.0 / _kDragSizeFactorLimit) {
       setState(() {
         _status = RefreshIndicatorStatus.armed;
       });
     }
+    
+    _positionController.value = newValue.clamp(0.0, 1.0);
   }
 
   bool _handleScrollNotification(ScrollNotification notification) {
-    if (!widget.notificationPredicate(notification)) {
+    _lastContainerExtent = notification.metrics.viewportDimension;
+    if (!widget.notificationPredicate(notification) ||
+        notification.metrics.axis != Axis.vertical) {
       return false;
     }
     if (_shouldStart(notification)) {
@@ -199,11 +245,19 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
       });
       return false;
     }
-    final bool? indicatorAtTopNow =
-        switch (notification.metrics.axisDirection) {
-      AxisDirection.down || AxisDirection.up => true,
-      AxisDirection.left || AxisDirection.right => null,
-    };
+    bool? indicatorAtTopNow;
+    switch (notification.metrics.axisDirection) {
+      case AxisDirection.down:
+        indicatorAtTopNow = notification.metrics.extentBefore == 0.0;
+        break;
+      case AxisDirection.up:
+        indicatorAtTopNow = notification.metrics.extentAfter == 0.0;
+        break;
+      case AxisDirection.left:
+      case AxisDirection.right:
+        indicatorAtTopNow = null;
+        break;
+    }
     if (indicatorAtTopNow != _isIndicatorAtTop) {
       if (_status == RefreshIndicatorStatus.drag ||
           _status == RefreshIndicatorStatus.armed) {
@@ -260,7 +314,7 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
     if (notification.depth != 0 || !notification.leading) {
       return false;
     }
-    if (_status == RefreshIndicatorStatus.drag) {
+    if (_status == RefreshIndicatorStatus.drag || _status == RefreshIndicatorStatus.armed) {
       notification.disallowIndicator();
       return true;
     }
@@ -357,7 +411,15 @@ class _M3RefreshIndicatorState extends State<M3RefreshIndicator>
       onNotification: _handleScrollNotification,
       child: NotificationListener<OverscrollIndicatorNotification>(
         onNotification: _handleIndicatorNotification,
-        child: widget.child,
+        child: ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(
+            physics: _M3RefreshPhysics(
+              this,
+              parent: ScrollConfiguration.of(context).getScrollPhysics(context),
+            ),
+          ),
+          child: widget.child,
+        ),
       ),
     );
 

@@ -385,6 +385,7 @@ class _WantedListView extends ConsumerWidget {
           final studioKeys = groupedMap.keys.toList()..sort();
 
           content = M3RefreshIndicator(
+            edgeOffset: 72 + 48 + MediaQuery.paddingOf(context).top,
             onRefresh: () async {
               if (isCutoffTab) {
                 ref.invalidate(radarrWantedCutoffProvider(instance));
@@ -425,6 +426,7 @@ class _WantedListView extends ConsumerWidget {
           );
         } else {
           content = M3RefreshIndicator(
+            edgeOffset: 72 + 48 + MediaQuery.paddingOf(context).top,
             onRefresh: () async {
               if (isCutoffTab) {
                 ref.invalidate(radarrWantedCutoffProvider(instance));

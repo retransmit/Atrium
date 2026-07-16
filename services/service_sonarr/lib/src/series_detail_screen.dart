@@ -112,6 +112,7 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
     final int totalEpisodes = widget.series.statistics?.episodeCount ?? 0;
 
     return M3RefreshIndicator(
+      edgeOffset: kToolbarHeight + MediaQuery.paddingOf(context).top,
       onRefresh: () => _refresh(context),
       child: CustomScrollView(
         slivers: <Widget>[

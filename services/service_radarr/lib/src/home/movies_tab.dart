@@ -186,6 +186,7 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
           onRetry: () => ref.invalidate(radarrMoviesProvider(widget.instance)),
           data: (List<RadarrMovie> list) {
             return M3RefreshIndicator(
+              edgeOffset: 72 + MediaQuery.paddingOf(context).top,
               onRefresh: () async {
                 ref.invalidate(radarrMoviesProvider(widget.instance));
                 await ref.read(radarrMoviesProvider(widget.instance).future);

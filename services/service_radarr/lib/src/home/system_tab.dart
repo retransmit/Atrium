@@ -213,6 +213,7 @@ class _StatusTab extends ConsumerWidget {
     final diskAsync = ref.watch(radarrDiskSpaceProvider(instance));
 
     return M3RefreshIndicator(
+      edgeOffset: kToolbarHeight + 48 + MediaQuery.paddingOf(context).top,
       onRefresh: () async {
         ref.invalidate(radarrSystemStatusProvider(instance));
         ref.invalidate(radarrHealthProvider(instance));
@@ -635,6 +636,7 @@ class _TasksTab extends ConsumerWidget {
     final tasksAsync = ref.watch(radarrTasksProvider(instance));
 
     return M3RefreshIndicator(
+      edgeOffset: kToolbarHeight + 48 + MediaQuery.paddingOf(context).top,
       onRefresh: () async {
         ref.invalidate(radarrTasksProvider(instance));
         await ref.read(radarrTasksProvider(instance).future);
@@ -771,6 +773,7 @@ class _UpdatesTab extends ConsumerWidget {
     final updatesAsync = ref.watch(radarrUpdatesProvider(instance));
 
     return M3RefreshIndicator(
+      edgeOffset: kToolbarHeight + 48 + MediaQuery.paddingOf(context).top,
       onRefresh: () async {
         ref.invalidate(radarrUpdatesProvider(instance));
         await ref.read(radarrUpdatesProvider(instance).future);
@@ -1076,6 +1079,7 @@ class _LogsTabState extends ConsumerState<_LogsTab> {
                 children: <Widget>[
                   Expanded(
                     child: M3RefreshIndicator(
+                      edgeOffset: kToolbarHeight + 48 + MediaQuery.paddingOf(context).top,
                       onRefresh: () async {
                         ref.invalidate(
                           radarrLogsProvider(
@@ -1333,6 +1337,7 @@ class _BackupsTab extends ConsumerWidget {
     final backupsAsync = ref.watch(radarrBackupsProvider(instance));
 
     return M3RefreshIndicator(
+      edgeOffset: kToolbarHeight + 48 + MediaQuery.paddingOf(context).top,
       onRefresh: () async {
         ref.invalidate(radarrBackupsProvider(instance));
         await ref.read(radarrBackupsProvider(instance).future);

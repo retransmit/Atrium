@@ -100,6 +100,7 @@ class _MovieDetailBodyState extends ConsumerState<_MovieDetailBody> {
         fanart == null ? null : api?.posterUrl(fanart, width: 1080);
 
     return M3RefreshIndicator(
+      edgeOffset: kToolbarHeight + MediaQuery.paddingOf(context).top,
       onRefresh: () => _refresh(context),
       child: CustomScrollView(
         slivers: <Widget>[

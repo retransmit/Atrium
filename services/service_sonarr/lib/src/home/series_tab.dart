@@ -188,6 +188,7 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
           onRetry: () => ref.invalidate(sonarrSeriesProvider(widget.instance)),
           data: (List<SonarrSeries> list) {
             return M3RefreshIndicator(
+              edgeOffset: 72 + MediaQuery.paddingOf(context).top,
               onRefresh: () async {
                 ref.invalidate(sonarrSeriesProvider(widget.instance));
                 await ref.read(sonarrSeriesProvider(widget.instance).future);

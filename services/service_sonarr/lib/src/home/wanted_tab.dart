@@ -825,6 +825,7 @@ class _EpisodeListLayout extends ConsumerWidget {
         }
 
         return M3RefreshIndicator(
+          edgeOffset: 72 + 48 + MediaQuery.paddingOf(context).top,
           onRefresh: () async {
             onRefresh();
           },

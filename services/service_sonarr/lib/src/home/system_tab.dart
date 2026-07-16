@@ -216,6 +216,7 @@ class _StatusTab extends ConsumerWidget {
     final diskAsync = ref.watch(sonarrDiskSpaceProvider(instance));
 
     return M3RefreshIndicator(
+      edgeOffset: kToolbarHeight + 48 + MediaQuery.paddingOf(context).top,
       onRefresh: () async {
         ref.invalidate(sonarrSystemStatusProvider(instance));
         ref.invalidate(sonarrHealthProvider(instance));
@@ -650,6 +651,7 @@ class _TasksTab extends ConsumerWidget {
     final tasksAsync = ref.watch(sonarrTasksProvider(instance));
 
     return M3RefreshIndicator(
+      edgeOffset: kToolbarHeight + 48 + MediaQuery.paddingOf(context).top,
       onRefresh: () async {
         ref.invalidate(sonarrTasksProvider(instance));
         await ref.read(sonarrTasksProvider(instance).future);
@@ -791,6 +793,7 @@ class _UpdatesTab extends ConsumerWidget {
     final updatesAsync = ref.watch(sonarrUpdatesProvider(instance));
 
     return M3RefreshIndicator(
+      edgeOffset: kToolbarHeight + 48 + MediaQuery.paddingOf(context).top,
       onRefresh: () async {
         ref.invalidate(sonarrUpdatesProvider(instance));
         await ref.read(sonarrUpdatesProvider(instance).future);
@@ -1101,6 +1104,7 @@ class _LogsTabState extends ConsumerState<_LogsTab> {
                 children: <Widget>[
                   Expanded(
                     child: M3RefreshIndicator(
+                      edgeOffset: kToolbarHeight + 48 + MediaQuery.paddingOf(context).top,
                       onRefresh: () async {
                         ref.invalidate(
                           sonarrLogsProvider(
@@ -1363,6 +1367,7 @@ class _BackupsTab extends ConsumerWidget {
     final backupsAsync = ref.watch(sonarrBackupsProvider(instance));
 
     return M3RefreshIndicator(
+      edgeOffset: kToolbarHeight + 48 + MediaQuery.paddingOf(context).top,
       onRefresh: () async {
         ref.invalidate(sonarrBackupsProvider(instance));
         await ref.read(sonarrBackupsProvider(instance).future);
