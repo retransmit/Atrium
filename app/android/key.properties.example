@@ -1,0 +1,17 @@
+# Copy to key.properties (same directory) and fill in to sign a release build.
+# key.properties and the keystore it points at are gitignored: NEVER commit
+# either one. Whoever holds the keystore controls what can ship as Atrium, and
+# if it is lost the app can never be updated again - back it up somewhere safe
+# and offline.
+#
+# Generate the keystore with:
+#   keytool -genkey -v -keystore atrium-release.jks -keyalg RSA -keysize 4096 \
+#     -validity 10000 -alias atrium
+#
+# Keep the .jks outside the working tree; an absolute path here is safest. A
+# relative path resolves against this android/ directory.
+
+storeFile=C:/keys/atrium-release.jks
+storePassword=
+keyAlias=atrium
+keyPassword=
