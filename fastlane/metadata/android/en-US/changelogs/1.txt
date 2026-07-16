@@ -1,0 +1,10 @@
+First release.
+
+Manage Sonarr, Radarr, Prowlarr, Bazarr, Seerr, Tautulli, qBittorrent, SABnzbd,
+Jellyfin, Emby, Plex and Glances from one app.
+
+* Reorderable dashboard of at-a-glance widgets
+* Multiple profiles, each instance carrying a local and an external URL
+* Profile import and export
+* Material 3 Expressive theming with dynamic color and custom palettes
+* Optional biometric lock
