@@ -6,9 +6,8 @@ Seerr, Tautulli, Jellyfin, Emby, Plex, qBittorrent,
 SABnzbd and Glances - and routes every request through the right URL
 whether you're on the home Wi-Fi or out in the world.
 
-> **Status:** early development - everything is work in progress. The
-> modules below are functional and tested against live servers, but
-> builds are debug-signed and there is no store / F-Droid release yet.
+> **Status:** v1.0.0, the first release. Signed APKs are on the
+> [releases page][releases]; the F-Droid submission is in progress.
 
 ## Why
 
@@ -47,7 +46,8 @@ external URLs.
 
 ## Services
 
-All services are **work in progress** - functional today, still evolving:
+Every service below works today. Depth varies, and the table says what
+each one covers:
 
 | Service                | What works today                                                      |
 | ---------------------- | --------------------------------------------------------------------- |
@@ -63,6 +63,16 @@ All services are **work in progress** - functional today, still evolving:
 | qBittorrent            | realtime list, add/manage, torrent detail                             |
 | SABnzbd                | queue control (history / categories / limits still to come)           |
 | Glances                | CPU/memory/network/disk monitoring                                    |
+
+## Install
+
+Grab the APK for your device from the [releases page][releases]. Most
+phones want `app-arm64-v8a-release.apk`; `armeabi-v7a` covers older
+32-bit devices. Android 7.0 (API 24) or newer.
+
+F-Droid submission is in progress. The F-Droid build will be signed with
+F-Droid's key rather than ours, so once it lands, pick one source and
+stay on it - Android will not update an APK across a signature change.
 
 ## Build
 
@@ -88,6 +98,10 @@ from the repository root, run:
 dart run tool/build_all.dart
 ```
 
+A release build is debug-signed unless `app/android/key.properties`
+exists. To sign with your own key, copy `key.properties.example` next to
+it and fill it in; the file and the keystore it points at are gitignored.
+
 ## Repo layout
 
 ```
@@ -111,3 +125,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution guide and
 Jellyfin, qBittorrent, and LunaSea.
 
 [lunasea]: https://github.com/JagandeepBrar/LunaSea
+[releases]: https://github.com/retransmit/Atrium/releases

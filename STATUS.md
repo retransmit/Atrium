@@ -82,14 +82,13 @@ Atrium is a **controller** app. Video playback was removed by design
 
 ## App-wide TODO
 
-1. Dashboard widgets (the aggregation providers behind the Activity tab
-   were built to be reused; a Wake-on-LAN widget is planned)
-2. Release signing + F-Droid metadata (debug-signed right now)
-3. iOS platform scaffold
-4. Live-stack testing of SABnzbd
-5. Possible profile loss after Android hard-kill (seen once -
+1. A Wake-on-LAN dashboard widget (the board and its seven widgets ship
+   in 1.0.0)
+2. iOS platform scaffold
+3. Live-stack testing of SABnzbd
+4. Possible profile loss after Android hard-kill (seen once -
    investigate crash-safe Hive writes/backup)
-6. Polish: tablet layouts, localization
+5. Polish: tablet layouts, localization
 
 ## Contributing
 
