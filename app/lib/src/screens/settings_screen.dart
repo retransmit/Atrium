@@ -15,6 +15,7 @@ import '../preferences.dart';
 import '../profile_io.dart';
 import 'changelog_screen.dart';
 import 'custom_headers_screen.dart';
+import 'reorder_sidebar_screen.dart';
 import 'wake_on_lan_screen.dart';
 
 /// App settings: theme mode, optional biometric unlock, network tools
@@ -160,6 +161,14 @@ class SettingsScreen extends ConsumerWidget {
               'kept.',
             ),
             onTap: () => ProfileIo.importProfile(context, ref),
+          ),
+          const Divider(),
+          const _SectionHeader('Sidebar'),
+          ListTile(
+            leading: const Icon(Icons.reorder_rounded),
+            title: const Text('Reorder sidebar services'),
+            subtitle: const Text('Drag to change the order services appear in.'),
+            onTap: () => pushScreen<void>(context, const ReorderSidebarScreen()),
           ),
           const Divider(),
           const _SectionHeader('About'),
