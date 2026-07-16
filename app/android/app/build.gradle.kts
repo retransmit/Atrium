@@ -2,9 +2,13 @@ import java.util.Properties
 
 // Release signing material, kept out of the repository. Create
 // android/key.properties (gitignored) from key.properties.example to sign a
-// release build. When it is absent - a fresh clone, CI, or the F-Droid builder,
-// which signs with its own key - the release build falls back to the debug key
-// so `flutter build` still works.
+// release build.
+//
+// When it is absent the release build is left UNSIGNED, rather than falling
+// back to the debug key. F-Droid verifies a release by copying the signature
+// off the published APK onto its own build of the same source, which only
+// works if its build carries no signature of its own. An unsigned APK cannot
+// be installed, so `flutter run --release` needs key.properties present.
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties().apply {
     if (keystorePropertiesFile.exists()) {
@@ -77,10 +81,13 @@ android {
 
     buildTypes {
         release {
+            // No signing config at all leaves the APK unsigned. A config
+            // carrying a null storeFile is rejected outright by the Android
+            // Gradle Plugin, so the absence has to be expressed here.
             signingConfig = if (hasReleaseSigning) {
                 signingConfigs.getByName("release")
             } else {
-                signingConfigs.getByName("debug")
+                null
             }
         }
     }

@@ -98,9 +98,15 @@ from the repository root, run:
 dart run tool/build_all.dart
 ```
 
-A release build is debug-signed unless `app/android/key.properties`
-exists. To sign with your own key, copy `key.properties.example` next to
-it and fill it in; the file and the keystore it points at are gitignored.
+A release build is **unsigned** unless `app/android/key.properties` exists,
+and an unsigned APK will not install, so `flutter run --release` needs one.
+To sign with your own key, copy `key.properties.example` next to it and fill
+it in; the file and the keystore it points at are gitignored. Debug builds
+need none of this.
+
+Leaving the build unsigned is deliberate: F-Droid verifies a release by
+copying the signature off the published APK onto its own build of the same
+source, which only works if that build carries no signature of its own.
 
 ## Repo layout
 
