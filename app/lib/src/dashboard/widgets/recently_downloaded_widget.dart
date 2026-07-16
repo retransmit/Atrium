@@ -1,5 +1,4 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:collection/collection.dart';
 import 'package:core_models/core_models.dart';
 import 'package:core_router/core_router.dart';
 import 'package:core_ui/core_ui.dart';
@@ -9,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:service_radarr/service_radarr.dart';
 import 'package:service_sonarr/service_sonarr.dart';
 
+import '../../arr_artwork.dart';
 import '../dashboard_widget_card.dart';
 import '../dashboard_widget_kind.dart';
 
@@ -88,6 +88,7 @@ class DashboardRecentlyDownloadedWidget extends ConsumerWidget {
     for (final Instance i in sonarrInstances) {
       final AsyncValue<List<SonarrHistoryItem>> history =
           ref.watch(sonarrHistoryProvider(i));
+      final SonarrApi? api = ref.watch(sonarrApiProvider(i)).value;
       anyLoading |= history.isLoading && !history.hasValue;
       anyError |= history.hasError;
       for (final SonarrHistoryItem h
@@ -103,15 +104,14 @@ class DashboardRecentlyDownloadedWidget extends ConsumerWidget {
           instance: i,
           series: h.series,
           subtitle: h.episode != null ? h.series!.title : null,
-          posterUrl: h.series!.images
-              .firstWhereOrNull((SonarrImage im) => im.coverType == 'poster')
-              ?.remoteUrl,
+          posterUrl: sonarrPosterUrl(api, h.series!.images),
         ));
       }
     }
     for (final Instance i in radarrInstances) {
       final AsyncValue<List<RadarrHistoryItem>> history =
           ref.watch(radarrHistoryProvider(i));
+      final RadarrApi? api = ref.watch(radarrApiProvider(i)).value;
       anyLoading |= history.isLoading && !history.hasValue;
       anyError |= history.hasError;
       for (final RadarrHistoryItem h
@@ -127,9 +127,7 @@ class DashboardRecentlyDownloadedWidget extends ConsumerWidget {
           instance: i,
           movieId: h.movie!.id,
           subtitle: h.movie!.year?.toString(),
-          posterUrl: h.movie!.images
-              .firstWhereOrNull((RadarrImage im) => im.coverType == 'poster')
-              ?.remoteUrl,
+          posterUrl: radarrPosterUrl(api, h.movie!.images),
         ));
       }
     }
@@ -191,11 +189,6 @@ class DashboardRecentlyDownloadedWidget extends ConsumerWidget {
                               ? CachedNetworkImage(
                                   imageUrl: item.posterUrl!,
                                   fit: BoxFit.cover,
-                                  httpHeaders: switch (item.instance.auth) {
-                                    InstanceAuthApiKey(:final String apiKey) =>
-                                      <String, String>{'X-Api-Key': apiKey},
-                                    _ => const <String, String>{},
-                                  },
                                   errorWidget: (_, __, ___) => Icon(
                                     item.isMovie ? Icons.movie : Icons.tv,
                                     color: cs.onSurfaceVariant,

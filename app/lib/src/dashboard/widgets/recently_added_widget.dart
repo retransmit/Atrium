@@ -1,5 +1,4 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:collection/collection.dart';
 import 'package:core_models/core_models.dart';
 import 'package:core_router/core_router.dart';
 import 'package:core_ui/core_ui.dart';
@@ -9,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:service_radarr/service_radarr.dart';
 import 'package:service_sonarr/service_sonarr.dart';
 
+import '../../arr_artwork.dart';
 import '../dashboard_widget_card.dart';
 import '../dashboard_widget_kind.dart';
 
@@ -63,6 +63,7 @@ class DashboardRecentlyAddedWidget extends ConsumerWidget {
           ref.watch(sonarrSeriesProvider(i));
       anyLoading |= series.isLoading && !series.hasValue;
       anyError |= series.hasError;
+      final SonarrApi? sonarrApi = ref.watch(sonarrApiProvider(i)).value;
       for (final SonarrSeries s in series.value ?? const <SonarrSeries>[]) {
         final DateTime? added = DateTime.tryParse(s.added ?? '');
         if (added == null) {
@@ -75,9 +76,7 @@ class DashboardRecentlyAddedWidget extends ConsumerWidget {
           instance: i,
           year: s.year,
           series: s,
-          posterUrl: s.images
-              .firstWhereOrNull((SonarrImage im) => im.coverType == 'poster')
-              ?.remoteUrl,
+          posterUrl: sonarrPosterUrl(sonarrApi, s.images),
         ));
       }
     }
@@ -86,6 +85,7 @@ class DashboardRecentlyAddedWidget extends ConsumerWidget {
           ref.watch(radarrMoviesProvider(i));
       anyLoading |= movies.isLoading && !movies.hasValue;
       anyError |= movies.hasError;
+      final RadarrApi? radarrApi = ref.watch(radarrApiProvider(i)).value;
       for (final RadarrMovie m in movies.value ?? const <RadarrMovie>[]) {
         final DateTime? added = DateTime.tryParse(m.added ?? '');
         if (added == null) {
@@ -98,9 +98,7 @@ class DashboardRecentlyAddedWidget extends ConsumerWidget {
           instance: i,
           year: m.year,
           movieId: m.id,
-          posterUrl: m.images
-              .firstWhereOrNull((RadarrImage im) => im.coverType == 'poster')
-              ?.remoteUrl,
+          posterUrl: radarrPosterUrl(radarrApi, m.images),
         ));
       }
     }
