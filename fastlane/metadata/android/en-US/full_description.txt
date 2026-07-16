@@ -33,8 +33,13 @@ Features:
 
 Privacy:
 
-Atrium talks only to the servers you configure. There is no analytics, no
-telemetry, no advertising and no account. Credentials are held in encrypted
-storage on the device.
+There is no analytics, no telemetry, no advertising and no account. Atrium
+never reports anything back to its developers. Credentials are held in
+encrypted storage on the device.
+
+One thing to know: posters and backdrops are fetched from the artwork sites
+your servers point at, usually TheTVDB, TMDB or Fanart.tv. Those requests
+come from your device, so those sites see your IP address and which titles
+you are looking at. Everything else goes only to the servers you configure.
 
 Free software under the GPL-3.0-or-later.
