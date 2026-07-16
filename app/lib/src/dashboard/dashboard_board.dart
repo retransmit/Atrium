@@ -18,9 +18,7 @@ import '../health_providers.dart';
 import '../screens/calendar_screen.dart';
 import 'dashboard_layout.dart';
 import 'dashboard_widget_kind.dart';
-import 'widgets/disk_widget.dart';
 import 'widgets/downloads_widget.dart';
-import 'widgets/health_widget.dart';
 import 'widgets/recently_added_widget.dart';
 import 'widgets/requests_widget.dart';
 import 'widgets/server_info_widget.dart';
@@ -77,9 +75,6 @@ class DashboardBoard extends ConsumerWidget {
   }
 
   static bool _configured(DashboardWidgetKind kind, List<Instance> instances) {
-    if (kind == DashboardWidgetKind.health) {
-      return instances.isNotEmpty;
-    }
     return instances.any((Instance i) => kind.serviceKinds.contains(i.kind));
   }
 
@@ -121,8 +116,6 @@ class DashboardBoard extends ConsumerWidget {
           sonarrInstances: _byKind(instances, ServiceKind.sonarr),
           radarrInstances: _byKind(instances, ServiceKind.radarr),
         );
-      case DashboardWidgetKind.health:
-        return DashboardHealthWidget(instances: instances);
       case DashboardWidgetKind.requests:
         return DashboardRequestsWidget(
           instances: _byKind(instances, ServiceKind.seerr),
@@ -130,11 +123,6 @@ class DashboardBoard extends ConsumerWidget {
       case DashboardWidgetKind.serverInfo:
         return DashboardServerInfoWidget(
           instances: _byKind(instances, ServiceKind.glances),
-        );
-      case DashboardWidgetKind.diskSpace:
-        return DashboardDiskWidget(
-          sabInstances: _byKind(instances, ServiceKind.sabnzbd),
-          glancesInstances: _byKind(instances, ServiceKind.glances),
         );
     }
   }
