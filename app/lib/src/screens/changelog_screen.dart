@@ -14,6 +14,16 @@ class _Release {
 /// Newest first. Update alongside the version in the app's pubspec.
 const List<_Release> _releases = <_Release>[
   _Release(
+    version: '1.0.2',
+    changes: <String>[
+      'The Android build tools were writing an encrypted list of the app\'s '
+          'dependencies into every APK, in a form only Google Play can read. '
+          'Nothing sent it anywhere, but it has no business being in the app '
+          'and is gone.',
+      'Groundwork for the F-Droid listing.',
+    ],
+  ),
+  _Release(
     version: '1.0.1',
     changes: <String>[
       'Security fix: 1.0.0 sent your Sonarr or Radarr API key to the artwork '

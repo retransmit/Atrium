@@ -18,24 +18,28 @@ void main(List<String> args) async {
   final rootDir = Directory.current;
   final workspaceDirs = <Directory>[];
 
-  // Recursively find all package directories containing a pubspec.yaml with build_runner
+  // Recursively find all package directories containing a pubspec.yaml with
+  // build_runner. A recursive list() has already descended by the time it hands
+  // an entity back, so a directory cannot be pruned once it is seen; each
+  // pubspec is judged by its own path instead. Filtering the directory entry
+  // alone did nothing, because only files decide what gets added, which is how
+  // a PUB_CACHE inside the tree came to offer every downloaded dependency up as
+  // a package to build.
+  const skipSegments = {'build', 'ios', 'android'};
   await for (final entity
       in rootDir.list(recursive: true, followLinks: false)) {
-    if (entity is Directory) {
-      final name = entity.uri.pathSegments
-          .lastWhere((s) => s.isNotEmpty, orElse: () => '');
-      // Skip common hidden or build directories
-      if (name.startsWith('.') ||
-          name == 'build' ||
-          name == 'ios' ||
-          name == 'android') {
-        continue;
-      }
-    } else if (entity is File && entity.path.endsWith('pubspec.yaml')) {
-      final content = await entity.readAsString();
-      if (content.contains('build_runner:')) {
-        workspaceDirs.add(entity.parent);
-      }
+    if (entity is! File || !entity.path.endsWith('pubspec.yaml')) {
+      continue;
+    }
+    final segments = entity.parent.path
+        .replaceFirst(rootDir.path, '')
+        .split(Platform.pathSeparator);
+    if (segments.any((s) => s.startsWith('.') || skipSegments.contains(s))) {
+      continue;
+    }
+    final content = await entity.readAsString();
+    if (content.contains('build_runner:')) {
+      workspaceDirs.add(entity.parent);
     }
   }
 

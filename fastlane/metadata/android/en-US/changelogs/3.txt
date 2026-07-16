@@ -1,0 +1,5 @@
+The Android build tools were writing an encrypted list of the app's dependencies
+into every APK, in a form only Google Play can read. Nothing ever sent it
+anywhere, but it has no business being in the app and is gone.
+
+Groundwork for the F-Droid listing.
