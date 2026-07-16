@@ -1,0 +1,9 @@
+Security fix. Update if you ran 1.0.0.
+
+1.0.0 sent your Sonarr or Radarr API key to the artwork sites TheTVDB, TMDB and
+Fanart.tv, as a header on the poster requests the recently downloaded widget
+made. Those keys grant full control of the server. If you ran 1.0.0, consider
+rotating the API key of every Sonarr and Radarr instance you use.
+
+Posters and backdrops on the dashboard and in the calendar now load from your
+own instances, which already cache them, rather than from those artwork sites.

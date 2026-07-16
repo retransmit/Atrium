@@ -14,6 +14,20 @@ class _Release {
 /// Newest first. Update alongside the version in the app's pubspec.
 const List<_Release> _releases = <_Release>[
   _Release(
+    version: '1.0.1',
+    changes: <String>[
+      'Security fix: 1.0.0 sent your Sonarr or Radarr API key to the artwork '
+          'sites TheTVDB, TMDB and Fanart.tv, as a header on the poster '
+          'requests made by the recently downloaded widget. Those keys grant '
+          'full control of the server. If you ran 1.0.0, consider rotating the '
+          'API key of every Sonarr and Radarr instance you use.',
+      'Posters and backdrops on the dashboard and in the calendar now load '
+          'from your own Sonarr and Radarr instances, which already cache '
+          'them, rather than from those artwork sites. They no longer see your '
+          'address or what you are browsing.',
+    ],
+  ),
+  _Release(
     version: '1.0.0',
     changes: <String>[
       'Dashboard board of at-a-glance widgets: active downloads, now streaming, '
