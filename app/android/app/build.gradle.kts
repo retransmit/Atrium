@@ -32,6 +32,16 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    // The Android Gradle Plugin otherwise writes an encrypted list of the
+    // dependency tree into the APK signing block, for Google Play Console to
+    // read. Nothing here is ever uploaded to Play, no build reads it back, and
+    // F-Droid refuses to publish an APK carrying an opaque blob it cannot
+    // inspect.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+
     defaultConfig {
         applicationId = "app.atrium"
         // local_auth + flutter_secure_storage need API 23+ (BiometricPrompt,
