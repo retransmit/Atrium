@@ -143,31 +143,64 @@ final globalCalendarProvider =
   DateTime month,
 ) async {
   final List<Instance> instances = ref.watch(activeInstancesProvider);
-  final List<Future<List<CalendarEvent>>> futures = [];
+  final List<CalendarEvent> allEvents = [];
+  final List<Future<void>> futures = [];
 
   for (final Instance instance in instances) {
     if (instance.kind == ServiceKind.radarr) {
-      futures.add(
-        ref.watch(radarrCalendarProvider((instance, month)).future).then(
-              (List<RadarrMovie> movies) => movies
-                  .map((RadarrMovie m) =>
-                      RadarrCalendarEvent(m, instance, month))
-                  .toList(),
-            ),
-      );
+      final AsyncValue<List<RadarrMovie>> state =
+          ref.watch(radarrCalendarProvider((instance, month)));
+
+      if (state is AsyncLoading) {
+        futures.add(
+          ref
+              .read(radarrCalendarProvider((instance, month)).future)
+              .then((List<RadarrMovie> movies) {
+            allEvents.addAll(
+              movies.map(
+                  (RadarrMovie m) => RadarrCalendarEvent(m, instance, month)),
+            );
+          }).catchError((Object e) {
+            // Ignore error
+          }),
+        );
+      } else if (state is AsyncData<List<RadarrMovie>>) {
+        allEvents.addAll(
+          state.value
+              .map((RadarrMovie m) => RadarrCalendarEvent(m, instance, month)),
+        );
+      }
     } else if (instance.kind == ServiceKind.sonarr) {
-      futures.add(
-        ref.watch(sonarrCalendarProvider((instance, month)).future).then(
-              (List<SonarrEpisode> episodes) => episodes
-                  .map((SonarrEpisode e) => SonarrCalendarEvent(e, instance))
-                  .toList(),
-            ),
-      );
+      final AsyncValue<List<SonarrEpisode>> state =
+          ref.watch(sonarrCalendarProvider((instance, month)));
+
+      if (state is AsyncLoading) {
+        futures.add(
+          ref
+              .read(sonarrCalendarProvider((instance, month)).future)
+              .then((List<SonarrEpisode> episodes) {
+            allEvents.addAll(
+              episodes
+                  .map((SonarrEpisode e) => SonarrCalendarEvent(e, instance)),
+            );
+          }).catchError((Object e) {
+            // Ignore error
+          }),
+        );
+      } else if (state is AsyncData<List<SonarrEpisode>>) {
+        allEvents.addAll(
+          state.value
+              .map((SonarrEpisode e) => SonarrCalendarEvent(e, instance)),
+        );
+      }
     }
   }
 
-  final List<List<CalendarEvent>> results = await Future.wait(futures);
-  return results.expand((List<CalendarEvent> list) => list).toList();
+  if (futures.isNotEmpty) {
+    await Future.wait(futures).catchError((_) => []);
+  }
+
+  return allEvents;
 });
 
 /// Displays a unified schedule and release calendar across all configured
@@ -182,6 +215,7 @@ class CalendarScreen extends ConsumerStatefulWidget {
 class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   late DateTime _visibleMonth;
   late DateTime _selectedDay;
+  bool _showListView = false;
 
   @override
   void initState() {
@@ -189,6 +223,28 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final DateTime now = DateTime.now();
     _visibleMonth = DateTime(now.year, now.month);
     _selectedDay = DateTime(now.year, now.month, now.day);
+  }
+
+  Future<void> _handleRefresh() async {
+    final List<Instance> instances = ref.read(activeInstancesProvider);
+    final List<Future<void>> futures = [];
+    for (final Instance instance in instances) {
+      if (instance.kind == ServiceKind.radarr) {
+        ref.invalidate(radarrCalendarProvider((instance, _visibleMonth)));
+        futures.add(
+            ref.read(radarrCalendarProvider((instance, _visibleMonth)).future));
+      } else if (instance.kind == ServiceKind.sonarr) {
+        ref.invalidate(sonarrCalendarProvider((instance, _visibleMonth)));
+        futures.add(
+            ref.read(sonarrCalendarProvider((instance, _visibleMonth)).future));
+      }
+    }
+    if (futures.isNotEmpty) {
+      await Future.wait(futures).catchError((_) => []);
+    }
+    await ref
+        .read(globalCalendarProvider(_visibleMonth).future)
+        .catchError((_) => <CalendarEvent>[]);
   }
 
   void _prevMonth() {
@@ -398,23 +454,180 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           },
         ),
         title: const Text('Calendar'),
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(
+              _showListView ? Icons.calendar_month : Icons.format_list_bulleted,
+            ),
+            tooltip:
+                _showListView ? 'Switch to grid view' : 'Switch to list view',
+            onPressed: () {
+              setState(() {
+                _showListView = !_showListView;
+              });
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
-      body: M3RefreshIndicator(
-        onRefresh: () async =>
-            ref.invalidate(globalCalendarProvider(_visibleMonth)),
-        child: AsyncValueView<List<CalendarEvent>>(
-          value: calendar,
-          onRetry: () => ref.invalidate(globalCalendarProvider(_visibleMonth)),
-          data: (List<CalendarEvent> entries) {
-            final List<DateTime> gridDays = _generateGridDays(_visibleMonth);
 
-            // Group entries by local date
-            final Map<DateTime, List<CalendarEvent>> entriesMap = {};
-            for (final CalendarEvent entry in entries) {
-              final DateTime local = entry.date.toLocal();
-              final DateTime key = DateTime(local.year, local.month, local.day);
-              entriesMap.putIfAbsent(key, () => []).add(entry);
-            }
+      body: AsyncValueView<List<CalendarEvent>>(
+        value: calendar,
+        onRetry: _handleRefresh,
+        data: (List<CalendarEvent> entries) {
+          // Group entries by local date
+          final Map<DateTime, List<CalendarEvent>> entriesMap = {};
+          for (final CalendarEvent entry in entries) {
+            final DateTime local = entry.date.toLocal();
+            final DateTime key = DateTime(local.year, local.month, local.day);
+            entriesMap.putIfAbsent(key, () => []).add(entry);
+          }
+
+          final ThemeData theme = Theme.of(context);
+          final DateTime now = DateTime.now();
+
+          final Widget content;
+          if (_showListView) {
+            final List<DateTime> eventDates = entriesMap.keys.toList()
+              ..sort((a, b) => a.compareTo(b));
+
+            content = GestureDetector(
+              onHorizontalDragEnd: (DragEndDetails details) {
+                if (details.primaryVelocity == null) return;
+                if (details.primaryVelocity! < 0) {
+                  _nextMonth();
+                } else if (details.primaryVelocity! > 0) {
+                  _prevMonth();
+                }
+              },
+              behavior: HitTestBehavior.translucent,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: Insets.page,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => _showMonthYearPicker(context),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: Insets.xs,
+                              vertical: 4,
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                Text(
+                                  DateFormat('yyyy').format(_visibleMonth),
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: theme.colorScheme.outline,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    Flexible(
+                                      child: Text(
+                                        DateFormat('MMMM')
+                                            .format(_visibleMonth),
+                                        style: theme.textTheme.titleLarge
+                                            ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Icon(
+                                      Icons.arrow_drop_down,
+                                      size: 20,
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: Insets.xs),
+                      TextButton.icon(
+                        onPressed: _goToToday,
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: Insets.sm),
+                        ),
+                        icon: const Icon(Icons.today, size: 16),
+                        label: const Text('Today'),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left),
+                        onPressed: _prevMonth,
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                      const SizedBox(width: Insets.xs),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right),
+                        onPressed: _nextMonth,
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: Insets.md),
+                  if (eventDates.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding:
+                            const EdgeInsets.symmetric(vertical: Insets.xxl),
+                        child: Column(
+                          children: <Widget>[
+                            Icon(
+                              Icons.calendar_today_outlined,
+                              size: 48,
+                              color: theme.colorScheme.outline
+                                  .withValues(alpha: 0.5),
+                            ),
+                            const SizedBox(height: Insets.md),
+                            Text(
+                              'No releases scheduled this month',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: theme.colorScheme.outline,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  else
+                    for (final DateTime date in eventDates) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          top: Insets.md,
+                          bottom: Insets.xs,
+                        ),
+                        child: _DateHeader(date: date),
+                      ),
+                      for (final CalendarEvent event
+                          in entriesMap[date]!
+                            ..sort((a, b) => a.date.compareTo(b.date)))
+                        _EventTile(event: event),
+                    ],
+                ],
+              ),
+            );
+          } else {
+            final List<DateTime> gridDays = _generateGridDays(_visibleMonth);
 
             // Selected day entries
             final DateTime selectedDayKey = DateTime(
@@ -422,11 +635,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             final List<CalendarEvent> selectedDayEntries =
                 entriesMap[selectedDayKey] ?? [];
 
-            final ThemeData theme = Theme.of(context);
-            final DateTime now = DateTime.now();
             final DateTime todayKey = DateTime(now.year, now.month, now.day);
 
-            return ListView(
+            content = ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: Insets.page,
               children: <Widget>[
                 // Header Row
@@ -663,8 +875,13 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     _EventTile(event: event),
               ],
             );
-          },
-        ),
+          }
+
+          return M3RefreshIndicator(
+            onRefresh: _handleRefresh,
+            child: content,
+          );
+        },
       ),
     );
   }

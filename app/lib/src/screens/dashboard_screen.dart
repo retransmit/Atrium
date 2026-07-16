@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 
 import '../dashboard/dashboard_board.dart';
 import '../health_providers.dart';
+import 'reorder_sidebar_screen.dart';
 
 /// Home screen. Services live in the navigation drawer (the sidebar); the
 /// dashboard body is the at-a-glance widget board. Until a service exists,
@@ -164,6 +165,21 @@ class ServicesDrawer extends ConsumerWidget {
                     onPressed: () =>
                         _navTo(context, AtriumRoutes.addInstanceName),
                   ),
+                  if (instances.isNotEmpty)
+                    IconButton(
+                      tooltip: 'Reorder sidebar',
+                      icon: Icon(Icons.reorder, color: cs.onSurfaceVariant),
+                      onPressed: () {
+                        // Capture the navigator before closing the drawer, then
+                        // push over the root so the reorder screen covers the
+                        // bottom nav bar.
+                        final NavigatorState nav = Navigator.of(context);
+                        nav.pop();
+                        nav.push(MaterialPageRoute<void>(
+                          builder: (_) => const ReorderSidebarScreen(),
+                        ));
+                      },
+                    ),
                   const SizedBox(width: Insets.xs),
                   Expanded(
                     child: Builder(
