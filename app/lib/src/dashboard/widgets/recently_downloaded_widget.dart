@@ -20,6 +20,8 @@ class _RecentDownloadItem {
     required this.instance,
     this.posterUrl,
     this.subtitle,
+    this.series,
+    this.movieId,
   });
 
   final String title;
@@ -28,6 +30,39 @@ class _RecentDownloadItem {
   final Instance instance;
   final String? posterUrl;
   final String? subtitle;
+
+  /// Set for an episode's series; the detail screen takes the whole object.
+  final SonarrSeries? series;
+
+  /// Set for a movie; the detail screen looks it up by id.
+  final int? movieId;
+}
+
+/// Opens the tapped title's own detail screen, falling back to its service
+/// when the item arrived without an identity so a tap always lands somewhere.
+void _openDetail(BuildContext context, _RecentDownloadItem item) {
+  if (item.isMovie) {
+    final int? movieId = item.movieId;
+    if (movieId != null) {
+      pushScreen<void>(
+        context,
+        MovieDetailScreen(instance: item.instance, movieId: movieId),
+      );
+      return;
+    }
+  } else {
+    final SonarrSeries? series = item.series;
+    if (series != null) {
+      pushScreen<void>(
+        context,
+        SeriesDetailScreen(instance: item.instance, series: series),
+      );
+      return;
+    }
+  }
+  context.go(
+    AtriumRoutes.servicePath(item.instance.kind.name, item.instance.id),
+  );
 }
 
 /// The most recently downloaded Sonarr series and Radarr movies across every
@@ -66,6 +101,7 @@ class DashboardRecentlyDownloadedWidget extends ConsumerWidget {
           date: date,
           isMovie: false,
           instance: i,
+          series: h.series,
           subtitle: h.episode != null ? h.series!.title : null,
           posterUrl: h.series!.images
               .firstWhereOrNull((SonarrImage im) => im.coverType == 'poster')
@@ -89,6 +125,7 @@ class DashboardRecentlyDownloadedWidget extends ConsumerWidget {
           date: date,
           isMovie: true,
           instance: i,
+          movieId: h.movie!.id,
           subtitle: h.movie!.year?.toString(),
           posterUrl: h.movie!.images
               .firstWhereOrNull((RadarrImage im) => im.coverType == 'poster')
@@ -149,12 +186,7 @@ class DashboardRecentlyDownloadedWidget extends ConsumerWidget {
                         clipBehavior: Clip.antiAlias,
                         borderRadius: BorderRadius.circular(Insets.sm),
                         child: InkWell(
-                          onTap: () {
-                            context.go(AtriumRoutes.servicePath(
-                              item.instance.kind.name,
-                              item.instance.id,
-                            ));
-                          },
+                          onTap: () => _openDetail(context, item),
                           child: item.posterUrl != null
                               ? CachedNetworkImage(
                                   imageUrl: item.posterUrl!,

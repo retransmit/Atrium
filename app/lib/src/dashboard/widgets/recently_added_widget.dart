@@ -20,6 +20,8 @@ class _RecentItem {
     required this.instance,
     this.posterUrl,
     this.year,
+    this.series,
+    this.movieId,
   });
 
   final String title;
@@ -28,6 +30,12 @@ class _RecentItem {
   final Instance instance;
   final String? posterUrl;
   final int? year;
+
+  /// Set for a series; the detail screen takes the whole object.
+  final SonarrSeries? series;
+
+  /// Set for a movie; the detail screen looks it up by id.
+  final int? movieId;
 }
 
 /// The most recently added Sonarr series and Radarr movies across every
@@ -66,6 +74,7 @@ class DashboardRecentlyAddedWidget extends ConsumerWidget {
           isMovie: false,
           instance: i,
           year: s.year,
+          series: s,
           posterUrl: s.images
               .firstWhereOrNull((SonarrImage im) => im.coverType == 'poster')
               ?.remoteUrl,
@@ -88,6 +97,7 @@ class DashboardRecentlyAddedWidget extends ConsumerWidget {
           isMovie: true,
           instance: i,
           year: m.year,
+          movieId: m.id,
           posterUrl: m.images
               .firstWhereOrNull((RadarrImage im) => im.coverType == 'poster')
               ?.remoteUrl,
@@ -145,6 +155,33 @@ class DashboardRecentlyAddedWidget extends ConsumerWidget {
   }
 }
 
+/// Opens the tapped title's own detail screen, falling back to its service
+/// when the item arrived without an identity so a tap always lands somewhere.
+void _openDetail(BuildContext context, _RecentItem item) {
+  if (item.isMovie) {
+    final int? movieId = item.movieId;
+    if (movieId != null) {
+      pushScreen<void>(
+        context,
+        MovieDetailScreen(instance: item.instance, movieId: movieId),
+      );
+      return;
+    }
+  } else {
+    final SonarrSeries? series = item.series;
+    if (series != null) {
+      pushScreen<void>(
+        context,
+        SeriesDetailScreen(instance: item.instance, series: series),
+      );
+      return;
+    }
+  }
+  context.go(
+    AtriumRoutes.servicePath(item.instance.kind.name, item.instance.id),
+  );
+}
+
 class _PosterTile extends StatelessWidget {
   const _PosterTile({required this.item});
 
@@ -164,9 +201,7 @@ class _PosterTile extends StatelessWidget {
       width: 94,
       child: InkWell(
         borderRadius: BorderRadius.circular(10),
-        onTap: () => context.go(
-          AtriumRoutes.servicePath(item.instance.kind.name, item.instance.id),
-        ),
+        onTap: () => _openDetail(context, item),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
