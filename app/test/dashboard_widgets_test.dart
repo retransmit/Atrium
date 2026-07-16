@@ -1,15 +1,12 @@
 import 'package:atrium/src/dashboard/dashboard_board.dart';
 import 'package:atrium/src/dashboard/dashboard_widget_card.dart';
 import 'package:atrium/src/dashboard/dashboard_widget_kind.dart';
-import 'package:atrium/src/dashboard/widgets/disk_widget.dart';
 import 'package:atrium/src/dashboard/widgets/downloads_widget.dart';
-import 'package:atrium/src/dashboard/widgets/health_widget.dart';
 import 'package:atrium/src/dashboard/widgets/recently_added_widget.dart';
 import 'package:atrium/src/dashboard/widgets/requests_widget.dart';
 import 'package:atrium/src/dashboard/widgets/server_info_widget.dart';
 import 'package:atrium/src/dashboard/widgets/streams_widget.dart';
 import 'package:atrium/src/dashboard/widgets/upcoming_widget.dart';
-import 'package:atrium/src/health_providers.dart';
 import 'package:atrium/src/screens/calendar_screen.dart';
 import 'package:core_models/core_models.dart';
 import 'package:core_profile/core_profile.dart';
@@ -271,25 +268,6 @@ void main() {
     expect(find.text('Movie · 2025'), findsOneWidget);
   });
 
-  testWidgets('DashboardHealthWidget shows per-instance chips and counts',
-      (WidgetTester tester) async {
-    final Instance ok = makeInstance(ServiceKind.sonarr);
-    final Instance down = makeInstance(ServiceKind.radarr);
-    await pumpBody(
-      tester,
-      <Override>[
-        instanceHealthProvider(ok).overrideWith((Ref ref) async => Health.ok),
-        instanceHealthProvider(down)
-            .overrideWith((Ref ref) async => Health.error),
-      ],
-      DashboardHealthWidget(instances: <Instance>[ok, down]),
-    );
-    expect(find.text('Service health'), findsOneWidget);
-    expect(find.text('Test Sonarr'), findsOneWidget);
-    expect(find.text('Test Radarr'), findsOneWidget);
-    expect(find.text('1 issue'), findsOneWidget);
-  });
-
   testWidgets('DashboardRequestsWidget shows pending count and newest title',
       (WidgetTester tester) async {
     final Instance seerr = makeInstance(ServiceKind.seerr);
@@ -379,28 +357,6 @@ void main() {
     expect(find.text('/data'), findsOneWidget);
   });
 
-  testWidgets('DashboardDiskWidget shows SAB free space',
-      (WidgetTester tester) async {
-    final Instance sab = makeInstance(ServiceKind.sabnzbd);
-    await pumpBody(
-      tester,
-      <Override>[
-        sabQueueProvider(sab).overrideWith(
-          (Ref ref) async => const SabQueue(
-            diskspace1: '250.0',
-            diskspacetotal1: '1000.0',
-          ),
-        ),
-      ],
-      DashboardDiskWidget(
-        sabInstances: <Instance>[sab],
-        glancesInstances: const <Instance>[],
-      ),
-    );
-    expect(find.text('Disk space'), findsOneWidget);
-    expect(find.textContaining('250'), findsOneWidget);
-  });
-
   testWidgets('DashboardBoard renders configured widgets and hides others',
       (WidgetTester tester) async {
     final Instance qbit = makeInstance(ServiceKind.qbittorrent);
@@ -425,8 +381,6 @@ void main() {
         tautulliActivityProvider(tau).overrideWith(
           (Ref ref) async => const TautulliActivity(streamCount: 0),
         ),
-        instanceHealthProvider(qbit).overrideWith((Ref ref) async => Health.ok),
-        instanceHealthProvider(tau).overrideWith((Ref ref) async => Health.ok),
       ],
       const DashboardBoard(),
       pumps: 3,
@@ -436,11 +390,10 @@ void main() {
     // Streams is activity-gated: tautulli is configured but nobody is
     // streaming (streamCount 0), so the widget stays hidden.
     expect(find.text('Now streaming'), findsNothing);
-    expect(find.text('Service health'), findsOneWidget);
-    // No sonarr/radarr, seerr, sab or glances configured:
+    // No sonarr/radarr, seerr or glances configured:
     expect(find.text('Upcoming releases'), findsNothing);
     expect(find.text('Requests'), findsNothing);
-    expect(find.text('Disk space'), findsNothing);
+    expect(find.text('Server info'), findsNothing);
   });
 
   testWidgets('DashboardBoard activity-gates downloads and streams',
@@ -476,8 +429,6 @@ void main() {
             ],
           ),
         ),
-        instanceHealthProvider(qbit).overrideWith((Ref ref) async => Health.ok),
-        instanceHealthProvider(tau).overrideWith((Ref ref) async => Health.ok),
       ],
       const DashboardBoard(),
       pumps: 3,
@@ -485,7 +436,6 @@ void main() {
     expect(find.text('Active downloads'), findsNothing);
     expect(find.text('Now streaming'), findsOneWidget);
     expect(find.textContaining('The Matrix'), findsOneWidget);
-    expect(find.text('Service health'), findsOneWidget);
   });
 
   testWidgets('DashboardBoard edit mode reorders and hides widgets',
@@ -499,14 +449,14 @@ void main() {
       ],
       const DashboardBoard(),
     );
-    // All eight widgets are arrangeable in edit mode, configured or not.
-    expect(find.byIcon(Icons.drag_indicator), findsNWidgets(8));
+    // All six widgets are arrangeable in edit mode, configured or not.
+    expect(find.byIcon(Icons.drag_indicator), findsNWidgets(6));
     expect(find.text('Hidden'), findsNothing);
     // Hide the first widget -> it moves to the Hidden section.
     await tester.tap(find.byIcon(Icons.visibility_off_outlined).first);
     await tester.pump();
     expect(find.text('Hidden'), findsOneWidget);
-    expect(find.byIcon(Icons.drag_indicator), findsNWidgets(7));
+    expect(find.byIcon(Icons.drag_indicator), findsNWidgets(5));
     expect(find.byIcon(Icons.add_circle_outline), findsOneWidget);
   });
 }

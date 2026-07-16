@@ -56,5 +56,11 @@
             <data android:scheme="jellyfin" />
         </intent>
         <package android:name="com.plexapp.android" />
+        <!-- Android 11+ package visibility: needed for url_launcher to resolve
+             a browser for the About screen's source-code link. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
     </queries>
 </manifest>
