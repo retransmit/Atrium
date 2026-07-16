@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,10 +10,10 @@ import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 import 'add_torrent_sheet.dart';
 import 'models/qbit_torrent.dart';
 import 'models/qbit_transfer_info.dart';
+import 'qbittorrent_action_utils.dart';
 import 'qbittorrent_client.dart';
 import 'qbittorrent_providers.dart';
 import 'torrent_detail_screen.dart';
-import 'qbittorrent_action_utils.dart';
 
 /// qBittorrent's per-instance UI: a global up/down header (with pause-all /
 /// resume-all), a torrent list with progress / speeds / per-item actions, and
@@ -659,7 +658,7 @@ class _TorrentTileState extends ConsumerState<_TorrentTile> {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     
-    Widget _buildItem(IconData icon, String label, VoidCallback onTap, {Color? color}) {
+    Widget buildItem(IconData icon, String label, VoidCallback onTap, {Color? color}) {
       return ListTile(
         leading: Icon(icon, color: color ?? cs.onSurfaceVariant),
         title: Text(label, style: TextStyle(color: color)),
@@ -685,35 +684,35 @@ class _TorrentTileState extends ConsumerState<_TorrentTile> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  _buildItem(Icons.check_circle_outline, 'Select', () {
+                  buildItem(Icons.check_circle_outline, 'Select', () {
                     ref.read(qbitSelectionProvider(inst).notifier).update(
                           (Set<String> s) => <String>{...s, hash},
                         );
                   }),
-                  _buildItem(Icons.pause, 'Pause', () {
+                  buildItem(Icons.pause, 'Pause', () {
                     QbittorrentActionUtils.run(ref, inst, (QbittorrentClient c) => c.pause(<String>[hash]));
                   }),
-                  _buildItem(Icons.play_arrow, 'Resume', () {
+                  buildItem(Icons.play_arrow, 'Resume', () {
                     QbittorrentActionUtils.run(ref, inst, (QbittorrentClient c) => c.resume(<String>[hash]));
                   }),
-                  _buildItem(Icons.copy, 'Copy Hash', () async {
+                  buildItem(Icons.copy, 'Copy Hash', () async {
                     await Clipboard.setData(ClipboardData(text: hash));
                   }),
-                  _buildItem(Icons.refresh, 'Force Recheck', () {
+                  buildItem(Icons.refresh, 'Force Recheck', () {
                     QbittorrentActionUtils.run(ref, inst, (QbittorrentClient c) => c.recheck(<String>[hash]));
                   }),
-                  _buildItem(Icons.edit, 'Rename', () {
+                  buildItem(Icons.edit, 'Rename', () {
                     QbittorrentActionUtils.rename(context, ref, inst, <String>{hash});
                   }),
-                  _buildItem(Icons.folder, 'Set SavePath', () {
+                  buildItem(Icons.folder, 'Set SavePath', () {
                     QbittorrentActionUtils.editSavePath(context, ref, inst, <String>{hash});
                   }),
-                  _buildItem(Icons.label, 'Set Category', () {
+                  buildItem(Icons.label, 'Set Category', () {
                     QbittorrentActionUtils.editCategory(context, ref, inst, <String>{hash});
                   }),
-                  _buildItem(Icons.delete, 'Delete', () {
+                  buildItem(Icons.delete, 'Delete', () {
                     QbittorrentActionUtils.confirmDelete(context, ref, inst, <String>{hash});
-                  }, color: Colors.red),
+                  }, color: Colors.red,),
                 ],
               ),
             ),
