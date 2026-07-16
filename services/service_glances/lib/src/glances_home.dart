@@ -410,23 +410,29 @@ class GlancesHome extends ConsumerWidget {
                           double value,
                           Widget? child,
                         ) {
-                          return LinearProgressIndicatorM3E(
-                            shape: ProgressM3EShape.flat,
-                            value: value,
-                            trackColor: theme.colorScheme.onSurface
-                                .withValues(alpha: 0.1),
-                            activeColor: theme.colorScheme.primary,
+                          return Row(
+                            children: <Widget>[
+                              Expanded(
+                                child: LinearProgressIndicatorM3E(
+                                  shape: ProgressM3EShape.flat,
+                                  value: value,
+                                  trackColor: theme.colorScheme.onSurface
+                                      .withValues(alpha: 0.1),
+                                  activeColor: theme.colorScheme.primary,
+                                ),
+                              ),
+                              const SizedBox(width: Insets.sm),
+                              SizedBox(
+                                width: 50,
+                                child: Text(
+                                  '${(value * 100).toStringAsFixed(1)}%',
+                                  textAlign: TextAlign.end,
+                                  style: theme.textTheme.labelMedium,
+                                ),
+                              ),
+                            ],
                           );
                         },
-                      ),
-                    ),
-                    const SizedBox(width: Insets.sm),
-                    SizedBox(
-                      width: 50,
-                      child: Text(
-                        '${core.usage.toStringAsFixed(1)}%',
-                        textAlign: TextAlign.end,
-                        style: theme.textTheme.labelMedium,
                       ),
                     ),
                   ],
@@ -450,49 +456,56 @@ class GlancesHome extends ConsumerWidget {
       ),
       child: Padding(
         padding: Insets.page,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
+        child: TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 0.0, end: pct.clamp(0.0, 1.0)),
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeOutCubic,
+          builder: (BuildContext context, double value, Widget? child) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Icon(Icons.dns_outlined, size: 20),
-                const SizedBox(width: Insets.sm),
-                Expanded(
-                  child: Text(
-                    disk.path,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
+                Row(
+                  children: <Widget>[
+                    const Icon(Icons.dns_outlined, size: 20),
+                    const SizedBox(width: Insets.sm),
+                    Expanded(
+                      child: Text(
+                        disk.path,
+                        style: Theme.of(context).textTheme.bodyLarge,
+                      ),
+                    ),
+                    Text(
+                      '${(value * 100).toStringAsFixed(1)}%',
+                      style: Theme.of(context).textTheme.labelLarge,
+                    ),
+                  ],
                 ),
-                Text(
-                  '${disk.percentage.toStringAsFixed(1)}%',
-                  style: Theme.of(context).textTheme.labelLarge,
+                const SizedBox(height: Insets.md),
+                LinearProgressIndicatorM3E(
+                  shape: ProgressM3EShape.flat,
+                  value: value,
+                  trackColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  activeColor: value > 0.9
+                      ? Theme.of(context).colorScheme.error
+                      : Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(height: Insets.sm),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: <Widget>[
+                    Text(
+                      '${(disk.used / 1024 / 1024 / 1024).toStringAsFixed(2)} GB used',
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                    Text(
+                      '${(disk.total / 1024 / 1024 / 1024).toStringAsFixed(2)} GB total',
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                  ],
                 ),
               ],
-            ),
-            const SizedBox(height: Insets.md),
-            LinearProgressIndicatorM3E(
-              shape: ProgressM3EShape.flat,
-              value: pct.clamp(0.0, 1.0),
-              trackColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-              activeColor: pct > 0.9
-                  ? Theme.of(context).colorScheme.error
-                  : Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: Insets.sm),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: <Widget>[
-                Text(
-                  '${(disk.used / 1024 / 1024 / 1024).toStringAsFixed(2)} GB used',
-                  style: Theme.of(context).textTheme.labelSmall,
-                ),
-                Text(
-                  '${(disk.total / 1024 / 1024 / 1024).toStringAsFixed(2)} GB total',
-                  style: Theme.of(context).textTheme.labelSmall,
-                ),
-              ],
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
@@ -614,35 +627,33 @@ class _GaugeCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: Insets.lg),
-            Stack(
-              alignment: Alignment.center,
-              children: <Widget>[
-                SizedBox(
-                  width: 80,
-                  height: 80,
-                  child: TweenAnimationBuilder<double>(
-                    tween:
-                        Tween<double>(begin: 0.0, end: percent.clamp(0.0, 1.0)),
-                    duration: const Duration(milliseconds: 600),
-                    curve: Curves.easeOutCubic,
-                    builder:
-                        (BuildContext context, double value, Widget? child) {
-                      return CircularProgressIndicatorM3E(
+            TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0.0, end: percent.clamp(0.0, 1.0)),
+              duration: const Duration(milliseconds: 600),
+              curve: Curves.easeOutCubic,
+              builder: (BuildContext context, double value, Widget? child) {
+                return Stack(
+                  alignment: Alignment.center,
+                  children: <Widget>[
+                    SizedBox(
+                      width: 80,
+                      height: 80,
+                      child: CircularProgressIndicatorM3E(
                         shape: ProgressM3EShape.flat,
                         value: value,
                         trackColor: color.withValues(alpha: 0.15),
                         activeColor: color,
-                      );
-                    },
-                  ),
-                ),
-                Text(
-                  '${(percent * 100).toStringAsFixed(0)}%',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
                       ),
-                ),
-              ],
+                    ),
+                    Text(
+                      '${(value * 100).toStringAsFixed(0)}%',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: Insets.lg),
             Row(
