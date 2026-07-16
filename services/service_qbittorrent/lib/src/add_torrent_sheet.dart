@@ -5,6 +5,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'qbittorrent_client.dart';
 import 'qbittorrent_providers.dart';
@@ -20,21 +21,30 @@ import 'qbittorrent_providers.dart';
 ///
 /// Returns `true` via `Navigator.pop` when something was successfully added,
 /// so the caller can refresh the torrent list.
+enum AddTorrentMode { link, file }
+
 class AddTorrentSheet extends ConsumerStatefulWidget {
-  const AddTorrentSheet({required this.instance, super.key});
+  const AddTorrentSheet({
+    required this.instance,
+    this.initialMode = AddTorrentMode.link,
+    super.key,
+  });
 
   final Instance instance;
+  final AddTorrentMode initialMode;
 
   /// Opens the sheet and returns whether a torrent was added.
-  static Future<bool> show(BuildContext context, Instance instance) async {
-    final bool? added = await showModalBottomSheet<bool>(
+  static Future<bool> show(
+    BuildContext context,
+    Instance instance, {
+    AddTorrentMode initialMode = AddTorrentMode.link,
+  }) async {
+    final bool? added = await showDialog<bool>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      // Root navigator so the sheet isn't swept when GoRouter rebuilds the
-      // shell branch navigators (same issue as imperative page pushes).
-      useRootNavigator: true,
-      builder: (_) => AddTorrentSheet(instance: instance),
+      builder: (_) => AddTorrentSheet(
+        instance: instance,
+        initialMode: initialMode,
+      ),
     );
     return added ?? false;
   }
@@ -43,13 +53,11 @@ class AddTorrentSheet extends ConsumerStatefulWidget {
   ConsumerState<AddTorrentSheet> createState() => _AddTorrentSheetState();
 }
 
-enum _Mode { link, file }
-
 class _AddTorrentSheetState extends ConsumerState<AddTorrentSheet> {
   final TextEditingController _links = TextEditingController();
   final TextEditingController _savePath = TextEditingController();
 
-  _Mode _mode = _Mode.link;
+  late final AddTorrentMode _mode = widget.initialMode;
   PlatformFile? _file;
   String? _category;
   bool _paused = false;
@@ -68,16 +76,15 @@ class _AddTorrentSheetState extends ConsumerState<AddTorrentSheet> {
     if (_busy) {
       return false;
     }
-    return _mode == _Mode.link
+    return _mode == AddTorrentMode.link
         ? _links.text.trim().isNotEmpty
         : _file != null;
   }
 
   Future<void> _pickFile() async {
-    final FilePickerResult? res = await FilePicker.platform.pickFiles(
+    final FilePickerResult? res = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: <String>['torrent'],
-      withData: true,
     );
     if (res != null && res.files.isNotEmpty) {
       setState(() => _file = res.files.single);
@@ -95,7 +102,7 @@ class _AddTorrentSheetState extends ConsumerState<AddTorrentSheet> {
       final String? savePath =
           _savePath.text.trim().isEmpty ? null : _savePath.text.trim();
 
-      if (_mode == _Mode.link) {
+      if (_mode == AddTorrentMode.link) {
         final List<String> urls = _links.text
             .split('\n')
             .map((String s) => s.trim())
@@ -110,12 +117,9 @@ class _AddTorrentSheetState extends ConsumerState<AddTorrentSheet> {
         );
       } else {
         final PlatformFile f = _file!;
-        final List<int>? bytes = f.bytes;
-        if (bytes == null) {
-          throw StateError('Could not read the selected file.');
-        }
+        final Uint8List bytes = await f.readAsBytes();
         await client.addTorrentFile(
-          Uint8List.fromList(bytes),
+          bytes,
           filename: f.name,
           category: _category,
           savePath: savePath,
@@ -137,39 +141,17 @@ class _AddTorrentSheetState extends ConsumerState<AddTorrentSheet> {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final EdgeInsets viewInsets = MediaQuery.of(context).viewInsets;
     final AsyncValue<List<String>> categories =
         ref.watch(qbitCategoriesProvider(widget.instance));
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: viewInsets.bottom),
-      child: SingleChildScrollView(
-        padding: Insets.page,
+    return AlertDialog(
+      title: const Text('Add torrent'),
+      content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text('Add torrent', style: theme.textTheme.titleLarge),
-            const SizedBox(height: Insets.md),
-            SegmentedButton<_Mode>(
-              segments: const <ButtonSegment<_Mode>>[
-                ButtonSegment<_Mode>(
-                  value: _Mode.link,
-                  label: Text('Link / magnet'),
-                  icon: Icon(Icons.link),
-                ),
-                ButtonSegment<_Mode>(
-                  value: _Mode.file,
-                  label: Text('.torrent file'),
-                  icon: Icon(Icons.attach_file),
-                ),
-              ],
-              selected: <_Mode>{_mode},
-              onSelectionChanged: (Set<_Mode> s) =>
-                  setState(() => _mode = s.first),
-            ),
-            const SizedBox(height: Insets.md),
-            if (_mode == _Mode.link)
+            if (_mode == AddTorrentMode.link)
               TextField(
                 controller: _links,
                 minLines: 2,
@@ -209,7 +191,9 @@ class _AddTorrentSheetState extends ConsumerState<AddTorrentSheet> {
                 ],
                 onChanged: (String? v) => setState(() => _category = v),
               ),
-              loading: () => const LinearProgressIndicator(),
+              loading: () => const LinearProgressIndicatorM3E(
+                shape: ProgressM3EShape.flat,
+              ),
               error: (_, __) => const SizedBox.shrink(),
             ),
             const SizedBox(height: Insets.sm),
@@ -238,32 +222,26 @@ class _AddTorrentSheetState extends ConsumerState<AddTorrentSheet> {
               const SizedBox(height: Insets.sm),
               Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
             ],
-            const SizedBox(height: Insets.md),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: <Widget>[
-                TextButton(
-                  onPressed:
-                      _busy ? null : () => Navigator.of(context).pop(false),
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: Insets.sm),
-                FilledButton.icon(
-                  onPressed: _canSubmit ? _submit : null,
-                  icon: _busy
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.add),
-                  label: const Text('Add'),
-                ),
-              ],
-            ),
           ],
         ),
       ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton.icon(
+          onPressed: _canSubmit ? _submit : null,
+          icon: _busy
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: ExpressiveProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.add),
+          label: const Text('Add'),
+        ),
+      ],
     );
   }
 }

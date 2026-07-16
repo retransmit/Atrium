@@ -5,7 +5,7 @@ part 'emby_item.g.dart';
 
 /// A page of items from `GET /Users/{userId}/Items`.
 @freezed
-class EmbyItemsResult with _$EmbyItemsResult {
+abstract class EmbyItemsResult with _$EmbyItemsResult {
   const factory EmbyItemsResult({
     @JsonKey(name: 'Items') @Default(<EmbyItem>[]) List<EmbyItem> items,
     @JsonKey(name: 'TotalRecordCount') @Default(0) int totalRecordCount,
@@ -17,16 +17,42 @@ class EmbyItemsResult with _$EmbyItemsResult {
 
 /// A library item (movie, series, episode, album, …).
 @freezed
-class EmbyItem with _$EmbyItem {
+abstract class EmbyItem with _$EmbyItem {
   const factory EmbyItem({
     @JsonKey(name: 'Id') required String id,
     @JsonKey(name: 'Name') @Default('') String name,
     @JsonKey(name: 'Type') @Default('') String type,
     @JsonKey(name: 'ProductionYear') int? productionYear,
+    @JsonKey(name: 'Genres') @Default(<String>[]) List<String> genres,
     @JsonKey(name: 'ImageTags')
     @Default(<String, String>{})
     Map<String, String> imageTags,
+    @JsonKey(name: 'BackdropImageTags')
+    @Default(<String>[])
+    List<String> backdropImageTags,
     @JsonKey(name: 'UserData') EmbyUserData? userData,
+    @JsonKey(name: 'Overview') String? overview,
+    @JsonKey(name: 'RunTimeTicks') int? runTimeTicks,
+    @JsonKey(name: 'CommunityRating', fromJson: _parseDouble)
+    double? communityRating,
+    @JsonKey(name: 'OfficialRating') String? officialRating,
+    @JsonKey(name: 'IndexNumber') int? indexNumber,
+    @JsonKey(name: 'ParentIndexNumber') int? parentIndexNumber,
+    @JsonKey(name: 'SeriesName') String? seriesName,
+    @JsonKey(name: 'SeriesId') String? seriesId,
+    @JsonKey(name: 'SeriesPrimaryImageTag') String? seriesPrimaryImageTag,
+    @JsonKey(name: 'ParentId') String? parentId,
+    @JsonKey(name: 'ParentPrimaryImageTag') String? parentPrimaryImageTag,
+    @JsonKey(name: 'AlbumId') String? albumId,
+    @JsonKey(name: 'AlbumPrimaryImageTag') String? albumPrimaryImageTag,
+    @JsonKey(name: 'PrimaryImageItemId') String? primaryImageItemId,
+    @JsonKey(name: 'PrimaryImageTag') String? primaryImageTag,
+    @JsonKey(name: 'PrimaryImageAspectRatio', fromJson: _parseDouble)
+    double? primaryImageAspectRatio,
+    @JsonKey(name: 'Album') String? album,
+    @JsonKey(name: 'AlbumArtist') String? albumArtist,
+    @JsonKey(name: 'People') @Default(<EmbyPerson>[]) List<EmbyPerson> people,
+    @JsonKey(name: 'Artists') @Default(<String>[]) List<String> artists,
   }) = _EmbyItem;
 
   factory EmbyItem.fromJson(Map<String, dynamic> json) =>
@@ -35,10 +61,14 @@ class EmbyItem with _$EmbyItem {
 
 /// Per-user playback state for an item.
 @freezed
-class EmbyUserData with _$EmbyUserData {
+abstract class EmbyUserData with _$EmbyUserData {
   const factory EmbyUserData({
-    @JsonKey(name: 'PlayedPercentage') @Default(0.0) double playedPercentage,
+    @JsonKey(name: 'PlayedPercentage', fromJson: _parseDoubleDefaultZero)
+    @Default(0.0)
+    double playedPercentage,
     @JsonKey(name: 'Played') @Default(false) bool played,
+    @JsonKey(name: 'IsFavorite') @Default(false) bool isFavorite,
+
     /// Resume point in Emby ticks (100ns units). 0 = start from the top.
     @JsonKey(name: 'PlaybackPositionTicks') @Default(0) int positionTicks,
   }) = _EmbyUserData;
@@ -46,3 +76,22 @@ class EmbyUserData with _$EmbyUserData {
   factory EmbyUserData.fromJson(Map<String, dynamic> json) =>
       _$EmbyUserDataFromJson(json);
 }
+
+/// A cast or crew member attached to an item.
+@freezed
+abstract class EmbyPerson with _$EmbyPerson {
+  const factory EmbyPerson({
+    @JsonKey(name: 'Id') required String id,
+    @JsonKey(name: 'Name') @Default('') String name,
+    @JsonKey(name: 'Role') String? role,
+    @JsonKey(name: 'Type') String? type,
+    @JsonKey(name: 'PrimaryImageTag') String? primaryImageTag,
+  }) = _EmbyPerson;
+
+  factory EmbyPerson.fromJson(Map<String, dynamic> json) =>
+      _$EmbyPersonFromJson(json);
+}
+
+double? _parseDouble(dynamic value) => (value as num?)?.toDouble();
+double _parseDoubleDefaultZero(dynamic value) =>
+    (value as num?)?.toDouble() ?? 0.0;

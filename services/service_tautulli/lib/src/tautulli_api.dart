@@ -11,9 +11,34 @@ import 'models/tautulli_models.dart';
 /// (appended by `core_networking`'s [AuthInterceptor]), so this rides the
 /// shared `instanceDioProvider` Dio and just adds `cmd`.
 class TautulliApi {
-  TautulliApi(this._dio);
+  TautulliApi(this._dio, {this.apiKey});
 
   final Dio _dio;
+
+  /// Needed to build image-proxy URLs that bypass Dio - `CachedNetworkImage`
+  /// fetches directly, so the key has to ride in the URL.
+  final String? apiKey;
+
+  /// Builds a Tautulli image-proxy URL for a Plex [thumb] path (poster/art).
+  /// Absolute URLs (e.g. plex.tv user avatars) are returned unchanged; an
+  /// empty thumb yields null so callers can show a fallback.
+  String? imageUrl(
+    String? thumb, {
+    int width = 300,
+    int height = 450,
+    String fallback = 'poster',
+  }) {
+    if (thumb == null || thumb.isEmpty) {
+      return null;
+    }
+    if (thumb.startsWith('http')) {
+      return thumb;
+    }
+    final String base = _dio.options.baseUrl.replaceAll(RegExp(r'/+$'), '');
+    final String img = Uri.encodeQueryComponent(thumb);
+    return '$base/api/v2?cmd=pms_image_proxy&img=$img'
+        '&width=$width&height=$height&fallback=$fallback&apikey=${apiKey ?? ''}';
+  }
 
   /// Runs a command and returns `response.data`.
   ///
@@ -23,12 +48,11 @@ class TautulliApi {
   Future<dynamic> _cmd(String cmd, [Map<String, dynamic>? params]) async {
     try {
       final Response<dynamic> resp = await _dio.get<dynamic>(
-        '/api/v2',
+        'api/v2',
         queryParameters: <String, dynamic>{'cmd': cmd, ...?params},
       );
-      final Map<String, dynamic> envelope =
-          (resp.data as Map<String, dynamic>)['response']
-              as Map<String, dynamic>;
+      final Map<String, dynamic> envelope = (resp.data
+          as Map<String, dynamic>)['response'] as Map<String, dynamic>;
       if (tString(envelope['result']) != 'success') {
         final String message = tString(envelope['message']);
         throw NetworkUnknownException(
@@ -50,7 +74,10 @@ class TautulliApi {
   }
 
   /// Watch history, newest first.
-  Future<TautulliHistoryPage> getHistory({int length = 100, int start = 0}) async {
+  Future<TautulliHistoryPage> getHistory({
+    int length = 100,
+    int start = 0,
+  }) async {
     final dynamic data = await _cmd('get_history', <String, dynamic>{
       'length': length,
       'start': start,
@@ -71,7 +98,9 @@ class TautulliApi {
       'stats_count': statsCount,
     });
     return ((data as List<dynamic>?) ?? <dynamic>[])
-        .map((dynamic e) => TautulliHomeStat.fromJson(e as Map<String, dynamic>))
+        .map(
+          (dynamic e) => TautulliHomeStat.fromJson(e as Map<String, dynamic>),
+        )
         .toList();
   }
 

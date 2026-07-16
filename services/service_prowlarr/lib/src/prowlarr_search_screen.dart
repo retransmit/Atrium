@@ -139,7 +139,7 @@ class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            const CircularProgressIndicator(),
+            const ExpressiveProgressIndicator(),
             const SizedBox(height: Insets.lg),
             Text(
               'Searching your indexers...\nSlow trackers can take a while.',
@@ -174,9 +174,10 @@ class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
       );
     }
     final List<ProwlarrRelease> sorted = _sorted(results);
-    return ListView.builder(
+    return ListView.separated(
       padding: Insets.pageH,
       itemCount: sorted.length + 1,
+      separatorBuilder: (_, __) => const SizedBox(height: Insets.sm),
       itemBuilder: (BuildContext context, int index) {
         if (index == 0) {
           return Padding(
@@ -257,39 +258,132 @@ class _ReleaseTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final List<String> parts = <String>[
-      if (release.indexer != null) release.indexer!,
-      fmtReleaseBytes(release.size),
-      release.ageLabel,
-      if (release.isTorrent)
-        'S:${release.seeders ?? '?'} L:${release.leechers ?? '?'}'
-      else if (release.grabs != null)
-        '${release.grabs} grabs',
-    ];
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      onTap: onTap,
-      leading: Icon(
-        release.isTorrent ? Icons.swap_vert : Icons.newspaper_outlined,
-        color: theme.colorScheme.outline,
+    final ColorScheme cs = theme.colorScheme;
+    final bool torrent = release.isTorrent;
+    final Color accent = torrent ? cs.primary : cs.tertiary;
+
+    return Material(
+      color: cs.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(18),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(Insets.md),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  torrent ? Icons.swap_vert : Icons.newspaper_outlined,
+                  color: accent,
+                ),
+              ),
+              const SizedBox(width: Insets.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      release.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: Insets.xs),
+                    Wrap(
+                      spacing: Insets.xs,
+                      runSpacing: Insets.xs,
+                      children: <Widget>[
+                        if (release.indexer != null)
+                          _MetaPill(
+                            icon: Icons.dns_outlined,
+                            label: release.indexer!,
+                            color: cs.secondary,
+                          ),
+                        _MetaPill(
+                          icon: Icons.sd_storage_outlined,
+                          label: fmtReleaseBytes(release.size),
+                          color: cs.primary,
+                        ),
+                        _MetaPill(
+                          icon: Icons.schedule,
+                          label: release.ageLabel,
+                          color: cs.onSurfaceVariant,
+                        ),
+                        if (torrent)
+                          _MetaPill(
+                            icon: Icons.arrow_upward,
+                            label: 'S:${release.seeders ?? '?'} '
+                                'L:${release.leechers ?? '?'}',
+                            color: cs.tertiary,
+                          )
+                        else if (release.grabs != null)
+                          _MetaPill(
+                            icon: Icons.download_done_outlined,
+                            label: '${release.grabs} grabs',
+                            color: cs.tertiary,
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: Insets.sm),
+              IconButton(
+                tooltip: 'Grab',
+                icon: const Icon(Icons.download_outlined),
+                onPressed: onGrab,
+              ),
+            ],
+          ),
+        ),
       ),
-      title: Text(
-        release.title,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.bodyMedium,
+    );
+  }
+}
+
+/// A compact tonal metadata pill: icon + short label in a single accent color.
+class _MetaPill extends StatelessWidget {
+  const _MetaPill({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
       ),
-      subtitle: Text(
-        parts.join(' • '),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.labelSmall
-            ?.copyWith(color: theme.colorScheme.outline),
-      ),
-      trailing: IconButton(
-        tooltip: 'Grab',
-        icon: const Icon(Icons.download_outlined),
-        onPressed: onGrab,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
       ),
     );
   }

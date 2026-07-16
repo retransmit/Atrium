@@ -3,24 +3,30 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'sonarr_series.freezed.dart';
 part 'sonarr_series.g.dart';
 
-/// A Sonarr series (TV show) as returned by `GET /api/v3/series`.
-///
-/// Only the fields Atrium currently renders are modeled; Sonarr returns many
-/// more. Unmodeled fields are simply ignored by json_serializable.
 @freezed
-class SonarrSeries with _$SonarrSeries {
+abstract class SonarrSeries with _$SonarrSeries {
   const factory SonarrSeries({
-    required int id,
+    @Default(0) int id,
     required String title,
-    @Default(0) int seasonCount,
-    @Default(<SonarrSeasonStats>[]) List<SonarrSeasonStats> seasons,
-    String? overview,
+    String? sortTitle,
     String? status,
+    String? overview,
     String? network,
-    @Default(false) bool monitored,
     int? year,
-    SonarrSeriesStatistics? statistics,
+    @Default(false) bool monitored,
     @Default(<SonarrImage>[]) List<SonarrImage> images,
+    @Default(<SonarrSeason>[]) List<SonarrSeason> seasons,
+    SonarrSeriesStatistics? statistics,
+    String? seriesType,
+    int? runtime,
+    String? certification,
+    @Default(<String>[]) List<String> genres,
+    String? path,
+    String? nextAiring,
+    String? previousAiring,
+    int? tvdbId,
+    String? titleSlug,
+    String? added,
   }) = _SonarrSeries;
 
   factory SonarrSeries.fromJson(Map<String, dynamic> json) =>
@@ -28,23 +34,34 @@ class SonarrSeries with _$SonarrSeries {
 }
 
 @freezed
-class SonarrSeasonStats with _$SonarrSeasonStats {
-  const factory SonarrSeasonStats({
-    required int seasonNumber,
-    @Default(false) bool monitored,
-    SonarrSeasonStatistics? statistics,
-  }) = _SonarrSeasonStats;
+abstract class SonarrImage with _$SonarrImage {
+  const factory SonarrImage({
+    required String coverType,
+    String? remoteUrl,
+    String? url,
+  }) = _SonarrImage;
 
-  factory SonarrSeasonStats.fromJson(Map<String, dynamic> json) =>
-      _$SonarrSeasonStatsFromJson(json);
+  factory SonarrImage.fromJson(Map<String, dynamic> json) =>
+      _$SonarrImageFromJson(json);
 }
 
-/// Per-season statistics nested under `seasons[].statistics`.
 @freezed
-class SonarrSeasonStatistics with _$SonarrSeasonStatistics {
+abstract class SonarrSeason with _$SonarrSeason {
+  const factory SonarrSeason({
+    @Default(0) int seasonNumber,
+    @Default(false) bool monitored,
+    SonarrSeasonStatistics? statistics,
+  }) = _SonarrSeason;
+
+  factory SonarrSeason.fromJson(Map<String, dynamic> json) =>
+      _$SonarrSeasonFromJson(json);
+}
+
+@freezed
+abstract class SonarrSeasonStatistics with _$SonarrSeasonStatistics {
   const factory SonarrSeasonStatistics({
-    @Default(0) int episodeCount,
     @Default(0) int episodeFileCount,
+    @Default(0) int episodeCount,
     @Default(0) int totalEpisodeCount,
     @Default(0) int sizeOnDisk,
   }) = _SonarrSeasonStatistics;
@@ -54,27 +71,15 @@ class SonarrSeasonStatistics with _$SonarrSeasonStatistics {
 }
 
 @freezed
-class SonarrSeriesStatistics with _$SonarrSeriesStatistics {
+abstract class SonarrSeriesStatistics with _$SonarrSeriesStatistics {
   const factory SonarrSeriesStatistics({
-    @Default(0) int episodeCount,
+    @Default(0) int seasonCount,
     @Default(0) int episodeFileCount,
+    @Default(0) int episodeCount,
     @Default(0) int totalEpisodeCount,
     @Default(0) int sizeOnDisk,
-    @Default(0) double percentOfEpisodes,
   }) = _SonarrSeriesStatistics;
 
   factory SonarrSeriesStatistics.fromJson(Map<String, dynamic> json) =>
       _$SonarrSeriesStatisticsFromJson(json);
-}
-
-@freezed
-class SonarrImage with _$SonarrImage {
-  const factory SonarrImage({
-    required String coverType,
-    String? remoteUrl,
-    String? url,
-  }) = _SonarrImage;
-
-  factory SonarrImage.fromJson(Map<String, dynamic> json) =>
-      _$SonarrImageFromJson(json);
 }

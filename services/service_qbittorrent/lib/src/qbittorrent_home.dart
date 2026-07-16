@@ -1,11 +1,16 @@
+import 'dart:async';
+
 import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'add_torrent_sheet.dart';
 import 'models/qbit_torrent.dart';
 import 'models/qbit_transfer_info.dart';
+import 'qbittorrent_action_utils.dart';
 import 'qbittorrent_client.dart';
 import 'qbittorrent_providers.dart';
 import 'torrent_detail_screen.dart';
@@ -19,7 +24,7 @@ class QbittorrentHome extends ConsumerWidget {
   final Instance instance;
 
   void _refresh(WidgetRef ref) {
-    ref.invalidate(qbitTorrentsProvider(instance));
+    ref.invalidate(qbitRawTorrentsProvider(instance));
     ref.invalidate(qbitTransferProvider(instance));
   }
 
@@ -29,15 +34,16 @@ class QbittorrentHome extends ConsumerWidget {
         ref.watch(qbitTorrentsProvider(instance));
 
     return Scaffold(
+      bottomNavigationBar: _BottomControlBar(instance: instance),
       body: Column(
         children: <Widget>[
-          _TransferHeader(instance: instance),
           Expanded(
-            child: RefreshIndicator(
+            child: M3RefreshIndicator(
               onRefresh: () async => _refresh(ref),
               child: AsyncValueView<List<QbitTorrent>>(
                 value: torrents,
-                onRetry: () => ref.invalidate(qbitTorrentsProvider(instance)),
+                onRetry: () =>
+                    ref.invalidate(qbitRawTorrentsProvider(instance)),
                 data: (List<QbitTorrent> list) {
                   if (list.isEmpty) {
                     return const EmptyView(
@@ -47,13 +53,7 @@ class QbittorrentHome extends ConsumerWidget {
                     );
                   }
                   return ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(
-                      Insets.lg,
-                      0,
-                      Insets.lg,
-                      // leave room so the FAB doesn't cover the last card
-                      80,
-                    ),
+                    padding: const EdgeInsets.only(bottom: 80),
                     itemCount: list.length,
                     itemBuilder: (BuildContext context, int index) =>
                         _TorrentTile(instance: instance, torrent: list[index]),
@@ -64,160 +64,633 @@ class QbittorrentHome extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final bool added = await AddTorrentSheet.show(context, instance);
-          if (added) {
-            _refresh(ref);
-          }
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Add'),
-      ),
-    );
-  }
-}
-
-class _TransferHeader extends ConsumerWidget {
-  const _TransferHeader({required this.instance});
-
-  final Instance instance;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final QbitTransferInfo? info =
-        ref.watch(qbitTransferProvider(instance)).valueOrNull;
-    final ThemeData theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        Insets.lg,
-        Insets.sm,
-        Insets.sm,
-        Insets.sm,
-      ),
-      child: Row(
-        children: <Widget>[
-          _SpeedBadge(
-            icon: Icons.arrow_downward,
-            label: info == null ? '-' : '${fmtBytes(info.dlSpeed)}/s',
-            color: theme.colorScheme.primary,
+      floatingActionButton: _ExpandableFab(
+        builder: (BuildContext context, VoidCallback close) => <Widget>[
+          FloatingActionButton(
+            heroTag: null,
+            tooltip: 'Magnet link',
+            onPressed: () async {
+              close();
+              final bool added = await AddTorrentSheet.show(
+                context,
+                instance,
+              );
+              if (added) {
+                _refresh(ref);
+              }
+            },
+            child: const Icon(Icons.link),
           ),
-          const SizedBox(width: Insets.lg),
-          _SpeedBadge(
-            icon: Icons.arrow_upward,
-            label: info == null ? '-' : '${fmtBytes(info.upSpeed)}/s',
-            color: theme.colorScheme.tertiary,
-          ),
-          const Spacer(),
-          IconButton(
-            tooltip: 'Pause all',
-            icon: const Icon(Icons.pause_circle_outline),
-            onPressed: () => _setAll(ref, paused: true),
-          ),
-          IconButton(
-            tooltip: 'Resume all',
-            icon: const Icon(Icons.play_circle_outline),
-            onPressed: () => _setAll(ref, paused: false),
+          FloatingActionButton(
+            heroTag: null,
+            tooltip: 'Torrent file',
+            onPressed: () async {
+              close();
+              final bool added = await AddTorrentSheet.show(
+                context,
+                instance,
+                initialMode: AddTorrentMode.file,
+              );
+              if (added) {
+                _refresh(ref);
+              }
+            },
+            child: const Icon(Icons.attach_file),
           ),
         ],
       ),
     );
   }
+}
+
+class _BottomControlBar extends ConsumerStatefulWidget {
+  const _BottomControlBar({required this.instance});
+
+  final Instance instance;
+
+  @override
+  ConsumerState<_BottomControlBar> createState() => _BottomControlBarState();
+}
+
+class _BottomControlBarState extends ConsumerState<_BottomControlBar> {
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
 
   Future<void> _setAll(WidgetRef ref, {required bool paused}) async {
     final QbittorrentClient client =
-        await ref.read(qbittorrentClientProvider(instance).future);
+        await ref.read(qbittorrentClientProvider(widget.instance).future);
     await client.setAllPaused(paused: paused);
-    ref.invalidate(qbitTorrentsProvider(instance));
-    ref.invalidate(qbitTransferProvider(instance));
+    ref.invalidate(qbitRawTorrentsProvider(widget.instance));
+    ref.invalidate(qbitTransferProvider(widget.instance));
   }
-}
 
-class _SpeedBadge extends StatelessWidget {
-  const _SpeedBadge({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final QbitTransferInfo? info =
+        ref.watch(qbitTransferProvider(widget.instance)).value;
+    final ThemeData theme = Theme.of(context);
+    final Color contrastColor = theme.brightness == Brightness.dark
+        ? Colors.white.withValues(alpha: 0.04)
+        : Colors.black.withValues(alpha: 0.02);
+
+    return BottomAppBar(
+      height: 56,
+      color: Color.alphaBlend(contrastColor, theme.colorScheme.surface),
+      padding: const EdgeInsets.symmetric(horizontal: Insets.md),
+      child: _isSearching
+          ? Row(
+              children: <Widget>[
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () {
+                    setState(() {
+                      _isSearching = false;
+                      _searchController.clear();
+                      ref
+                          .read(qbitSearchProvider(widget.instance).notifier)
+                          .state = '';
+                    });
+                  },
+                ),
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      hintText: 'Filter torrents...',
+                      border: InputBorder.none,
+                    ),
+                    onChanged: (String val) {
+                      ref
+                          .read(qbitSearchProvider(widget.instance).notifier)
+                          .state = val;
+                      // setState to show/hide the clear button
+                      setState(() {});
+                    },
+                  ),
+                ),
+                if (_searchController.text.isNotEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      _searchController.clear();
+                      ref
+                          .read(qbitSearchProvider(widget.instance).notifier)
+                          .state = '';
+                      setState(() {});
+                    },
+                  ),
+              ],
+            )
+          : Row(
+              children: <Widget>[
+                IconButton(
+                  tooltip: 'Search torrents',
+                  icon: const Icon(Icons.search),
+                  onPressed: () => setState(() => _isSearching = true),
+                ),
+                const SizedBox(width: Insets.xs),
+                _SpeedPill(
+                  icon: Icons.south,
+                  label: '${fmtBytes(info?.dlSpeed ?? 0)}/s',
+                  color: theme.colorScheme.primary,
+                  active: (info?.dlSpeed ?? 0) > 0,
+                ),
+                const SizedBox(width: Insets.sm),
+                _SpeedPill(
+                  icon: Icons.north,
+                  label: '${fmtBytes(info?.upSpeed ?? 0)}/s',
+                  color: theme.colorScheme.tertiary,
+                  active: (info?.upSpeed ?? 0) > 0,
+                ),
+                const Spacer(),
+                IconButton(
+                  tooltip: 'Resume all',
+                  icon: const Icon(Icons.play_arrow),
+                  onPressed: () => _setAll(ref, paused: false),
+                ),
+                IconButton(
+                  tooltip: 'Pause all',
+                  icon: const Icon(Icons.stop),
+                  onPressed: () => _setAll(ref, paused: true),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+class QbittorrentAppBarActions extends ConsumerWidget {
+  const QbittorrentAppBarActions({required this.instance, super.key});
+
+  final Instance instance;
+
+  void _showSortMenu(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      builder: (BuildContext context) {
+        return Consumer(
+          builder: (BuildContext context, WidgetRef ref, Widget? child) {
+            final QbitSortConfig config = ref.watch(qbitSortProvider(instance));
+            return ListView(
+              padding: const EdgeInsets.symmetric(vertical: Insets.md),
+              children: <Widget>[
+                ListTile(
+                  leading: Icon(
+                    config.ascending
+                        ? Icons.arrow_upward
+                        : Icons.arrow_downward,
+                  ),
+                  title: Text(config.ascending ? 'Ascending' : 'Descending'),
+                  onTap: () {
+                    ref.read(qbitSortProvider(instance).notifier).state =
+                        config.copyWith(ascending: !config.ascending);
+                  },
+                ),
+                const Divider(),
+                for (final QbitSortField field in QbitSortField.values)
+                  ListTile(
+                    title: Text(field.displayName),
+                    trailing:
+                        config.field == field ? const Icon(Icons.check) : null,
+                    onTap: () {
+                      ref.read(qbitSortProvider(instance).notifier).state =
+                          config.copyWith(field: field);
+                      Navigator.of(context).pop();
+                    },
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final Set<String> selectedHashes =
+        ref.watch(qbitSelectionProvider(instance));
+
+    if (selectedHashes.isEmpty) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          IconButton(
+            tooltip: 'Filter Torrents',
+            icon: const Icon(Icons.filter_list),
+            onPressed: () {
+              Scaffold.of(context).openEndDrawer();
+            },
+          ),
+          IconButton(
+            tooltip: 'Sort Torrents',
+            icon: const Icon(Icons.sort),
+            onPressed: () => _showSortMenu(context, ref),
+          ),
+        ],
+      );
+    }
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        Icon(icon, size: 16, color: color),
-        const SizedBox(width: Insets.xs),
-        Text(label, style: Theme.of(context).textTheme.labelLarge),
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: Text('${selectedHashes.length} Selected'),
+          ),
+        ),
+        IconButton(
+          tooltip: 'Select All',
+          icon: const Icon(Icons.select_all),
+          onPressed: () {
+            final List<QbitTorrent>? torrents =
+                ref.read(qbitTorrentsProvider(instance)).value;
+            if (torrents != null) {
+              ref.read(qbitSelectionProvider(instance).notifier).state =
+                  torrents.map((QbitTorrent t) => t.hash).toSet();
+            }
+          },
+        ),
+        IconButton(
+          tooltip: 'Select None',
+          icon: const Icon(Icons.deselect),
+          onPressed: () => ref.invalidate(qbitSelectionProvider(instance)),
+        ),
+        IconButton(
+          tooltip: 'Delete Selected',
+          icon: const Icon(Icons.delete),
+          onPressed: () => QbittorrentActionUtils.confirmDelete(
+            context,
+            ref,
+            instance,
+            selectedHashes,
+          ),
+        ),
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert),
+          onSelected: (String value) async {
+            final List<String> hashes = selectedHashes.toList();
+            switch (value) {
+              case 'pause':
+                await QbittorrentActionUtils.run(
+                  ref,
+                  instance,
+                  (QbittorrentClient c) => c.pause(hashes),
+                );
+              case 'resume':
+                await QbittorrentActionUtils.run(
+                  ref,
+                  instance,
+                  (QbittorrentClient c) => c.resume(hashes),
+                );
+              case 'copy':
+                await Clipboard.setData(ClipboardData(text: hashes.join('\n')));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Hashes copied')),
+                  );
+                }
+              case 'recheck':
+                await QbittorrentActionUtils.run(
+                  ref,
+                  instance,
+                  (QbittorrentClient c) => c.recheck(hashes),
+                );
+              case 'reannounce':
+                await QbittorrentActionUtils.run(
+                  ref,
+                  instance,
+                  (QbittorrentClient c) => c.reannounce(hashes),
+                );
+              case 'forcestart':
+                await QbittorrentActionUtils.run(
+                  ref,
+                  instance,
+                  (QbittorrentClient c) => c.setForceStart(hashes, value: true),
+                );
+              case 'rename':
+                await QbittorrentActionUtils.rename(
+                  context,
+                  ref,
+                  instance,
+                  selectedHashes,
+                );
+              case 'savepath':
+                await QbittorrentActionUtils.editSavePath(
+                  context,
+                  ref,
+                  instance,
+                  selectedHashes,
+                );
+              case 'category':
+                await QbittorrentActionUtils.editCategory(
+                  context,
+                  ref,
+                  instance,
+                  selectedHashes,
+                );
+              case 'tags':
+                await QbittorrentActionUtils.editTags(
+                  context,
+                  ref,
+                  instance,
+                  selectedHashes,
+                );
+              case 'export':
+                try {
+                  final QbittorrentClient client = await ref
+                      .read(qbittorrentClientProvider(instance).future);
+                  await client.exportTorrent(hashes.first);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Torrent exported successfully'),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Export failed: $e')),
+                    );
+                  }
+                }
+            }
+          },
+          itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+            const PopupMenuItem<String>(value: 'pause', child: Text('Pause')),
+            const PopupMenuItem<String>(value: 'resume', child: Text('Resume')),
+            const PopupMenuItem<String>(value: 'copy', child: Text('Copy')),
+            const PopupMenuItem<String>(
+              value: 'recheck',
+              child: Text('Force Recheck'),
+            ),
+            const PopupMenuItem<String>(
+              value: 'reannounce',
+              child: Text('Force Reannounce'),
+            ),
+            const PopupMenuItem<String>(
+              value: 'forcestart',
+              child: Text('Force Start'),
+            ),
+            PopupMenuItem<String>(
+              value: 'rename',
+              enabled: selectedHashes.length == 1,
+              child: const Text('Rename'),
+            ),
+            const PopupMenuItem<String>(
+              value: 'savepath',
+              child: Text('Set SavePath'),
+            ),
+            const PopupMenuItem<String>(
+              value: 'category',
+              child: Text('Set Category'),
+            ),
+            const PopupMenuItem<String>(value: 'tags', child: Text('Set Tags')),
+            PopupMenuItem<String>(
+              value: 'export',
+              enabled: selectedHashes.length == 1,
+              child: const Text('Export .torrent'),
+            ),
+          ],
+        ),
       ],
     );
   }
 }
 
-class _TorrentTile extends ConsumerWidget {
+class _TorrentTile extends ConsumerStatefulWidget {
   const _TorrentTile({required this.instance, required this.torrent});
 
   final Instance instance;
   final QbitTorrent torrent;
 
-  bool get _isPaused =>
-      torrent.state.toLowerCase().contains('paused') ||
-      torrent.state.toLowerCase().contains('stopped');
+  @override
+  ConsumerState<_TorrentTile> createState() => _TorrentTileState();
+}
+
+class _TorrentTileState extends ConsumerState<_TorrentTile> {
+  Timer? _longPressTimer;
+  Offset? _tapPosition;
+  bool _menuShown = false;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final int pct = (torrent.progress * 100).round();
-    return Card(
-      margin: const EdgeInsets.only(bottom: Insets.sm),
+  void dispose() {
+    _longPressTimer?.cancel();
+    super.dispose();
+  }
+
+  String _formatEta(int eta) {
+    if (eta >= 8640000 || eta < 0) {
+      return '∞';
+    }
+    final Duration d = Duration(seconds: eta);
+    if (d.inDays > 0) return '${d.inDays}d ${d.inHours.remainder(24)}h';
+    if (d.inHours > 0) return '${d.inHours}h ${d.inMinutes.remainder(60)}m';
+    if (d.inMinutes > 0) return '${d.inMinutes}m ${d.inSeconds.remainder(60)}s';
+    return '${d.inSeconds}s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final QbitTorrent torrent = widget.torrent;
+    final Instance instance = widget.instance;
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final Set<String> selection = ref.watch(qbitSelectionProvider(instance));
+    final bool selectionMode = selection.isNotEmpty;
+    final bool isSelected = selection.contains(torrent.hash);
+    final _QbitVisual v = _visualFor(torrent.state, cs);
+    final double progress = torrent.progress.clamp(0, 1).toDouble();
+    final bool complete = progress >= 1.0;
+    final bool dlActive = torrent.dlspeed > 0;
+    final bool upActive = torrent.upspeed > 0;
+
+    final Widget tile = Material(
+      color: isSelected ? cs.primaryContainer : cs.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: Radii.card,
-        // rootNavigator: pages pushed on the shell navigator get swept on the
-        // next GoRouter rebuild (StatefulShellRoute rebuilds its branch
-        // navigators declaratively). Same fix as the media-server player.
-        onTap: () => Navigator.of(context, rootNavigator: true).push(
-          MaterialPageRoute<void>(
-            builder: (_) => TorrentDetailScreen(
-              instance: instance,
-              torrent: torrent,
-            ),
-          ),
-        ),
+        onTapDown: (TapDownDetails details) {
+          _tapPosition = details.globalPosition;
+          _menuShown = false;
+          if (!selectionMode) {
+            _longPressTimer?.cancel();
+            _longPressTimer = Timer(const Duration(milliseconds: 250), () {
+              if (_tapPosition != null && mounted) {
+                _menuShown = true;
+                _showContextMenu(context);
+              }
+            });
+          }
+        },
+        onTapCancel: () => _longPressTimer?.cancel(),
+        onTap: () {
+          _longPressTimer?.cancel();
+          if (_menuShown) return;
+
+          if (selectionMode) {
+            ref
+                .read(qbitSelectionProvider(instance).notifier)
+                .update((Set<String> s) {
+              final Set<String> next = Set<String>.of(s);
+              if (next.contains(torrent.hash)) {
+                next.remove(torrent.hash);
+              } else {
+                next.add(torrent.hash);
+              }
+              return next;
+            });
+          } else {
+            Navigator.of(context, rootNavigator: true).push(
+              MaterialPageRoute<void>(
+                builder: (_) => TorrentDetailScreen(
+                  instance: instance,
+                  torrent: torrent,
+                ),
+              ),
+            );
+          }
+        },
         child: Padding(
-          padding: Insets.page,
+          padding: const EdgeInsets.all(Insets.md),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text(
-                torrent.name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Container(
+                    width: 44,
+                    height: 44,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? cs.onPrimaryContainer.withValues(alpha: 0.15)
+                          : v.container,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      isSelected ? Icons.check : v.icon,
+                      size: 22,
+                      color: isSelected ? cs.onPrimaryContainer : v.onContainer,
+                    ),
+                  ),
+                  const SizedBox(width: Insets.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          torrent.name,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: isSelected ? cs.onPrimaryContainer : null,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: <Widget>[
+                            _StatePill(
+                              label: friendlyState(torrent.state),
+                              visual: v,
+                            ),
+                            const SizedBox(width: Insets.sm),
+                            Expanded(
+                              child: Text(
+                                '${fmtBytes(torrent.downloaded)} / ${fmtBytes(torrent.size)}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: isSelected
+                                      ? cs.onPrimaryContainer
+                                          .withValues(alpha: 0.8)
+                                      : cs.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: Insets.sm),
-              LinearProgressIndicator(value: torrent.progress.clamp(0, 1)),
-              const SizedBox(height: Insets.xs),
+              const SizedBox(height: Insets.md),
               Row(
                 children: <Widget>[
                   Expanded(
-                    child: Text(
-                      '$pct% • ${_friendlyState(torrent.state)} • '
-                      '↓${fmtBytes(torrent.dlspeed)}/s ↑${fmtBytes(torrent.upspeed)}/s',
-                      style: Theme.of(context).textTheme.labelSmall,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicatorM3E(
+                        shape: ProgressM3EShape.flat,
+                        value: progress,
+                        activeColor: complete ? cs.tertiary : v.color,
+                        trackColor: isSelected
+                            ? cs.onPrimaryContainer.withValues(alpha: 0.15)
+                            : cs.surfaceContainerHighest,
+                      ),
                     ),
                   ),
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    icon: Icon(_isPaused ? Icons.play_arrow : Icons.pause),
-                    onPressed: () => _toggle(ref),
+                  const SizedBox(width: Insets.sm),
+                  Text(
+                    '${(progress * 100).toStringAsFixed(0)}%',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: isSelected ? cs.onPrimaryContainer : v.color,
+                    ),
                   ),
-                  _OverflowMenu(
-                    instance: instance,
-                    torrent: torrent,
-                    onDelete: () => _confirmDelete(context, ref),
+                ],
+              ),
+              const SizedBox(height: Insets.md),
+              Row(
+                children: <Widget>[
+                  _SpeedPill(
+                    icon: Icons.south,
+                    label: '${fmtBytes(torrent.dlspeed)}/s',
+                    color: cs.primary,
+                    active: dlActive,
                   ),
+                  const SizedBox(width: Insets.sm),
+                  _SpeedPill(
+                    icon: Icons.north,
+                    label: '${fmtBytes(torrent.upspeed)}/s',
+                    color: cs.tertiary,
+                    active: upActive,
+                  ),
+                  const Spacer(),
+                  Icon(Icons.swap_vert, size: 14, color: cs.onSurfaceVariant),
+                  const SizedBox(width: 2),
+                  Text(
+                    torrent.ratio.toStringAsFixed(2),
+                    style: theme.textTheme.labelSmall
+                        ?.copyWith(color: cs.onSurfaceVariant),
+                  ),
+                  if (!complete) ...<Widget>[
+                    const SizedBox(width: Insets.sm),
+                    Icon(
+                      Icons.schedule,
+                      size: 14,
+                      color: cs.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 2),
+                    Text(
+                      _formatEta(torrent.eta),
+                      style: theme.textTheme.labelSmall
+                          ?.copyWith(color: cs.onSurfaceVariant),
+                    ),
+                  ],
                 ],
               ),
             ],
@@ -225,189 +698,313 @@ class _TorrentTile extends ConsumerWidget {
         ),
       ),
     );
-  }
 
-  Future<void> _toggle(WidgetRef ref) async {
-    final QbittorrentClient client =
-        await ref.read(qbittorrentClientProvider(instance).future);
-    if (_isPaused) {
-      await client.resume(torrent.hash);
-    } else {
-      await client.pause(torrent.hash);
-    }
-    ref.invalidate(qbitTorrentsProvider(instance));
-  }
-
-  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
-    bool deleteFiles = false;
-    final bool? ok = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) => StatefulBuilder(
-        builder: (BuildContext context, StateSetter setState) => AlertDialog(
-          title: const Text('Remove torrent?'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Text(torrent.name, maxLines: 3, overflow: TextOverflow.ellipsis),
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Also delete downloaded files'),
-                value: deleteFiles,
-                onChanged: (bool? v) =>
-                    setState(() => deleteFiles = v ?? false),
-              ),
-            ],
-          ),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Remove'),
-            ),
-          ],
+    if (selectionMode) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(
+          Insets.md,
+          Insets.xs,
+          Insets.md,
+          Insets.xs,
         ),
-      ),
-    );
-    if (ok ?? false) {
-      final QbittorrentClient client =
-          await ref.read(qbittorrentClientProvider(instance).future);
-      await client.delete(torrent.hash, deleteFiles: deleteFiles);
-      ref.invalidate(qbitTorrentsProvider(instance));
+        child: tile,
+      );
     }
+
+    return Padding(
+      padding:
+          const EdgeInsets.fromLTRB(Insets.md, Insets.xs, Insets.md, Insets.xs),
+      child: tile,
+    );
+  }
+
+  void _showContextMenu(BuildContext context) {
+    final Instance inst = widget.instance;
+    final String hash = widget.torrent.hash;
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+
+    Widget buildItem(
+      IconData icon,
+      String label,
+      VoidCallback onTap, {
+      Color? color,
+    }) {
+      return ListTile(
+        leading: Icon(icon, color: color ?? cs.onSurfaceVariant),
+        title: Text(label, style: TextStyle(color: color)),
+        onTap: () {
+          Navigator.of(context).pop();
+          onTap();
+        },
+      );
+    }
+
+    showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss',
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (
+        BuildContext context,
+        Animation<double> animation,
+        Animation<double> secondaryAnimation,
+      ) {
+        return Dialog(
+          clipBehavior: Clip.antiAlias,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  buildItem(Icons.check_circle_outline, 'Select', () {
+                    ref.read(qbitSelectionProvider(inst).notifier).update(
+                          (Set<String> s) => <String>{...s, hash},
+                        );
+                  }),
+                  buildItem(Icons.pause, 'Pause', () {
+                    QbittorrentActionUtils.run(
+                      ref,
+                      inst,
+                      (QbittorrentClient c) => c.pause(<String>[hash]),
+                    );
+                  }),
+                  buildItem(Icons.play_arrow, 'Resume', () {
+                    QbittorrentActionUtils.run(
+                      ref,
+                      inst,
+                      (QbittorrentClient c) => c.resume(<String>[hash]),
+                    );
+                  }),
+                  buildItem(Icons.copy, 'Copy Hash', () async {
+                    await Clipboard.setData(ClipboardData(text: hash));
+                  }),
+                  buildItem(Icons.refresh, 'Force Recheck', () {
+                    QbittorrentActionUtils.run(
+                      ref,
+                      inst,
+                      (QbittorrentClient c) => c.recheck(<String>[hash]),
+                    );
+                  }),
+                  buildItem(Icons.edit, 'Rename', () {
+                    QbittorrentActionUtils.rename(
+                      context,
+                      ref,
+                      inst,
+                      <String>{hash},
+                    );
+                  }),
+                  buildItem(Icons.folder, 'Set SavePath', () {
+                    QbittorrentActionUtils.editSavePath(
+                      context,
+                      ref,
+                      inst,
+                      <String>{hash},
+                    );
+                  }),
+                  buildItem(Icons.label, 'Set Category', () {
+                    QbittorrentActionUtils.editCategory(
+                      context,
+                      ref,
+                      inst,
+                      <String>{hash},
+                    );
+                  }),
+                  buildItem(
+                    Icons.delete,
+                    'Delete',
+                    () {
+                      QbittorrentActionUtils.confirmDelete(
+                        context,
+                        ref,
+                        inst,
+                        <String>{hash},
+                      );
+                    },
+                    color: Colors.red,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (
+        BuildContext context,
+        Animation<double> animation,
+        Animation<double> secondaryAnimation,
+        Widget child,
+      ) {
+        return ScaleTransition(
+          scale: CurvedAnimation(
+            parent: animation,
+            curve: Curves.fastOutSlowIn,
+          ),
+          child: FadeTransition(
+            opacity: animation,
+            child: child,
+          ),
+        );
+      },
+    );
   }
 }
 
-/// Per-torrent overflow: recheck, set category, queue up/down, delete.
-class _OverflowMenu extends ConsumerWidget {
-  const _OverflowMenu({
-    required this.instance,
-    required this.torrent,
-    required this.onDelete,
+/// Per-state color + icon mapping for the torrent card (downloading -> primary,
+/// seeding -> tertiary, completed/queued -> secondary, error -> error, and a
+/// muted outline look for paused/stalled).
+class _QbitVisual {
+  const _QbitVisual({
+    required this.color,
+    required this.container,
+    required this.onContainer,
+    required this.icon,
   });
 
-  final Instance instance;
-  final QbitTorrent torrent;
-  final VoidCallback onDelete;
+  final Color color;
+  final Color container;
+  final Color onContainer;
+  final IconData icon;
+}
+
+_QbitVisual _visualFor(String state, ColorScheme cs) {
+  switch (state) {
+    case 'downloading':
+    case 'forcedDL':
+    case 'metaDL':
+      return _QbitVisual(
+        color: cs.primary,
+        container: cs.primaryContainer,
+        onContainer: cs.onPrimaryContainer,
+        icon: Icons.download_rounded,
+      );
+    case 'uploading':
+    case 'forcedUP':
+    case 'stalledUP':
+      return _QbitVisual(
+        color: cs.tertiary,
+        container: cs.tertiaryContainer,
+        onContainer: cs.onTertiaryContainer,
+        icon: Icons.upload_rounded,
+      );
+    case 'pausedUP':
+    case 'stoppedUP':
+      return _QbitVisual(
+        color: cs.secondary,
+        container: cs.secondaryContainer,
+        onContainer: cs.onSecondaryContainer,
+        icon: Icons.check_rounded,
+      );
+    case 'queuedDL':
+    case 'queuedUP':
+      return _QbitVisual(
+        color: cs.secondary,
+        container: cs.secondaryContainer,
+        onContainer: cs.onSecondaryContainer,
+        icon: Icons.schedule_rounded,
+      );
+    case 'checkingDL':
+    case 'checkingUP':
+    case 'checkingResumeData':
+      return _QbitVisual(
+        color: cs.tertiary,
+        container: cs.tertiaryContainer,
+        onContainer: cs.onTertiaryContainer,
+        icon: Icons.sync_rounded,
+      );
+    case 'error':
+    case 'missingFiles':
+      return _QbitVisual(
+        color: cs.error,
+        container: cs.errorContainer,
+        onContainer: cs.onErrorContainer,
+        icon: Icons.error_outline_rounded,
+      );
+    default:
+      return _QbitVisual(
+        color: cs.outline,
+        container: cs.surfaceContainerHighest,
+        onContainer: cs.onSurfaceVariant,
+        icon: state.contains('paused') || state.contains('stopped')
+            ? Icons.pause_rounded
+            : Icons.hourglass_empty_rounded,
+      );
+  }
+}
+
+class _StatePill extends StatelessWidget {
+  const _StatePill({required this.label, required this.visual});
+
+  final String label;
+  final _QbitVisual visual;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert),
-      onSelected: (String value) async {
-        switch (value) {
-          case 'recheck':
-            await _run(ref, (QbittorrentClient c) => c.recheck(torrent.hash));
-          case 'category':
-            await _editCategory(context, ref);
-          case 'prio_up':
-            await _run(
-              ref,
-              (QbittorrentClient c) =>
-                  c.setPriority(torrent.hash, increase: true),
-            );
-          case 'prio_down':
-            await _run(
-              ref,
-              (QbittorrentClient c) =>
-                  c.setPriority(torrent.hash, increase: false),
-            );
-          case 'delete':
-            onDelete();
-        }
-      },
-      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-        const PopupMenuItem<String>(
-          value: 'category',
-          child: ListTile(
-            leading: Icon(Icons.label_outline),
-            title: Text('Set category'),
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'prio_up',
-          child: ListTile(
-            leading: Icon(Icons.arrow_upward),
-            title: Text('Move up in queue'),
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'prio_down',
-          child: ListTile(
-            leading: Icon(Icons.arrow_downward),
-            title: Text('Move down in queue'),
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'recheck',
-          child: ListTile(
-            leading: Icon(Icons.fact_check_outlined),
-            title: Text('Force recheck'),
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-        const PopupMenuDivider(),
-        const PopupMenuItem<String>(
-          value: 'delete',
-          child: ListTile(
-            leading: Icon(Icons.delete_outline),
-            title: Text('Remove'),
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-      ],
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: visual.container,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: visual.onContainer,
+              fontWeight: FontWeight.w600,
+            ),
+      ),
     );
   }
+}
 
-  Future<void> _run(
-    WidgetRef ref,
-    Future<void> Function(QbittorrentClient) action,
-  ) async {
-    final QbittorrentClient client =
-        await ref.read(qbittorrentClientProvider(instance).future);
-    await action(client);
-    ref.invalidate(qbitTorrentsProvider(instance));
-  }
+class _SpeedPill extends StatelessWidget {
+  const _SpeedPill({
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.active = true,
+  });
 
-  Future<void> _editCategory(BuildContext context, WidgetRef ref) async {
-    final List<String> cats =
-        await ref.read(qbitCategoriesProvider(instance).future);
-    if (!context.mounted) {
-      return;
-    }
-    final String? chosen = await showDialog<String>(
-      context: context,
-      builder: (BuildContext context) => SimpleDialog(
-        title: const Text('Set category'),
+  final IconData icon;
+  final String label;
+  final Color color;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    final Color fg = active ? color : cs.onSurfaceVariant;
+    final Color bg =
+        active ? color.withValues(alpha: 0.12) : cs.surfaceContainerHighest;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          SimpleDialogOption(
-            onPressed: () => Navigator.of(context).pop(''),
-            child: const Text('None'),
+          Icon(icon, size: 13, color: fg),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: fg,
+                  fontWeight: FontWeight.w600,
+                ),
           ),
-          for (final String c in cats)
-            SimpleDialogOption(
-              onPressed: () => Navigator.of(context).pop(c),
-              child: Text(c),
-            ),
         ],
       ),
     );
-    if (chosen != null) {
-      await _run(
-        ref,
-        (QbittorrentClient c) => c.setCategory(torrent.hash, chosen),
-      );
-    }
   }
 }
 
 /// Maps a raw qBittorrent state to a short friendly label.
-String _friendlyState(String state) {
+String friendlyState(String state) {
   switch (state) {
     case 'downloading':
     case 'forcedDL':
@@ -458,4 +1055,138 @@ String fmtBytes(num bytes) {
       ? value.toStringAsFixed(0)
       : value.toStringAsFixed(1);
   return '$text ${units[unit]}';
+}
+
+class _ExpandableFab extends StatefulWidget {
+  const _ExpandableFab({required this.builder});
+
+  final List<Widget> Function(BuildContext context, VoidCallback close) builder;
+
+  @override
+  State<_ExpandableFab> createState() => _ExpandableFabState();
+}
+
+class _ExpandableFabState extends State<_ExpandableFab>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _expandAnimation;
+  bool _open = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      value: _open ? 1.0 : 0.0,
+      duration: const Duration(milliseconds: 250),
+      vsync: this,
+    );
+    _expandAnimation = CurvedAnimation(
+      curve: Curves.fastOutSlowIn,
+      reverseCurve: Curves.easeOutQuad,
+      parent: _controller,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _toggle() {
+    setState(() {
+      _open = !_open;
+      if (_open) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
+    });
+  }
+
+  void _close() {
+    if (_open) {
+      _toggle();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _expandAnimation,
+      builder: (BuildContext context, Widget? child) {
+        return SizedBox(
+          width: 56,
+          height: 56.0 + (_expandAnimation.value * 136.0),
+          child: child,
+        );
+      },
+      child: Stack(
+        alignment: Alignment.bottomCenter,
+        clipBehavior: Clip.none,
+        children: <Widget>[
+          ..._buildExpandingActionButtons(),
+          FloatingActionButton(
+            heroTag: null,
+            onPressed: _toggle,
+            child: AnimatedBuilder(
+              animation: _expandAnimation,
+              builder: (BuildContext context, Widget? child) {
+                return Transform.rotate(
+                  angle: _expandAnimation.value * 0.7853981633974483,
+                  child: const Icon(Icons.add),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildExpandingActionButtons() {
+    final List<Widget> children = widget.builder(context, _close);
+    final int count = children.length;
+    const double step = 68.0;
+    for (int i = 0; i < count; i++) {
+      children[i] = _ExpandingActionButton(
+        maxDistance: (i + 1) * step,
+        progress: _expandAnimation,
+        child: children[i],
+      );
+    }
+    return children;
+  }
+}
+
+class _ExpandingActionButton extends StatelessWidget {
+  const _ExpandingActionButton({
+    required this.maxDistance,
+    required this.progress,
+    required this.child,
+  });
+
+  final double maxDistance;
+  final Animation<double> progress;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: progress,
+      builder: (BuildContext context, Widget? child) {
+        final double offset = maxDistance * progress.value;
+        return Positioned(
+          bottom: offset,
+          left: 0,
+          right: 0,
+          child: Transform.scale(
+            scale: progress.value,
+            child: child,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
 }

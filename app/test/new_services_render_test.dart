@@ -1,14 +1,18 @@
 import 'package:core_models/core_models.dart';
+import 'package:core_profile/core_profile.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:service_bazarr/service_bazarr.dart';
-import 'package:service_overseerr/service_overseerr.dart';
+import 'package:service_seerr/service_seerr.dart';
 import 'package:service_plex/service_plex.dart';
+import 'package:service_radarr/service_radarr.dart';
 import 'package:service_sabnzbd/service_sabnzbd.dart';
 import 'package:service_tautulli/service_tautulli.dart';
+import 'package:atrium/src/screens/calendar_screen.dart';
 
 /// Deterministic render tests for the service modules added in the final pass.
 ///
@@ -78,7 +82,8 @@ void main() {
     expect(find.text('Ubuntu.24.04.iso'), findsOneWidget);
   });
 
-  testWidgets('TautulliHome renders active streams', (WidgetTester tester) async {
+  testWidgets('TautulliHome renders active streams',
+      (WidgetTester tester) async {
     final Instance instance = _instance(ServiceKind.tautulli);
     await _pump(
       tester,
@@ -103,32 +108,45 @@ void main() {
     expect(find.text('The Matrix'), findsOneWidget);
   });
 
-  testWidgets('OverseerrHome renders requests with approve action',
+  testWidgets('SeerrHome renders a request with its media details',
       (WidgetTester tester) async {
-    final Instance instance = _instance(ServiceKind.overseerr);
+    final Instance instance = _instance(ServiceKind.seerr);
     await _pump(
       tester,
       <Override>[
-        overseerrRequestsProvider(instance).overrideWith(
-          (Ref ref) async => const <OverseerrRequest>[
-            OverseerrRequest(
+        seerrRequestsProvider(instance).overrideWith(
+          (Ref ref) async => const <SeerrRequest>[
+            SeerrRequest(
               id: 1,
               status: 1,
               type: 'movie',
-              requestedBy: OverseerrUser(displayName: 'Bob'),
+              media: SeerrMedia(mediaType: 'movie', tmdbId: 603, status: 5),
+              requestedBy: SeerrUser(displayName: 'Bob'),
             ),
           ],
         ),
+        // The request tile resolves the title from Seerr's media details.
+        seerrMediaDetailsProvider(
+          (instance: instance, mediaType: 'movie', tmdbId: 603),
+        ).overrideWith(
+          (Ref ref) async => const SeerrDiscoverResult(
+            id: 603,
+            mediaType: 'movie',
+            title: 'The Matrix',
+          ),
+        ),
       ],
-      OverseerrHome(instance: instance),
+      SeerrHome(instance: instance),
+      pumps: 4,
     );
-    expect(find.text('Movie request'), findsOneWidget);
-    expect(find.text('by Bob'), findsOneWidget);
-    // Pending requests expose an approve button.
-    expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+    expect(find.text('The Matrix'), findsOneWidget);
+    // The redesigned SeerrRequestCard shows the requester name next to an
+    // avatar (no "Requested by:" prefix).
+    expect(find.text('Bob'), findsOneWidget);
   });
 
-  testWidgets('BazarrHome renders wanted-subtitles rows', (WidgetTester tester) async {
+  testWidgets('BazarrHome renders wanted-subtitles rows',
+      (WidgetTester tester) async {
     final Instance instance = _instance(ServiceKind.bazarr);
     await _pump(
       tester,
@@ -142,23 +160,36 @@ void main() {
             BazarrWantedRow(
               title: 'Breaking Bad',
               subtitle: 'S01E01 · Pilot',
-              missing: <BazarrSubtitle>[BazarrSubtitle(name: 'English', code2: 'en')],
+              missing: <BazarrSubtitle>[
+                BazarrSubtitle(name: 'English', code2: 'en')
+              ],
               isMovie: false,
             ),
           ],
         ),
+        bazarrSeriesProvider(instance).overrideWith(
+          (Ref ref) async => const <BazarrSeries>[],
+        ),
+        bazarrMoviesProvider(instance).overrideWith(
+          (Ref ref) async => const <BazarrMovie>[],
+        ),
       ],
       BazarrHome(instance: instance),
     );
+    // Wanted is the third tab now; switch to it before asserting.
+    await tester.tap(find.text('Wanted'));
+    await tester.pump(); // register the tap, start the tab animation
+    await tester.pump(const Duration(milliseconds: 400)); // finish animation
+    await tester.pump(); // let the wanted provider resolve and render
     expect(find.text('Breaking Bad'), findsOneWidget);
   });
 
-  testWidgets('PlexHome renders library items', (WidgetTester tester) async {
+  testWidgets('PlexHome renders hub sections', (WidgetTester tester) async {
     final Instance instance = _instance(ServiceKind.plex);
     await _pump(
       tester,
       <Override>[
-        // A throwaway PlexApi so _PosterCard can call imageUrl() without a
+        // A throwaway PlexApi so the poster card can call imageUrl() without a
         // live connection; the test asserts on the title, not the poster.
         plexApiProvider(instance).overrideWith(
           (Ref ref) async => PlexApi(Dio(), token: 'tok'),
@@ -168,22 +199,80 @@ void main() {
             PlexLibrary(key: '1', title: 'Movies', type: 'movie'),
           ],
         ),
-        plexItemsProvider((instance, '1')).overrideWith(
+        // No active streams: the Now Streaming row renders nothing (and the
+        // real sessions poller must not run in tests).
+        plexSessionsProvider(instance).overrideWith(
+          (Ref ref) async => const <PlexSession>[],
+        ),
+        // The Home tab is the default view, so it renders the on-deck and
+        // recently-added rows rather than a library grid.
+        plexOnDeckProvider(instance).overrideWith(
           (Ref ref) async => const <PlexMetadata>[
             PlexMetadata(
               ratingKey: '10',
               title: 'Blade Runner',
               year: 1982,
               type: 'movie',
-              viewCount: 1,
+              viewOffset: 600000,
+              duration: 6000000,
+            ),
+          ],
+        ),
+        plexRecentlyAddedProvider(instance).overrideWith(
+          (Ref ref) async => const <PlexMetadata>[],
+        ),
+        // The hub renders a row per library, so its items provider must be
+        // overridden too (a real fetch would leave a pending timer).
+        plexItemsProvider((instance, '1')).overrideWith(
+          (Ref ref) async => const <PlexMetadata>[],
+        ),
+      ],
+      PlexHome(instance: instance),
+      pumps: 4,
+    );
+    expect(find.text('Continue Watching'), findsOneWidget);
+    // Once in the featured hero, once in the Continue Watching row.
+    expect(find.text('Blade Runner'), findsNWidgets(2));
+    expect(find.text('Movies'), findsOneWidget);
+  });
+
+  testWidgets('CalendarScreen renders Radarr aggregated entries',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final Instance radarr = _instance(ServiceKind.radarr);
+    final DateTime airDate = DateTime.now();
+
+    await _pump(
+      tester,
+      <Override>[
+        activeInstancesProvider.overrideWith(
+          (Ref ref) => <Instance>[radarr],
+        ),
+        radarrApiProvider(radarr).overrideWith(
+          (Ref ref) async => RadarrApi(Dio(), apiKey: 'k'),
+        ),
+        radarrCalendarProvider.overrideWith(
+          (Ref ref, (Instance, DateTime) key) async => <RadarrMovie>[
+            RadarrMovie(
+              id: 1,
+              title: 'Inception',
+              year: 2010,
+              inCinemas: airDate.toIso8601String(),
+              monitored: true,
+              hasFile: false,
             ),
           ],
         ),
       ],
-      PlexHome(instance: instance),
+      const CalendarScreen(),
       pumps: 3,
     );
-    expect(find.text('Blade Runner'), findsOneWidget);
-    expect(find.text('Movies'), findsOneWidget);
+
+    expect(find.text('Inception'), findsOneWidget);
+    expect(find.text('Missing'), findsOneWidget);
   });
 }

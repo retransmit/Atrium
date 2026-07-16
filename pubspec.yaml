@@ -10,12 +10,17 @@ environment:
   sdk: ^3.6.0
   flutter: ^3.27.0
 
+dependency_overrides:
+  dynamic_color:
+    path: packages/dynamic_color_dummy
+  progress_indicator_m3e:
+    path: packages/progress_indicator_m3e_fixed
+
 workspace:
   - app
   - packages/core_models
   - packages/core_storage
   - packages/core_networking
-  - packages/core_player
   - packages/core_profile
   - packages/core_ui
   - packages/core_router
@@ -23,10 +28,11 @@ workspace:
   - services/service_radarr
   - services/service_prowlarr
   - services/service_bazarr
-  - services/service_overseerr
+  - services/service_seerr
   - services/service_tautulli
   - services/service_jellyfin
   - services/service_emby
   - services/service_plex
   - services/service_qbittorrent
   - services/service_sabnzbd
+  - services/service_glances

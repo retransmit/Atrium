@@ -8,13 +8,14 @@ enum ServiceKind {
   radarr,
   prowlarr,
   bazarr,
-  overseerr,
+  seerr,
   tautulli,
   jellyfin,
   emby,
   plex,
   qbittorrent,
   sabnzbd,
+  glances,
 }
 
 /// Static metadata about a [ServiceKind] - display name, default port, the
@@ -28,13 +29,14 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.radarr => 'Radarr',
         ServiceKind.prowlarr => 'Prowlarr',
         ServiceKind.bazarr => 'Bazarr',
-        ServiceKind.overseerr => 'Overseerr',
+        ServiceKind.seerr => 'Seerr',
         ServiceKind.tautulli => 'Tautulli',
         ServiceKind.jellyfin => 'Jellyfin',
         ServiceKind.emby => 'Emby',
         ServiceKind.plex => 'Plex',
         ServiceKind.qbittorrent => 'qBittorrent',
         ServiceKind.sabnzbd => 'SABnzbd',
+        ServiceKind.glances => 'Glances',
       };
 
   /// One-line role description.
@@ -43,13 +45,14 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.radarr => 'Movies',
         ServiceKind.prowlarr => 'Indexers',
         ServiceKind.bazarr => 'Subtitles',
-        ServiceKind.overseerr => 'Requests',
+        ServiceKind.seerr => 'Requests',
         ServiceKind.tautulli => 'Plex stats',
         ServiceKind.jellyfin => 'Media server',
         ServiceKind.emby => 'Media server',
         ServiceKind.plex => 'Media server',
         ServiceKind.qbittorrent => 'Torrent client',
         ServiceKind.sabnzbd => 'Usenet client',
+        ServiceKind.glances => 'System monitor',
       };
 
   /// Vendor-default port. Used as a hint when the user is entering a URL
@@ -59,13 +62,14 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.radarr => 7878,
         ServiceKind.prowlarr => 9696,
         ServiceKind.bazarr => 6767,
-        ServiceKind.overseerr => 5055,
+        ServiceKind.seerr => 5055,
         ServiceKind.tautulli => 8181,
         ServiceKind.jellyfin => 8096,
         ServiceKind.emby => 8096,
         ServiceKind.plex => 32400,
         ServiceKind.qbittorrent => 8080,
         ServiceKind.sabnzbd => 8080,
+        ServiceKind.glances => 61208,
       };
 
   /// What auth flow the service uses by default. Some services (Jellyfin) can
@@ -75,13 +79,14 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.radarr ||
         ServiceKind.prowlarr ||
         ServiceKind.bazarr ||
-        ServiceKind.overseerr ||
+        ServiceKind.seerr ||
         ServiceKind.tautulli ||
         ServiceKind.sabnzbd =>
           AuthStyle.apiKey,
         ServiceKind.jellyfin || ServiceKind.emby => AuthStyle.userPass,
         ServiceKind.plex => AuthStyle.plexToken,
         ServiceKind.qbittorrent => AuthStyle.cookieLogin,
+        ServiceKind.glances => AuthStyle.none,
       };
 
   /// Broad role of the service in the stack - used for grouping in the
@@ -92,7 +97,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.prowlarr ||
         ServiceKind.bazarr =>
           ServiceRole.automation,
-        ServiceKind.overseerr => ServiceRole.requests,
+        ServiceKind.seerr => ServiceRole.requests,
         ServiceKind.tautulli => ServiceRole.analytics,
         ServiceKind.jellyfin ||
         ServiceKind.emby ||
@@ -101,6 +106,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.qbittorrent ||
         ServiceKind.sabnzbd =>
           ServiceRole.downloader,
+        ServiceKind.glances => ServiceRole.analytics,
       };
 }
 
@@ -119,6 +125,9 @@ enum AuthStyle {
   /// Username + password login that returns a cookie carried on subsequent
   /// requests (qBittorrent).
   cookieLogin,
+
+  /// No authentication required.
+  none,
 }
 
 /// Coarse grouping for the dashboard.

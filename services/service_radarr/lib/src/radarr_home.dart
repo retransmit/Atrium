@@ -1,315 +1,202 @@
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:collection/collection.dart';
 import 'package:core_models/core_models.dart';
-import 'package:core_ui/core_ui.dart';
+import 'package:core_router/core_router.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
+import 'package:go_router/go_router.dart';
 
-import 'add_movie_screen.dart';
-import 'models/radarr_movie.dart';
-import 'models/radarr_queue.dart';
-import 'movie_detail_screen.dart';
-import 'radarr_api.dart';
-import 'radarr_providers.dart';
+import '../service_radarr.dart';
+import 'home/activity_tab.dart';
+import 'home/movies_tab.dart';
+import 'home/settings_tab.dart';
+import 'home/system_tab.dart';
+import 'home/wanted_tab.dart';
 
-/// Radarr's per-instance UI: a tabbed Movies / Queue view. Mirrors
-/// `SonarrHome` - the Movies tab is a 2:3 poster grid with a downloaded
-/// check overlay and a monitored bookmark badge.
-class RadarrHome extends StatelessWidget {
-  const RadarrHome({required this.instance, super.key});
-
-  final Instance instance;
-
-  @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        body: Column(
-          children: <Widget>[
-            const TabBar(
-              tabs: <Widget>[
-                Tab(text: 'Movies'),
-                Tab(text: 'Queue'),
-              ],
-            ),
-            Expanded(
-              child: TabBarView(
-                children: <Widget>[
-                  _MoviesTab(instance: instance),
-                  _QueueTab(instance: instance),
-                ],
-              ),
-            ),
-          ],
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          // Root navigator: see qBit detail history.
-          onPressed: () => Navigator.of(context, rootNavigator: true).push(
-            MaterialPageRoute<void>(
-              builder: (_) => AddMovieScreen(instance: instance),
-            ),
-          ),
-          icon: const Icon(Icons.add),
-          label: const Text('Add'),
-        ),
-      ),
-    );
-  }
-}
-
-class _MoviesTab extends ConsumerWidget {
-  const _MoviesTab({required this.instance});
-
-  final Instance instance;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<List<RadarrMovie>> movies =
-        ref.watch(radarrMoviesProvider(instance));
-    final RadarrApi? api = ref.watch(radarrApiProvider(instance)).valueOrNull;
-    return RefreshIndicator(
-      onRefresh: () async => ref.invalidate(radarrMoviesProvider(instance)),
-      child: AsyncValueView<List<RadarrMovie>>(
-        value: movies,
-        onRetry: () => ref.invalidate(radarrMoviesProvider(instance)),
-        data: (List<RadarrMovie> list) {
-          if (list.isEmpty) {
-            return const EmptyView(
-              icon: Icons.movie_outlined,
-              title: 'No movies',
-              message: 'This Radarr has no movies yet.',
-            );
-          }
-          return GridView.builder(
-            padding: Insets.page,
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 140,
-              childAspectRatio: 0.52,
-              crossAxisSpacing: Insets.md,
-              mainAxisSpacing: Insets.md,
-            ),
-            itemCount: list.length,
-            itemBuilder: (BuildContext context, int index) {
-              final RadarrMovie m = list[index];
-              final RadarrImage? poster = m.images
-                  .firstWhereOrNull((RadarrImage i) => i.coverType == 'poster');
-              return _MovieCard(
-                movie: m,
-                imageUrl: poster == null ? null : api?.posterUrl(poster),
-                // Root navigator: branch-navigator pushes get swept by
-                // GoRouter shell rebuilds (see qBit detail for history).
-                onTap: () => Navigator.of(context, rootNavigator: true).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => MovieDetailScreen(
-                      instance: instance,
-                      movieId: m.id,
-                    ),
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _MovieCard extends StatelessWidget {
-  const _MovieCard({
-    required this.movie,
-    required this.imageUrl,
-    required this.onTap,
+class RadarrHome extends ConsumerWidget {
+  const RadarrHome({
+    required this.instance,
+    this.onEdit,
+    this.drawer,
+    super.key,
   });
 
-  final RadarrMovie movie;
-  final String? imageUrl;
-  final VoidCallback onTap;
+  final Instance instance;
+  final VoidCallback? onEdit;
+  final Widget? drawer;
+
+  /// The search query provider backing the given tab, if that tab has one.
+  StateProvider<String>? _searchQueryProviderFor(int tabIndex) {
+    return switch (tabIndex) {
+      0 => radarrSearchQueryProvider(instance),
+      1 => radarrActivitySearchQueryProvider(instance),
+      2 => radarrWantedSearchQueryProvider(instance),
+      _ => null,
+    };
+  }
+
+  /// The selection providers backing the given tab, if that tab has any.
+  List<StateProvider<Set<int>>> _selectionProvidersFor(int tabIndex) {
+    return switch (tabIndex) {
+      0 => <StateProvider<Set<int>>>[
+          radarrMoviesSelectionProvider(instance),
+        ],
+      1 => <StateProvider<Set<int>>>[
+          radarrQueueSelectionProvider(instance),
+          radarrBlocklistSelectionProvider(instance),
+        ],
+      2 => <StateProvider<Set<int>>>[
+          radarrWantedSelectionProvider(instance),
+        ],
+      _ => const <StateProvider<Set<int>>>[],
+    };
+  }
+
+  /// Clears the active tab's search query. Returns true if there was one.
+  bool _clearActiveSearch(WidgetRef ref) {
+    final int index = ref.read(radarrActiveTabBarIndexProvider(instance));
+    final StateProvider<String>? provider = _searchQueryProviderFor(index);
+    if (provider == null || ref.read(provider).isEmpty) return false;
+    ref.read(provider.notifier).state = '';
+    return true;
+  }
+
+  /// Clears the active tab's selection. Returns true if there was one.
+  bool _clearActiveSelection(WidgetRef ref) {
+    final int index = ref.read(radarrActiveTabBarIndexProvider(instance));
+    bool cleared = false;
+    for (final provider in _selectionProvidersFor(index)) {
+      if (ref.read(provider).isNotEmpty) {
+        ref.read(provider.notifier).state = <int>{};
+        cleared = true;
+      }
+    }
+    return cleared;
+  }
 
   @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currentIndex = ref.watch(radarrActiveTabBarIndexProvider(instance));
+    final isNavbarVisible = ref.watch(radarrBottomNavVisibleProvider(instance));
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: Radii.card,
-      child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Expanded(
-          child: ClipRRect(
-            borderRadius: Radii.card,
-            child: Stack(
-              fit: StackFit.expand,
-              children: <Widget>[
-                _Poster(imageUrl: imageUrl, theme: theme),
-                if (movie.hasFile)
-                  Positioned(
-                    top: 4,
-                    right: 4,
-                    child: _Badge(
-                      color: theme.colorScheme.primary,
-                      child: Icon(
-                        Icons.check,
-                        size: 12,
-                        color: theme.colorScheme.onPrimary,
-                      ),
-                    ),
-                  )
-                else if (movie.monitored)
-                  Positioned(
-                    top: 4,
-                    right: 4,
-                    child: _Badge(
-                      color: theme.colorScheme.secondaryContainer,
-                      child: Icon(
-                        Icons.bookmark,
-                        size: 12,
-                        color: theme.colorScheme.onSecondaryContainer,
-                      ),
-                    ),
-                  ),
+    final List<Widget> tabs = [
+      MoviesTab(instance: instance),
+      ActivityTab(instance: instance),
+      WantedTab(instance: instance),
+      SettingsTab(instance: instance),
+      SystemTab(instance: instance),
+    ];
+
+    return Scaffold(
+      drawerEdgeDragWidth:
+          drawer != null ? MediaQuery.sizeOf(context).width * 0.15 : null,
+      drawer: drawer,
+      body: NotificationListener<UserScrollNotification>(
+        onNotification: (UserScrollNotification notification) {
+          if (notification.metrics.axis == Axis.vertical) {
+            final ScrollDirection direction = notification.direction;
+            if (direction == ScrollDirection.reverse) {
+              ref
+                  .read(radarrBottomNavVisibleProvider(instance).notifier)
+                  .state = false;
+            } else if (direction == ScrollDirection.forward) {
+              ref
+                  .read(radarrBottomNavVisibleProvider(instance).notifier)
+                  .state = true;
+            }
+          }
+          return false;
+        },
+        child: Builder(
+          builder: (BuildContext context) {
+            return PopScope<Object?>(
+              canPop: false,
+              onPopInvokedWithResult: (bool didPop, Object? result) {
+                if (didPop) return;
+
+                // A back press while the drawer is open only closes it.
+                if (Scaffold.of(context).isDrawerOpen) {
+                  Navigator.of(context).pop();
+                  return;
+                }
+
+                // Unwind one step per back press: search, then selection,
+                // then return to the first tab. Once nothing is left to
+                // unwind, canPop is true and the route pops normally.
+                if (_clearActiveSearch(ref)) return;
+                if (_clearActiveSelection(ref)) return;
+                if (ref.read(radarrActiveTabBarIndexProvider(instance)) != 0) {
+                  ref
+                      .read(radarrActiveTabBarIndexProvider(instance).notifier)
+                      .state = 0;
+                  return;
+                }
+
+                // If nothing to unwind, go back to dashboard.
+                GoRouter.of(context).go(AtriumRoutes.dashboard);
+              },
+              child: IndexedStack(
+                index: currentIndex,
+                children: tabs,
+              ),
+            );
+          },
+        ),
+      ),
+      bottomNavigationBar: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        height: isNavbarVisible ? 80 : 0,
+        child: SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          child: SizedBox(
+            height: 80,
+            child: NavigationBar(
+              selectedIndex: currentIndex,
+              onDestinationSelected: (index) {
+                if (index == 0 && currentIndex == 0) {
+                  ref
+                      .read(
+                        radarrMoviesScrollToTopProvider(instance).notifier,
+                      )
+                      .update((state) => state + 1);
+                } else {
+                  ref
+                      .read(
+                        radarrActiveTabBarIndexProvider(instance).notifier,
+                      )
+                      .state = index;
+                }
+              },
+              destinations: const [
+                NavigationDestination(
+                  icon: Icon(Icons.movie_outlined),
+                  selectedIcon: Icon(Icons.movie),
+                  label: 'Movies',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.swap_vert_outlined),
+                  selectedIcon: Icon(Icons.swap_vert),
+                  label: 'Activity',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.running_with_errors_outlined),
+                  selectedIcon: Icon(Icons.running_with_errors),
+                  label: 'Wanted',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.settings_outlined),
+                  selectedIcon: Icon(Icons.settings),
+                  label: 'Settings',
+                ),
+                NavigationDestination(
+                  icon: Icon(Icons.computer_outlined),
+                  selectedIcon: Icon(Icons.computer),
+                  label: 'System',
+                ),
               ],
             ),
           ),
         ),
-        const SizedBox(height: Insets.xs),
-        Text(
-          movie.title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.labelMedium,
-        ),
-        Text(
-          _subtitle(),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.labelSmall
-              ?.copyWith(color: theme.colorScheme.outline),
-        ),
-      ],
-      ),
-    );
-  }
-
-  String _subtitle() {
-    final List<String> parts = <String>[
-      if (movie.year != null) '${movie.year}',
-      if (movie.hasFile) 'Downloaded' else 'Missing',
-    ];
-    return parts.join(' • ');
-  }
-}
-
-class _Poster extends StatelessWidget {
-  const _Poster({required this.imageUrl, required this.theme});
-
-  final String? imageUrl;
-  final ThemeData theme;
-
-  @override
-  Widget build(BuildContext context) {
-    final Widget fallback = Container(
-      color: theme.colorScheme.surfaceContainerHighest,
-      child: Icon(
-        Icons.movie_outlined,
-        color: theme.colorScheme.outline,
-      ),
-    );
-    if (imageUrl == null) {
-      return fallback;
-    }
-    return CachedNetworkImage(
-      imageUrl: imageUrl!,
-      fit: BoxFit.cover,
-      placeholder: (BuildContext context, String url) =>
-          Container(color: theme.colorScheme.surfaceContainerHighest),
-      errorWidget: (BuildContext context, String url, Object error) =>
-          fallback,
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  const _Badge({required this.child, required this.color});
-
-  final Widget child;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      child: child,
-    );
-  }
-}
-
-class _QueueTab extends ConsumerWidget {
-  const _QueueTab({required this.instance});
-
-  final Instance instance;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<RadarrQueuePage> queue =
-        ref.watch(radarrQueueProvider(instance));
-    return RefreshIndicator(
-      onRefresh: () async => ref.invalidate(radarrQueueProvider(instance)),
-      child: AsyncValueView<RadarrQueuePage>(
-        value: queue,
-        onRetry: () => ref.invalidate(radarrQueueProvider(instance)),
-        data: (RadarrQueuePage page) {
-          if (page.records.isEmpty) {
-            return const EmptyView(
-              icon: Icons.download_done_outlined,
-              title: 'Queue is empty',
-              message: 'Nothing downloading right now.',
-            );
-          }
-          return ListView.builder(
-            padding: Insets.pageH,
-            itemCount: page.records.length,
-            itemBuilder: (BuildContext context, int index) {
-              final RadarrQueueRecord r = page.records[index];
-              final double progress = r.size <= 0
-                  ? 0
-                  : ((r.size - r.sizeleft) / r.size).clamp(0, 1).toDouble();
-              return ListTile(
-                title: Text(
-                  r.title ?? 'Item ${r.id}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    const SizedBox(height: Insets.xs),
-                    LinearProgressIndicator(value: progress),
-                    const SizedBox(height: Insets.xs),
-                    Text(
-                      <String?>[
-                        r.status,
-                        if (r.timeleft != null) r.timeleft,
-                      ].whereType<String>().join(' • '),
-                    ),
-                  ],
-                ),
-                trailing: IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () async {
-                    final RadarrApi api =
-                        await ref.read(radarrApiProvider(instance).future);
-                    await api.deleteQueueItem(r.id);
-                    ref.invalidate(radarrQueueProvider(instance));
-                  },
-                ),
-              );
-            },
-          );
-        },
       ),
     );
   }

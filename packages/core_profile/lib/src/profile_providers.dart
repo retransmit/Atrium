@@ -49,6 +49,14 @@ class ProfileListController extends AsyncNotifier<List<Profile>> {
     await _reload();
   }
 
+  /// Persists [profile] in full (matched by its id) and refreshes the list.
+  /// Used by settings surfaces that edit profile-level fields (global
+  /// headers, Wake-on-LAN devices) rather than a single instance.
+  Future<void> updateProfile(Profile profile) async {
+    await _repo.saveProfile(profile);
+    await _reload();
+  }
+
   Future<void> upsertInstance(String profileId, Instance instance) async {
     await _repo.upsertInstance(profileId, instance);
     await _reload();
@@ -87,7 +95,7 @@ class ActiveProfileIdController extends Notifier<String?> {
 /// stored active id is missing or stale.
 final Provider<Profile?> activeProfileProvider = Provider<Profile?>((Ref ref) {
   final List<Profile> profiles =
-      ref.watch(profileListProvider).valueOrNull ?? const <Profile>[];
+      ref.watch(profileListProvider).value ?? const <Profile>[];
   if (profiles.isEmpty) {
     return null;
   }
@@ -103,7 +111,7 @@ final Provider<List<Instance>> activeInstancesProvider =
 });
 
 /// Active-profile instances of a particular [ServiceKind].
-final ProviderFamily<List<Instance>, ServiceKind> instancesByKindProvider =
+final instancesByKindProvider =
     Provider.family<List<Instance>, ServiceKind>((Ref ref, ServiceKind kind) {
   return ref
       .watch(activeInstancesProvider)
@@ -112,7 +120,7 @@ final ProviderFamily<List<Instance>, ServiceKind> instancesByKindProvider =
 });
 
 /// A single active-profile instance by id, or null.
-final ProviderFamily<Instance?, String> instanceByIdProvider =
+final instanceByIdProvider =
     Provider.family<Instance?, String>((Ref ref, String id) {
   return ref
       .watch(activeInstancesProvider)

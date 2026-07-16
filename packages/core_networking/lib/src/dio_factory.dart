@@ -6,6 +6,7 @@ import 'package:dio/io.dart';
 
 import 'auth_interceptor.dart';
 import 'connection_resolver.dart';
+import 'headers.dart';
 
 /// Builds [Dio] clients pre-configured for an [Instance].
 ///
@@ -23,12 +24,18 @@ class DioFactory {
 
   final ConnectionResolver _resolver;
 
-  Future<Dio> create(Instance instance) async {
-    final Uri baseUrl = await _resolver.resolve(instance);
+  Future<Dio> create(
+    Instance instance, {
+    Map<String, String> globalHeaders = const <String, String>{},
+  }) async {
+    final Uri resolvedUrl = await _resolver.resolve(instance);
+    final String baseUrlStr = resolvedUrl.toString();
+    final String baseUrl =
+        baseUrlStr.endsWith('/') ? baseUrlStr : '$baseUrlStr/';
 
     final Dio dio = Dio(
       BaseOptions(
-        baseUrl: baseUrl.toString(),
+        baseUrl: baseUrl,
         connectTimeout: const Duration(seconds: 10),
         sendTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
@@ -37,13 +44,20 @@ class DioFactory {
       ),
     );
 
+    // User-configured headers: profile-wide first, instance overrides on key
+    // collision. The AuthInterceptor below still wins last for its own keys
+    // because it runs per-request.
+    dio.options.headers
+        .addAll(mergeHeaders(globalHeaders, instance.customHeaders));
+
     if (instance.allowSelfSignedCerts) {
       // The user has explicitly chosen to skip cert validation for this
       // instance - common with private IPs on self-signed certs.
-      final IOHttpClientAdapter adapter = dio.httpClientAdapter as IOHttpClientAdapter;
+      final IOHttpClientAdapter adapter =
+          dio.httpClientAdapter as IOHttpClientAdapter;
       adapter.createHttpClient = () => HttpClient()
-        ..badCertificateCallback = (X509Certificate _, String __, int ___) =>
-            true;
+        ..badCertificateCallback =
+            (X509Certificate _, String __, int ___) => true;
     }
 
     dio.interceptors.add(

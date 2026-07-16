@@ -29,6 +29,12 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
   final TextEditingController _username = TextEditingController();
   final TextEditingController _password = TextEditingController();
 
+  /// qBittorrent 5.2+ supports both username/password and API-key auth; this
+  /// tracks which the user picked (qBit only).
+  bool _qbitUseApiKey = false;
+  final TextEditingController _pollingInterval =
+      TextEditingController(text: '5');
+
   ServiceKind _kind = ServiceKind.sonarr;
   UrlMode _urlMode = UrlMode.auto;
   bool _allowSelfSigned = false;
@@ -44,6 +50,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     _apiKey.dispose();
     _username.dispose();
     _password.dispose();
+    _pollingInterval.dispose();
     super.dispose();
   }
 
@@ -58,6 +65,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     _kind = instance.kind;
     _urlMode = instance.urlMode;
     _allowSelfSigned = instance.allowSelfSignedCerts;
+    _pollingInterval.text = instance.pollingIntervalSeconds.toString();
     switch (instance.auth) {
       case InstanceAuthApiKey(:final String apiKey):
         _apiKey.text = apiKey;
@@ -70,21 +78,27 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
         _username.text = username;
         _password.text = password;
     }
+    // A qBittorrent instance saved with key auth reopens on the API-key tab.
+    _qbitUseApiKey = instance.kind == ServiceKind.qbittorrent &&
+        instance.auth is InstanceAuthApiKey;
   }
 
   InstanceAuth _buildAuth() {
     return switch (_kind.authStyle) {
       AuthStyle.apiKey => InstanceAuth.apiKey(apiKey: _apiKey.text.trim()),
-      AuthStyle.plexToken =>
-        InstanceAuth.plexToken(token: _apiKey.text.trim()),
+      AuthStyle.plexToken => InstanceAuth.plexToken(token: _apiKey.text.trim()),
       AuthStyle.userPass => InstanceAuth.userPass(
           username: _username.text.trim(),
           password: _password.text,
         ),
-      AuthStyle.cookieLogin => InstanceAuth.cookieLogin(
-          username: _username.text.trim(),
-          password: _password.text,
-        ),
+      AuthStyle.cookieLogin =>
+        (_kind == ServiceKind.qbittorrent && _qbitUseApiKey)
+            ? InstanceAuth.apiKey(apiKey: _apiKey.text.trim())
+            : InstanceAuth.cookieLogin(
+                username: _username.text.trim(),
+                password: _password.text,
+              ),
+      AuthStyle.none => const InstanceAuth.apiKey(apiKey: ''),
     };
   }
 
@@ -99,8 +113,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     // After creating, make it active.
     await ref.read(activeProfileIdProvider.notifier).select(profile.id);
 
-    final String id =
-        widget.instanceId ?? ref.read(profileRepositoryProvider).newInstanceId();
+    final String id = widget.instanceId ??
+        ref.read(profileRepositoryProvider).newInstanceId();
     final Instance instance = Instance(
       id: id,
       name: _name.text.trim(),
@@ -110,6 +124,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
       urlMode: _urlMode,
       auth: _buildAuth(),
       allowSelfSignedCerts: _allowSelfSigned,
+      pollingIntervalSeconds: int.tryParse(_pollingInterval.text.trim()) ?? 5,
     );
     await controller.upsertInstance(profile.id, instance);
     if (mounted) {
@@ -157,23 +172,29 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
         child: ListView(
           padding: Insets.page,
           children: <Widget>[
-            DropdownButtonFormField<ServiceKind>(
-              initialValue: _kind,
-              decoration: const InputDecoration(labelText: 'Service'),
-              items: <DropdownMenuItem<ServiceKind>>[
+            DropdownMenu<ServiceKind>(
+              initialSelection: _kind,
+              label: const Text('Service'),
+              expandedInsets: EdgeInsets.zero,
+              leadingIcon: UnconstrainedBox(
+                child: _buildServiceIcon(_kind, size: 24),
+              ),
+              dropdownMenuEntries: <DropdownMenuEntry<ServiceKind>>[
                 for (final ServiceKind k in ServiceKind.values)
-                  DropdownMenuItem<ServiceKind>(
+                  DropdownMenuEntry<ServiceKind>(
                     value: k,
-                    child: Text('${k.displayName} - ${k.tagline}'),
+                    label: '${k.displayName} - ${k.tagline}',
+                    leadingIcon: _buildServiceIcon(k),
                   ),
               ],
-              onChanged: (ServiceKind? k) =>
+              onSelected: (ServiceKind? k) =>
                   setState(() => _kind = k ?? _kind),
             ),
             const SizedBox(height: Insets.md),
             TextFormField(
               controller: _name,
               decoration: InputDecoration(
+                border: const OutlineInputBorder(),
                 labelText: 'Name',
                 hintText: 'e.g. Home ${_kind.displayName}',
               ),
@@ -190,6 +211,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
             TextFormField(
               controller: _localUrl,
               decoration: InputDecoration(
+                border: const OutlineInputBorder(),
                 labelText: 'Local URL',
                 hintText: 'http://192.168.1.10:${_kind.defaultPort}',
               ),
@@ -201,6 +223,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
             TextFormField(
               controller: _externalUrl,
               decoration: const InputDecoration(
+                border: OutlineInputBorder(),
                 labelText: 'External URL',
                 hintText: 'https://sonarr.example.com',
               ),
@@ -209,24 +232,25 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
               validator: _validateUrlsTogether,
             ),
             const SizedBox(height: Insets.md),
-            DropdownButtonFormField<UrlMode>(
-              initialValue: _urlMode,
-              decoration: const InputDecoration(labelText: 'URL selection'),
-              items: const <DropdownMenuItem<UrlMode>>[
-                DropdownMenuItem<UrlMode>(
+            DropdownMenu<UrlMode>(
+              initialSelection: _urlMode,
+              label: const Text('URL selection'),
+              expandedInsets: EdgeInsets.zero,
+              dropdownMenuEntries: const <DropdownMenuEntry<UrlMode>>[
+                DropdownMenuEntry<UrlMode>(
                   value: UrlMode.auto,
-                  child: Text('Auto (probe local, fall back to external)'),
+                  label: 'Auto (probe local, fall back to external)',
                 ),
-                DropdownMenuItem<UrlMode>(
+                DropdownMenuEntry<UrlMode>(
                   value: UrlMode.forceLocal,
-                  child: Text('Always local'),
+                  label: 'Always local',
                 ),
-                DropdownMenuItem<UrlMode>(
+                DropdownMenuEntry<UrlMode>(
                   value: UrlMode.forceExternal,
-                  child: Text('Always external'),
+                  label: 'Always external',
                 ),
               ],
-              onChanged: (UrlMode? m) =>
+              onSelected: (UrlMode? m) =>
                   setState(() => _urlMode = m ?? _urlMode),
             ),
             const SizedBox(height: Insets.lg),
@@ -246,6 +270,30 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
               value: _allowSelfSigned,
               onChanged: (bool v) => setState(() => _allowSelfSigned = v),
             ),
+            if (_kind == ServiceKind.glances) ...<Widget>[
+              const SizedBox(height: Insets.lg),
+              Text(
+                'Polling',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: Insets.sm),
+              TextFormField(
+                controller: _pollingInterval,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  labelText: 'Polling Interval (seconds)',
+                  hintText: '5',
+                ),
+                keyboardType: TextInputType.number,
+                validator: (String? v) {
+                  final int? val = int.tryParse(v?.trim() ?? '');
+                  if (val == null || val < 1) {
+                    return 'Must be at least 1 second';
+                  }
+                  return null;
+                },
+              ),
+            ],
             const SizedBox(height: Insets.xl),
             FilledButton.icon(
               onPressed: _save,
@@ -264,7 +312,10 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
         return <Widget>[
           TextFormField(
             controller: _apiKey,
-            decoration: const InputDecoration(labelText: 'API key'),
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              labelText: 'API key',
+            ),
             autocorrect: false,
             validator: (String? v) =>
                 (v == null || v.trim().isEmpty) ? 'Required' : null,
@@ -275,6 +326,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
           TextFormField(
             controller: _apiKey,
             decoration: const InputDecoration(
+              border: OutlineInputBorder(),
               labelText: 'Plex token (X-Plex-Token)',
             ),
             autocorrect: false,
@@ -284,10 +336,18 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
         ];
       case AuthStyle.userPass:
       case AuthStyle.cookieLogin:
-        return <Widget>[
+        // Emby/Jellyfin accounts may legitimately have no password; every other
+        // username/password service (e.g. qBittorrent) requires one, where an
+        // empty submission guarantees a failed login.
+        final bool passwordOptional =
+            _kind == ServiceKind.emby || _kind == ServiceKind.jellyfin;
+        final List<Widget> userPass = <Widget>[
           TextFormField(
             controller: _username,
-            decoration: const InputDecoration(labelText: 'Username'),
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              labelText: 'Username',
+            ),
             autocorrect: false,
             textInputAction: TextInputAction.next,
             validator: (String? v) =>
@@ -296,12 +356,59 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
           const SizedBox(height: Insets.md),
           TextFormField(
             controller: _password,
-            decoration: const InputDecoration(labelText: 'Password'),
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              labelText: passwordOptional ? 'Password (Optional)' : 'Password',
+            ),
             obscureText: true,
-            validator: (String? v) =>
-                (v == null || v.isEmpty) ? 'Required' : null,
+            validator: passwordOptional
+                ? (String? v) => null
+                : (String? v) =>
+                    (v == null || v.trim().isEmpty) ? 'Required' : null,
           ),
         ];
+        if (_kind != ServiceKind.qbittorrent) {
+          return userPass;
+        }
+        // qBittorrent 5.2+ accepts either username/password or a stateless
+        // API key, so offer both.
+        return <Widget>[
+          SegmentedButton<bool>(
+            segments: const <ButtonSegment<bool>>[
+              ButtonSegment<bool>(
+                value: false,
+                label: Text('Password'),
+                icon: Icon(Icons.password),
+              ),
+              ButtonSegment<bool>(
+                value: true,
+                label: Text('API key'),
+                icon: Icon(Icons.key),
+              ),
+            ],
+            selected: <bool>{_qbitUseApiKey},
+            onSelectionChanged: (Set<bool> s) =>
+                setState(() => _qbitUseApiKey = s.first),
+          ),
+          const SizedBox(height: Insets.md),
+          if (_qbitUseApiKey)
+            TextFormField(
+              controller: _apiKey,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'API key',
+                helperText: 'qBittorrent 5.2+ Web UI setting; '
+                    'sent as Authorization: Bearer',
+              ),
+              autocorrect: false,
+              validator: (String? v) =>
+                  (v == null || v.trim().isEmpty) ? 'Required' : null,
+            )
+          else
+            ...userPass,
+        ];
+      case AuthStyle.none:
+        return const <Widget>[];
     }
   }
 
@@ -321,5 +428,16 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     }
     final Uri? uri = Uri.tryParse(raw.trim());
     return uri != null && uri.hasScheme && uri.host.isNotEmpty;
+  }
+
+  Widget _buildServiceIcon(ServiceKind kind, {double size = 24}) {
+    if (kind.name == 'sabnzbd') {
+      return Icon(Icons.cloud_download_outlined, size: size);
+    }
+    return Image.asset(
+      'assets/service_icons/${kind.name}.png',
+      width: size,
+      height: size,
+    );
   }
 }

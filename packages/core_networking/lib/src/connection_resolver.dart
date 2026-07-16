@@ -27,13 +27,19 @@ class ConnectionResolver {
   ConnectionResolver({
     required Connectivity connectivity,
     Dio? probeClient,
+    ConnectionCacheStore? cacheStore,
     this.probeTimeout = const Duration(milliseconds: 1500),
     this.cacheTtl = const Duration(minutes: 5),
   })  : _connectivity = connectivity,
+        _store = cacheStore,
         _probeClient = probeClient ?? _buildProbeClient();
 
   final Connectivity _connectivity;
   final Dio _probeClient;
+
+  /// Optional persistence for verdicts across cold starts. Null = in-memory
+  /// only (the resolver works fine without it).
+  final ConnectionCacheStore? _store;
 
   /// How long to wait for a LAN probe to respond before giving up.
   final Duration probeTimeout;
@@ -42,7 +48,7 @@ class ConnectionResolver {
   /// (instance, network) pair before being re-probed.
   final Duration cacheTtl;
 
-  final Map<_CacheKey, _CacheEntry> _cache = <_CacheKey, _CacheEntry>{};
+  final Map<String, _CacheEntry> _cache = <String, _CacheEntry>{};
   StreamSubscription<List<ConnectivityResult>>? _connectivitySub;
   NetworkFingerprint _currentFingerprint = NetworkFingerprint.unknown;
 
@@ -91,16 +97,38 @@ class ConnectionResolver {
           return local;
         }
 
-        final _CacheKey key = _CacheKey(instance.id, _currentFingerprint);
+        final String key = '${instance.id}|${_currentFingerprint.key}';
         final _CacheEntry? hit = _cache[key];
         if (hit != null && !hit.isExpired) {
           return hit.useLocal ? local : external;
         }
 
+        // Survive cold starts (and mid-session network changes that cleared
+        // the in-memory cache): trust a persisted verdict while within its TTL
+        // before paying for a fresh LAN probe.
+        final PersistedConnectionVerdict? stored = _store?.get(key);
+        if (stored != null &&
+            stored.expiresAtMs > DateTime.now().millisecondsSinceEpoch) {
+          final _CacheEntry restored = _CacheEntry(
+            useLocal: stored.useLocal,
+            expiresAt: DateTime.fromMillisecondsSinceEpoch(stored.expiresAtMs),
+          );
+          _cache[key] = restored;
+          return restored.useLocal ? local : external;
+        }
+
         final bool reachable = await _probe(local);
-        _cache[key] = _CacheEntry(
+        final _CacheEntry entry = _CacheEntry(
           useLocal: reachable,
           expiresAt: DateTime.now().add(cacheTtl),
+        );
+        _cache[key] = entry;
+        _store?.save(
+          key,
+          PersistedConnectionVerdict(
+            useLocal: reachable,
+            expiresAtMs: entry.expiresAt.millisecondsSinceEpoch,
+          ),
         );
         return reachable ? local : external;
     }
@@ -109,7 +137,9 @@ class ConnectionResolver {
   /// Force the next [resolve] for [instanceId] to re-probe instead of using
   /// any cached verdict. Useful when the user just edited the URLs.
   void invalidate(String instanceId) {
-    _cache.removeWhere((_CacheKey k, _) => k.instanceId == instanceId);
+    final String prefix = '$instanceId|';
+    _cache.removeWhere((String k, _) => k.startsWith(prefix));
+    _store?.deleteWhereKeyStartsWith(prefix);
   }
 
   Future<bool> _probe(Uri url) async {
@@ -164,21 +194,34 @@ class ConnectionResolver {
   int get cacheSize => _cache.length;
 }
 
-class _CacheKey {
-  const _CacheKey(this.instanceId, this.fingerprint);
+/// Persistence hook so [ConnectionResolver]'s LAN/WAN verdicts survive a cold
+/// start (within their TTL) instead of forcing a fresh LAN probe on launch.
+///
+/// Calls happen on the request path, so implementations must be cheap and
+/// synchronous. The app provides a Hive-backed implementation; tests can pass
+/// a fake or omit it entirely.
+abstract interface class ConnectionCacheStore {
+  /// The verdict stored under [key], or null if absent.
+  PersistedConnectionVerdict? get(String key);
 
-  final String instanceId;
-  final NetworkFingerprint fingerprint;
+  /// Persist (or overwrite) the verdict under [key].
+  void save(String key, PersistedConnectionVerdict verdict);
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is _CacheKey &&
-          other.instanceId == instanceId &&
-          other.fingerprint == fingerprint);
+  /// Remove every verdict whose key begins with [prefix] - used to drop all of
+  /// one instance's cached networks when its URLs change.
+  void deleteWhereKeyStartsWith(String prefix);
+}
 
-  @override
-  int get hashCode => Object.hash(instanceId, fingerprint);
+/// A serialisable LAN/WAN verdict: whether to use the LAN URL, and the epoch
+/// millisecond after which the verdict is no longer trusted.
+class PersistedConnectionVerdict {
+  const PersistedConnectionVerdict({
+    required this.useLocal,
+    required this.expiresAtMs,
+  });
+
+  final bool useLocal;
+  final int expiresAtMs;
 }
 
 class _CacheEntry {

@@ -5,7 +5,7 @@ part 'jellyfin_item.g.dart';
 
 /// A page of items from `GET /Users/{userId}/Items`.
 @freezed
-class JellyfinItemsResult with _$JellyfinItemsResult {
+abstract class JellyfinItemsResult with _$JellyfinItemsResult {
   const factory JellyfinItemsResult({
     @JsonKey(name: 'Items') @Default(<JellyfinItem>[]) List<JellyfinItem> items,
     @JsonKey(name: 'TotalRecordCount') @Default(0) int totalRecordCount,
@@ -17,17 +17,46 @@ class JellyfinItemsResult with _$JellyfinItemsResult {
 
 /// A library item (movie, series, episode, album, …).
 @freezed
-class JellyfinItem with _$JellyfinItem {
+abstract class JellyfinItem with _$JellyfinItem {
   const factory JellyfinItem({
     @JsonKey(name: 'Id') required String id,
     @JsonKey(name: 'Name') @Default('') String name,
     @JsonKey(name: 'Type') @Default('') String type,
     @JsonKey(name: 'ProductionYear') int? productionYear,
+    @JsonKey(name: 'Genres') @Default(<String>[]) List<String> genres,
+
     /// Image type → tag. We use the `Primary` tag to build the poster URL.
     @JsonKey(name: 'ImageTags')
     @Default(<String, String>{})
     Map<String, String> imageTags,
+    @JsonKey(name: 'BackdropImageTags')
+    @Default(<String>[])
+    List<String> backdropImageTags,
     @JsonKey(name: 'UserData') JellyfinUserData? userData,
+    @JsonKey(name: 'Overview') String? overview,
+    @JsonKey(name: 'RunTimeTicks') int? runTimeTicks,
+    @JsonKey(name: 'CommunityRating', fromJson: _parseDouble)
+    double? communityRating,
+    @JsonKey(name: 'OfficialRating') String? officialRating,
+    @JsonKey(name: 'IndexNumber') int? indexNumber,
+    @JsonKey(name: 'ParentIndexNumber') int? parentIndexNumber,
+    @JsonKey(name: 'SeriesName') String? seriesName,
+    @JsonKey(name: 'SeriesId') String? seriesId,
+    @JsonKey(name: 'SeriesPrimaryImageTag') String? seriesPrimaryImageTag,
+    @JsonKey(name: 'ParentId') String? parentId,
+    @JsonKey(name: 'ParentPrimaryImageTag') String? parentPrimaryImageTag,
+    @JsonKey(name: 'AlbumId') String? albumId,
+    @JsonKey(name: 'AlbumPrimaryImageTag') String? albumPrimaryImageTag,
+    @JsonKey(name: 'PrimaryImageItemId') String? primaryImageItemId,
+    @JsonKey(name: 'PrimaryImageTag') String? primaryImageTag,
+    @JsonKey(name: 'PrimaryImageAspectRatio', fromJson: _parseDouble)
+    double? primaryImageAspectRatio,
+    @JsonKey(name: 'Album') String? album,
+    @JsonKey(name: 'AlbumArtist') String? albumArtist,
+    @JsonKey(name: 'People')
+    @Default(<JellyfinPerson>[])
+    List<JellyfinPerson> people,
+    @JsonKey(name: 'Artists') @Default(<String>[]) List<String> artists,
   }) = _JellyfinItem;
 
   factory JellyfinItem.fromJson(Map<String, dynamic> json) =>
@@ -36,10 +65,14 @@ class JellyfinItem with _$JellyfinItem {
 
 /// Per-user playback state for an item.
 @freezed
-class JellyfinUserData with _$JellyfinUserData {
+abstract class JellyfinUserData with _$JellyfinUserData {
   const factory JellyfinUserData({
-    @JsonKey(name: 'PlayedPercentage') @Default(0.0) double playedPercentage,
+    @JsonKey(name: 'PlayedPercentage', fromJson: _parseDoubleDefaultZero)
+    @Default(0.0)
+    double playedPercentage,
     @JsonKey(name: 'Played') @Default(false) bool played,
+    @JsonKey(name: 'IsFavorite') @Default(false) bool isFavorite,
+
     /// Resume point in Jellyfin ticks (100ns units). 0 = start from the top.
     @JsonKey(name: 'PlaybackPositionTicks') @Default(0) int positionTicks,
   }) = _JellyfinUserData;
@@ -47,3 +80,22 @@ class JellyfinUserData with _$JellyfinUserData {
   factory JellyfinUserData.fromJson(Map<String, dynamic> json) =>
       _$JellyfinUserDataFromJson(json);
 }
+
+/// A cast or crew member attached to an item.
+@freezed
+abstract class JellyfinPerson with _$JellyfinPerson {
+  const factory JellyfinPerson({
+    @JsonKey(name: 'Id') required String id,
+    @JsonKey(name: 'Name') @Default('') String name,
+    @JsonKey(name: 'Role') String? role,
+    @JsonKey(name: 'Type') String? type,
+    @JsonKey(name: 'PrimaryImageTag') String? primaryImageTag,
+  }) = _JellyfinPerson;
+
+  factory JellyfinPerson.fromJson(Map<String, dynamic> json) =>
+      _$JellyfinPersonFromJson(json);
+}
+
+double? _parseDouble(dynamic value) => (value as num?)?.toDouble();
+double _parseDoubleDefaultZero(dynamic value) =>
+    (value as num?)?.toDouble() ?? 0.0;

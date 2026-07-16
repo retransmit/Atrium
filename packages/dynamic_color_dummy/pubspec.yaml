@@ -1,0 +1,24 @@
+# WHAT THIS IS: this package impersonates the real `dynamic_color` package.
+# Anything in the workspace that depends on `dynamic_color` resolves to this
+# shim, whose single library re-exports `dynamic_system_colors` instead, so
+# the two plugins' duplicate Android classes never end up in the same build.
+#
+# COVERAGE GUARD: m3e_design is the consumer this shim exists for, and it
+# currently imports only `harmonizeWith` and `DynamicColorBuilder` from
+# dynamic_color; both are provided by the dynamic_system_colors re-export.
+# If m3e_design is upgraded (or a new dependency on dynamic_color appears),
+# verify its dynamic_color imports are still covered by
+# dynamic_system_colors before assuming this shim still works.
+name: dynamic_color
+description: A dummy package to override dynamic_color and redirect it to dynamic_system_colors to avoid Android plugin compilation errors with duplicate classes.
+version: 1.8.1
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+  flutter: ^3.27.0
+
+dependencies:
+  dynamic_system_colors: ^1.9.0
+  flutter:
+    sdk: flutter

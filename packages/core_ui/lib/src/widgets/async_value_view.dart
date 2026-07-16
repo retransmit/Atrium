@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'state_views.dart';
+import '../../core_ui.dart';
 
 /// Renders a Riverpod [AsyncValue] with consistent loading / error / data
 /// handling so screens don't each reinvent the `.when(...)` boilerplate.
@@ -32,11 +32,11 @@ class AsyncValueView<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return value.when(
-      skipLoadingOnReload: true,
-      skipLoadingOnRefresh: true,
+      skipLoadingOnReload: !value.hasError,
+      skipLoadingOnRefresh: !value.hasError,
       data: data,
       loading: () =>
-          loading ?? const Center(child: CircularProgressIndicator()),
+          loading ?? const Center(child: ExpressiveProgressIndicator()),
       error: (Object error, StackTrace _) => ErrorView(
         message: _describe(error),
         onRetry: onRetry,

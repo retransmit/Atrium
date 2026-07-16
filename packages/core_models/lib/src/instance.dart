@@ -16,7 +16,7 @@ part 'instance.g.dart';
 /// Users may have multiple instances of the same [kind] (e.g., two Sonarrs:
 /// "Home" and "Seedbox"); each is a separate [Instance] with its own [id].
 @freezed
-class Instance with _$Instance {
+abstract class Instance with _$Instance {
   const factory Instance({
     /// Stable identifier, generated once at create time. Used as the key for
     /// secret storage and Riverpod scoping. Never reuse.
@@ -26,7 +26,7 @@ class Instance with _$Instance {
     required String name,
 
     /// What service this instance speaks to.
-    required ServiceKind kind,
+    @JsonKey(fromJson: _serviceKindFromJson) required ServiceKind kind,
 
     /// URL reachable from the home LAN (e.g., `http://192.168.1.10:8989`).
     /// May be empty if the user only has remote access.
@@ -46,8 +46,24 @@ class Instance with _$Instance {
     /// is the user explicitly opting out of cert validation for this
     /// instance only.
     @Default(false) bool allowSelfSignedCerts,
+
+    /// How frequently this instance should be polled by the dashboard/widgets.
+    /// Used by services that need high frequency updates like Glances.
+    @Default(5) int pollingIntervalSeconds,
+
+    /// Extra HTTP headers sent with every request to this instance, merged
+    /// over the profile's global headers (instance wins on key collision).
+    /// Values live in the profile JSON like URLs do; they are not secrets.
+    @Default(<String, String>{}) Map<String, String> customHeaders,
   }) = _Instance;
 
   factory Instance.fromJson(Map<String, dynamic> json) =>
       _$InstanceFromJson(json);
 }
+
+/// Decodes [ServiceKind], migrating the legacy `overseerr` value to
+/// [ServiceKind.seerr]. Overseerr was archived upstream so the service was
+/// renamed to Seerr (API-compatible); profiles saved before the rename still
+/// store `overseerr` and must keep loading.
+ServiceKind _serviceKindFromJson(String value) =>
+    value == 'overseerr' ? ServiceKind.seerr : ServiceKind.values.byName(value);

@@ -1,16 +1,15 @@
+import 'dart:async';
+import 'dart:math';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:collection/collection.dart';
 import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
-import 'models/radarr_movie.dart';
-import 'radarr_api.dart';
-import 'radarr_providers.dart';
+import '../service_radarr.dart';
 
-/// Detail view for one Radarr movie: poster header, status/file info,
-/// ratings, and actions (monitor toggle, search, delete).
 class MovieDetailScreen extends ConsumerWidget {
   const MovieDetailScreen({
     required this.instance,
@@ -23,228 +22,857 @@ class MovieDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<RadarrMovie> movie =
+    final AsyncValue<RadarrMovie> movieAsync =
         ref.watch(radarrMovieByIdProvider((instance, movieId)));
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(movie.valueOrNull?.title ?? 'Movie'),
-        actions: <Widget>[
-          if (movie.hasValue)
-            _MovieMenu(instance: instance, movie: movie.requireValue),
-        ],
-      ),
-      body: AsyncValueView<RadarrMovie>(
-        value: movie,
-        onRetry: () =>
-            ref.invalidate(radarrMovieByIdProvider((instance, movieId))),
-        data: (RadarrMovie m) => _Body(instance: instance, movie: m),
+      body: movieAsync.when(
+        data: (movie) => _MovieDetailBody(
+          instance: instance,
+          movie: movie,
+        ),
+        loading: () => const Center(child: ExpressiveProgressIndicator()),
+        error: (error, stack) => Scaffold(
+          appBar: AppBar(title: const Text('Error')),
+          body: ErrorView(
+            title: 'Failed to load movie details',
+            message: error.toString(),
+            onRetry: () =>
+                ref.invalidate(radarrMovieByIdProvider((instance, movieId))),
+          ),
+        ),
       ),
     );
   }
 }
 
-class _Body extends ConsumerWidget {
-  const _Body({required this.instance, required this.movie});
+class _MovieDetailBody extends ConsumerStatefulWidget {
+  const _MovieDetailBody({
+    required this.instance,
+    required this.movie,
+  });
 
   final Instance instance;
   final RadarrMovie movie;
 
-  void _refresh(WidgetRef ref) {
-    ref.invalidate(radarrMovieByIdProvider((instance, movie.id)));
-    ref.invalidate(radarrMoviesProvider(instance));
+  @override
+  ConsumerState<_MovieDetailBody> createState() => _MovieDetailBodyState();
+}
+
+class _MovieDetailBodyState extends ConsumerState<_MovieDetailBody> {
+  Future<void> _refresh(BuildContext context) async {
+    try {
+      final api = await ref.read(radarrApiProvider(widget.instance).future);
+      await api.runCommand(<String, dynamic>{
+        'name': 'RefreshMovie',
+        'movieId': widget.movie.id,
+      });
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to refresh: $e')),
+        );
+      }
+    } finally {
+      _invalidateProviders();
+    }
+  }
+
+  void _invalidateProviders() {
+    ref.invalidate(radarrMovieByIdProvider((widget.instance, widget.movie.id)));
+    ref.invalidate(radarrMoviesProvider(widget.instance));
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final RadarrApi? api = ref.watch(radarrApiProvider(instance)).valueOrNull;
-    final RadarrImage? poster = movie.images
-        .firstWhereOrNull((RadarrImage i) => i.coverType == 'poster');
-    final String? imageUrl = poster == null ? null : api?.posterUrl(poster);
+    final ColorScheme cs = theme.colorScheme;
+    final RadarrApi? api = ref.watch(radarrApiProvider(widget.instance)).value;
 
-    return RefreshIndicator(
-      onRefresh: () async => _refresh(ref),
-      child: ListView(
-        padding: Insets.page,
-        children: <Widget>[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              ClipRRect(
-                borderRadius: Radii.card,
-                child: SizedBox(
-                  width: 110,
-                  height: 165,
-                  child: imageUrl == null
-                      ? Container(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          child: Icon(
-                            Icons.movie_outlined,
-                            color: theme.colorScheme.outline,
+    final RadarrImage? poster = widget.movie.images
+        .firstWhereOrNull((RadarrImage i) => i.coverType == 'poster');
+    final String? posterUrl =
+        poster == null ? null : api?.posterUrl(poster, width: 500);
+
+    final RadarrImage? fanart = widget.movie.images
+        .firstWhereOrNull((RadarrImage i) => i.coverType == 'fanart');
+    final String? fanartUrl =
+        fanart == null ? null : api?.posterUrl(fanart, width: 1080);
+
+    return M3RefreshIndicator(
+      onRefresh: () => _refresh(context),
+      child: CustomScrollView(
+        slivers: <Widget>[
+          SliverAppBar(
+            expandedHeight: 250,
+            pinned: true,
+            stretch: true,
+            backgroundColor: cs.surface,
+            surfaceTintColor: cs.surfaceTint,
+            leading: Center(
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.black.withValues(alpha: 0.35),
+                ),
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.arrow_back,
+                    size: 20,
+                    color: Colors.white,
+                  ),
+                  onPressed: () => Navigator.maybePop(context),
+                  padding: EdgeInsets.zero,
+                ),
+              ),
+            ),
+            actions: <Widget>[
+              Center(
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  margin: const EdgeInsets.only(right: 16),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.black.withValues(alpha: 0.35),
+                  ),
+                  child: _OverflowMenu(
+                    instance: widget.instance,
+                    movie: widget.movie,
+                    onRefreshed: _invalidateProviders,
+                  ),
+                ),
+              ),
+            ],
+            flexibleSpace: FlexibleSpaceBar(
+              centerTitle: false,
+              titlePadding: const EdgeInsetsDirectional.only(
+                start: 56,
+                bottom: 16,
+                end: 16,
+              ),
+              title: Text(
+                widget.movie.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  color: cs.onSurface,
+                ),
+              ),
+              background: _Backdrop(fanartUrl: fanartUrl),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(
+              Insets.lg,
+              Insets.sm,
+              Insets.lg,
+              Insets.xl,
+            ),
+            sliver: SliverList.list(
+              children: <Widget>[
+                _HeroInfoCard(
+                  movie: widget.movie,
+                  posterUrl: posterUrl,
+                ),
+                const SizedBox(height: Insets.lg),
+                _ActionsRow(
+                  instance: widget.instance,
+                  movie: widget.movie,
+                  onRefreshed: _invalidateProviders,
+                ),
+                if (widget.movie.genres.isNotEmpty) ...[
+                  const SizedBox(height: Insets.lg),
+                  Wrap(
+                    spacing: Insets.sm,
+                    runSpacing: Insets.sm,
+                    children: widget.movie.genres
+                        .map(
+                          (String g) => Chip(
+                            label: Text(g),
+                            backgroundColor: cs.tertiaryContainer,
+                            labelStyle: TextStyle(
+                              color: cs.onTertiaryContainer,
+                              fontSize: 12,
+                            ),
+                            side: BorderSide.none,
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
                           ),
                         )
-                      : CachedNetworkImage(
-                          imageUrl: imageUrl,
-                          fit: BoxFit.cover,
-                          errorWidget: (_, __, ___) => Container(
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            child: Icon(
-                              Icons.movie_outlined,
-                              color: theme.colorScheme.outline,
-                            ),
-                          ),
-                        ),
-                ),
-              ),
-              const SizedBox(width: Insets.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(movie.title, style: theme.textTheme.titleLarge),
-                    const SizedBox(height: Insets.xs),
-                    Text(
-                      <String>[
-                        if (movie.year != null) '${movie.year}',
-                        if (movie.runtime != null && movie.runtime! > 0)
-                          '${movie.runtime} min',
-                        if (movie.studio != null && movie.studio!.isNotEmpty)
-                          movie.studio!,
-                      ].join(' • '),
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: theme.colorScheme.outline),
-                    ),
-                    const SizedBox(height: Insets.sm),
-                    _StatusChip(movie: movie),
-                    if (movie.ratings?.tmdb != null &&
-                        movie.ratings!.tmdb!.value > 0) ...<Widget>[
-                      const SizedBox(height: Insets.sm),
-                      Row(
-                        children: <Widget>[
-                          Icon(
-                            Icons.star,
-                            size: 16,
-                            color: theme.colorScheme.tertiary,
-                          ),
-                          const SizedBox(width: Insets.xs),
-                          Text(
-                            movie.ratings!.tmdb!.value.toStringAsFixed(1),
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: Insets.md),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: FilledButton.tonalIcon(
-                  icon: Icon(
-                    movie.monitored ? Icons.bookmark : Icons.bookmark_border,
+                        .toList(),
                   ),
-                  label:
-                      Text(movie.monitored ? 'Monitored' : 'Unmonitored'),
-                  onPressed: () async {
-                    final RadarrApi api =
-                        await ref.read(radarrApiProvider(instance).future);
-                    final Map<String, dynamic> raw =
-                        await api.getMovieRaw(movie.id);
-                    raw['monitored'] = !movie.monitored;
-                    await api.updateMovieRaw(raw);
-                    _refresh(ref);
-                  },
-                ),
-              ),
-              const SizedBox(width: Insets.sm),
-              Expanded(
-                child: FilledButton.icon(
-                  icon: const Icon(Icons.search),
-                  label: const Text('Search'),
-                  onPressed: () async {
-                    final RadarrApi api =
-                        await ref.read(radarrApiProvider(instance).future);
-                    await api.searchMovie(movie.id);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Search started'),
-                        ),
-                      );
-                    }
-                  },
-                ),
-              ),
-            ],
+                ],
+                if (widget.movie.overview != null &&
+                    widget.movie.overview!.isNotEmpty) ...[
+                  const SizedBox(height: Insets.lg),
+                  _OverviewSection(overview: widget.movie.overview!),
+                ],
+                const SizedBox(height: Insets.lg),
+                _FileSection(movie: widget.movie),
+                const SizedBox(height: Insets.lg),
+                _ReleaseDatesSection(movie: widget.movie),
+              ],
+            ),
           ),
-          if (movie.overview != null && movie.overview!.isNotEmpty) ...<
-              Widget>[
-            const SizedBox(height: Insets.md),
-            Text(movie.overview!, style: theme.textTheme.bodyMedium),
-          ],
-          const SizedBox(height: Insets.xl),
         ],
       ),
     );
   }
 }
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.movie});
+class _Backdrop extends StatelessWidget {
+  const _Backdrop({required this.fanartUrl});
+
+  final String? fanartUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    return Stack(
+      fit: StackFit.expand,
+      children: <Widget>[
+        if (fanartUrl != null)
+          CachedNetworkImage(
+            imageUrl: fanartUrl!,
+            fit: BoxFit.cover,
+            memCacheWidth: 1080,
+            errorWidget: (_, __, ___) =>
+                ColoredBox(color: cs.surfaceContainerHigh),
+          )
+        else
+          ColoredBox(color: cs.surfaceContainerHigh),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[
+                cs.surface.withValues(alpha: 0.0),
+                cs.surface.withValues(alpha: 0.55),
+                cs.surface,
+              ],
+              stops: const <double>[0.35, 0.75, 1.0],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroInfoCard extends StatelessWidget {
+  const _HeroInfoCard({required this.movie, required this.posterUrl});
+
+  final RadarrMovie movie;
+  final String? posterUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.primaryContainer.withValues(alpha: 0.25),
+        borderRadius: BorderRadius.circular(Radii.xl),
+      ),
+      padding: const EdgeInsets.all(Insets.lg),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Hero(
+            tag: 'movie-poster-${movie.id}',
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(Radii.md),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(Radii.md),
+                child: SizedBox(
+                  width: 110,
+                  height: 165,
+                  child: posterUrl != null
+                      ? CachedNetworkImage(
+                          imageUrl: posterUrl!,
+                          fit: BoxFit.cover,
+                          memCacheWidth: 500,
+                          placeholder: (_, __) => Container(
+                            color: cs.surfaceContainerHighest,
+                            child: const Center(
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child:
+                                    ExpressiveProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                          ),
+                          errorWidget: (_, __, ___) => Container(
+                            color: cs.surfaceContainerHighest,
+                            child: Icon(
+                              Icons.movie_outlined,
+                              color: cs.outline,
+                            ),
+                          ),
+                        )
+                      : Container(
+                          color: cs.surfaceContainerHighest,
+                          child: Icon(
+                            Icons.movie_outlined,
+                            color: cs.outline,
+                            size: 36,
+                          ),
+                        ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: Insets.lg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  movie.title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: Insets.sm),
+                Wrap(
+                  spacing: Insets.xs,
+                  runSpacing: 4,
+                  children: <Widget>[
+                    if (movie.year != null) _InfoChip(label: '${movie.year}'),
+                    if (movie.runtime != null && movie.runtime! > 0)
+                      _InfoChip(label: '${movie.runtime} min'),
+                    if (movie.studio != null && movie.studio!.isNotEmpty)
+                      _InfoChip(label: movie.studio!),
+                  ],
+                ),
+                const SizedBox(height: Insets.sm),
+                _StatusPill(movie: movie),
+                if (movie.ratings?.tmdb != null &&
+                    movie.ratings!.tmdb!.value > 0) ...<Widget>[
+                  const SizedBox(height: Insets.md),
+                  Row(
+                    children: <Widget>[
+                      Icon(
+                        Icons.star,
+                        size: 14,
+                        color: cs.tertiary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        movie.ratings!.tmdb!.value.toStringAsFixed(1),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: cs.outline,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(Radii.sm),
+      ),
+      child: Text(
+        label,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: cs.onSurfaceVariant,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.movie});
 
   final RadarrMovie movie;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final (String label, Color bg, Color fg) = movie.hasFile
-        ? (
-            'Downloaded${movie.sizeOnDisk > 0 ? ' • ${_fmtSize(movie.sizeOnDisk)}' : ''}',
-            theme.colorScheme.primaryContainer,
-            theme.colorScheme.onPrimaryContainer,
-          )
-        : (
-            'Missing',
-            theme.colorScheme.errorContainer,
-            theme.colorScheme.onErrorContainer,
-          );
+    final ColorScheme cs = theme.colorScheme;
+
+    final bool hasFile = movie.hasFile;
+    final Color background = hasFile ? cs.primaryContainer : cs.errorContainer;
+    final Color tint = hasFile ? cs.onPrimaryContainer : cs.onErrorContainer;
+    final String label = hasFile ? 'Downloaded' : 'Missing';
+    final IconData icon = hasFile ? Icons.check : Icons.warning_amber_rounded;
+
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: Insets.sm,
-        vertical: Insets.xs,
-      ),
       decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(8),
+        color: background,
+        borderRadius: BorderRadius.circular(Radii.sm),
       ),
-      child: Text(
-        label,
-        style: theme.textTheme.labelMedium?.copyWith(color: fg),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 14, color: tint),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: tint,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _MovieMenu extends ConsumerWidget {
-  const _MovieMenu({required this.instance, required this.movie});
+class _OverviewSection extends StatelessWidget {
+  const _OverviewSection({required this.overview});
+
+  final String overview;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Card(
+      margin: EdgeInsets.zero,
+      color: theme.colorScheme.surfaceContainerHigh,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 0,
+      child: Padding(
+        padding: const EdgeInsets.all(Insets.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'Overview',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: Insets.sm),
+            Text(
+              overview,
+              style: theme.textTheme.bodyMedium?.copyWith(height: 1.45),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FileSection extends StatelessWidget {
+  const _FileSection({required this.movie});
+
+  final RadarrMovie movie;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      color: theme.colorScheme.surfaceContainerHigh,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 0,
+      child: Padding(
+        padding: const EdgeInsets.all(Insets.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'File Information',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: Insets.md),
+            _buildDetailRow(
+              context,
+              'Status',
+              movie.hasFile ? 'File downloaded' : 'File missing',
+              icon: movie.hasFile
+                  ? Icons.check_circle_outline
+                  : Icons.error_outline,
+              iconColor: movie.hasFile ? cs.primary : cs.error,
+            ),
+            if (movie.hasFile && movie.sizeOnDisk > 0) ...[
+              const Divider(height: 24),
+              _buildDetailRow(
+                context,
+                'Size on Disk',
+                _formatSize(movie.sizeOnDisk),
+                icon: Icons.sd_storage_outlined,
+              ),
+            ],
+            if (movie.path != null && movie.path!.isNotEmpty) ...[
+              const Divider(height: 24),
+              _buildDetailRow(
+                context,
+                'Path',
+                movie.path!,
+                icon: Icons.folder_open_outlined,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(
+    BuildContext context,
+    String label,
+    String value, {
+    required IconData icon,
+    Color? iconColor,
+  }) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Icon(icon, size: 20, color: iconColor ?? cs.outline),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.outline,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReleaseDatesSection extends StatelessWidget {
+  const _ReleaseDatesSection({required this.movie});
+
+  final RadarrMovie movie;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final DateFormat formatter = DateFormat.yMMMd();
+
+    DateTime? inCinemasDate;
+    if (movie.inCinemas != null && movie.inCinemas!.isNotEmpty) {
+      inCinemasDate = DateTime.tryParse(movie.inCinemas!)?.toLocal();
+    }
+    DateTime? physicalReleaseDate;
+    if (movie.physicalRelease != null && movie.physicalRelease!.isNotEmpty) {
+      physicalReleaseDate =
+          DateTime.tryParse(movie.physicalRelease!)?.toLocal();
+    }
+    DateTime? digitalReleaseDate;
+    if (movie.digitalRelease != null && movie.digitalRelease!.isNotEmpty) {
+      digitalReleaseDate = DateTime.tryParse(movie.digitalRelease!)?.toLocal();
+    }
+
+    if (inCinemasDate == null &&
+        physicalReleaseDate == null &&
+        digitalReleaseDate == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Card(
+      margin: EdgeInsets.zero,
+      color: theme.colorScheme.surfaceContainerHigh,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 0,
+      child: Padding(
+        padding: const EdgeInsets.all(Insets.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'Release Dates',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: Insets.md),
+            if (inCinemasDate != null)
+              _buildReleaseRow(
+                context,
+                'In Cinemas',
+                formatter.format(inCinemasDate),
+                Icons.local_play_outlined,
+              ),
+            if (digitalReleaseDate != null) ...[
+              if (inCinemasDate != null) const Divider(height: 24),
+              _buildReleaseRow(
+                context,
+                'Digital Release',
+                formatter.format(digitalReleaseDate),
+                Icons.language_outlined,
+              ),
+            ],
+            if (physicalReleaseDate != null) ...[
+              if (inCinemasDate != null || digitalReleaseDate != null)
+                const Divider(height: 24),
+              _buildReleaseRow(
+                context,
+                'Physical Release',
+                formatter.format(physicalReleaseDate),
+                Icons.album_outlined,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReleaseRow(
+    BuildContext context,
+    String label,
+    String value,
+    IconData icon,
+  ) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+
+    return Row(
+      children: <Widget>[
+        Icon(icon, size: 20, color: cs.outline),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: cs.outline,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ActionsRow extends ConsumerWidget {
+  const _ActionsRow({
+    required this.instance,
+    required this.movie,
+    required this.onRefreshed,
+  });
 
   final Instance instance;
   final RadarrMovie movie;
+  final VoidCallback onRefreshed;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
+
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: movie.monitored
+              ? FilledButton.tonalIcon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: theme.colorScheme.primaryContainer
+                        .withValues(alpha: 0.8),
+                    foregroundColor: theme.colorScheme.onPrimaryContainer,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.bookmark, size: 20),
+                  label: const Text(
+                    'Monitored',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  onPressed: () => _toggleMonitored(context, ref),
+                )
+              : OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: BorderSide(color: theme.colorScheme.outline),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.bookmark_border, size: 20),
+                  label: const Text('Unmonitored'),
+                  onPressed: () => _toggleMonitored(context, ref),
+                ),
+        ),
+        const SizedBox(width: Insets.md),
+        Expanded(
+          child: FilledButton.icon(
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            icon: const Icon(Icons.search, size: 20),
+            label: const Text(
+              'Search',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            onPressed: () async {
+              final ScaffoldMessengerState messenger =
+                  ScaffoldMessenger.of(context);
+              try {
+                final RadarrApi api =
+                    await ref.read(radarrApiProvider(instance).future);
+                await api.runCommand(<String, dynamic>{
+                  'name': 'MoviesSearch',
+                  'movieIds': <int>[movie.id],
+                });
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Search started')),
+                );
+              } catch (e) {
+                messenger.showSnackBar(
+                  SnackBar(content: Text('Failed to start search: $e')),
+                );
+              }
+            },
+          ),
+        ),
+        const SizedBox(width: Insets.sm),
+        IconButton.filledTonal(
+          icon: const Icon(Icons.manage_search),
+          tooltip: 'Manual search',
+          onPressed: () {
+            Navigator.of(context, rootNavigator: true).push(
+              FadePageRoute<void>(
+                builder: (_) => RadarrReleaseSearchScreen(
+                  instance: instance,
+                  movie: movie,
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Future<void> _toggleMonitored(BuildContext context, WidgetRef ref) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    try {
+      final RadarrApi api = await ref.read(radarrApiProvider(instance).future);
+      final Map<String, dynamic> raw = await api.getMovieRaw(movie.id);
+      raw['monitored'] = !movie.monitored;
+      await api.updateMovieRaw(raw);
+      onRefreshed();
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to update monitoring: $e')),
+      );
+    }
+  }
+}
+
+class _OverflowMenu extends ConsumerWidget {
+  const _OverflowMenu({
+    required this.instance,
+    required this.movie,
+    required this.onRefreshed,
+  });
+
+  final Instance instance;
+  final RadarrMovie movie;
+  final VoidCallback onRefreshed;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert, color: Colors.white),
       onSelected: (String v) async {
         if (v == 'delete') {
           await _confirmDelete(context, ref);
+        } else if (v == 'rename') {
+          await _showRenameDialog(context);
+        } else if (v == 'edit') {
+          _showEditScreen(context);
         }
       },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+        const PopupMenuItem<String>(
+          value: 'edit',
+          child: ListTile(
+            leading: Icon(Icons.edit_outlined),
+            title: Text('Edit settings'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        const PopupMenuItem<String>(
+          value: 'rename',
+          child: ListTile(
+            leading: Icon(Icons.drive_file_rename_outline),
+            title: Text('Rename files'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
         const PopupMenuItem<String>(
           value: 'delete',
           child: ListTile(
@@ -257,7 +885,29 @@ class _MovieMenu extends ConsumerWidget {
     );
   }
 
+  void _showEditScreen(BuildContext context) {
+    Navigator.of(context, rootNavigator: true).push(
+      FadePageRoute<void>(
+        builder: (_) => RadarrSettingsFormScreen(
+          instance: instance,
+          movie: movie,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showRenameDialog(BuildContext context) async {
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext context) => RadarrRenameDialog(
+        instance: instance,
+        movieId: movie.id,
+      ),
+    );
+  }
+
   Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     bool deleteFiles = false;
     final bool? ok = await showDialog<bool>(
       context: context,
@@ -291,29 +941,52 @@ class _MovieMenu extends ConsumerWidget {
         ),
       ),
     );
-    if (ok ?? false) {
+    if (!(ok ?? false)) return;
+    if (!context.mounted) return;
+    try {
       final RadarrApi api = await ref.read(radarrApiProvider(instance).future);
       await api.deleteMovie(movie.id, deleteFiles: deleteFiles);
       ref.invalidate(radarrMoviesProvider(instance));
       if (context.mounted) {
+        // Pop back to movie list screen
         Navigator.of(context).pop();
       }
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to delete movie: $e')),
+      );
     }
   }
 }
 
-String _fmtSize(int bytes) {
-  if (bytes <= 0) {
-    return '0 B';
-  }
-  const List<String> units = <String>['B', 'KB', 'MB', 'GB', 'TB'];
-  double value = bytes.toDouble();
-  int unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit++;
-  }
-  final String text =
-      value >= 100 || unit == 0 ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
-  return '$text ${units[unit]}';
+String _formatSize(int bytes) {
+  if (bytes <= 0) return '0 B';
+  const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  final i = (log(bytes) / log(1024)).floor();
+  return '${(bytes / pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
+}
+
+class FadePageRoute<T> extends PageRouteBuilder<T> {
+  FadePageRoute({required WidgetBuilder builder, super.settings})
+      : super(
+          pageBuilder: (
+            BuildContext context,
+            Animation<double> animation,
+            Animation<double> secondaryAnimation,
+          ) =>
+              builder(context),
+          transitionsBuilder: (
+            BuildContext context,
+            Animation<double> animation,
+            Animation<double> secondaryAnimation,
+            Widget child,
+          ) {
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
+          },
+          transitionDuration: const Duration(milliseconds: 300),
+          reverseTransitionDuration: const Duration(milliseconds: 250),
+        );
 }

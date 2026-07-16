@@ -1,0 +1,40 @@
+Atrium is a controller for the servers you already run. Point it at your own
+machines and manage the whole stack from your phone, without a middleman
+account and without anything phoning home.
+
+It is a controller, not a media player. Atrium browses and manages your media
+servers; it does not stream video.
+
+Supported services:
+
+* Sonarr and Radarr - library, queue, wanted, history, blocklist, system status
+  and the full settings tree
+* Prowlarr - indexers, search and grab
+* Bazarr - subtitle status, search and download
+* Seerr (Overseerr and Jellyseerr) - discover, request and manage requests
+* Tautulli - active streams, history, statistics and users
+* qBittorrent and SABnzbd - transfers and queue control
+* Jellyfin, Emby and Plex - library browsing, item detail, resume rows and
+  now-playing sessions
+* Glances - CPU, memory, GPU and disk usage of the host
+
+Features:
+
+* Multiple profiles, so a phone can carry more than one stack
+* Every instance holds a local and an external URL, and Atrium picks the right
+  one for the network you are on
+* A dashboard of at-a-glance widgets you can reorder: active downloads, now
+  streaming, upcoming releases, recently added, recently downloaded, requests
+  and server info
+* Profile import and export
+* Material 3 Expressive design with dynamic color, custom palettes, light and
+  dark themes
+* An optional biometric lock
+
+Privacy:
+
+Atrium talks only to the servers you configure. There is no analytics, no
+telemetry, no advertising and no account. Credentials are held in encrypted
+storage on the device.
+
+Free software under the GPL-3.0-or-later.

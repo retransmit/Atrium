@@ -7,7 +7,7 @@ part 'qbit_detail.g.dart';
 ///
 /// Only the fields the detail screen renders are modeled.
 @freezed
-class QbitTorrentProperties with _$QbitTorrentProperties {
+abstract class QbitTorrentProperties with _$QbitTorrentProperties {
   const factory QbitTorrentProperties({
     @JsonKey(name: 'save_path') @Default('') String savePath,
     @JsonKey(name: 'creation_date') @Default(0) int creationDate,
@@ -38,14 +38,16 @@ class QbitTorrentProperties with _$QbitTorrentProperties {
 
 /// One file inside a torrent, from `GET /api/v2/torrents/files`.
 @freezed
-class QbitFile with _$QbitFile {
+abstract class QbitFile with _$QbitFile {
   const factory QbitFile({
     /// File index used by `/torrents/filePrio`.
     @Default(0) int index,
     @Default('') String name,
     @Default(0) int size,
+
     /// 0.0 - 1.0.
     @Default(0) double progress,
+
     /// 0 = skip, 1 = normal, 6 = high, 7 = maximal.
     @Default(1) int priority,
   }) = _QbitFile;
@@ -59,9 +61,10 @@ class QbitFile with _$QbitFile {
 /// qBittorrent also returns synthetic rows (`** [DHT] **`, `** [PeX] **`,
 /// `** [LSD] **`) - keep or filter at the UI layer.
 @freezed
-class QbitTracker with _$QbitTracker {
+abstract class QbitTracker with _$QbitTracker {
   const factory QbitTracker({
     @Default('') String url,
+
     /// 0 disabled, 1 not-contacted, 2 working, 3 updating, 4 not-working.
     @Default(0) int status,
     @JsonKey(name: 'num_seeds') @Default(-1) int numSeeds,
@@ -72,4 +75,23 @@ class QbitTracker with _$QbitTracker {
 
   factory QbitTracker.fromJson(Map<String, dynamic> json) =>
       _$QbitTrackerFromJson(json);
+}
+
+/// One peer row from `GET /api/v2/sync/torrentPeers`.
+@freezed
+abstract class QbitPeer with _$QbitPeer {
+  const factory QbitPeer({
+    @Default('') String client,
+    @Default('') String connection,
+    @Default('') String country,
+    @JsonKey(name: 'country_code') @Default('') String countryCode,
+    @JsonKey(name: 'dl_speed') @Default(0) int dlSpeed,
+    @JsonKey(name: 'up_speed') @Default(0) int upSpeed,
+    @Default(0) double progress,
+    @Default('') String ip,
+    @Default(0) int port,
+  }) = _QbitPeer;
+
+  factory QbitPeer.fromJson(Map<String, dynamic> json) =>
+      _$QbitPeerFromJson(json);
 }

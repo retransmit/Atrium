@@ -2,6 +2,23 @@ import 'package:core_networking/core_networking.dart';
 import 'package:dio/dio.dart';
 
 import 'models/plex_models.dart';
+import 'models/plex_session.dart';
+
+/// Query params that route a player command through the server to a client
+/// via Plex Companion. Pure so it can be unit-tested without a live server.
+Map<String, dynamic> plexCommandParams({
+  required String machineIdentifier,
+  required String clientIdentifier,
+  required int commandId,
+  int? offsetMs,
+}) {
+  return <String, dynamic>{
+    'X-Plex-Target-Client-Identifier': machineIdentifier,
+    'X-Plex-Client-Identifier': clientIdentifier,
+    'commandID': commandId,
+    if (offsetMs != null) 'offset': offsetMs,
+  };
+}
 
 /// Thin client over the Plex Media Server API.
 ///
@@ -18,7 +35,7 @@ class PlexApi {
   Future<List<PlexLibrary>> getLibraries() async {
     try {
       final Response<dynamic> resp =
-          await _dio.get<dynamic>('/library/sections');
+          await _dio.get<dynamic>('library/sections');
       return PlexLibrariesResponse.fromJson(resp.data as Map<String, dynamic>)
               .mediaContainer
               ?.directory ??
@@ -31,7 +48,7 @@ class PlexApi {
   Future<List<PlexMetadata>> getItems(String sectionKey) async {
     try {
       final Response<dynamic> resp =
-          await _dio.get<dynamic>('/library/sections/$sectionKey/all');
+          await _dio.get<dynamic>('library/sections/$sectionKey/all');
       return PlexItemsResponse.fromJson(resp.data as Map<String, dynamic>)
               .mediaContainer
               ?.metadata ??
@@ -45,7 +62,7 @@ class PlexApi {
   Future<List<PlexMetadata>> getChildren(String ratingKey) async {
     try {
       final Response<dynamic> resp =
-          await _dio.get<dynamic>('/library/metadata/$ratingKey/children');
+          await _dio.get<dynamic>('library/metadata/$ratingKey/children');
       return PlexItemsResponse.fromJson(resp.data as Map<String, dynamic>)
               .mediaContainer
               ?.metadata ??
@@ -55,70 +72,83 @@ class PlexApi {
     }
   }
 
-  /// Resolves the streamable part key for a playable [item].
-  ///
-  /// Library listings usually inline `Media`/`Part` for movies, but not always
-  /// for episodes - so if the listed item has no part we fetch its full
-  /// metadata. Returns null if the item has no playable file.
-  Future<String?> resolvePartKey(PlexMetadata item) async {
-    final String? inline = _firstPartKey(item);
-    if (inline != null) {
-      return inline;
-    }
+  /// Full metadata for one item (the detail screen): summary, cast, genres,
+  /// ratings. Returns null when the server has no such item.
+  Future<PlexMetadata?> getMetadata(String ratingKey) async {
     try {
       final Response<dynamic> resp =
-          await _dio.get<dynamic>('/library/metadata/${item.ratingKey}');
-      final List<PlexMetadata> detail =
+          await _dio.get<dynamic>('library/metadata/$ratingKey');
+      final List<PlexMetadata> items =
           PlexItemsResponse.fromJson(resp.data as Map<String, dynamic>)
                   .mediaContainer
                   ?.metadata ??
               <PlexMetadata>[];
-      return detail.isEmpty ? null : _firstPartKey(detail.first);
+      return items.isEmpty ? null : items.first;
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
   }
 
-  String? _firstPartKey(PlexMetadata item) {
-    for (final PlexMedia m in item.media) {
-      for (final PlexPart p in m.parts) {
-        if (p.key != null && p.key!.isNotEmpty) {
-          return p.key;
-        }
-      }
+  /// "Continue Watching" - in-progress items plus the next unwatched episode
+  /// of shows being watched, across all libraries.
+  Future<List<PlexMetadata>> getOnDeck() async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>('library/onDeck');
+      return PlexItemsResponse.fromJson(resp.data as Map<String, dynamic>)
+              .mediaContainer
+              ?.metadata ??
+          <PlexMetadata>[];
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
     }
-    return null;
   }
 
-  /// Absolute direct-play URL for a part key. media_kit fetches the bytes
-  /// directly, so the token rides in the query string.
-  String streamUrl(String partKey) {
+  /// Recently added items across all libraries.
+  Future<List<PlexMetadata>> getRecentlyAdded() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('library/recentlyAdded');
+      return PlexItemsResponse.fromJson(resp.data as Map<String, dynamic>)
+              .mediaContainer
+              ?.metadata ??
+          <PlexMetadata>[];
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Global search across libraries. Returns a flat, mixed-type list.
+  Future<List<PlexMetadata>> search(String query) async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>(
+        'search',
+        queryParameters: <String, dynamic>{'query': query},
+      );
+      return PlexItemsResponse.fromJson(resp.data as Map<String, dynamic>)
+              .mediaContainer
+              ?.metadata ??
+          <PlexMetadata>[];
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Marks an item watched ([watched] true) or unwatched (false) via Plex's
+  /// scrobble endpoints. Built as an absolute URL so the leading `/:/` segment
+  /// is not mangled by relative-path resolution.
+  Future<void> setWatched(String ratingKey, {required bool watched}) async {
     final String base = _dio.options.baseUrl.replaceAll(RegExp(r'/+$'), '');
-    final String sep = partKey.contains('?') ? '&' : '?';
-    return '$base$partKey${sep}X-Plex-Token=$token';
-  }
-
-  /// Best-effort playback timeline report. Plex uses milliseconds.
-  Future<void> reportTimeline(
-    String ratingKey, {
-    required String state, // 'playing' | 'paused' | 'stopped'
-    required int timeMs,
-    int? durationMs,
-  }) async {
+    final String action = watched ? 'scrobble' : 'unscrobble';
     try {
       await _dio.get<dynamic>(
-        '/:/timeline',
+        '$base/:/$action',
         queryParameters: <String, dynamic>{
-          'ratingKey': ratingKey,
-          'key': '/library/metadata/$ratingKey',
-          'state': state,
-          'time': timeMs,
-          if (durationMs != null) 'duration': durationMs,
-          'X-Plex-Token': token,
+          'key': ratingKey,
+          'identifier': 'com.plexapp.plugins.library',
         },
       );
-    } on DioException {
-      // Best-effort; ignore.
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
     }
   }
 
@@ -129,8 +159,106 @@ class PlexApi {
     if (thumb == null || thumb.isEmpty) {
       return null;
     }
-    final String base =
-        _dio.options.baseUrl.replaceAll(RegExp(r'/+$'), '');
+    final String base = _dio.options.baseUrl.replaceAll(RegExp(r'/+$'), '');
     return '$base$thumb?X-Plex-Token=$token';
+  }
+
+  /// Stable-ish client id for Companion command routing + a per-client
+  /// monotonically increasing command id (Plex requires increasing ids).
+  static const String _clientIdentifier = 'atrium-plex-controller';
+  int _commandId = 0;
+
+  /// Active playback sessions (`GET /status/sessions`). No Plex Pass needed.
+  Future<List<PlexSession>> getSessions() async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>('status/sessions');
+      return PlexSessionsResponse.fromJson(resp.data as Map<String, dynamic>)
+              .mediaContainer
+              ?.metadata ??
+          <PlexSession>[];
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Sends a transport command to a controllable client. Commands:
+  /// playPause, stop, skipNext, skipPrevious, seekTo (offsetMs required).
+  /// Throws NetworkException on failure (no Plex Pass / client gone / not
+  /// controllable) so the UI can degrade gracefully.
+  Future<void> sendPlayerCommand(
+    String command, {
+    required String machineIdentifier,
+    int? offsetMs,
+  }) async {
+    _commandId += 1;
+    try {
+      await _dio.get<dynamic>(
+        'player/playback/$command',
+        queryParameters: plexCommandParams(
+          machineIdentifier: machineIdentifier,
+          clientIdentifier: _clientIdentifier,
+          commandId: _commandId,
+          offsetMs: offsetMs,
+        ),
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Ends someone's stream. Requires Plex Pass server-side; a 403 surfaces as
+  /// a NetworkException the UI turns into a "needs Plex Pass" message.
+  Future<void> terminateSession(
+    String sessionId, {
+    String reason = 'Stopped from Atrium',
+  }) async {
+    try {
+      await _dio.get<dynamic>(
+        'status/sessions/terminate',
+        queryParameters: <String, dynamic>{
+          'sessionId': sessionId,
+          'reason': reason,
+        },
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Genre directories for a library section
+  /// (`GET /library/sections/{key}/genre`).
+  Future<List<PlexGenreDir>> getGenres(String sectionKey) async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('library/sections/$sectionKey/genre');
+      return PlexLibrariesResponse.fromJson(resp.data as Map<String, dynamic>)
+              .mediaContainer
+              ?.directory
+              .map((PlexLibrary d) => PlexGenreDir(key: d.key, title: d.title))
+              .toList() ??
+          <PlexGenreDir>[];
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Items in a section filtered by a genre key
+  /// (`GET /library/sections/{key}/all?genre={id}`).
+  Future<List<PlexMetadata>> getItemsByGenre(
+    String sectionKey,
+    String genreKey,
+  ) async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>(
+        'library/sections/$sectionKey/all',
+        queryParameters: <String, dynamic>{'genre': genreKey},
+      );
+      return PlexItemsResponse.fromJson(resp.data as Map<String, dynamic>)
+              .mediaContainer
+              ?.metadata ??
+          <PlexMetadata>[];
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
   }
 }

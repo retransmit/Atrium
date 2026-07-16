@@ -8,7 +8,7 @@ part 'sab_queue.g.dart';
 /// SABnzbd returns nearly everything as strings (e.g. `"percentage": "45"`),
 /// so the numeric-looking fields are typed `String` and parsed at the UI.
 @freezed
-class SabQueueResponse with _$SabQueueResponse {
+abstract class SabQueueResponse with _$SabQueueResponse {
   const factory SabQueueResponse({SabQueue? queue}) = _SabQueueResponse;
 
   factory SabQueueResponse.fromJson(Map<String, dynamic> json) =>
@@ -16,15 +16,23 @@ class SabQueueResponse with _$SabQueueResponse {
 }
 
 @freezed
-class SabQueue with _$SabQueue {
+abstract class SabQueue with _$SabQueue {
   const factory SabQueue({
     @Default('') String status,
+
     /// Human speed string, e.g. "1.2 M".
     @Default('') String speed,
     @Default('') String sizeleft,
     @Default('') String timeleft,
     @Default('') String mbleft,
     @Default('') String mb,
+
+    /// Active global speed limit as a percentage string, e.g. "100".
+    @Default('') String speedlimit,
+
+    /// Free / total disk space at the download location, in GB strings.
+    @Default('') String diskspace1,
+    @Default('') String diskspacetotal1,
     @Default(<SabSlot>[]) List<SabSlot> slots,
   }) = _SabQueue;
 
@@ -33,7 +41,7 @@ class SabQueue with _$SabQueue {
 }
 
 @freezed
-class SabSlot with _$SabSlot {
+abstract class SabSlot with _$SabSlot {
   const factory SabSlot({
     @JsonKey(name: 'nzo_id') @Default('') String nzoId,
     @Default('') String filename,

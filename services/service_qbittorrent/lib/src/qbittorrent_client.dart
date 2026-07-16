@@ -28,6 +28,7 @@ class QbittorrentClient {
     required CookieJar cookies,
     required this.username,
     required this.password,
+    this.apiKey,
   })  : _dio = dio,
         _cookies = cookies;
 
@@ -35,6 +36,13 @@ class QbittorrentClient {
   final CookieJar _cookies;
   final String username;
   final String password;
+
+  /// qBittorrent 5.2+ API key (`qbt_…`). When set it is sent as
+  /// `Authorization: Bearer <key>` and the cookie login flow is skipped
+  /// entirely (the key is stateless and cannot use the auth endpoints).
+  final String? apiKey;
+
+  bool get _usesApiKey => apiKey != null && apiKey!.isNotEmpty;
   bool _loggedIn = false;
 
   /// Builds a client with a cookie-aware Dio pointed at [baseUrl].
@@ -43,16 +51,29 @@ class QbittorrentClient {
     required String username,
     required String password,
     required bool allowSelfSigned,
+    String? apiKey,
+    Map<String, String> customHeaders = const <String, String>{},
   }) {
+    final String baseUrlStr = baseUrl.toString();
+    final String normalizedBaseUrl =
+        baseUrlStr.endsWith('/') ? baseUrlStr : '$baseUrlStr/';
     final CookieJar cookies = CookieJar();
+    final Map<String, dynamic> headers = <String, dynamic>{
+      'Referer': normalizedBaseUrl,
+      if (apiKey != null && apiKey.isNotEmpty)
+        'Authorization': 'Bearer $apiKey',
+    };
     final Dio dio = Dio(
       BaseOptions(
-        baseUrl: baseUrl.toString(),
+        baseUrl: normalizedBaseUrl,
         connectTimeout: const Duration(seconds: 10),
         receiveTimeout: const Duration(seconds: 30),
-        headers: <String, dynamic>{'Referer': baseUrl.toString()},
+        headers: headers,
       ),
     );
+    // User-configured headers ride alongside the Referer above (a user
+    // Referer key would deliberately override it - instance wins).
+    dio.options.headers.addAll(customHeaders);
     dio.interceptors.add(CookieManager(cookies));
     if (allowSelfSigned) {
       final IOHttpClientAdapter adapter =
@@ -66,6 +87,7 @@ class QbittorrentClient {
       cookies: cookies,
       username: username,
       password: password,
+      apiKey: apiKey,
     );
   }
 
@@ -88,7 +110,7 @@ class QbittorrentClient {
       // receive.
       await _cookies.deleteAll();
       final Response<String> resp = await _dio.post<String>(
-        '/api/v2/auth/login',
+        'api/v2/auth/login',
         data: <String, dynamic>{'username': username, 'password': password},
         options: Options(
           contentType: Headers.formUrlEncodedContentType,
@@ -127,7 +149,7 @@ class QbittorrentClient {
 
   Future<List<QbitTorrent>> getTorrents() => _guarded(() async {
         final Response<dynamic> resp =
-            await _dio.get<dynamic>('/api/v2/torrents/info');
+            await _dio.get<dynamic>('api/v2/torrents/info');
         return (resp.data as List<dynamic>)
             .map((dynamic e) => QbitTorrent.fromJson(e as Map<String, dynamic>))
             .toList();
@@ -135,19 +157,24 @@ class QbittorrentClient {
 
   Future<QbitTransferInfo> getTransferInfo() => _guarded(() async {
         final Response<dynamic> resp =
-            await _dio.get<dynamic>('/api/v2/transfer/info');
+            await _dio.get<dynamic>('api/v2/transfer/info');
         return QbitTransferInfo.fromJson(resp.data as Map<String, dynamic>);
       });
 
-  Future<void> pause(String hash) => _torrentCommand(hash, stop: true);
+  Future<void> pause(List<String> hashes) =>
+      _torrentCommand(hashes.join('|'), stop: true);
 
-  Future<void> resume(String hash) => _torrentCommand(hash, stop: false);
+  Future<void> resume(List<String> hashes) =>
+      _torrentCommand(hashes.join('|'), stop: false);
 
-  Future<void> delete(String hash, {required bool deleteFiles}) =>
+  Future<void> delete(List<String> hashes, {required bool deleteFiles}) =>
       _guarded(() async {
         await _dio.post<dynamic>(
-          '/api/v2/torrents/delete',
-          data: <String, dynamic>{'hashes': hash, 'deleteFiles': deleteFiles},
+          'api/v2/torrents/delete',
+          data: <String, dynamic>{
+            'hashes': hashes.join('|'),
+            'deleteFiles': deleteFiles,
+          },
           options: Options(contentType: Headers.formUrlEncodedContentType),
         );
       });
@@ -173,7 +200,7 @@ class QbittorrentClient {
           'paused': paused ? 'true' : 'false',
           'sequentialDownload': sequential ? 'true' : 'false',
         });
-        await _dio.post<dynamic>('/api/v2/torrents/add', data: form);
+        await _dio.post<dynamic>('api/v2/torrents/add', data: form);
       });
 
   /// Backwards-compatible single-URL add.
@@ -200,14 +227,14 @@ class QbittorrentClient {
           'paused': paused ? 'true' : 'false',
           'sequentialDownload': sequential ? 'true' : 'false',
         });
-        await _dio.post<dynamic>('/api/v2/torrents/add', data: form);
+        await _dio.post<dynamic>('api/v2/torrents/add', data: form);
       });
 
   /// Detailed properties of one torrent (`/torrents/properties`).
   Future<QbitTorrentProperties> getProperties(String hash) =>
       _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
-          '/api/v2/torrents/properties',
+          'api/v2/torrents/properties',
           queryParameters: <String, dynamic>{'hash': hash},
         );
         return QbitTorrentProperties.fromJson(
@@ -218,7 +245,7 @@ class QbittorrentClient {
   /// Per-file listing of one torrent (`/torrents/files`).
   Future<List<QbitFile>> getFiles(String hash) => _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
-          '/api/v2/torrents/files',
+          'api/v2/torrents/files',
           queryParameters: <String, dynamic>{'hash': hash},
         );
         return (resp.data as List<dynamic>)
@@ -229,7 +256,7 @@ class QbittorrentClient {
   /// Tracker list of one torrent (`/torrents/trackers`).
   Future<List<QbitTracker>> getTrackers(String hash) => _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
-          '/api/v2/torrents/trackers',
+          'api/v2/torrents/trackers',
           queryParameters: <String, dynamic>{'hash': hash},
         );
         return (resp.data as List<dynamic>)
@@ -237,6 +264,38 @@ class QbittorrentClient {
               (dynamic e) => QbitTracker.fromJson(e as Map<String, dynamic>),
             )
             .toList();
+      });
+
+  /// Peers list of one torrent (`/sync/torrentPeers`).
+  Future<List<QbitPeer>> getPeers(String hash) => _guarded(() async {
+        final Response<dynamic> resp = await _dio.get<dynamic>(
+          'api/v2/sync/torrentPeers',
+          queryParameters: <String, dynamic>{'hash': hash, 'rid': 0},
+        );
+        final Map<String, dynamic> data = resp.data as Map<String, dynamic>;
+        final Map<String, dynamic>? peersMap =
+            data['peers'] as Map<String, dynamic>?;
+        if (peersMap == null) return <QbitPeer>[];
+
+        final List<QbitPeer> results = <QbitPeer>[];
+        for (final MapEntry<String, dynamic> entry in peersMap.entries) {
+          final String ipPort = entry.key;
+          final Map<String, dynamic> peerData =
+              entry.value as Map<String, dynamic>;
+
+          String ip = ipPort;
+          int port = 0;
+          if (ipPort.contains(':')) {
+            final int lastColon = ipPort.lastIndexOf(':');
+            ip = ipPort.substring(0, lastColon);
+            port = int.tryParse(ipPort.substring(lastColon + 1)) ?? 0;
+          }
+
+          peerData['ip'] = ip;
+          peerData['port'] = port;
+          results.add(QbitPeer.fromJson(peerData));
+        }
+        return results;
       });
 
   /// Sets download priority for files within a torrent.
@@ -250,7 +309,7 @@ class QbittorrentClient {
   ) =>
       _guarded(() async {
         await _dio.post<dynamic>(
-          '/api/v2/torrents/filePrio',
+          'api/v2/torrents/filePrio',
           data: <String, dynamic>{
             'hash': hash,
             'id': fileIds.join('|'),
@@ -263,7 +322,7 @@ class QbittorrentClient {
   /// All category names defined on the server (sorted).
   Future<List<String>> getCategories() => _guarded(() async {
         final Response<dynamic> resp =
-            await _dio.get<dynamic>('/api/v2/torrents/categories');
+            await _dio.get<dynamic>('api/v2/torrents/categories');
         final Map<String, dynamic> map =
             (resp.data as Map<String, dynamic>?) ?? <String, dynamic>{};
         final List<String> names = map.keys.toList()..sort();
@@ -271,19 +330,23 @@ class QbittorrentClient {
       });
 
   /// Moves a torrent into [category] (empty string clears it).
-  Future<void> setCategory(String hash, String category) => _guarded(() async {
+  Future<void> setCategory(List<String> hashes, String category) =>
+      _guarded(() async {
         await _dio.post<dynamic>(
-          '/api/v2/torrents/setCategory',
-          data: <String, dynamic>{'hashes': hash, 'category': category},
+          'api/v2/torrents/setCategory',
+          data: <String, dynamic>{
+            'hashes': hashes.join('|'),
+            'category': category,
+          },
           options: Options(contentType: Headers.formUrlEncodedContentType),
         );
       });
 
   /// Forces a re-check of a torrent's data.
-  Future<void> recheck(String hash) => _guarded(() async {
+  Future<void> recheck(List<String> hashes) => _guarded(() async {
         await _dio.post<dynamic>(
-          '/api/v2/torrents/recheck',
-          data: <String, dynamic>{'hashes': hash},
+          'api/v2/torrents/recheck',
+          data: <String, dynamic>{'hashes': hashes.join('|')},
           options: Options(contentType: Headers.formUrlEncodedContentType),
         );
       });
@@ -292,8 +355,8 @@ class QbittorrentClient {
   Future<void> setPriority(String hash, {required bool increase}) =>
       _guarded(() async {
         final String path = increase
-            ? '/api/v2/torrents/increasePrio'
-            : '/api/v2/torrents/decreasePrio';
+            ? 'api/v2/torrents/increasePrio'
+            : 'api/v2/torrents/decreasePrio';
         await _dio.post<dynamic>(
           path,
           data: <String, dynamic>{'hashes': hash},
@@ -301,16 +364,68 @@ class QbittorrentClient {
         );
       });
 
+  Future<void> reannounce(List<String> hashes) => _guarded(() async {
+        await _dio.post<dynamic>(
+          'api/v2/torrents/reannounce',
+          data: <String, dynamic>{'hashes': hashes.join('|')},
+          options: Options(contentType: Headers.formUrlEncodedContentType),
+        );
+      });
+
+  Future<void> setForceStart(List<String> hashes, {required bool value}) =>
+      _guarded(() async {
+        await _dio.post<dynamic>(
+          'api/v2/torrents/setForceStart',
+          data: <String, dynamic>{'hashes': hashes.join('|'), 'value': value},
+          options: Options(contentType: Headers.formUrlEncodedContentType),
+        );
+      });
+
+  Future<void> rename(String hash, String name) => _guarded(() async {
+        await _dio.post<dynamic>(
+          'api/v2/torrents/rename',
+          data: <String, dynamic>{'hash': hash, 'name': name},
+          options: Options(contentType: Headers.formUrlEncodedContentType),
+        );
+      });
+
+  Future<void> setLocation(List<String> hashes, String location) =>
+      _guarded(() async {
+        await _dio.post<dynamic>(
+          'api/v2/torrents/setLocation',
+          data: <String, dynamic>{
+            'hashes': hashes.join('|'),
+            'location': location,
+          },
+          options: Options(contentType: Headers.formUrlEncodedContentType),
+        );
+      });
+
+  Future<void> addTags(List<String> hashes, String tags) => _guarded(() async {
+        await _dio.post<dynamic>(
+          'api/v2/torrents/addTags',
+          data: <String, dynamic>{'hashes': hashes.join('|'), 'tags': tags},
+          options: Options(contentType: Headers.formUrlEncodedContentType),
+        );
+      });
+
+  Future<Uint8List> exportTorrent(String hash) => _guarded(() async {
+        final Response<List<int>> resp = await _dio.get<List<int>>(
+          'api/v2/torrents/export',
+          queryParameters: <String, dynamic>{'hash': hash},
+          options: Options(responseType: ResponseType.bytes),
+        );
+        return Uint8List.fromList(resp.data!);
+      });
+
   /// Pauses or resumes every torrent. qBit 5.0 renamed the global endpoints
   /// (pause→stop, resume→start) just like the per-torrent ones, so we try the
   /// new path first and fall back on 404.
   Future<void> setAllPaused({required bool paused}) => _guarded(() async {
-        final String primary = paused
-            ? '/api/v2/torrents/stop'
-            : '/api/v2/torrents/start';
-        final String fallback = paused
-            ? '/api/v2/torrents/pause'
-            : '/api/v2/torrents/resume';
+        final String primary =
+            paused ? 'api/v2/torrents/stop' : 'api/v2/torrents/start';
+        final String fallback =
+            paused ? 'api/v2/torrents/pause' : 'api/v2/torrents/resume';
         try {
           await _dio.post<dynamic>(
             primary,
@@ -337,9 +452,9 @@ class QbittorrentClient {
   Future<void> _torrentCommand(String hash, {required bool stop}) =>
       _guarded(() async {
         final String primary =
-            stop ? '/api/v2/torrents/stop' : '/api/v2/torrents/start';
+            stop ? 'api/v2/torrents/stop' : 'api/v2/torrents/start';
         final String fallback =
-            stop ? '/api/v2/torrents/pause' : '/api/v2/torrents/resume';
+            stop ? 'api/v2/torrents/pause' : 'api/v2/torrents/resume';
         try {
           await _dio.post<dynamic>(
             primary,
@@ -361,13 +476,23 @@ class QbittorrentClient {
 
   /// Ensures a session exists, runs [call], and re-logins once on a 403.
   Future<T> _guarded<T>(Future<T> Function() call) async {
-    if (!_loggedIn) {
+    // API-key auth is stateless: no login round-trip, and a 403 means the key
+    // itself was rejected (re-login is impossible - keys can't use the auth
+    // endpoints), so surface a clear error instead of retrying.
+    if (!_usesApiKey && !_loggedIn) {
       await login();
     }
     try {
       return await call();
     } on DioException catch (e) {
       if (e.response?.statusCode == 403) {
+        if (_usesApiKey) {
+          throw const NetworkAuthException(
+            'qBittorrent rejected the API key. Check it in qBittorrent 5.2+ '
+            'Web UI settings (sent as Authorization: Bearer), or rotate the '
+            'key and re-enter it.',
+          );
+        }
         _loggedIn = false;
         await login();
         try {

@@ -33,8 +33,7 @@ class ProfileIo {
 
     final bool? includeSecrets = await showDialog<bool>(
       context: context,
-      builder: (BuildContext context) =>
-          _ExportOptionsDialog(profile: profile),
+      builder: (BuildContext context) => _ExportOptionsDialog(profile: profile),
     );
     if (includeSecrets == null) {
       return;
@@ -47,7 +46,7 @@ class ProfileIo {
 
     String? outputPath;
     try {
-      outputPath = await FilePicker.platform.saveFile(
+      outputPath = await FilePicker.saveFile(
         dialogTitle: 'Save Atrium profile',
         fileName: _sanitizeFileName('atrium-${profile.name}.json'),
         type: FileType.custom,
@@ -86,11 +85,10 @@ class ProfileIo {
   ) async {
     FilePickerResult? picked;
     try {
-      picked = await FilePicker.platform.pickFiles(
+      picked = await FilePicker.pickFiles(
         dialogTitle: 'Open Atrium profile',
         type: FileType.custom,
         allowedExtensions: <String>['json'],
-        withData: true,
       );
     } on PlatformException catch (e) {
       if (context.mounted) {
@@ -126,8 +124,7 @@ class ProfileIo {
     }
     final bool? confirmed = await showDialog<bool>(
       context: context,
-      builder: (BuildContext context) =>
-          _ImportConfirmDialog(profile: preview),
+      builder: (BuildContext context) => _ImportConfirmDialog(profile: preview),
     );
     if (confirmed != true) {
       return;
@@ -147,14 +144,16 @@ class ProfileIo {
   }
 
   static Future<String?> _readPlatformFile(PlatformFile file) async {
-    if (file.bytes != null) {
-      return utf8.decode(file.bytes!);
-    }
-    if (file.path != null) {
-      try {
-        return File(file.path!).readAsString();
-      } on FileSystemException {
-        return null;
+    try {
+      final Uint8List bytes = await file.readAsBytes();
+      return utf8.decode(bytes);
+    } catch (_) {
+      if (file.path != null) {
+        try {
+          return File(file.path!).readAsString();
+        } on FileSystemException {
+          return null;
+        }
       }
     }
     return null;
@@ -190,7 +189,8 @@ class _ExportOptionsDialogState extends State<_ExportOptionsDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text('"${widget.profile.name}" - $n ${n == 1 ? 'instance' : 'instances'}'),
+          Text(
+              '"${widget.profile.name}" - $n ${n == 1 ? 'instance' : 'instances'}'),
           const SizedBox(height: 16),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
