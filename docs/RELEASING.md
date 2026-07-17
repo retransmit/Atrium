@@ -58,8 +58,12 @@ this](#why-it-is-like-this) before changing any of it.
    have to keep matching the `binary:` URLs in fdroiddata's
    `metadata/app.atrium.yml`, or F-Droid cannot find them.
 
-8. **Bump fdroiddata.** `versionName`, `versionCode`, `commit`, `CurrentVersion`
-   and `CurrentVersionCode` in each of the three build blocks.
+8. **Bump fdroiddata.** `versionName`, `versionCode`, `commit` (a full commit
+   hash, not a tag), `CurrentVersion` and `CurrentVersionCode` in each of the
+   three build blocks. Version codes are `build number * 10 + abi`, where abi is
+   1 armeabi-v7a, 2 arm64-v8a, 3 x86_64: see the override at the foot of
+   `app/android/app/build.gradle.kts`, which must stay in step with the
+   `VercodeOperation` in their metadata.
 
 ## Why it is like this
 

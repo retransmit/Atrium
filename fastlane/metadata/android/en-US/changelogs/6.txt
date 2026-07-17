@@ -1,0 +1,6 @@
+Nothing changes in the app itself.
+
+The internal build numbers now follow the scheme F-Droid asks of Flutter apps.
+If you installed an earlier release from GitHub, Android will refuse this one as
+an update and you will have to reinstall once. Export your profiles from
+Settings first. Nothing after this release is affected.
