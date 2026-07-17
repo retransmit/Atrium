@@ -14,6 +14,19 @@ class _Release {
 /// Newest first. Update alongside the version in the app's pubspec.
 const List<_Release> _releases = <_Release>[
   _Release(
+    version: '1.0.6',
+    changes: <String>[
+      'Pull to refresh is unified across every screen with a smoother, more '
+          'responsive indicator, and no longer fires when you swipe a poster '
+          'row sideways.',
+      'Detail screens fade their title into the app bar as you scroll, the '
+          'bottom bar tucks away while scrolling down, and the back button '
+          'from a secondary tab returns to the dashboard.',
+      'Seerr posters, backdrops and cast photos now load from your own Seerr '
+          'server rather than from TMDB directly.',
+    ],
+  ),
+  _Release(
     version: '1.0.5',
     changes: <String>[
       'Nothing changes in the app itself. The internal build numbers now '

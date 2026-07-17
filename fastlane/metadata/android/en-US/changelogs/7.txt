@@ -1,0 +1,9 @@
+Pull to refresh is unified across every screen with a smoother, more responsive
+indicator, and no longer fires when you swipe a poster row sideways.
+
+Detail screens fade their title into the app bar as you scroll, the bottom bar
+tucks away while scrolling down, and the back button from a secondary tab returns
+to the dashboard.
+
+Seerr posters, backdrops and cast photos now load from your own Seerr server
+rather than from TMDB directly.
