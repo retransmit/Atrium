@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'models/seerr_discover.dart';
+import 'seerr_api.dart';
 import 'seerr_item_detail.dart';
 import 'seerr_providers.dart';
 import 'seerr_status_badge.dart';
@@ -102,14 +103,16 @@ class _SearchResults extends ConsumerWidget {
   }
 }
 
-class _SeerrSearchPosterCard extends StatelessWidget {
+class _SeerrSearchPosterCard extends ConsumerWidget {
   const _SeerrSearchPosterCard({required this.instance, required this.item});
 
   final Instance instance;
   final SeerrDiscoverResult item;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final SeerrApi? api = ref.watch(seerrApiProvider(instance)).value;
+    final String? posterUrl = api?.imageUrl(item.posterPath, size: 'w500');
     return GestureDetector(
       onTap: () {
         pushScreen<void>(
@@ -126,9 +129,9 @@ class _SeerrSearchPosterCard extends StatelessWidget {
               children: <Widget>[
                 ClipRRect(
                   borderRadius: BorderRadius.circular(Radii.sm),
-                  child: item.posterPath != null
+                  child: posterUrl != null
                       ? Image.network(
-                          'https://image.tmdb.org/t/p/w500${item.posterPath}',
+                          posterUrl,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) => const _Placeholder(),
                         )

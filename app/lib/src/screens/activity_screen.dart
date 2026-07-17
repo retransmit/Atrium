@@ -53,7 +53,16 @@ class ActivityScreen extends ConsumerWidget {
           streamsState.streams.isNotEmpty || streamsState.errors.isNotEmpty;
       final bool showDownloads = downloadsState.downloads.isNotEmpty ||
           downloadsState.errors.isNotEmpty;
-      body = M3RefreshIndicator(
+      body = EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
         onRefresh: () async => refreshActivity(ref),
         child: ListView(
           padding: Insets.page,

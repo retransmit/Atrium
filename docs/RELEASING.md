@@ -87,8 +87,15 @@ no signing config when `key.properties` is absent. It also means the keystore is
 only ever needed on one machine.
 
 **Everything is pinned.** Flutter, JDK and NDK versions all change the emitted
-bytes. The workflow pins them and fdroiddata's recipe pins the same ones. Bump
-them together or not at all.
+bytes. The workflow pins them and fdroiddata's recipe reads the Flutter version
+out of the workflow, so the two cannot disagree. Bump them deliberately.
+
+**The jni library has its build-id stripped.** `app/android/build.gradle.kts`
+passes `--build-id=none` for it. The linker otherwise derives that id from
+object data carrying the NDK's install path, so the same source built against
+an NDK in a different directory produces a library differing in exactly those
+20 bytes, which fails verification. Removing the id means no build of this app
+has to care where its NDK lives.
 
 ## If verification fails
 

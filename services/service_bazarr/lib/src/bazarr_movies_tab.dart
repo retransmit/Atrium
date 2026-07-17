@@ -18,29 +18,58 @@ class BazarrMoviesTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<BazarrMovie>> movies =
         ref.watch(bazarrMoviesProvider(instance));
-    return M3RefreshIndicator(
-      onRefresh: () async => ref.invalidate(bazarrMoviesProvider(instance)),
-      child: AsyncValueView<List<BazarrMovie>>(
-        value: movies,
+    return AsyncValueView<List<BazarrMovie>>(
+          value: movies,
         onRetry: () => ref.invalidate(bazarrMoviesProvider(instance)),
-        data: (List<BazarrMovie> list) {
+          data: (List<BazarrMovie> list) {
+            
           if (list.isEmpty) {
-            return const EmptyView(
+            return EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        onRefresh: () async => ref.invalidate(bazarrMoviesProvider(instance)),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const <Widget>[
+            SizedBox(height: 100),
+            EmptyView(
               icon: Icons.movie_outlined,
               title: 'No movies',
               message: 'Bazarr has no movies from Radarr yet.',
-            );
+            ),
+          ],
+        ),
+      );
           }
-          return ListView.separated(
+          return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async => ref.invalidate(bazarrMoviesProvider(instance)),
+      child: ListView.separated(
             padding: Insets.page,
             itemCount: list.length,
             separatorBuilder: (_, __) => const SizedBox(height: Insets.sm),
             itemBuilder: (BuildContext context, int index) =>
                 _MovieCard(instance: instance, movie: list[index]),
-          );
-        },
-      ),
+          ),
     );
+        
+          },
+        );
   }
 }
 

@@ -181,25 +181,54 @@ class JellyfinLibraryGrid extends ConsumerWidget {
     final JellyfinClient? client =
         ref.watch(jellyfinClientProvider(instance)).value;
 
-    return M3RefreshIndicator(
-      onRefresh: () async =>
-          ref.invalidate(jellyfinLibraryItemsProvider((instance, view))),
-      child: AsyncValueView<List<JellyfinItem>>(
-        value: items,
+    return AsyncValueView<List<JellyfinItem>>(
+          value: items,
         onRetry: () =>
             ref.invalidate(jellyfinLibraryItemsProvider((instance, view))),
-        data: (List<JellyfinItem> list) {
+          data: (List<JellyfinItem> list) {
+            
           if (list.isEmpty) {
-            return const EmptyView(
+            return EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        onRefresh: () async =>
+          ref.invalidate(jellyfinLibraryItemsProvider((instance, view))),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const <Widget>[
+            SizedBox(height: 100),
+            EmptyView(
               icon: Icons.movie_outlined,
               title: 'Empty library',
               message: 'Nothing in this library yet.',
-            );
+            ),
+          ],
+        ),
+      );
           }
           final JellyfinViewMode viewMode =
               ref.watch(jellyfinViewModeProvider(instance));
 
-          return _buildJellyfinGridOrList(
+          return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async =>
+          ref.invalidate(jellyfinLibraryItemsProvider((instance, view))),
+      child: _buildJellyfinGridOrList(
             context,
             list,
             viewMode,
@@ -334,10 +363,11 @@ class JellyfinLibraryGrid extends ConsumerWidget {
                       ),
               );
             },
-          );
-        },
-      ),
+          ),
     );
+        
+          },
+        );
   }
 }
 
@@ -358,27 +388,56 @@ class JellyfinItemsGrid extends ConsumerWidget {
     final JellyfinClient? client =
         ref.watch(jellyfinClientProvider(instance)).value;
 
-    return M3RefreshIndicator(
-      onRefresh: () async =>
-          ref.invalidate(jellyfinItemsProvider((instance, libraryId))),
-      child: AsyncValueView<List<JellyfinItem>>(
-        value: items,
+    return AsyncValueView<List<JellyfinItem>>(
+          value: items,
         onRetry: () =>
             ref.invalidate(jellyfinItemsProvider((instance, libraryId))),
-        data: (List<JellyfinItem> list) {
+          data: (List<JellyfinItem> list) {
+            
           if (list.isEmpty) {
-            return const EmptyView(
+            return EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        onRefresh: () async =>
+          ref.invalidate(jellyfinItemsProvider((instance, libraryId))),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const <Widget>[
+            SizedBox(height: 100),
+            EmptyView(
               icon: Icons.movie_outlined,
               title: 'Empty library',
               message: 'Nothing in this library yet.',
-            );
+            ),
+          ],
+        ),
+      );
           }
           final JellyfinViewMode viewMode =
               ref.watch(jellyfinViewModeProvider(instance));
 
           // (Replaced with _buildJellyfinGridOrList)
 
-          return _buildJellyfinGridOrList(
+          return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async =>
+          ref.invalidate(jellyfinItemsProvider((instance, libraryId))),
+      child: _buildJellyfinGridOrList(
             context,
             list,
             viewMode,
@@ -405,10 +464,11 @@ class JellyfinItemsGrid extends ConsumerWidget {
                       ),
               );
             },
-          );
-        },
-      ),
+          ),
     );
+        
+          },
+        );
   }
 
   void _openItem(
@@ -1107,7 +1167,16 @@ class _HomeSections extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return M3RefreshIndicator(
+    return EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
       onRefresh: () async {
         ref.invalidate(jellyfinSessionsProvider(instance));
         ref.invalidate(jellyfinResumeItemsProvider(instance));

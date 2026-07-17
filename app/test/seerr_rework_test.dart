@@ -188,7 +188,7 @@ void main() {
           body: Center(
             child: SizedBox(
               height: 250,
-              child: SeerrMediaCard(item: item),
+              child: SeerrMediaCard(item: item, api: null),
             ),
           ),
         ),

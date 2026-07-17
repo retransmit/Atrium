@@ -212,7 +212,16 @@ class _StatusTab extends ConsumerWidget {
     final healthAsync = ref.watch(radarrHealthProvider(instance));
     final diskAsync = ref.watch(radarrDiskSpaceProvider(instance));
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
       onRefresh: () async {
         ref.invalidate(radarrSystemStatusProvider(instance));
         ref.invalidate(radarrHealthProvider(instance));
@@ -635,7 +644,16 @@ class _TasksTab extends ConsumerWidget {
     final ThemeData theme = Theme.of(context);
     final tasksAsync = ref.watch(radarrTasksProvider(instance));
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
       onRefresh: () async {
         ref.invalidate(radarrTasksProvider(instance));
         await ref.read(radarrTasksProvider(instance).future);
@@ -771,7 +789,16 @@ class _UpdatesTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final updatesAsync = ref.watch(radarrUpdatesProvider(instance));
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
       onRefresh: () async {
         ref.invalidate(radarrUpdatesProvider(instance));
         await ref.read(radarrUpdatesProvider(instance).future);
@@ -1076,7 +1103,16 @@ class _LogsTabState extends ConsumerState<_LogsTab> {
               return Column(
                 children: <Widget>[
                   Expanded(
-                    child: M3RefreshIndicator(
+                    child: EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
                       onRefresh: () async {
                         ref.invalidate(
                           radarrLogsProvider(
@@ -1333,7 +1369,16 @@ class _BackupsTab extends ConsumerWidget {
     final ThemeData theme = Theme.of(context);
     final backupsAsync = ref.watch(radarrBackupsProvider(instance));
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
       onRefresh: () async {
         ref.invalidate(radarrBackupsProvider(instance));
         await ref.read(radarrBackupsProvider(instance).future);

@@ -10,9 +10,6 @@ import 'package:service_seerr/service_seerr.dart';
 import '../dashboard_widget_card.dart';
 import '../dashboard_widget_kind.dart';
 
-String _tmdbImage(String path, String size) =>
-    'https://image.tmdb.org/t/p/$size$path';
-
 class _Request {
   const _Request({required this.request, required this.instance});
 
@@ -154,6 +151,8 @@ class _RequestRow extends ConsumerWidget {
         posterPath = details.posterPath;
       }
     }
+    final SeerrApi? api = ref.watch(seerrApiProvider(request.instance)).value;
+    final String? posterUrl = api?.imageUrl(posterPath, size: 'w185');
     final String by = r.requestedBy?.displayName ?? '';
     final (String statusLabel, Color statusColor) = _status(r, cs);
 
@@ -172,10 +171,10 @@ class _RequestRow extends ConsumerWidget {
             child: SizedBox(
               width: 40,
               height: 56,
-              child: posterPath == null
+              child: posterUrl == null
                   ? _posterFallback(cs, r.type)
                   : CachedNetworkImage(
-                      imageUrl: _tmdbImage(posterPath, 'w185'),
+                      imageUrl: posterUrl,
                       fit: BoxFit.cover,
                       memCacheWidth: 120,
                       errorWidget: (_, __, ___) => _posterFallback(cs, r.type),

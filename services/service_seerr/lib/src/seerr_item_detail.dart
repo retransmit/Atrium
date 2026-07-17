@@ -10,16 +10,11 @@ import 'package:palette_generator_plus/palette_generator_plus.dart';
 
 import 'models/seerr_discover.dart';
 import 'models/seerr_service.dart';
+import 'seerr_api.dart';
 import 'seerr_media_card.dart';
 import 'seerr_providers.dart';
 import 'seerr_report_issue_sheet.dart';
 import 'seerr_status_badge.dart';
-
-/// TMDB image URL builder shared by this screen's sections, mirroring the
-/// module's existing construction (posters at `w342`, backdrops at `w780`);
-/// cast profiles use TMDB's `w185`.
-String _tmdbImage(String path, String size) =>
-    'https://image.tmdb.org/t/p/$size$path';
 
 /// Detail screen for a Seerr movie/show: a backdrop hero fading into the
 /// surface with the poster + title + metadata pills at its foot, then the
@@ -85,10 +80,11 @@ class _SeerrItemDetailScreenState extends ConsumerState<SeerrItemDetailScreen> {
     final SeerrDiscoverResult full =
         ref.watch(seerrMediaDetailsProvider(args)).value ?? widget.item;
 
+    final SeerrApi? api = ref.watch(seerrApiProvider(widget.instance)).value;
     final String? backdropPath = full.backdropPath ?? widget.item.backdropPath;
     final String? posterPath = full.posterPath ?? widget.item.posterPath;
-    final String? posterUrl =
-        posterPath != null ? _tmdbImage(posterPath, 'w342') : null;
+    final String? posterUrl = api?.imageUrl(posterPath);
+    final String? backdropUrl = api?.imageUrl(backdropPath, size: 'w780');
     _updatePalette(posterUrl);
 
     // Poster-palette accent: reseed a full M3 scheme from the poster's
@@ -149,13 +145,16 @@ class _SeerrItemDetailScreenState extends ConsumerState<SeerrItemDetailScreen> {
                       clipBehavior: Clip.none,
                       children: <Widget>[
                         Positioned.fill(
-                          child: CachedNetworkImage(
-                            key: ValueKey<String>(backdropPath),
-                            imageUrl: _tmdbImage(backdropPath, 'w780'),
-                            fit: BoxFit.cover,
-                            errorWidget: (_, __, ___) =>
-                                ColoredBox(color: cs.surfaceContainerHighest),
-                          ),
+                          child: backdropUrl != null
+                              ? CachedNetworkImage(
+                                  key: ValueKey<String>(backdropUrl),
+                                  imageUrl: backdropUrl,
+                                  fit: BoxFit.cover,
+                                  errorWidget: (_, __, ___) => ColoredBox(
+                                    color: cs.surfaceContainerHighest,
+                                  ),
+                                )
+                              : ColoredBox(color: cs.surfaceContainerHighest),
                         ),
                         Positioned.fill(
                           child: ColoredBox(
@@ -263,7 +262,8 @@ class _SeerrItemDetailScreenState extends ConsumerState<SeerrItemDetailScreen> {
                 child: OverviewBox(overview: full.overview!),
               ),
             ),
-          if (cast.isNotEmpty) SliverToBoxAdapter(child: _CastRow(cast: cast)),
+          if (cast.isNotEmpty)
+            SliverToBoxAdapter(child: _CastRow(cast: cast, api: api)),
           SliverToBoxAdapter(
             child: _MediaRow(
               title: 'Recommendations',
@@ -484,9 +484,13 @@ class _ReportIssueButton extends StatelessWidget {
 
 /// Horizontal cast row: circular profile avatars with name + character.
 class _CastRow extends StatelessWidget {
-  const _CastRow({required this.cast});
+  const _CastRow({required this.cast, required this.api});
 
   final List<SeerrCastMember> cast;
+
+  /// Builds the profile URLs. Null while the API is still loading, and the
+  /// avatars show their person icon.
+  final SeerrApi? api;
 
   @override
   Widget build(BuildContext context) {
@@ -513,9 +517,8 @@ class _CastRow extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(width: Insets.md),
             itemBuilder: (BuildContext context, int index) {
               final SeerrCastMember member = cast[index];
-              final String? profileUrl = member.profilePath != null
-                  ? _tmdbImage(member.profilePath!, 'w185')
-                  : null;
+              final String? profileUrl =
+                  api?.imageUrl(member.profilePath, size: 'w185');
               return SizedBox(
                 width: 92,
                 child: Column(
@@ -585,6 +588,7 @@ class _MediaRow extends ConsumerWidget {
     if (items.isEmpty) {
       return const SizedBox.shrink();
     }
+    final SeerrApi? api = ref.watch(seerrApiProvider(instance)).value;
     final ThemeData theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -606,7 +610,7 @@ class _MediaRow extends ConsumerWidget {
             padding: Insets.pageH,
             itemCount: items.length,
             itemBuilder: (BuildContext context, int index) =>
-                _PosterCard(instance: instance, item: items[index]),
+                _PosterCard(instance: instance, item: items[index], api: api),
           ),
         ),
       ],
@@ -617,10 +621,18 @@ class _MediaRow extends ConsumerWidget {
 /// Tappable poster card used in the Recommendations / Similar rows; pushes a
 /// fresh detail screen for the tapped item.
 class _PosterCard extends StatelessWidget {
-  const _PosterCard({required this.instance, required this.item});
+  const _PosterCard({
+    required this.instance,
+    required this.item,
+    required this.api,
+  });
 
   final Instance instance;
   final SeerrDiscoverResult item;
+
+  /// Builds the poster URL. Null while the API is still loading, and the card
+  /// shows its placeholder.
+  final SeerrApi? api;
 
   @override
   Widget build(BuildContext context) {
@@ -644,9 +656,9 @@ class _PosterCard extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: <Widget>[
-                    item.posterPath != null
+                    api?.imageUrl(item.posterPath) != null
                         ? CachedNetworkImage(
-                            imageUrl: _tmdbImage(item.posterPath!, 'w342'),
+                            imageUrl: api!.imageUrl(item.posterPath)!,
                             fit: BoxFit.cover,
                             errorWidget: (_, __, ___) => _posterFallback(theme),
                           )

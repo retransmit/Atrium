@@ -19,7 +19,16 @@ class SeerrDiscoverScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return M3RefreshIndicator(
+    return EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
       onRefresh: () async {
         ref.invalidate(seerrWatchlistProvider(instance));
         ref.invalidate(seerrTrendingProvider(instance));
@@ -160,6 +169,7 @@ class _DiscoverSection extends ConsumerWidget {
                     padding: const EdgeInsets.only(right: Insets.md),
                     child: SeerrMediaCard(
                       item: item,
+                      api: ref.watch(seerrApiProvider(instance)).value,
                       onTap: () => pushScreen<void>(
                         context,
                         SeerrItemDetailScreen(

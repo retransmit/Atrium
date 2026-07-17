@@ -71,11 +71,6 @@ class _ReorderSidebarScreenState extends ConsumerState<ReorderSidebarScreen> {
                     itemCount: _localInstances!.length,
                     onReorder: (int oldIndex, int newIndex) {
                       setState(() {
-                        // ReorderableListView reports the insertion index
-                        // including the dragged item; adjust when moving down.
-                        if (newIndex > oldIndex) {
-                          newIndex -= 1;
-                        }
                         final Instance item =
                             _localInstances!.removeAt(oldIndex);
                         _localInstances!.insert(newIndex, item);

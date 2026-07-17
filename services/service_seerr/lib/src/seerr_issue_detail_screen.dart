@@ -10,11 +10,6 @@ import 'models/seerr_request.dart';
 import 'seerr_api.dart';
 import 'seerr_providers.dart';
 
-/// TMDB image URL builder, mirroring the module's existing construction
-/// (posters at `w342`).
-String _tmdbImage(String path, String size) =>
-    'https://image.tmdb.org/t/p/$size$path';
-
 /// Icon for a Seerr issue type (1 video, 2 audio, 3 subtitles, 4 other).
 ///
 /// Shared vocabulary for the issues list, the issue detail screen, and the
@@ -225,7 +220,16 @@ class _SeerrIssueDetailScreenState
         child: Column(
           children: <Widget>[
             Expanded(
-              child: M3RefreshIndicator(
+              child: EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
                 onRefresh: () async {
                   _refreshIssue();
                 },
@@ -359,9 +363,8 @@ class _IssueHeader extends ConsumerWidget {
           .value;
     }
     final String title = details?.displayTitle ?? 'Issue #${issue.id}';
-    final String? posterUrl = details?.posterPath != null
-        ? _tmdbImage(details!.posterPath!, 'w342')
-        : null;
+    final SeerrApi? api = ref.watch(seerrApiProvider(instance)).value;
+    final String? posterUrl = api?.imageUrl(details?.posterPath);
     final String time = seerrIssueRelativeTime(issue.createdAt);
 
     return Container(

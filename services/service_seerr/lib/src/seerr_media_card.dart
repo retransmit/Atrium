@@ -3,12 +3,8 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 
 import 'models/seerr_discover.dart';
+import 'seerr_api.dart';
 import 'seerr_status_badge.dart';
-
-/// TMDB image URL builder, mirroring the module's existing construction
-/// (posters at `w342`).
-String _tmdbImage(String path, String size) =>
-    'https://image.tmdb.org/t/p/$size$path';
 
 /// The shared tonal poster card used by the Discover rows: a rounded poster
 /// with the availability badge and rating overlaid, then the title and date
@@ -16,12 +12,17 @@ String _tmdbImage(String path, String size) =>
 class SeerrMediaCard extends StatelessWidget {
   const SeerrMediaCard({
     required this.item,
+    required this.api,
     this.onTap,
     this.width = 128,
     super.key,
   });
 
   final SeerrDiscoverResult item;
+
+  /// Builds the artwork URL. Null while the API is still loading, and the card
+  /// shows its placeholder.
+  final SeerrApi? api;
 
   /// Tap handler (usually a push to the item detail screen).
   final VoidCallback? onTap;
@@ -46,9 +47,9 @@ class SeerrMediaCard extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: <Widget>[
-                    if (item.posterPath != null)
+                    if (api?.imageUrl(item.posterPath) != null)
                       CachedNetworkImage(
-                        imageUrl: _tmdbImage(item.posterPath!, 'w342'),
+                        imageUrl: api!.imageUrl(item.posterPath)!,
                         fit: BoxFit.cover,
                         errorWidget: (_, __, ___) => const _PosterFallback(),
                       )
@@ -165,6 +166,7 @@ class SeerrInfoPill extends StatelessWidget {
 class SeerrRequestCard extends StatelessWidget {
   const SeerrRequestCard({
     required this.item,
+    required this.api,
     this.requestedBy,
     this.mediaStatus,
     this.requestStatus,
@@ -174,6 +176,10 @@ class SeerrRequestCard extends StatelessWidget {
   });
 
   final SeerrDiscoverResult item;
+
+  /// Builds the artwork URLs. Null while the API is still loading, and the card
+  /// falls back to its placeholders.
+  final SeerrApi? api;
 
   /// Requester display name, shown next to a person icon.
   final String? requestedBy;
@@ -211,10 +217,10 @@ class SeerrRequestCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: <Widget>[
-          if (backdrop != null)
+          if (api?.imageUrl(backdrop, size: 'w780') != null)
             Positioned.fill(
               child: CachedNetworkImage(
-                imageUrl: _tmdbImage(backdrop, 'w780'),
+                imageUrl: api!.imageUrl(backdrop, size: 'w780')!,
                 fit: BoxFit.cover,
                 errorWidget: (_, __, ___) => const SizedBox.shrink(),
               ),
@@ -308,9 +314,9 @@ class SeerrRequestCard extends StatelessWidget {
                       child: SizedBox(
                         width: 76,
                         height: 114,
-                        child: item.posterPath != null
+                        child: api?.imageUrl(item.posterPath) != null
                             ? CachedNetworkImage(
-                                imageUrl: _tmdbImage(item.posterPath!, 'w342'),
+                                imageUrl: api!.imageUrl(item.posterPath)!,
                                 fit: BoxFit.cover,
                                 errorWidget: (_, __, ___) =>
                                     _posterFallback(cs),

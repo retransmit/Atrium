@@ -7,13 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models/seerr_discover.dart';
 import 'models/seerr_issue.dart';
 import 'models/seerr_request.dart';
+import 'seerr_api.dart';
 import 'seerr_issue_detail_screen.dart';
 import 'seerr_providers.dart';
-
-/// TMDB image URL builder, mirroring the module's existing construction
-/// (posters at `w342`).
-String _tmdbImage(String path, String size) =>
-    'https://image.tmdb.org/t/p/$size$path';
 
 /// The Issues tab body: All / Open / Resolved filter chips over the polled
 /// issue list (10s, via `seerrIssuesProvider`). Tapping a card pushes
@@ -65,22 +61,52 @@ class _SeerrIssuesScreenState extends ConsumerState<SeerrIssuesScreen> {
           ),
         ),
         Expanded(
-          child: M3RefreshIndicator(
-            onRefresh: () async {
+          child: AsyncValueView<List<SeerrIssue>>(
+          value: issues,
+              onRetry: () => ref.invalidate(seerrIssuesProvider(args)),
+          data: (List<SeerrIssue> list) {
+            
+                if (list.isEmpty) {
+                  return EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        onRefresh: () async {
               ref.invalidate(seerrIssuesProvider(args));
             },
-            child: AsyncValueView<List<SeerrIssue>>(
-              value: issues,
-              onRetry: () => ref.invalidate(seerrIssuesProvider(args)),
-              data: (List<SeerrIssue> list) {
-                if (list.isEmpty) {
-                  return const EmptyView(
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const <Widget>[
+            SizedBox(height: 100),
+            EmptyView(
                     icon: Icons.report_off_outlined,
                     title: 'No issues',
                     message: 'Nothing has been reported.',
-                  );
+                  ),
+          ],
+        ),
+      );
                 }
-                return ListView.separated(
+                return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async {
+              ref.invalidate(seerrIssuesProvider(args));
+            },
+      child: ListView.separated(
                   padding: Insets.page,
                   itemCount: list.length,
                   separatorBuilder: (_, __) =>
@@ -89,10 +115,11 @@ class _SeerrIssuesScreenState extends ConsumerState<SeerrIssuesScreen> {
                     instance: widget.instance,
                     issue: list[index],
                   ),
-                );
-              },
-            ),
-          ),
+                ),
+    );
+              
+          },
+        ),
         ),
       ],
     );
@@ -128,9 +155,8 @@ class _IssueCard extends ConsumerWidget {
           .value;
     }
     final String title = details?.displayTitle ?? 'Issue #${issue.id}';
-    final String? posterUrl = details?.posterPath != null
-        ? _tmdbImage(details!.posterPath!, 'w342')
-        : null;
+    final SeerrApi? api = ref.watch(seerrApiProvider(instance)).value;
+    final String? posterUrl = api?.imageUrl(details?.posterPath);
     final String time = seerrIssueRelativeTime(issue.createdAt);
 
     return Material(
