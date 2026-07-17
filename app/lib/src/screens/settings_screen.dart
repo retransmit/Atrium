@@ -6,7 +6,6 @@ import 'package:core_ui/core_ui.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:palette_generator_plus/palette_generator_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../custom_theme_providers.dart';
@@ -359,56 +358,28 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
       if (!await file.exists()) {
         return;
       }
-      final PaletteGenerator palette = await PaletteGenerator.fromImageProvider(
-        FileImage(file),
-        size: const Size(200, 200),
-        timeout: Duration.zero,
+      final ColorScheme imageScheme = await ColorScheme.fromImageProvider(
+        provider: FileImage(file),
       );
       final List<Color> rawColors = <Color>{
-        if (palette.vibrantColor?.color != null) palette.vibrantColor!.color,
-        if (palette.lightVibrantColor?.color != null)
-          palette.lightVibrantColor!.color,
-        if (palette.darkVibrantColor?.color != null)
-          palette.darkVibrantColor!.color,
-        if (palette.mutedColor?.color != null) palette.mutedColor!.color,
-        if (palette.lightMutedColor?.color != null)
-          palette.lightMutedColor!.color,
-        if (palette.darkMutedColor?.color != null)
-          palette.darkMutedColor!.color,
-        if (palette.dominantColor?.color != null) palette.dominantColor!.color,
+        imageScheme.primary,
+        imageScheme.secondary,
+        imageScheme.tertiary,
+        imageScheme.error,
+        imageScheme.primaryContainer,
+        imageScheme.secondaryContainer,
+        imageScheme.tertiaryContainer,
       }.toList();
 
-      // Filter out colors that are visually too similar to each other
-      final List<Color> distinctColors = [];
-      for (final color in rawColors) {
-        final hsl = HSLColor.fromColor(color);
-        bool isDuplicate = false;
-        for (final existing in distinctColors) {
-          final existingHsl = HSLColor.fromColor(existing);
-          final hueDiff = (hsl.hue - existingHsl.hue).abs();
-          final minHueDiff = hueDiff > 180 ? 360 - hueDiff : hueDiff;
-          final satDiff = (hsl.saturation - existingHsl.saturation).abs();
-          final lightDiff = (hsl.lightness - existingHsl.lightness).abs();
-
-          if (minHueDiff < 30.0 && satDiff < 0.2 && lightDiff < 0.2) {
-            isDuplicate = true;
-            break;
-          }
-        }
-        if (!isDuplicate) {
-          distinctColors.add(color);
-        }
-      }
-
       // Store colors to prevent recalculation when reloading page
-      final csv = distinctColors
+      final csv = rawColors
           .map((c) =>
               c.toARGB32().toRadixString(16).padLeft(8, '0').substring(2))
           .join(',');
 
       if (!mounted) return;
       setState(() {
-        _extractedColors = distinctColors;
+        _extractedColors = rawColors;
       });
       await ref.read(preferencesProvider.notifier).setCustomImageColorsCsv(csv);
     } catch (_) {
