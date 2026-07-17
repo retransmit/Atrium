@@ -51,22 +51,6 @@ jobs:
           channel: stable
           cache: true
 
-      # The NDK's own install path reaches the APK. libdartjni.so, from the jni
-      # package, is linked with a build-id derived from object data that carries
-      # that path, and although the path is stripped from the library before it
-      # is packaged, the build-id keeps the difference. So an SDK at the runner's
-      # default location produces a library that differs from F-Droid's in
-      # exactly those 20 bytes and nothing else, which is enough to fail
-      # verification. F-Droid's builders keep the SDK at /opt/android-sdk.
-      - name: Put the Android SDK where F-Droid keeps it
-        run: |
-          sudo mkdir -p /opt/android-sdk
-          sudo mount --bind "$ANDROID_HOME" /opt/android-sdk
-          echo "ANDROID_HOME=/opt/android-sdk" >> "$GITHUB_ENV"
-          echo "ANDROID_SDK_ROOT=/opt/android-sdk" >> "$GITHUB_ENV"
-
-      # Relocate before building. The checkout path ends up inside the APK, so
-      # it has to be the path F-Droid rebuilds at, not the runner's default.
       - name: Move the checkout to the reproducible build path
         run: |
           mkdir -p "$(dirname "$BUILD_DIR")"
