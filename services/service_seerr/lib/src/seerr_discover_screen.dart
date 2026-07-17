@@ -160,6 +160,7 @@ class _DiscoverSection extends ConsumerWidget {
                     padding: const EdgeInsets.only(right: Insets.md),
                     child: SeerrMediaCard(
                       item: item,
+                      api: ref.watch(seerrApiProvider(instance)).value,
                       onTap: () => pushScreen<void>(
                         context,
                         SeerrItemDetailScreen(

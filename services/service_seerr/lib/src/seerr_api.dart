@@ -18,6 +18,27 @@ class SeerrApi {
 
   static const String _base = 'api/v1';
 
+  /// Poster or backdrop URL for a TMDB image path, served by the Seerr instance
+  /// rather than fetched from TMDB directly.
+  ///
+  /// Seerr caches this artwork and hands it back from `/imageproxy`, which sits
+  /// outside its API and takes no credentials. Reading `image.tmdb.org` instead
+  /// renders the same picture but tells TMDB the device's address and what it
+  /// is looking at, which is not something browsing a private request list
+  /// should broadcast.
+  ///
+  /// The base comes from the Dio, so this follows whichever of the instance's
+  /// URLs the current network resolved to. Null for a null or empty [path],
+  /// which the caller renders as a placeholder.
+  String? imageUrl(String? path, {String size = 'w342'}) {
+    if (path == null || path.isEmpty) {
+      return null;
+    }
+    final Uri base = Uri.parse(_dio.options.baseUrl);
+    final String rel = path.startsWith('/') ? path : '/$path';
+    return base.resolve('imageproxy/tmdb/t/p/$size$rel').toString();
+  }
+
   Future<List<SeerrRequest>> getRequests({
     int take = 30,
     int skip = 0,

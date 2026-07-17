@@ -180,6 +180,7 @@ class _RequestTileState extends ConsumerState<_RequestTile> {
           borderRadius: BorderRadius.circular(20),
           child: SeerrRequestCard(
             item: item,
+              api: ref.watch(seerrApiProvider(widget.instance)).value,
             requestedBy: request.requestedBy?.displayName,
             mediaStatus: request.media?.status,
             requestStatus: request.status,

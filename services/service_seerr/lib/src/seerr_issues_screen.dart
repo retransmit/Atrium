@@ -7,13 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models/seerr_discover.dart';
 import 'models/seerr_issue.dart';
 import 'models/seerr_request.dart';
+import 'seerr_api.dart';
 import 'seerr_issue_detail_screen.dart';
 import 'seerr_providers.dart';
-
-/// TMDB image URL builder, mirroring the module's existing construction
-/// (posters at `w342`).
-String _tmdbImage(String path, String size) =>
-    'https://image.tmdb.org/t/p/$size$path';
 
 /// The Issues tab body: All / Open / Resolved filter chips over the polled
 /// issue list (10s, via `seerrIssuesProvider`). Tapping a card pushes
@@ -128,9 +124,8 @@ class _IssueCard extends ConsumerWidget {
           .value;
     }
     final String title = details?.displayTitle ?? 'Issue #${issue.id}';
-    final String? posterUrl = details?.posterPath != null
-        ? _tmdbImage(details!.posterPath!, 'w342')
-        : null;
+    final SeerrApi? api = ref.watch(seerrApiProvider(instance)).value;
+    final String? posterUrl = api?.imageUrl(details?.posterPath);
     final String time = seerrIssueRelativeTime(issue.createdAt);
 
     return Material(
