@@ -137,23 +137,54 @@ class _IndexersTab extends ConsumerWidget {
         ref.watch(prowlarrStatsByIdProvider(instance)).value ??
             const <int, ProwlarrIndexerStat>{};
 
-    return M3RefreshIndicator(
+    return AsyncValueView<List<ProwlarrIndexer>>(
+          value: indexers,
+        onRetry: () => ref.invalidate(prowlarrIndexersProvider(instance)),
+          data: (List<ProwlarrIndexer> list) {
+            
+          if (list.isEmpty) {
+            return EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        onRefresh: () async {
+        ref.invalidate(prowlarrIndexersProvider(instance));
+        ref.invalidate(prowlarrStatsByIdProvider(instance));
+      },
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const <Widget>[
+            SizedBox(height: 100),
+            EmptyView(
+              icon: Icons.travel_explore_outlined,
+              title: 'No indexers',
+              message: 'Tap "Add indexer" to configure one.',
+            ),
+          ],
+        ),
+      );
+          }
+          return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
       onRefresh: () async {
         ref.invalidate(prowlarrIndexersProvider(instance));
         ref.invalidate(prowlarrStatsByIdProvider(instance));
       },
-      child: AsyncValueView<List<ProwlarrIndexer>>(
-        value: indexers,
-        onRetry: () => ref.invalidate(prowlarrIndexersProvider(instance)),
-        data: (List<ProwlarrIndexer> list) {
-          if (list.isEmpty) {
-            return const EmptyView(
-              icon: Icons.travel_explore_outlined,
-              title: 'No indexers',
-              message: 'Tap "Add indexer" to configure one.',
-            );
-          }
-          return ListView.separated(
+      child: ListView.separated(
             padding: const EdgeInsets.symmetric(
               horizontal: Insets.lg,
               vertical: Insets.sm,
@@ -168,10 +199,11 @@ class _IndexersTab extends ConsumerWidget {
                 onTap: () => onEdit(ix.id),
               );
             },
-          );
-        },
-      ),
+          ),
     );
+        
+          },
+        );
   }
 }
 

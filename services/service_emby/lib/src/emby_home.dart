@@ -177,27 +177,56 @@ class EmbyLibraryGrid extends ConsumerWidget {
         ref.watch(embyLibraryItemsProvider((instance, view)));
     final EmbyClient? client = ref.watch(embyClientProvider(instance)).value;
 
-    return M3RefreshIndicator(
-      onRefresh: () async =>
-          ref.invalidate(embyLibraryItemsProvider((instance, view))),
-      child: AsyncValueView<List<EmbyItem>>(
-        value: items,
+    return AsyncValueView<List<EmbyItem>>(
+          value: items,
         onRetry: () =>
             ref.invalidate(embyLibraryItemsProvider((instance, view))),
-        data: (List<EmbyItem> list) {
+          data: (List<EmbyItem> list) {
+            
           if (list.isEmpty) {
-            return const EmptyView(
+            return EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        onRefresh: () async =>
+          ref.invalidate(embyLibraryItemsProvider((instance, view))),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const <Widget>[
+            SizedBox(height: 100),
+            EmptyView(
               icon: Icons.movie_outlined,
               title: 'Empty library',
               message: 'Nothing in this library yet.',
-            );
+            ),
+          ],
+        ),
+      );
           }
           final EmbyViewMode viewMode =
               ref.watch(embyViewModeProvider(instance));
 
           // (Replaced with _buildEmbyGridOrList)
 
-          return _buildEmbyGridOrList(
+          return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async =>
+          ref.invalidate(embyLibraryItemsProvider((instance, view))),
+      child: _buildEmbyGridOrList(
             context,
             list,
             viewMode,
@@ -328,10 +357,11 @@ class EmbyLibraryGrid extends ConsumerWidget {
                       ),
               );
             },
-          );
-        },
-      ),
+          ),
     );
+        
+          },
+        );
   }
 }
 
@@ -351,26 +381,55 @@ class EmbyItemsGrid extends ConsumerWidget {
         ref.watch(embyItemsProvider((instance, libraryId)));
     final EmbyClient? client = ref.watch(embyClientProvider(instance)).value;
 
-    return M3RefreshIndicator(
-      onRefresh: () async =>
-          ref.invalidate(embyItemsProvider((instance, libraryId))),
-      child: AsyncValueView<List<EmbyItem>>(
-        value: items,
+    return AsyncValueView<List<EmbyItem>>(
+          value: items,
         onRetry: () => ref.invalidate(embyItemsProvider((instance, libraryId))),
-        data: (List<EmbyItem> list) {
+          data: (List<EmbyItem> list) {
+            
           if (list.isEmpty) {
-            return const EmptyView(
+            return EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        onRefresh: () async =>
+          ref.invalidate(embyItemsProvider((instance, libraryId))),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const <Widget>[
+            SizedBox(height: 100),
+            EmptyView(
               icon: Icons.movie_outlined,
               title: 'Empty library',
               message: 'Nothing in this library yet.',
-            );
+            ),
+          ],
+        ),
+      );
           }
           final EmbyViewMode viewMode =
               ref.watch(embyViewModeProvider(instance));
 
           // (Replaced with _buildEmbyGridOrList)
 
-          return _buildEmbyGridOrList(
+          return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async =>
+          ref.invalidate(embyItemsProvider((instance, libraryId))),
+      child: _buildEmbyGridOrList(
             context,
             list,
             viewMode,
@@ -397,10 +456,11 @@ class EmbyItemsGrid extends ConsumerWidget {
                       ),
               );
             },
-          );
-        },
-      ),
+          ),
     );
+        
+          },
+        );
   }
 
   void _openItem(BuildContext context, EmbyClient client, EmbyItem item) {
@@ -1141,7 +1201,16 @@ class _HomeSections extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return M3RefreshIndicator(
+    return EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
       onRefresh: () async {
         ref.invalidate(embySessionsProvider(instance));
         ref.invalidate(embyResumeItemsProvider(instance));

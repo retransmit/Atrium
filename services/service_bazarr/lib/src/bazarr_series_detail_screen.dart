@@ -31,20 +31,48 @@ class BazarrSeriesDetailScreen extends ConsumerWidget {
     return Scaffold(
       appBar:
           AppBar(title: Text(series.title, overflow: TextOverflow.ellipsis)),
-      body: M3RefreshIndicator(
-        onRefresh: () async => ref.invalidate(bazarrEpisodesProvider(args)),
-        child: AsyncValueView<List<BazarrEpisode>>(
+      body: AsyncValueView<List<BazarrEpisode>>(
           value: episodes,
           onRetry: () => ref.invalidate(bazarrEpisodesProvider(args)),
           data: (List<BazarrEpisode> eps) {
+            
             if (eps.isEmpty) {
-              return const EmptyView(
+              return EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        onRefresh: () async => ref.invalidate(bazarrEpisodesProvider(args)),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const <Widget>[
+            SizedBox(height: 100),
+            EmptyView(
                 icon: Icons.subtitles_outlined,
                 title: 'No episodes',
                 message: 'This series has no episode files in Bazarr.',
-              );
+              ),
+          ],
+        ),
+      );
             }
-            return ListView.builder(
+            return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async => ref.invalidate(bazarrEpisodesProvider(args)),
+      child: ListView.builder(
               padding: Insets.page,
               itemCount: eps.length + 1,
               itemBuilder: (BuildContext context, int index) {
@@ -62,10 +90,11 @@ class BazarrSeriesDetailScreen extends ConsumerWidget {
                   ),
                 );
               },
-            );
+            ),
+    );
+          
           },
         ),
-      ),
     );
   }
 }

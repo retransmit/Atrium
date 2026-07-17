@@ -20,7 +20,16 @@ class GlancesHome extends ConsumerWidget {
         ref.watch(glancesPinnedNetworkProvider(instance));
 
     return statsAsync.when(
-      data: (GlancesStats stats) => M3RefreshIndicator(
+      data: (GlancesStats stats) => EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
         onRefresh: () async =>
             ref.refresh(glancesStatsProvider(instance).future),
         child: ListView(

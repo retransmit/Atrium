@@ -29,18 +29,35 @@ class ProwlarrTagsScreen extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: const Text('Add'),
       ),
-      body: M3RefreshIndicator(
-        onRefresh: () async => ref.invalidate(prowlarrProvidersProvider(_args)),
-        child: AsyncValueView<List<Map<String, dynamic>>>(
+      body: AsyncValueView<List<Map<String, dynamic>>>(
           value: tags,
           onRetry: () => ref.invalidate(prowlarrProvidersProvider(_args)),
           data: (List<Map<String, dynamic>> items) {
+            
             if (items.isEmpty) {
-              return const EmptyView(
+              return EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        onRefresh: () async => ref.invalidate(prowlarrProvidersProvider(_args)),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const <Widget>[
+            SizedBox(height: 100),
+            EmptyView(
                 icon: Icons.label_outline,
                 title: 'No tags',
                 message: 'Tap Add to create a tag.',
-              );
+              ),
+          ],
+        ),
+      );
             }
             final List<Map<String, dynamic>> sorted = <Map<String, dynamic>>[
               ...items,
@@ -50,7 +67,18 @@ class ProwlarrTagsScreen extends ConsumerWidget {
                           ((b['label'] ?? '') as String).toLowerCase(),
                         ),
               );
-            return ListView.builder(
+            return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async => ref.invalidate(prowlarrProvidersProvider(_args)),
+      child: ListView.builder(
               padding: Insets.pageH,
               itemCount: sorted.length,
               itemBuilder: (BuildContext context, int i) {
@@ -66,10 +94,11 @@ class ProwlarrTagsScreen extends ConsumerWidget {
                   onTap: () => _editLabel(context, ref, tag),
                 );
               },
-            );
+            ),
+    );
+          
           },
         ),
-      ),
     );
   }
 

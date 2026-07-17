@@ -87,13 +87,11 @@ android {
             // Gradle Plugin, so the absence has to be expressed here.
             signingConfig = when {
                 hasReleaseSigning -> signingConfigs.getByName("release")
-                // An unsigned APK cannot be installed, which is unhelpful when
-                // you only want to try a release build. Opt into the debug key
-                // with `flutter build apk --release -PdebugSignRelease=true`.
-                // Never set it for a published build: F-Droid rebuilds this
-                // source and needs the result unsigned to verify it against the
-                // released APK.
-                project.hasProperty("debugSignRelease") ->
+                // Fallback to debug key for local developer builds to make
+                // `flutter run --release` work out of the box, while keeping it
+                // unsigned on CI/F-Droid builds.
+                project.hasProperty("debugSignRelease") ||
+                (System.getenv("CI") == null && System.getenv("FDROID") == null) ->
                     signingConfigs.getByName("debug")
                 else -> null
             }

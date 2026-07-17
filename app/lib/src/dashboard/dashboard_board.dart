@@ -63,7 +63,16 @@ class DashboardBoard extends ConsumerWidget {
       );
     }
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
       onRefresh: () async => _refreshAll(ref, instances),
       child: ListView.separated(
         padding: Insets.page,
@@ -192,7 +201,7 @@ class _EditBoard extends ConsumerWidget {
     return ReorderableListView(
       padding: Insets.page,
       buildDefaultDragHandles: false,
-      onReorder: (int oldIndex, int newIndex) => ref
+      onReorderItem: (int oldIndex, int newIndex) => ref
           .read(dashboardLayoutProvider.notifier)
           .moveEnabled(oldIndex, newIndex),
       footer: hidden.isEmpty

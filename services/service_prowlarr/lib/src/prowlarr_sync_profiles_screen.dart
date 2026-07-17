@@ -32,20 +32,48 @@ class ProwlarrSyncProfilesScreen extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: const Text('Add'),
       ),
-      body: M3RefreshIndicator(
-        onRefresh: () async => ref.invalidate(prowlarrProvidersProvider(_args)),
-        child: AsyncValueView<List<Map<String, dynamic>>>(
+      body: AsyncValueView<List<Map<String, dynamic>>>(
           value: profiles,
           onRetry: () => ref.invalidate(prowlarrProvidersProvider(_args)),
           data: (List<Map<String, dynamic>> items) {
+            
             if (items.isEmpty) {
-              return const EmptyView(
+              return EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        onRefresh: () async => ref.invalidate(prowlarrProvidersProvider(_args)),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const <Widget>[
+            SizedBox(height: 100),
+            EmptyView(
                 icon: Icons.tune_outlined,
                 title: 'No sync profiles',
                 message: 'Tap Add to create a sync profile.',
-              );
+              ),
+          ],
+        ),
+      );
             }
-            return ListView.builder(
+            return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async => ref.invalidate(prowlarrProvidersProvider(_args)),
+      child: ListView.builder(
               padding: Insets.pageH,
               itemCount: items.length,
               itemBuilder: (BuildContext context, int i) {
@@ -58,10 +86,11 @@ class ProwlarrSyncProfilesScreen extends ConsumerWidget {
                   onTap: () => _openForm(context, profile: p),
                 );
               },
-            );
+            ),
+    );
+          
           },
         ),
-      ),
     );
   }
 

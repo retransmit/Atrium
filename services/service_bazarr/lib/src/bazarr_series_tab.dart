@@ -18,29 +18,58 @@ class BazarrSeriesTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<List<BazarrSeries>> series =
         ref.watch(bazarrSeriesProvider(instance));
-    return M3RefreshIndicator(
-      onRefresh: () async => ref.invalidate(bazarrSeriesProvider(instance)),
-      child: AsyncValueView<List<BazarrSeries>>(
-        value: series,
+    return AsyncValueView<List<BazarrSeries>>(
+          value: series,
         onRetry: () => ref.invalidate(bazarrSeriesProvider(instance)),
-        data: (List<BazarrSeries> list) {
+          data: (List<BazarrSeries> list) {
+            
           if (list.isEmpty) {
-            return const EmptyView(
+            return EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        onRefresh: () async => ref.invalidate(bazarrSeriesProvider(instance)),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const <Widget>[
+            SizedBox(height: 100),
+            EmptyView(
               icon: Icons.live_tv_outlined,
               title: 'No series',
               message: 'Bazarr has no series from Sonarr yet.',
-            );
+            ),
+          ],
+        ),
+      );
           }
-          return ListView.separated(
+          return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async => ref.invalidate(bazarrSeriesProvider(instance)),
+      child: ListView.separated(
             padding: Insets.page,
             itemCount: list.length,
             separatorBuilder: (_, __) => const SizedBox(height: Insets.sm),
             itemBuilder: (BuildContext context, int index) =>
                 _SeriesCard(instance: instance, series: list[index]),
-          );
-        },
-      ),
+          ),
     );
+        
+          },
+        );
   }
 }
 

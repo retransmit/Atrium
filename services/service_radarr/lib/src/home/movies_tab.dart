@@ -186,12 +186,23 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
           value: filtered,
           onRetry: () => ref.invalidate(radarrMoviesProvider(widget.instance)),
           data: (List<RadarrMovie> list) {
-            return M3RefreshIndicator(
+            return EasyRefresh(
+          header: const ClassicHeader(
+            position: IndicatorPosition.locator,
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
               onRefresh: () async {
                 ref.invalidate(radarrMoviesProvider(widget.instance));
                 await ref.read(radarrMoviesProvider(widget.instance).future);
               },
               child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 controller: _scrollController,
                 slivers: <Widget>[
                   SliverAppBar(
@@ -329,6 +340,7 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                       const SizedBox(width: Insets.sm),
                     ],
                   ),
+                  const HeaderLocator.sliver(),
                   if (list.isEmpty)
                     const SliverFillRemaining(
                       hasScrollBody: false,

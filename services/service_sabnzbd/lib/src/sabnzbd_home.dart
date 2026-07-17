@@ -54,14 +54,24 @@ class _QueueTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<SabQueue> queue = ref.watch(sabQueueProvider(instance));
-    return M3RefreshIndicator(
-      onRefresh: () async => ref.invalidate(sabQueueProvider(instance)),
-      child: AsyncValueView<SabQueue>(
-        value: queue,
+    return AsyncValueView<SabQueue>(
+          value: queue,
         onRetry: () => ref.invalidate(sabQueueProvider(instance)),
-        data: (SabQueue q) {
+          data: (SabQueue q) {
+            
           if (q.slots.isEmpty) {
-            return ListView(
+            return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async => ref.invalidate(sabQueueProvider(instance)),
+      child: ListView(
               padding: Insets.page,
               children: <Widget>[
                 _QueueSummary(instance: instance, queue: q),
@@ -72,9 +82,21 @@ class _QueueTab extends ConsumerWidget {
                   message: 'Nothing downloading right now.',
                 ),
               ],
-            );
+            ),
+    );
           }
-          return ListView.builder(
+          return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async => ref.invalidate(sabQueueProvider(instance)),
+      child: ListView.builder(
             padding: Insets.page,
             itemCount: q.slots.length + 1,
             itemBuilder: (BuildContext context, int index) {
@@ -89,10 +111,11 @@ class _QueueTab extends ConsumerWidget {
                 child: _SlotCard(instance: instance, slot: q.slots[index - 1]),
               );
             },
-          );
-        },
-      ),
+          ),
     );
+        
+          },
+        );
   }
 }
 
@@ -323,14 +346,24 @@ class _HistoryTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<SabHistory> history =
         ref.watch(sabHistoryProvider(instance));
-    return M3RefreshIndicator(
-      onRefresh: () async => ref.invalidate(sabHistoryProvider(instance)),
-      child: AsyncValueView<SabHistory>(
-        value: history,
+    return AsyncValueView<SabHistory>(
+          value: history,
         onRetry: () => ref.invalidate(sabHistoryProvider(instance)),
-        data: (SabHistory h) {
+          data: (SabHistory h) {
+            
           if (h.slots.isEmpty) {
-            return ListView(
+            return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async => ref.invalidate(sabHistoryProvider(instance)),
+      child: ListView(
               padding: Insets.page,
               children: const <Widget>[
                 SizedBox(height: 80),
@@ -340,18 +373,31 @@ class _HistoryTab extends ConsumerWidget {
                   message: 'Completed and failed downloads will show up here.',
                 ),
               ],
-            );
+            ),
+    );
           }
-          return ListView.separated(
+          return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async => ref.invalidate(sabHistoryProvider(instance)),
+      child: ListView.separated(
             padding: Insets.page,
             itemCount: h.slots.length,
             separatorBuilder: (_, __) => const SizedBox(height: Insets.sm),
             itemBuilder: (BuildContext context, int index) =>
                 _HistoryCard(instance: instance, slot: h.slots[index]),
-          );
-        },
-      ),
+          ),
     );
+        
+          },
+        );
   }
 }
 
@@ -472,7 +518,16 @@ class _ServerTab extends ConsumerWidget {
     final String version = ref.watch(sabVersionProvider(instance)).value ?? '';
     final int currentLimit = int.tryParse(queue?.speedlimit ?? '') ?? 100;
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
       onRefresh: () async {
         ref.invalidate(sabServerStatsProvider(instance));
         ref.invalidate(sabVersionProvider(instance));

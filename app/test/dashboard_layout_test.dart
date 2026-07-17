@@ -99,7 +99,7 @@ void main() {
       controller.setEnabled(DashboardWidgetKind.streams, false);
       // Enabled order is now: downloads, upcoming, recentlyAdded,
       // recentlyDownloaded, requests, serverInfo.
-      controller.moveEnabled(0, 3); // drag downloads down two slots
+      controller.moveEnabled(0, 2); // drag downloads down two slots
       final List<DashboardWidgetKind> enabled = container
           .read(dashboardLayoutProvider)
           .where((DashboardWidgetConfig c) => c.enabled)

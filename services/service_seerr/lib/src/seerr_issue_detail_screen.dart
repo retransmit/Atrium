@@ -225,7 +225,16 @@ class _SeerrIssueDetailScreenState
         child: Column(
           children: <Widget>[
             Expanded(
-              child: M3RefreshIndicator(
+              child: EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
                 onRefresh: () async {
                   _refreshIssue();
                 },

@@ -94,11 +94,6 @@ class DashboardLayoutController extends Notifier<List<DashboardWidgetConfig>> {
   /// enabled widgets). Disabled entries are re-appended after the enabled
   /// ones - their relative position is meaningless while hidden.
   void moveEnabled(int oldIndex, int newIndex) {
-    // ReorderableListView reports the insertion index including the dragged
-    // item; adjust when moving down.
-    if (newIndex > oldIndex) {
-      newIndex -= 1;
-    }
     final List<DashboardWidgetConfig> enabled = <DashboardWidgetConfig>[
       for (final DashboardWidgetConfig c in state)
         if (c.enabled) c,

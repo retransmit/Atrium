@@ -161,25 +161,58 @@ class _ItemsGridState extends ConsumerState<_ItemsGrid> {
     final AsyncValue<List<PlexMetadata>> items = ref.watch(_provider);
     final PlexApi? api = ref.watch(plexApiProvider(widget.instance)).value;
 
-    final Widget grid = M3RefreshIndicator(
+    final Widget grid = AsyncValueView<List<PlexMetadata>>(
+          value: items,
+        onRetry: () => ref.invalidate(_provider),
+          data: (List<PlexMetadata> list) {
+            
+          if (list.isEmpty) {
+            return EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        onRefresh: () async {
+        ref.invalidate(_provider);
+        if (widget.isSection) {
+          ref.invalidate(plexGenresProvider((widget.instance, widget.id)));
+        }
+      },
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const <Widget>[
+            SizedBox(height: 100),
+            EmptyView(
+              icon: Icons.movie_outlined,
+              title: 'Empty',
+              message: 'Nothing here yet.',
+            ),
+          ],
+        ),
+      );
+          }
+          return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
       onRefresh: () async {
         ref.invalidate(_provider);
         if (widget.isSection) {
           ref.invalidate(plexGenresProvider((widget.instance, widget.id)));
         }
       },
-      child: AsyncValueView<List<PlexMetadata>>(
-        value: items,
-        onRetry: () => ref.invalidate(_provider),
-        data: (List<PlexMetadata> list) {
-          if (list.isEmpty) {
-            return const EmptyView(
-              icon: Icons.movie_outlined,
-              title: 'Empty',
-              message: 'Nothing here yet.',
-            );
-          }
-          return MasonryGridView.extent(
+      child: MasonryGridView.extent(
             padding: Insets.page,
             maxCrossAxisExtent: 140,
             crossAxisSpacing: Insets.md,
@@ -194,10 +227,11 @@ class _ItemsGridState extends ConsumerState<_ItemsGrid> {
                 onTap: () => openPlexItem(context, widget.instance, item),
               );
             },
-          );
-        },
-      ),
+          ),
     );
+        
+          },
+        );
 
     if (!widget.isSection) {
       return grid;
@@ -325,7 +359,16 @@ class _HomeSections extends ConsumerWidget {
     final List<PlexLibrary> libraries =
         ref.watch(plexLibrariesProvider(instance)).value ??
             const <PlexLibrary>[];
-    return M3RefreshIndicator(
+    return EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
       onRefresh: () async {
         ref.invalidate(plexSessionsProvider(instance));
         ref.invalidate(plexOnDeckProvider(instance));

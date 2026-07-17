@@ -189,12 +189,23 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
           value: filtered,
           onRetry: () => ref.invalidate(sonarrSeriesProvider(widget.instance)),
           data: (List<SonarrSeries> list) {
-            return M3RefreshIndicator(
+            return EasyRefresh(
+          header: const ClassicHeader(
+            position: IndicatorPosition.locator,
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
               onRefresh: () async {
                 ref.invalidate(sonarrSeriesProvider(widget.instance));
                 await ref.read(sonarrSeriesProvider(widget.instance).future);
               },
               child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 controller: _scrollController,
                 slivers: <Widget>[
                   // Built-in Material 3 SliverAppBar with floating & snap animation
@@ -333,6 +344,7 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                       const SizedBox(width: Insets.sm),
                     ],
                   ),
+                  const HeaderLocator.sliver(),
                   if (list.isEmpty)
                     const SliverFillRemaining(
                       hasScrollBody: false,

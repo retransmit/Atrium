@@ -306,37 +306,73 @@ class _QueueView extends ConsumerWidget {
         }).toList();
 
         if (filteredItems.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Icon(
-                  Icons.queue,
-                  size: 48,
-                  color: theme.colorScheme.outline,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Your active queue is empty',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+          return EasyRefresh(
+            header: const ClassicHeader(
+              dragText: 'Pull to refresh',
+              armedText: 'Release ready',
+              readyText: 'Refreshing...',
+              processingText: 'Refreshing...',
+              processedText: 'Succeeded',
+              failedText: 'Failed',
+              messageText: 'Last updated at %T',
+            ),
+            onRefresh: () async {
+              ref.invalidate(radarrQueueProvider(instance));
+              await ref.read(radarrQueueProvider(instance).future);
+            },
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height * 0.6,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Icon(
+                        Icons.queue,
+                        size: 48,
+                        color: theme.colorScheme.outline,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Your active queue is empty',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
           );
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(Insets.md),
-          itemCount: filteredItems.length,
-          itemBuilder: (context, index) {
-            final item = filteredItems[index];
-            return _QueueCard(
-              instance: instance,
-              item: item,
-            );
+        return EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
+          onRefresh: () async {
+            ref.invalidate(radarrQueueProvider(instance));
+            await ref.read(radarrQueueProvider(instance).future);
           },
+          child: ListView.builder(
+            padding: const EdgeInsets.all(Insets.md),
+            itemCount: filteredItems.length,
+            itemBuilder: (context, index) {
+              final item = filteredItems[index];
+              return _QueueCard(
+                instance: instance,
+                item: item,
+              );
+            },
+          ),
         );
       },
       loading: () => const Center(child: ExpressiveProgressIndicator()),
@@ -741,23 +777,44 @@ class _HistoryView extends ConsumerWidget {
         }).toList();
 
         if (filteredItems.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Icon(
-                  Icons.history,
-                  size: 48,
-                  color: theme.colorScheme.outline,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'No history entries found',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+          return EasyRefresh(
+            header: const ClassicHeader(
+              dragText: 'Pull to refresh',
+              armedText: 'Release ready',
+              readyText: 'Refreshing...',
+              processingText: 'Refreshing...',
+              processedText: 'Succeeded',
+              failedText: 'Failed',
+              messageText: 'Last updated at %T',
+            ),
+            onRefresh: () async {
+              ref.invalidate(radarrHistoryProvider(instance));
+              await ref.read(radarrHistoryProvider(instance).future);
+            },
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height * 0.6,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Icon(
+                        Icons.history,
+                        size: 48,
+                        color: theme.colorScheme.outline,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No history entries found',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
           );
         }
@@ -768,31 +825,61 @@ class _HistoryView extends ConsumerWidget {
             (RadarrHistoryItem item) => item.movie?.id ?? 0,
           );
           final keys = groupedMap.keys.toList();
-          return ListView.builder(
-            padding: const EdgeInsets.all(Insets.md),
-            itemCount: keys.length,
-            itemBuilder: (context, index) {
-              final movieGroup = groupedMap[keys[index]]!;
-              final movie = movieGroup.first.movie;
-              return _GroupedHistoryCard(
-                instance: instance,
-                movie: movie,
-                items: movieGroup,
-              );
+          return EasyRefresh(
+            header: const ClassicHeader(
+              dragText: 'Pull to refresh',
+              armedText: 'Release ready',
+              readyText: 'Refreshing...',
+              processingText: 'Refreshing...',
+              processedText: 'Succeeded',
+              failedText: 'Failed',
+              messageText: 'Last updated at %T',
+            ),
+            onRefresh: () async {
+              ref.invalidate(radarrHistoryProvider(instance));
+              await ref.read(radarrHistoryProvider(instance).future);
             },
+            child: ListView.builder(
+              padding: const EdgeInsets.all(Insets.md),
+              itemCount: keys.length,
+              itemBuilder: (context, index) {
+                final movieGroup = groupedMap[keys[index]]!;
+                final movie = movieGroup.first.movie;
+                return _GroupedHistoryCard(
+                  instance: instance,
+                  movie: movie,
+                  items: movieGroup,
+                );
+              },
+            ),
           );
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(Insets.md),
-          itemCount: filteredItems.length,
-          itemBuilder: (context, index) {
-            final item = filteredItems[index];
-            return _HistoryCard(
-              instance: instance,
-              item: item,
-            );
+        return EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
+          onRefresh: () async {
+            ref.invalidate(radarrHistoryProvider(instance));
+            await ref.read(radarrHistoryProvider(instance).future);
           },
+          child: ListView.builder(
+            padding: const EdgeInsets.all(Insets.md),
+            itemCount: filteredItems.length,
+            itemBuilder: (context, index) {
+              final item = filteredItems[index];
+              return _HistoryCard(
+                instance: instance,
+                item: item,
+              );
+            },
+          ),
         );
       },
       loading: () => const Center(child: ExpressiveProgressIndicator()),
@@ -1411,23 +1498,44 @@ class _BlocklistView extends ConsumerWidget {
         }).toList();
 
         if (filteredItems.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Icon(
-                  Icons.block_outlined,
-                  size: 48,
-                  color: theme.colorScheme.outline,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'No blocklist entries found',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+          return EasyRefresh(
+            header: const ClassicHeader(
+              dragText: 'Pull to refresh',
+              armedText: 'Release ready',
+              readyText: 'Refreshing...',
+              processingText: 'Refreshing...',
+              processedText: 'Succeeded',
+              failedText: 'Failed',
+              messageText: 'Last updated at %T',
+            ),
+            onRefresh: () async {
+              ref.invalidate(radarrBlocklistProvider(instance));
+              await ref.read(radarrBlocklistProvider(instance).future);
+            },
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height * 0.6,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Icon(
+                        Icons.block_outlined,
+                        size: 48,
+                        color: theme.colorScheme.outline,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No blocklist entries found',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
           );
         }
@@ -1438,31 +1546,61 @@ class _BlocklistView extends ConsumerWidget {
             (RadarrBlocklistItem item) => item.movie?.id ?? 0,
           );
           final keys = groupedMap.keys.toList();
-          return ListView.builder(
-            padding: const EdgeInsets.all(Insets.md),
-            itemCount: keys.length,
-            itemBuilder: (context, index) {
-              final movieGroup = groupedMap[keys[index]]!;
-              final movie = movieGroup.first.movie;
-              return _GroupedBlocklistCard(
-                instance: instance,
-                movie: movie,
-                items: movieGroup,
-              );
+          return EasyRefresh(
+            header: const ClassicHeader(
+              dragText: 'Pull to refresh',
+              armedText: 'Release ready',
+              readyText: 'Refreshing...',
+              processingText: 'Refreshing...',
+              processedText: 'Succeeded',
+              failedText: 'Failed',
+              messageText: 'Last updated at %T',
+            ),
+            onRefresh: () async {
+              ref.invalidate(radarrBlocklistProvider(instance));
+              await ref.read(radarrBlocklistProvider(instance).future);
             },
+            child: ListView.builder(
+              padding: const EdgeInsets.all(Insets.md),
+              itemCount: keys.length,
+              itemBuilder: (context, index) {
+                final movieGroup = groupedMap[keys[index]]!;
+                final movie = movieGroup.first.movie;
+                return _GroupedBlocklistCard(
+                  instance: instance,
+                  movie: movie,
+                  items: movieGroup,
+                );
+              },
+            ),
           );
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(Insets.md),
-          itemCount: filteredItems.length,
-          itemBuilder: (context, index) {
-            final item = filteredItems[index];
-            return _BlocklistCard(
-              instance: instance,
-              item: item,
-            );
+        return EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
+          onRefresh: () async {
+            ref.invalidate(radarrBlocklistProvider(instance));
+            await ref.read(radarrBlocklistProvider(instance).future);
           },
+          child: ListView.builder(
+            padding: const EdgeInsets.all(Insets.md),
+            itemCount: filteredItems.length,
+            itemBuilder: (context, index) {
+              final item = filteredItems[index];
+              return _BlocklistCard(
+                instance: instance,
+                item: item,
+              );
+            },
+          ),
         );
       },
       loading: () => const Center(child: ExpressiveProgressIndicator()),
