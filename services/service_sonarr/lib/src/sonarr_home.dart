@@ -1,7 +1,6 @@
 import 'package:core_models/core_models.dart';
 import 'package:core_router/core_router.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:go_router/go_router.dart';
@@ -90,18 +89,38 @@ class SonarrHome extends ConsumerWidget {
       drawerEdgeDragWidth:
           drawer != null ? MediaQuery.sizeOf(context).width * 0.15 : null,
       drawer: drawer,
-      body: NotificationListener<UserScrollNotification>(
-        onNotification: (UserScrollNotification notification) {
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (ScrollNotification notification) {
           if (notification.metrics.axis == Axis.vertical) {
-            final ScrollDirection direction = notification.direction;
-            if (direction == ScrollDirection.reverse) {
-              ref
-                  .read(sonarrBottomNavVisibleProvider(instance).notifier)
-                  .state = false;
-            } else if (direction == ScrollDirection.forward) {
-              ref
-                  .read(sonarrBottomNavVisibleProvider(instance).notifier)
-                  .state = true;
+            if (notification is ScrollUpdateNotification) {
+              final double pixels = notification.metrics.pixels;
+              if (pixels > 10.0) {
+                final double maxExtent = notification.metrics.maxScrollExtent;
+                final bool isAtBottom = pixels >= maxExtent - 10.0;
+                final double? delta = notification.scrollDelta;
+                if (delta != null && delta != 0.0) {
+                  final bool isScrollingDown = delta > 0.0;
+                  final bool currentVisible =
+                      ref.read(sonarrBottomNavVisibleProvider(instance));
+                  if (isScrollingDown && currentVisible) {
+                    ref
+                        .read(sonarrBottomNavVisibleProvider(instance).notifier)
+                        .state = false;
+                  } else if (!isScrollingDown && !currentVisible && !isAtBottom) {
+                    ref
+                        .read(sonarrBottomNavVisibleProvider(instance).notifier)
+                        .state = true;
+                  }
+                }
+              } else if (pixels <= 0.0) {
+                final bool currentVisible =
+                    ref.read(sonarrBottomNavVisibleProvider(instance));
+                if (!currentVisible) {
+                  ref
+                      .read(sonarrBottomNavVisibleProvider(instance).notifier)
+                      .state = true;
+                }
+              }
             }
           }
           return false;

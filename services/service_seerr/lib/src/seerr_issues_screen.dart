@@ -61,22 +61,52 @@ class _SeerrIssuesScreenState extends ConsumerState<SeerrIssuesScreen> {
           ),
         ),
         Expanded(
-          child: M3RefreshIndicator(
-            onRefresh: () async {
+          child: AsyncValueView<List<SeerrIssue>>(
+          value: issues,
+              onRetry: () => ref.invalidate(seerrIssuesProvider(args)),
+          data: (List<SeerrIssue> list) {
+            
+                if (list.isEmpty) {
+                  return EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        onRefresh: () async {
               ref.invalidate(seerrIssuesProvider(args));
             },
-            child: AsyncValueView<List<SeerrIssue>>(
-              value: issues,
-              onRetry: () => ref.invalidate(seerrIssuesProvider(args)),
-              data: (List<SeerrIssue> list) {
-                if (list.isEmpty) {
-                  return const EmptyView(
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const <Widget>[
+            SizedBox(height: 100),
+            EmptyView(
                     icon: Icons.report_off_outlined,
                     title: 'No issues',
                     message: 'Nothing has been reported.',
-                  );
+                  ),
+          ],
+        ),
+      );
                 }
-                return ListView.separated(
+                return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async {
+              ref.invalidate(seerrIssuesProvider(args));
+            },
+      child: ListView.separated(
                   padding: Insets.page,
                   itemCount: list.length,
                   separatorBuilder: (_, __) =>
@@ -85,10 +115,11 @@ class _SeerrIssuesScreenState extends ConsumerState<SeerrIssuesScreen> {
                     instance: widget.instance,
                     issue: list[index],
                   ),
-                );
-              },
-            ),
-          ),
+                ),
+    );
+              
+          },
+        ),
         ),
       ],
     );

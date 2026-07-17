@@ -18,7 +18,16 @@ class BazarrWantedTab extends ConsumerWidget {
     final AsyncValue<List<BazarrWantedRow>> wanted =
         ref.watch(bazarrWantedProvider(instance));
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
       onRefresh: () async {
         ref.invalidate(bazarrBadgesProvider(instance));
         ref.invalidate(bazarrWantedProvider(instance));

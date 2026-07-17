@@ -60,6 +60,14 @@ class _MovieDetailBody extends ConsumerStatefulWidget {
 }
 
 class _MovieDetailBodyState extends ConsumerState<_MovieDetailBody> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   Future<void> _refresh(BuildContext context) async {
     try {
       final api = await ref.read(radarrApiProvider(widget.instance).future);
@@ -74,7 +82,9 @@ class _MovieDetailBodyState extends ConsumerState<_MovieDetailBody> {
         );
       }
     } finally {
-      _invalidateProviders();
+      if (mounted) {
+        _invalidateProviders();
+      }
     }
   }
 
@@ -99,73 +109,45 @@ class _MovieDetailBodyState extends ConsumerState<_MovieDetailBody> {
     final String? fanartUrl =
         fanart == null ? null : api?.posterUrl(fanart, width: 1080);
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+          header: const ClassicHeader(
+            position: IndicatorPosition.locator,
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
       onRefresh: () => _refresh(context),
       child: CustomScrollView(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
         slivers: <Widget>[
           SliverAppBar(
-            expandedHeight: 250,
+            expandedHeight: 250.0,
             pinned: true,
-            stretch: true,
             backgroundColor: cs.surface,
             surfaceTintColor: cs.surfaceTint,
-            leading: Center(
-              child: Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.black.withValues(alpha: 0.35),
-                ),
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.arrow_back,
-                    size: 20,
-                    color: Colors.white,
-                  ),
-                  onPressed: () => Navigator.maybePop(context),
-                  padding: EdgeInsets.zero,
-                ),
-              ),
-            ),
+            leading: _AppBarLeading(controller: _scrollController),
             actions: <Widget>[
-              Center(
-                child: Container(
-                  width: 38,
-                  height: 38,
-                  margin: const EdgeInsets.only(right: 16),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.black.withValues(alpha: 0.35),
-                  ),
-                  child: _OverflowMenu(
-                    instance: widget.instance,
-                    movie: widget.movie,
-                    onRefreshed: _invalidateProviders,
-                  ),
-                ),
+              _AppBarActions(
+                controller: _scrollController,
+                instance: widget.instance,
+                movie: widget.movie,
+                onRefreshed: _invalidateProviders,
               ),
             ],
+            title: CollapsedTitle(
+              controller: _scrollController,
+              title: widget.movie.title,
+            ),
             flexibleSpace: FlexibleSpaceBar(
-              centerTitle: false,
-              titlePadding: const EdgeInsetsDirectional.only(
-                start: 56,
-                bottom: 16,
-                end: 16,
-              ),
-              title: Text(
-                widget.movie.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 18,
-                  color: cs.onSurface,
-                ),
-              ),
               background: _Backdrop(fanartUrl: fanartUrl),
             ),
           ),
+          const HeaderLocator.sliver(),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(
               Insets.lg,
@@ -837,16 +819,18 @@ class _OverflowMenu extends ConsumerWidget {
     required this.instance,
     required this.movie,
     required this.onRefreshed,
+    required this.iconColor,
   });
 
   final Instance instance;
   final RadarrMovie movie;
   final VoidCallback onRefreshed;
+  final Color iconColor;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert, color: Colors.white),
+      icon: Icon(Icons.more_vert, color: iconColor),
       onSelected: (String v) async {
         if (v == 'delete') {
           await _confirmDelete(context, ref);
@@ -989,4 +973,157 @@ class FadePageRoute<T> extends PageRouteBuilder<T> {
           transitionDuration: const Duration(milliseconds: 300),
           reverseTransitionDuration: const Duration(milliseconds: 250),
         );
+}
+
+class _AppBarLeading extends StatefulWidget {
+  final ScrollController controller;
+  const _AppBarLeading({required this.controller});
+
+  @override
+  State<_AppBarLeading> createState() => _AppBarLeadingState();
+}
+
+class _AppBarLeadingState extends State<_AppBarLeading> {
+  double _progress = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
+  }
+
+  @override
+  void didUpdateWidget(covariant _AppBarLeading oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_onScroll);
+      widget.controller.addListener(_onScroll);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onScroll);
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!mounted || !widget.controller.hasClients) return;
+    final offset = widget.controller.offset;
+    const double expandedHeight = 250.0;
+    const double collapseThreshold = expandedHeight - kToolbarHeight;
+    final newProgress = (offset / collapseThreshold).clamp(0.0, 1.0);
+    if (newProgress != _progress) {
+      setState(() {
+        _progress = newProgress;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final iconColor = Color.lerp(Colors.white, cs.onSurface, _progress)!;
+    final bubbleOpacity = 1.0 - _progress;
+
+    return Center(
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.black.withValues(alpha: 0.35 * bubbleOpacity),
+        ),
+        child: IconButton(
+          icon: Icon(Icons.arrow_back, size: 20, color: iconColor),
+          onPressed: () => Navigator.maybePop(context),
+          padding: EdgeInsets.zero,
+        ),
+      ),
+    );
+  }
+}
+
+class _AppBarActions extends StatefulWidget {
+  final ScrollController controller;
+  final Instance instance;
+  final RadarrMovie movie;
+  final VoidCallback onRefreshed;
+
+  const _AppBarActions({
+    required this.controller,
+    required this.instance,
+    required this.movie,
+    required this.onRefreshed,
+  });
+
+  @override
+  State<_AppBarActions> createState() => _AppBarActionsState();
+}
+
+class _AppBarActionsState extends State<_AppBarActions> {
+  double _progress = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
+  }
+
+  @override
+  void didUpdateWidget(covariant _AppBarActions oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_onScroll);
+      widget.controller.addListener(_onScroll);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onScroll);
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!mounted || !widget.controller.hasClients) return;
+    final offset = widget.controller.offset;
+    const double expandedHeight = 250.0;
+    const double collapseThreshold = expandedHeight - kToolbarHeight;
+    final newProgress = (offset / collapseThreshold).clamp(0.0, 1.0);
+    if (newProgress != _progress) {
+      setState(() {
+        _progress = newProgress;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final iconColor = Color.lerp(Colors.white, cs.onSurface, _progress)!;
+    final bubbleOpacity = 1.0 - _progress;
+
+    return Center(
+      child: Container(
+        width: 38,
+        height: 38,
+        margin: const EdgeInsets.only(right: 16),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.black.withValues(alpha: 0.35 * bubbleOpacity),
+        ),
+        child: _OverflowMenu(
+          instance: widget.instance,
+          movie: widget.movie,
+          onRefreshed: widget.onRefreshed,
+          iconColor: iconColor,
+        ),
+      ),
+    );
+  }
 }

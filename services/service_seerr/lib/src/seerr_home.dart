@@ -57,35 +57,67 @@ class _SeerrRequestsTab extends ConsumerWidget {
     final AsyncValue<List<SeerrRequest>> requests =
         ref.watch(seerrRequestsProvider(instance));
 
-    return M3RefreshIndicator(
-      onRefresh: () async {
-        ref.invalidate(seerrRequestsProvider(instance));
-        ref.invalidate(seerrRequestCountsProvider(instance));
-      },
-      child: AsyncValueView<List<SeerrRequest>>(
-        value: requests,
+    return AsyncValueView<List<SeerrRequest>>(
+          value: requests,
         onRetry: () {
           ref.invalidate(seerrRequestsProvider(instance));
           ref.invalidate(seerrRequestCountsProvider(instance));
         },
-        data: (List<SeerrRequest> list) {
+          data: (List<SeerrRequest> list) {
+            
           if (list.isEmpty) {
-            return const EmptyView(
+            return EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        onRefresh: () async {
+        ref.invalidate(seerrRequestsProvider(instance));
+        ref.invalidate(seerrRequestCountsProvider(instance));
+      },
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const <Widget>[
+            SizedBox(height: 100),
+            EmptyView(
               icon: Icons.playlist_add_check_outlined,
               title: 'No requests',
               message: 'No media requests yet.',
-            );
+            ),
+          ],
+        ),
+      );
           }
-          return ListView.separated(
+          return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async {
+        ref.invalidate(seerrRequestsProvider(instance));
+        ref.invalidate(seerrRequestCountsProvider(instance));
+      },
+      child: ListView.separated(
             padding: Insets.page,
             itemCount: list.length,
             separatorBuilder: (_, __) => const SizedBox(height: Insets.md),
             itemBuilder: (BuildContext context, int index) =>
                 _RequestTile(instance: instance, request: list[index]),
-          );
-        },
-      ),
+          ),
     );
+        
+          },
+        );
   }
 }
 

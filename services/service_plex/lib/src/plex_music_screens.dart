@@ -30,22 +30,51 @@ class PlexArtistScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text(artist.title)),
-      body: M3RefreshIndicator(
-        onRefresh: () async =>
-            ref.invalidate(plexChildrenProvider((instance, artist.ratingKey))),
-        child: AsyncValueView<List<PlexMetadata>>(
+      body: AsyncValueView<List<PlexMetadata>>(
           value: albums,
           onRetry: () => ref
               .invalidate(plexChildrenProvider((instance, artist.ratingKey))),
           data: (List<PlexMetadata> list) {
+            
             if (list.isEmpty) {
-              return const EmptyView(
+              return EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        onRefresh: () async =>
+            ref.invalidate(plexChildrenProvider((instance, artist.ratingKey))),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const <Widget>[
+            SizedBox(height: 100),
+            EmptyView(
                 icon: Icons.album_outlined,
                 title: 'No albums',
                 message: 'This artist has no albums yet.',
-              );
+              ),
+          ],
+        ),
+      );
             }
-            return MasonryGridView.extent(
+            return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async =>
+            ref.invalidate(plexChildrenProvider((instance, artist.ratingKey))),
+      child: MasonryGridView.extent(
               padding: Insets.page,
               maxCrossAxisExtent: 160,
               crossAxisSpacing: Insets.md,
@@ -62,10 +91,11 @@ class PlexArtistScreen extends ConsumerWidget {
                   ),
                 );
               },
-            );
+            ),
+    );
+          
           },
         ),
-      ),
     );
   }
 }
@@ -179,10 +209,21 @@ class PlexAlbumScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: M3RefreshIndicator(
+      body: EasyRefresh(
+          header: const ClassicHeader(
+            position: IndicatorPosition.locator,
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
         onRefresh: () async =>
             ref.invalidate(plexChildrenProvider((instance, album.ratingKey))),
         child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           slivers: <Widget>[
             SliverToBoxAdapter(
               child: albumImageUrl != null
@@ -240,6 +281,7 @@ class PlexAlbumScreen extends ConsumerWidget {
                       ),
                     ),
             ),
+            const HeaderLocator.sliver(),
             if (album.summary != null && album.summary!.isNotEmpty)
               SliverToBoxAdapter(
                 child: Padding(

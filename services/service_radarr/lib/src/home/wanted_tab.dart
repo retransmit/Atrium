@@ -385,7 +385,16 @@ class _WantedListView extends ConsumerWidget {
           }
           final studioKeys = groupedMap.keys.toList()..sort();
 
-          content = M3RefreshIndicator(
+          content = EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
             onRefresh: () async {
               if (isCutoffTab) {
                 ref.invalidate(radarrWantedCutoffProvider(instance));
@@ -425,7 +434,16 @@ class _WantedListView extends ConsumerWidget {
             ),
           );
         } else {
-          content = M3RefreshIndicator(
+          content = EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
             onRefresh: () async {
               if (isCutoffTab) {
                 ref.invalidate(radarrWantedCutoffProvider(instance));

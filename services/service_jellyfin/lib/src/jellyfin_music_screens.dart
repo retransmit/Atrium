@@ -43,11 +43,22 @@ class JellyfinAlbumScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: M3RefreshIndicator(
+      body: EasyRefresh(
+          header: const ClassicHeader(
+            position: IndicatorPosition.locator,
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
         onRefresh: () async => ref.invalidate(
           jellyfinAlbumDataFutureProvider((instance, albumId, albumArtist)),
         ),
         child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           slivers: <Widget>[
             // Top Section: Album Info
             SliverToBoxAdapter(
@@ -111,6 +122,7 @@ class JellyfinAlbumScreen extends ConsumerWidget {
                       ),
                     ),
             ),
+            const HeaderLocator.sliver(),
 
             if (albumGenres != null && albumGenres!.isNotEmpty)
               SliverToBoxAdapter(

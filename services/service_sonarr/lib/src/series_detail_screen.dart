@@ -66,6 +66,13 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
   final Set<int> _expandedSeasons = {};
   final Map<int, GlobalKey> _seasonKeys = {};
   final GlobalKey _seasonsHeaderKey = GlobalKey();
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   Future<void> _refresh(BuildContext context) async {
     try {
@@ -81,7 +88,9 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
         );
       }
     } finally {
-      _invalidateProviders();
+      if (mounted) {
+        _invalidateProviders();
+      }
     }
   }
 
@@ -112,95 +121,46 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
     final int downloadedCount = widget.series.statistics?.episodeFileCount ?? 0;
     final int totalEpisodes = widget.series.statistics?.episodeCount ?? 0;
 
-    return M3RefreshIndicator(
+    return EasyRefresh(
+          header: const ClassicHeader(
+            position: IndicatorPosition.locator,
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
       onRefresh: () => _refresh(context),
       child: CustomScrollView(
+        controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
         slivers: <Widget>[
           // -- AppBar --
-          SliverLayoutBuilder(
-            builder: (BuildContext context, constraints) {
-              const double expandedHeight = 250.0;
-              final double scrollOffset = constraints.scrollOffset;
-              final double progress =
-                  (scrollOffset / (expandedHeight - kToolbarHeight))
-                      .clamp(0.0, 1.0);
-
-              // The expanded title sits over the backdrop's bottom band, which
-              // the scrim fades to opaque cs.surface (a light surface with no
-              // fanart), so a white title is invisible in light mode. Keep the
-              // title on onSurface throughout - legible over the surface when
-              // expanded and over the collapsed toolbar. The icons keep the
-              // white->onSurface lerp because their 0.35-alpha bubbles plus the
-              // top scrim back them over the image when expanded.
-              final Color titleColor = cs.onSurface;
-              final Color iconColor =
-                  Color.lerp(Colors.white, cs.onSurface, progress)!;
-              final double bubbleOpacity = 1.0 - progress;
-
-              return SliverAppBar(
-                expandedHeight: expandedHeight,
-                pinned: true,
-                stretch: true,
-                backgroundColor: cs.surface,
-                surfaceTintColor: cs.surfaceTint,
-                leading: Center(
-                  child: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color:
-                          Colors.black.withValues(alpha: 0.35 * bubbleOpacity),
-                    ),
-                    child: IconButton(
-                      icon: Icon(Icons.arrow_back, size: 20, color: iconColor),
-                      onPressed: () => Navigator.maybePop(context),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ),
-                ),
-                actions: <Widget>[
-                  Center(
-                    child: Container(
-                      width: 38,
-                      height: 38,
-                      margin: const EdgeInsets.only(right: 16),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.black
-                            .withValues(alpha: 0.35 * bubbleOpacity),
-                      ),
-                      child: _OverflowMenu(
-                        instance: widget.instance,
-                        series: widget.series,
-                        onRefreshed: _invalidateProviders,
-                        iconColor: iconColor,
-                      ),
-                    ),
-                  ),
-                ],
-                flexibleSpace: FlexibleSpaceBar(
-                  centerTitle: false,
-                  titlePadding: const EdgeInsetsDirectional.only(
-                    start: 56,
-                    bottom: 16,
-                    end: 16,
-                  ),
-                  title: Text(
-                    widget.series.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 18,
-                      color: titleColor,
-                    ),
-                  ),
-                  background: _Backdrop(fanartUrl: fanartUrl),
-                ),
-              );
-            },
+          SliverAppBar(
+            expandedHeight: 250.0,
+            pinned: true,
+            backgroundColor: cs.surface,
+            surfaceTintColor: cs.surfaceTint,
+            leading: _AppBarLeading(controller: _scrollController),
+            actions: <Widget>[
+              _AppBarActions(
+                controller: _scrollController,
+                instance: widget.instance,
+                series: widget.series,
+                onRefreshed: _invalidateProviders,
+              ),
+            ],
+            title: CollapsedTitle(
+              controller: _scrollController,
+              title: widget.series.title,
+            ),
+            flexibleSpace: FlexibleSpaceBar(
+              background: _Backdrop(fanartUrl: fanartUrl),
+            ),
           ),
+          const HeaderLocator.sliver(),
 
           // -- Content --
           SliverPadding(
@@ -286,8 +246,10 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
                 const SizedBox(height: Insets.md),
 
                 // Episodes content
-                ...widget.episodesAsync.when(
-                  data: (List<SonarrEpisode> episodes) {
+                ...(() {
+                  final asyncVal = widget.episodesAsync;
+                  
+                  List<Widget> buildData(List<SonarrEpisode> episodes) {
                     final Map<int, List<SonarrEpisode>> episodesBySeason =
                         groupBy(episodes, (e) => e.seasonNumber);
                     final List<int> sortedSeasons = episodesBySeason.keys
@@ -298,7 +260,7 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
                       _seasonKeys.putIfAbsent(seasonNum, GlobalKey.new);
                     }
 
-                    return [
+                    return <Widget>[
                       if (sortedSeasons.isNotEmpty) ...[
                         SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
@@ -366,44 +328,52 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
                         ),
                       ),
                     ];
-                  },
-                  loading: () => <Widget>[
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(vertical: Insets.xl),
-                        child: ExpressiveProgressIndicator(),
-                      ),
-                    ),
-                  ],
-                  error: (error, stack) => <Widget>[
-                    Center(
-                      child: Padding(
-                        padding:
-                            const EdgeInsets.symmetric(vertical: Insets.xl),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            Text(
-                              'Failed to load episodes.',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: cs.error,
-                              ),
-                            ),
-                            const SizedBox(height: Insets.sm),
-                            FilledButton.tonal(
-                              onPressed: () => ref.invalidate(
-                                sonarrEpisodesProvider(
-                                  (widget.instance, widget.series.id),
-                                ),
-                              ),
-                              child: const Text('Retry'),
-                            ),
-                          ],
+                  }
+
+                  if (asyncVal.hasValue) {
+                    return buildData(asyncVal.value!);
+                  }
+
+                  return asyncVal.when(
+                    data: buildData,
+                    loading: () => <Widget>[
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: Insets.xl),
+                          child: ExpressiveProgressIndicator(),
                         ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                    error: (error, stack) => <Widget>[
+                      Center(
+                        child: Padding(
+                          padding:
+                              const EdgeInsets.symmetric(vertical: Insets.xl),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Text(
+                                'Failed to load episodes.',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: cs.error,
+                                ),
+                              ),
+                              const SizedBox(height: Insets.sm),
+                              FilledButton.tonal(
+                                onPressed: () => ref.invalidate(
+                                  sonarrEpisodesProvider(
+                                    (widget.instance, widget.series.id),
+                                  ),
+                                ),
+                                child: const Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                })(),
               ],
             ),
           ),
@@ -535,6 +505,13 @@ class _HeroInfoCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
+                Text(
+                  series.title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: Insets.md),
                 // Info chips row
                 Wrap(
                   spacing: Insets.xs,
@@ -2204,6 +2181,159 @@ class _Backdrop extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _AppBarLeading extends StatefulWidget {
+  final ScrollController controller;
+  const _AppBarLeading({required this.controller});
+
+  @override
+  State<_AppBarLeading> createState() => _AppBarLeadingState();
+}
+
+class _AppBarLeadingState extends State<_AppBarLeading> {
+  double _progress = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
+  }
+
+  @override
+  void didUpdateWidget(covariant _AppBarLeading oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_onScroll);
+      widget.controller.addListener(_onScroll);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onScroll);
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!mounted || !widget.controller.hasClients) return;
+    final offset = widget.controller.offset;
+    const double expandedHeight = 250.0;
+    const double collapseThreshold = expandedHeight - kToolbarHeight;
+    final newProgress = (offset / collapseThreshold).clamp(0.0, 1.0);
+    if (newProgress != _progress) {
+      setState(() {
+        _progress = newProgress;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final iconColor = Color.lerp(Colors.white, cs.onSurface, _progress)!;
+    final bubbleOpacity = 1.0 - _progress;
+
+    return Center(
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.black.withValues(alpha: 0.35 * bubbleOpacity),
+        ),
+        child: IconButton(
+          icon: Icon(Icons.arrow_back, size: 20, color: iconColor),
+          onPressed: () => Navigator.maybePop(context),
+          padding: EdgeInsets.zero,
+        ),
+      ),
+    );
+  }
+}
+
+class _AppBarActions extends StatefulWidget {
+  final ScrollController controller;
+  final Instance instance;
+  final SonarrSeries series;
+  final VoidCallback onRefreshed;
+
+  const _AppBarActions({
+    required this.controller,
+    required this.instance,
+    required this.series,
+    required this.onRefreshed,
+  });
+
+  @override
+  State<_AppBarActions> createState() => _AppBarActionsState();
+}
+
+class _AppBarActionsState extends State<_AppBarActions> {
+  double _progress = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onScroll());
+  }
+
+  @override
+  void didUpdateWidget(covariant _AppBarActions oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_onScroll);
+      widget.controller.addListener(_onScroll);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onScroll);
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!mounted || !widget.controller.hasClients) return;
+    final offset = widget.controller.offset;
+    const double expandedHeight = 250.0;
+    const double collapseThreshold = expandedHeight - kToolbarHeight;
+    final newProgress = (offset / collapseThreshold).clamp(0.0, 1.0);
+    if (newProgress != _progress) {
+      setState(() {
+        _progress = newProgress;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final iconColor = Color.lerp(Colors.white, cs.onSurface, _progress)!;
+    final bubbleOpacity = 1.0 - _progress;
+
+    return Center(
+      child: Container(
+        width: 38,
+        height: 38,
+        margin: const EdgeInsets.only(right: 16),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.black.withValues(alpha: 0.35 * bubbleOpacity),
+        ),
+        child: _OverflowMenu(
+          instance: widget.instance,
+          series: widget.series,
+          onRefreshed: widget.onRefreshed,
+          iconColor: iconColor,
+        ),
+      ),
     );
   }
 }

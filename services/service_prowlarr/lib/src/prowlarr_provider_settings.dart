@@ -68,20 +68,48 @@ class ProwlarrProviderScreen extends ConsumerWidget {
         icon: const Icon(Icons.add),
         label: const Text('Add'),
       ),
-      body: M3RefreshIndicator(
-        onRefresh: () async => ref.invalidate(prowlarrProvidersProvider(_args)),
-        child: AsyncValueView<List<Map<String, dynamic>>>(
+      body: AsyncValueView<List<Map<String, dynamic>>>(
           value: list,
           onRetry: () => ref.invalidate(prowlarrProvidersProvider(_args)),
           data: (List<Map<String, dynamic>> items) {
+            
             if (items.isEmpty) {
-              return EmptyView(
+              return EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        onRefresh: () async => ref.invalidate(prowlarrProvidersProvider(_args)),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: <Widget>[
+            const SizedBox(height: 100),
+            EmptyView(
                 icon: config.icon,
                 title: 'No ${config.title.toLowerCase()}',
                 message: 'Tap Add to configure a ${config.resourceLabel}.',
-              );
+              ),
+          ],
+        ),
+      );
             }
-            return ListView.builder(
+            return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async => ref.invalidate(prowlarrProvidersProvider(_args)),
+      child: ListView.builder(
               padding: Insets.pageH,
               itemCount: items.length,
               itemBuilder: (BuildContext context, int i) {
@@ -106,10 +134,11 @@ class ProwlarrProviderScreen extends ConsumerWidget {
                       _openForm(context, id: (m['id'] as num?)?.toInt()),
                 );
               },
-            );
+            ),
+    );
+          
           },
         ),
-      ),
     );
   }
 

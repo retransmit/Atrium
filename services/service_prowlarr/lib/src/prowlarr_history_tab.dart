@@ -67,21 +67,50 @@ class _ProwlarrHistoryTabState extends ConsumerState<ProwlarrHistoryTab> {
           ),
         ),
         Expanded(
-          child: M3RefreshIndicator(
-            onRefresh: () async =>
-                ref.invalidate(prowlarrHistoryProvider(args)),
-            child: AsyncValueView<ProwlarrHistoryPage>(
-              value: history,
+          child: AsyncValueView<ProwlarrHistoryPage>(
+          value: history,
               onRetry: () => ref.invalidate(prowlarrHistoryProvider(args)),
-              data: (ProwlarrHistoryPage page) {
+          data: (ProwlarrHistoryPage page) {
+            
                 if (page.records.isEmpty) {
-                  return const EmptyView(
+                  return EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        onRefresh: () async =>
+                ref.invalidate(prowlarrHistoryProvider(args)),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const <Widget>[
+            SizedBox(height: 100),
+            EmptyView(
                     icon: Icons.history,
                     title: 'No history',
                     message: 'Nothing matches this filter yet.',
-                  );
+                  ),
+          ],
+        ),
+      );
                 }
-                return ListView.separated(
+                return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async =>
+                ref.invalidate(prowlarrHistoryProvider(args)),
+      child: ListView.separated(
                   padding: Insets.page,
                   itemCount: page.records.length,
                   separatorBuilder: (_, __) =>
@@ -93,10 +122,11 @@ class _ProwlarrHistoryTabState extends ConsumerState<ProwlarrHistoryTab> {
                       indexerName: names[r.indexerId],
                     );
                   },
-                );
-              },
-            ),
-          ),
+                ),
+    );
+              
+          },
+        ),
         ),
       ],
     );

@@ -67,20 +67,48 @@ class _ActivityTab extends ConsumerWidget {
         ref.watch(tautulliActivityProvider(instance));
     final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).value;
 
-    return M3RefreshIndicator(
-      onRefresh: () async => ref.invalidate(tautulliActivityProvider(instance)),
-      child: AsyncValueView<TautulliActivity>(
-        value: activity,
+    return AsyncValueView<TautulliActivity>(
+          value: activity,
         onRetry: () => ref.invalidate(tautulliActivityProvider(instance)),
-        data: (TautulliActivity a) {
+          data: (TautulliActivity a) {
+            
           if (a.sessions.isEmpty) {
-            return const EmptyView(
+            return EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        onRefresh: () async => ref.invalidate(tautulliActivityProvider(instance)),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const <Widget>[
+            SizedBox(height: 100),
+            EmptyView(
               icon: Icons.podcasts_outlined,
               title: 'Nothing playing',
               message: 'No active streams right now.',
-            );
+            ),
+          ],
+        ),
+      );
           }
-          return ListView.builder(
+          return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async => ref.invalidate(tautulliActivityProvider(instance)),
+      child: ListView.builder(
             padding: Insets.page,
             itemCount: a.sessions.length + 1,
             itemBuilder: (BuildContext context, int index) {
@@ -100,10 +128,11 @@ class _ActivityTab extends ConsumerWidget {
                 onTap: () => _showSession(context, s),
               );
             },
-          );
-        },
-      ),
+          ),
     );
+        
+          },
+        );
   }
 
   void _showSession(BuildContext context, TautulliSession session) {
@@ -710,20 +739,48 @@ class _HistoryTab extends ConsumerWidget {
     final AsyncValue<TautulliHistoryPage> history =
         ref.watch(tautulliHistoryProvider(instance));
     final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).value;
-    return M3RefreshIndicator(
-      onRefresh: () async => ref.invalidate(tautulliHistoryProvider(instance)),
-      child: AsyncValueView<TautulliHistoryPage>(
-        value: history,
+    return AsyncValueView<TautulliHistoryPage>(
+          value: history,
         onRetry: () => ref.invalidate(tautulliHistoryProvider(instance)),
-        data: (TautulliHistoryPage page) {
+          data: (TautulliHistoryPage page) {
+            
           if (page.records.isEmpty) {
-            return const EmptyView(
+            return EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        onRefresh: () async => ref.invalidate(tautulliHistoryProvider(instance)),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const <Widget>[
+            SizedBox(height: 100),
+            EmptyView(
               icon: Icons.history,
               title: 'No history',
               message: 'Nothing has been watched yet.',
-            );
+            ),
+          ],
+        ),
+      );
           }
-          return ListView.builder(
+          return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async => ref.invalidate(tautulliHistoryProvider(instance)),
+      child: ListView.builder(
             padding: Insets.page,
             itemCount: page.records.length + 1,
             itemBuilder: (BuildContext context, int index) {
@@ -746,10 +803,11 @@ class _HistoryTab extends ConsumerWidget {
                 avatarUrl: api?.imageUrl(r.userThumb, fallback: 'art'),
               );
             },
-          );
-        },
-      ),
+          ),
     );
+        
+          },
+        );
   }
 }
 
@@ -861,31 +919,61 @@ class _StatsTab extends ConsumerWidget {
     final AsyncValue<List<TautulliHomeStat>> stats =
         ref.watch(tautulliHomeStatsProvider(instance));
     final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).value;
-    return M3RefreshIndicator(
-      onRefresh: () async =>
-          ref.invalidate(tautulliHomeStatsProvider(instance)),
-      child: AsyncValueView<List<TautulliHomeStat>>(
-        value: stats,
+    return AsyncValueView<List<TautulliHomeStat>>(
+          value: stats,
         onRetry: () => ref.invalidate(tautulliHomeStatsProvider(instance)),
-        data: (List<TautulliHomeStat> all) {
+          data: (List<TautulliHomeStat> all) {
+            
           final List<TautulliHomeStat> sections =
               all.where((TautulliHomeStat s) => s.rows.isNotEmpty).toList();
           if (sections.isEmpty) {
-            return const EmptyView(
+            return EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        onRefresh: () async =>
+          ref.invalidate(tautulliHomeStatsProvider(instance)),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const <Widget>[
+            SizedBox(height: 100),
+            EmptyView(
               icon: Icons.bar_chart,
               title: 'No statistics',
               message: 'No plays in the last 30 days.',
-            );
+            ),
+          ],
+        ),
+      );
           }
-          return ListView.builder(
+          return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async =>
+          ref.invalidate(tautulliHomeStatsProvider(instance)),
+      child: ListView.builder(
             padding: Insets.page,
             itemCount: sections.length,
             itemBuilder: (BuildContext context, int index) =>
                 _StatSection(stat: sections[index], api: api),
-          );
-        },
-      ),
+          ),
     );
+        
+          },
+        );
   }
 }
 
@@ -1070,20 +1158,48 @@ class _UsersTab extends ConsumerWidget {
     final AsyncValue<List<TautulliUser>> users =
         ref.watch(tautulliUsersProvider(instance));
     final TautulliApi? api = ref.watch(tautulliApiProvider(instance)).value;
-    return M3RefreshIndicator(
-      onRefresh: () async => ref.invalidate(tautulliUsersProvider(instance)),
-      child: AsyncValueView<List<TautulliUser>>(
-        value: users,
+    return AsyncValueView<List<TautulliUser>>(
+          value: users,
         onRetry: () => ref.invalidate(tautulliUsersProvider(instance)),
-        data: (List<TautulliUser> list) {
+          data: (List<TautulliUser> list) {
+            
           if (list.isEmpty) {
-            return const EmptyView(
+            return EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        onRefresh: () async => ref.invalidate(tautulliUsersProvider(instance)),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const <Widget>[
+            SizedBox(height: 100),
+            EmptyView(
               icon: Icons.people_outline,
               title: 'No users',
               message: 'Tautulli has not seen any users yet.',
-            );
+            ),
+          ],
+        ),
+      );
           }
-          return ListView.builder(
+          return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async => ref.invalidate(tautulliUsersProvider(instance)),
+      child: ListView.builder(
             padding: Insets.page,
             itemCount: list.length,
             itemBuilder: (BuildContext context, int index) {
@@ -1093,10 +1209,11 @@ class _UsersTab extends ConsumerWidget {
                 avatarUrl: api?.imageUrl(u.userThumb, fallback: 'art'),
               );
             },
-          );
-        },
-      ),
+          ),
     );
+        
+          },
+        );
   }
 }
 
