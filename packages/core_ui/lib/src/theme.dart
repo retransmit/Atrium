@@ -1,4 +1,5 @@
 import 'package:dynamic_system_colors/dynamic_system_colors.dart';
+import 'package:flex_color_scheme/flex_color_scheme.dart' hide CorePalette;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -33,15 +34,38 @@ abstract final class AtriumTheme {
       );
 
   static ThemeData _build(ColorScheme scheme, String? fontFamily) {
-    return ThemeData(
-      useMaterial3: true,
-      fontFamily: fontFamily,
-      colorScheme: scheme,
-      scaffoldBackgroundColor: scheme.surface,
+    final bool isDark = scheme.brightness == Brightness.dark;
+    final flex = isDark
+        ? FlexColorScheme.dark(
+            colorScheme: scheme,
+            fontFamily: fontFamily,
+            surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
+            blendLevel: 7,
+            subThemesData: const FlexSubThemesData(
+              defaultRadius: 12.0,
+              inputDecoratorIsFilled: true,
+            ),
+          )
+        : FlexColorScheme.light(
+            colorScheme: scheme,
+            fontFamily: fontFamily,
+            surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
+            blendLevel: 7,
+            subThemesData: const FlexSubThemesData(
+              defaultRadius: 12.0,
+              inputDecoratorIsFilled: true,
+            ),
+          );
+
+    final ThemeData baseTheme = flex.toTheme;
+    final ColorScheme resolvedScheme = baseTheme.colorScheme;
+
+    return baseTheme.copyWith(
+      scaffoldBackgroundColor: resolvedScheme.surface,
       cardTheme: CardThemeData(
         elevation: 0,
         clipBehavior: Clip.antiAlias,
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        color: resolvedScheme.surfaceContainerHighest.withValues(alpha: 0.4),
         shape: const RoundedRectangleBorder(borderRadius: Radii.card),
         margin: EdgeInsets.zero,
       ),
@@ -50,7 +74,7 @@ abstract final class AtriumTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
+        fillColor: resolvedScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(Radii.md),
           borderSide: BorderSide.none,
@@ -59,7 +83,7 @@ abstract final class AtriumTheme {
       chipTheme: ChipThemeData(
         shape: const RoundedRectangleBorder(borderRadius: Radii.chip),
         side: BorderSide.none,
-        backgroundColor: scheme.surfaceContainerHighest,
+        backgroundColor: resolvedScheme.surfaceContainerHighest,
       ),
       snackBarTheme: const SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
