@@ -14,6 +14,16 @@ class _Release {
 /// Newest first. Update alongside the version in the app's pubspec.
 const List<_Release> _releases = <_Release>[
   _Release(
+    version: '1.0.5',
+    changes: <String>[
+      'Nothing changes in the app itself. The internal build numbers now '
+          'follow the scheme F-Droid asks of Flutter apps. If you installed an '
+          'earlier release from GitHub, Android will refuse this as an update '
+          'and you will have to reinstall once; export your profiles from '
+          'Settings first. Nothing after this release is affected.',
+    ],
+  ),
+  _Release(
     version: '1.0.4',
     changes: <String>[
       'Nothing changes in the app itself. F-Droid could not quite reproduce '
