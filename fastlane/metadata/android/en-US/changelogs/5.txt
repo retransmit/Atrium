@@ -1,0 +1,6 @@
+Nothing changes in the app itself.
+
+F-Droid could not quite reproduce the 1.0.3 builds. One library came out of the
+compiler carrying a fingerprint of where the build tools happened to live, so
+their copy differed from the published one in twenty bytes and nothing else. The
+build now uses the same tool paths they do, and their rebuild matches exactly.
