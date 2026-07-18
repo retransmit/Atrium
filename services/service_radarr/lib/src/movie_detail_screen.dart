@@ -61,9 +61,30 @@ class _MovieDetailBody extends ConsumerStatefulWidget {
 
 class _MovieDetailBodyState extends ConsumerState<_MovieDetailBody> {
   final ScrollController _scrollController = ScrollController();
+  bool _showBackToTop = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_scrollListener);
+  }
+
+  void _scrollListener() {
+    final threshold = MediaQuery.sizeOf(context).height * 0.5;
+    if (_scrollController.hasClients && _scrollController.offset >= threshold) {
+      if (!_showBackToTop) {
+        setState(() => _showBackToTop = true);
+      }
+    } else {
+      if (_showBackToTop) {
+        setState(() => _showBackToTop = false);
+      }
+    }
+  }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     super.dispose();
   }
@@ -75,6 +96,11 @@ class _MovieDetailBodyState extends ConsumerState<_MovieDetailBody> {
         'name': 'RefreshMovie',
         'movieId': widget.movie.id,
       });
+      try {
+        await api.runCommand(<String, dynamic>{
+          'name': 'RefreshMonitoredDownloads',
+        });
+      } catch (_) {}
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -91,6 +117,7 @@ class _MovieDetailBodyState extends ConsumerState<_MovieDetailBody> {
   void _invalidateProviders() {
     ref.invalidate(radarrMovieByIdProvider((widget.instance, widget.movie.id)));
     ref.invalidate(radarrMoviesProvider(widget.instance));
+    ref.invalidate(radarrQueueProvider(widget.instance));
   }
 
   @override
@@ -121,7 +148,20 @@ class _MovieDetailBodyState extends ConsumerState<_MovieDetailBody> {
       }
     }
 
-    return EasyRefresh(
+    return Scaffold(
+      floatingActionButton: _showBackToTop
+          ? FloatingActionButton(
+              onPressed: () {
+                _scrollController.animateTo(
+                  0.0,
+                  duration: const Duration(milliseconds: 350),
+                  curve: Curves.easeOutCubic,
+                );
+              },
+              child: const Icon(Icons.arrow_upward),
+            )
+          : null,
+      body: EasyRefresh(
           header: const ClassicHeader(
             position: IndicatorPosition.locator,
             dragText: 'Pull to refresh',
@@ -289,6 +329,7 @@ class _MovieDetailBodyState extends ConsumerState<_MovieDetailBody> {
           ),
         ],
       ),
+    ),
     );
   }
 }
