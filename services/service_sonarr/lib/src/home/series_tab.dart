@@ -98,7 +98,7 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
     final selection = ref.watch(sonarrSeriesSelectionProvider(widget.instance));
     final isSelecting = selection.isNotEmpty;
 
-    ref.listen<int>(sonarrSeriesScrollToTopProvider(widget.instance),
+    ref.listen<int>(sonarrHomeScrollToTopProvider((widget.instance, 0)),
         (previous, next) {
       if (next > 0 && _scrollController.hasClients) {
         _scrollController.animateTo(
@@ -747,6 +747,7 @@ class _SeriesBannerCard extends ConsumerWidget {
                               child: CachedNetworkImage(
                                 imageUrl: posterUrl,
                                 fit: BoxFit.cover,
+                                memCacheWidth: 500,
                                 placeholder: (_, __) => Container(
                                   color:
                                       theme.colorScheme.surfaceContainerHighest,
@@ -853,6 +854,7 @@ class _Poster extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: imageUrl!,
       fit: BoxFit.cover,
+      memCacheWidth: 500,
       placeholder: (BuildContext context, String url) =>
           Container(color: theme.colorScheme.surfaceContainerHighest),
       errorWidget: (BuildContext context, String url, Object error) => fallback,

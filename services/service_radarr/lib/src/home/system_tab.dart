@@ -20,15 +20,41 @@ class SystemTab extends ConsumerStatefulWidget {
 }
 
 class _SystemTabState extends ConsumerState<SystemTab> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+
+    ref.listen<int>(radarrHomeScrollToTopProvider((widget.instance, 4)),
+        (previous, next) {
+      if (next > 0 && _scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
 
     return DefaultTabController(
       length: 5,
       child: Scaffold(
         backgroundColor: theme.colorScheme.surface,
         body: NestedScrollView(
+          controller: _scrollController,
           headerSliverBuilder:
               (BuildContext innerContext, bool innerBoxIsScrolled) {
             return <Widget>[
@@ -1019,176 +1045,202 @@ class _LogsTab extends ConsumerStatefulWidget {
 }
 
 class _LogsTabState extends ConsumerState<_LogsTab> {
+  List<Map<String, dynamic>> _logs = [];
   int _currentPage = 1;
   static const int _pageSize = 50;
+  bool _hasMore = true;
+  bool _loading = false;
+  Object? _error;
   String? _levelFilter;
 
   @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final logsAsync = ref.watch(
-      radarrLogsProvider(
-        (
-          widget.instance,
-          page: _currentPage,
-          pageSize: _pageSize,
-          level: _levelFilter,
-        ),
-      ),
-    );
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitial();
+    });
+  }
 
-    return Column(
-      children: <Widget>[
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(
-            horizontal: Insets.md,
-            vertical: Insets.sm,
+  Future<void> _loadInitial() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+      _logs = [];
+      _currentPage = 1;
+      _hasMore = true;
+    });
+    try {
+      final data = await ref.read(
+        radarrLogsProvider(
+          (
+            widget.instance,
+            page: 1,
+            pageSize: _pageSize,
+            level: _levelFilter,
           ),
-          child: Row(
-            children: <Widget>[
-              _FilterChip(
-                label: 'All',
-                selected: _levelFilter == null,
-                onSelected: () => setState(() {
+        ).future,
+      );
+      final List<dynamic> records = data['records'] as List<dynamic>? ?? [];
+      final int totalRecords = data['totalRecords'] as int? ?? 0;
+      if (mounted) {
+        setState(() {
+          _logs = records.map((e) => e as Map<String, dynamic>).toList();
+          _hasMore = _logs.length < totalRecords;
+          _loading = false;
+        });
+      }
+    } catch (err) {
+      if (mounted) {
+        setState(() {
+          _error = err;
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (!_hasMore || _loading) return;
+    try {
+      final nextPage = _currentPage + 1;
+      final data = await ref.read(
+        radarrLogsProvider(
+          (
+            widget.instance,
+            page: nextPage,
+            pageSize: _pageSize,
+            level: _levelFilter,
+          ),
+        ).future,
+      );
+      final List<dynamic> records = data['records'] as List<dynamic>? ?? [];
+      final int totalRecords = data['totalRecords'] as int? ?? 0;
+      if (mounted) {
+        setState(() {
+          _logs.addAll(records.map((e) => e as Map<String, dynamic>));
+          _currentPage = nextPage;
+          _hasMore = _logs.length < totalRecords;
+        });
+      }
+    } catch (e) {
+      // Soft fail on page load error
+    }
+  }
+
+  void _showFilterBottomSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (context) {
+        final theme = Theme.of(context);
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(Insets.md),
+                child: Text(
+                  'Filter Logs',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.clear_all),
+                title: const Text('All'),
+                trailing: _levelFilter == null ? const Icon(Icons.check) : null,
+                onTap: () {
+                  Navigator.pop(context);
                   _levelFilter = null;
-                  _currentPage = 1;
-                }),
+                  _loadInitial();
+                },
               ),
-              const SizedBox(width: Insets.xs),
-              _FilterChip(
-                label: 'Info',
-                selected: _levelFilter == 'info',
-                onSelected: () => setState(() {
+              ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: const Text('Info'),
+                trailing: _levelFilter == 'info' ? const Icon(Icons.check) : null,
+                onTap: () {
+                  Navigator.pop(context);
                   _levelFilter = 'info';
-                  _currentPage = 1;
-                }),
+                  _loadInitial();
+                },
               ),
-              const SizedBox(width: Insets.xs),
-              _FilterChip(
-                label: 'Warn',
-                selected: _levelFilter == 'warn',
-                onSelected: () => setState(() {
+              ListTile(
+                leading: const Icon(Icons.warning_amber_outlined),
+                title: const Text('Warning'),
+                trailing: _levelFilter == 'warn' ? const Icon(Icons.check) : null,
+                onTap: () {
+                  Navigator.pop(context);
                   _levelFilter = 'warn';
-                  _currentPage = 1;
-                }),
+                  _loadInitial();
+                },
               ),
-              const SizedBox(width: Insets.xs),
-              _FilterChip(
-                label: 'Error',
-                selected: _levelFilter == 'error',
-                onSelected: () => setState(() {
+              ListTile(
+                leading: const Icon(Icons.error_outline),
+                title: const Text('Error'),
+                trailing: _levelFilter == 'error' ? const Icon(Icons.check) : null,
+                onTap: () {
+                  Navigator.pop(context);
                   _levelFilter = 'error';
-                  _currentPage = 1;
-                }),
+                  _loadInitial();
+                },
               ),
             ],
           ),
-        ),
-        Expanded(
-          child: logsAsync.when(
-            loading: () => const Center(child: ExpressiveProgressIndicator()),
-            error: (Object err, _) => Center(child: Text('Error: $err')),
-            data: (Map<String, dynamic> data) {
-              final List<dynamic> records =
-                  data['records'] as List<dynamic>? ?? <dynamic>[];
-              final int totalRecords = data['totalRecords'] as int? ?? 0;
-              final int totalPages =
-                  (totalRecords / _pageSize).ceil().clamp(1, 9999);
-
-              if (records.isEmpty) {
-                return const Center(child: Text('No log entries.'));
-              }
-
-              return Column(
-                children: <Widget>[
-                  Expanded(
-                    child: EasyRefresh(
-          header: const ClassicHeader(
-            dragText: 'Pull to refresh',
-            armedText: 'Release ready',
-            readyText: 'Refreshing...',
-            processingText: 'Refreshing...',
-            processedText: 'Succeeded',
-            failedText: 'Failed',
-            messageText: 'Last updated at %T',
-          ),
-                      onRefresh: () async {
-                        ref.invalidate(
-                          radarrLogsProvider(
-                            (
-                              widget.instance,
-                              page: _currentPage,
-                              pageSize: _pageSize,
-                              level: _levelFilter,
-                            ),
-                          ),
-                        );
-                      },
-                      child: ListView.builder(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: Insets.md),
-                        itemCount: records.length,
-                        itemBuilder: (BuildContext context, int index) {
-                          final Map<String, dynamic> log =
-                              records[index] as Map<String, dynamic>;
-                          return _LogEntryTile(log: log);
-                        },
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(Insets.sm),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: <Widget>[
-                        IconButton(
-                          icon: const Icon(Icons.chevron_left),
-                          onPressed: _currentPage > 1
-                              ? () => setState(() => _currentPage--)
-                              : null,
-                        ),
-                        Text(
-                          'Page $_currentPage of $totalPages',
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.chevron_right),
-                          onPressed: _currentPage < totalPages
-                              ? () => setState(() => _currentPage++)
-                              : null,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
-}
-
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({
-    required this.label,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onSelected;
 
   @override
   Widget build(BuildContext context) {
-    return FilterChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) => onSelected(),
-      showCheckmark: false,
+    Widget body;
+    if (_loading && _logs.isEmpty) {
+      body = const Center(child: ExpressiveProgressIndicator());
+    } else if (_error != null && _logs.isEmpty) {
+      body = Center(child: Text('Error: $_error'));
+    } else if (_logs.isEmpty) {
+      body = const Center(child: Text('No log entries.'));
+    } else {
+      body = EasyRefresh(
+        header: const ClassicHeader(
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
+        footer: const ClassicFooter(
+          dragText: 'Load more',
+          armedText: 'Release ready',
+          readyText: 'Loading...',
+          processingText: 'Loading...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+        ),
+        onRefresh: _loadInitial,
+        onLoad: _loadMore,
+        child: ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: Insets.md),
+          itemCount: _logs.length,
+          itemBuilder: (BuildContext context, int index) {
+            final Map<String, dynamic> log = _logs[index];
+            return _LogEntryTile(log: log);
+          },
+        ),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: body,
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showFilterBottomSheet,
+        child: const Icon(Icons.filter_list),
+      ),
     );
   }
 }
