@@ -7,15 +7,19 @@ import 'package:flutter/material.dart' as material;
 
 class EasyRefresh extends material.StatelessWidget {
   final er.Header? header;
+  final er.Footer? footer;
   final er.EasyRefreshController? controller;
   final FutureOr<void> Function()? onRefresh;
+  final FutureOr<void> Function()? onLoad;
   final material.Widget child;
 
   const EasyRefresh({
     super.key,
     this.header,
+    this.footer,
     this.controller,
     this.onRefresh,
+    this.onLoad,
     required this.child,
   });
 
@@ -34,8 +38,10 @@ class EasyRefresh extends material.StatelessWidget {
     
     return er.EasyRefresh(
       header: header,
+      footer: footer,
       controller: controller,
       onRefresh: onRefresh,
+      onLoad: onLoad,
       triggerAxis: material.Axis.vertical,
       child: child,
     );

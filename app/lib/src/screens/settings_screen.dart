@@ -1,8 +1,10 @@
 import 'dart:io';
 
 import 'package:core_profile/core_profile.dart';
+import 'package:core_router/core_router.dart';
 import 'package:core_storage/core_storage.dart';
 import 'package:core_ui/core_ui.dart';
+import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,8 +32,14 @@ class SettingsScreen extends ConsumerWidget {
     final int wolCount =
         ref.watch(activeProfileProvider)?.wolDevices.length ?? 0;
 
-    return Scaffold(
-      appBar: AppBar(
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (didPop) return;
+        context.go(AtriumRoutes.dashboard);
+      },
+      child: Scaffold(
+        appBar: AppBar(
         leading: Builder(
           builder: (BuildContext context) {
             return IconButton(
@@ -217,7 +225,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
+    ),);
   }
 }
 

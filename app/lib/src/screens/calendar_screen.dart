@@ -1,6 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:collection/collection.dart';
 import 'package:core_models/core_models.dart';
+import 'package:core_router/core_router.dart';
+import 'package:go_router/go_router.dart';
 import 'package:core_profile/core_profile.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
@@ -418,31 +420,44 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         );
 
     if (!hasCalendarServices) {
-      return Scaffold(
-        appBar: AppBar(
-          leading: Builder(
-            builder: (BuildContext context) {
-              return IconButton(
-                icon: const Icon(Icons.menu),
-                onPressed: () {
-                  openDrawer(context);
-                },
-              );
-            },
+      return PopScope<Object?>(
+        canPop: false,
+        onPopInvokedWithResult: (bool didPop, Object? result) {
+          if (didPop) return;
+          context.go(AtriumRoutes.dashboard);
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            leading: Builder(
+              builder: (BuildContext context) {
+                return IconButton(
+                  icon: const Icon(Icons.menu),
+                  onPressed: () {
+                    openDrawer(context);
+                  },
+                );
+              },
+            ),
+            title: const Text('Calendar'),
           ),
-          title: const Text('Calendar'),
-        ),
-        body: const EmptyView(
-          icon: Icons.calendar_today_outlined,
-          title: 'No calendar services',
-          message:
-              'Add a Sonarr or Radarr service to see your release schedule here.',
+          body: const EmptyView(
+            icon: Icons.calendar_today_outlined,
+            title: 'No calendar services',
+            message:
+                'Add a Sonarr or Radarr service to see your release schedule here.',
+          ),
         ),
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (didPop) return;
+        context.go(AtriumRoutes.dashboard);
+      },
+      child: Scaffold(
+        appBar: AppBar(
         leading: Builder(
           builder: (BuildContext context) {
             return IconButton(
@@ -891,7 +906,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           );
         },
       ),
-    );
+    ),);
   }
 
   Widget _buildWeekdayHeader(ThemeData theme, String day) {
