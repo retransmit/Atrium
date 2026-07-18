@@ -349,6 +349,9 @@ void main() {
       DashboardServerInfoWidget(instances: <Instance>[glances]),
       pumps: 3,
     );
+    // The gauges fill via a TweenAnimationBuilder, so let it run out before
+    // reading the settled percentage.
+    await tester.pump(const Duration(seconds: 1));
     expect(find.text('Server info'), findsOneWidget);
     expect(find.text('CPU'), findsOneWidget);
     expect(find.text('Memory'), findsOneWidget);
