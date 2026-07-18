@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../radarr_providers.dart';
+import 'widgets/confirm_delete.dart';
 
 class MediaManagementSettingsScreen extends ConsumerStatefulWidget {
   const MediaManagementSettingsScreen({
@@ -200,6 +201,89 @@ class _MediaManagementSettingsScreenState
     }
   }
 
+  String _formatFreeSpace(dynamic bytes) {
+    if (bytes == null) return 'Unknown';
+    final int b = bytes is int ? bytes : int.tryParse(bytes.toString()) ?? 0;
+    if (b <= 0) return '0 B';
+    final double gib = b / (1024 * 1024 * 1024);
+    if (gib >= 1024) {
+      return '${(gib / 1024).toStringAsFixed(1)} TiB';
+    }
+    return '${gib.toStringAsFixed(1)} GiB';
+  }
+
+  Future<void> _showAddRootFolderDialog() async {
+    final controller = TextEditingController();
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Add Root Folder'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: 'Path',
+              hintText: 'e.g. /data/media/movies',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final path = controller.text.trim();
+                if (path.isEmpty) return;
+                try {
+                  final api =
+                      await ref.read(radarrApiProvider(widget.instance).future);
+                  await api.createRootFolder(<String, dynamic>{'path': path});
+                  ref.invalidate(radarrRootFoldersProvider(widget.instance));
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Root folder added!')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to add root folder: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteRootFolder(int id, String path) async {
+    final confirmed = await confirmDelete(context, 'Root Folder "$path"');
+    if (!confirmed) return;
+    try {
+      final api = await ref.read(radarrApiProvider(widget.instance).future);
+      await api.deleteRootFolder(id);
+      ref.invalidate(radarrRootFoldersProvider(widget.instance));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Root folder deleted!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete root folder: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -207,6 +291,8 @@ class _MediaManagementSettingsScreenState
         ref.watch(radarrNamingConfigProvider(widget.instance));
     final mediaMgmtConfigAsync =
         ref.watch(radarrMediaManagementConfigProvider(widget.instance));
+    final rootFoldersAsync =
+        ref.watch(radarrRootFoldersProvider(widget.instance));
 
     return Scaffold(
       appBar: AppBar(
@@ -453,6 +539,84 @@ class _MediaManagementSettingsScreenState
                                 ),
                               ),
                             ],
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: Insets.md),
+                    Card(
+                      elevation: 0,
+                      color: theme.colorScheme.surfaceContainerLow,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(color: theme.colorScheme.outlineVariant),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(Insets.md),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Root Folders',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: Insets.md),
+                            rootFoldersAsync.when(
+                              loading: () => const Center(
+                                child: ExpressiveProgressIndicator(),
+                              ),
+                              error: (err, stack) => Text('Error loading root folders: $err'),
+                              data: (folders) {
+                                if (folders.isEmpty) {
+                                  return const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: Insets.md),
+                                    child: Text('No root folders configured.'),
+                                  );
+                                }
+                                return ListView.separated(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: folders.length,
+                                  separatorBuilder: (_, __) => const Divider(),
+                                  itemBuilder: (context, idx) {
+                                    final folder = folders[idx];
+                                    final id = folder['id'] as int;
+                                    final path = folder['path'] as String? ?? 'Unknown';
+                                    final freeSpace = folder['freeSpace'];
+                                    final unmapped = (folder['unmappedFolders'] as List?)?.length ?? 0;
+
+                                    return ListTile(
+                                      contentPadding: EdgeInsets.zero,
+                                      title: Text(
+                                        path,
+                                        style: const TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                      subtitle: Text(
+                                        'Free Space: ${_formatFreeSpace(freeSpace)} • Unmapped Folders: $unmapped',
+                                      ),
+                                      trailing: IconButton(
+                                        icon: Icon(
+                                          Icons.close,
+                                          color: theme.colorScheme.error,
+                                        ),
+                                        onPressed: () => _deleteRootFolder(id, path),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                            const SizedBox(height: Insets.md),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: _showAddRootFolderDialog,
+                                icon: const Icon(Icons.add),
+                                label: const Text('Add Root Folder'),
+                              ),
+                            ),
                           ],
                         ),
                       ),

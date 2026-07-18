@@ -382,6 +382,26 @@ class SonarrApi {
     }
   }
 
+  Future<Map<String, dynamic>> createRootFolder(Map<String, dynamic> payload) async {
+    try {
+      final Response<dynamic> resp = await _dio.post<dynamic>(
+        '$_base/rootfolder',
+        data: payload,
+      );
+      return resp.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<void> deleteRootFolder(int id) async {
+    try {
+      await _dio.delete<dynamic>('$_base/rootfolder/$id');
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
   Future<void> addSeries(Map<String, dynamic> seriesJson) async {
     try {
       await _dio.post<dynamic>(
