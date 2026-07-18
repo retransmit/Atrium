@@ -79,7 +79,7 @@ class DashboardBoard extends ConsumerWidget {
         itemCount: visible.length,
         separatorBuilder: (_, __) => const SizedBox(height: Insets.md),
         itemBuilder: (BuildContext context, int index) =>
-            _buildWidget(visible[index].kind, instances),
+            _KeepAliveWrapper(child: _buildWidget(visible[index].kind, instances)),
       ),
     );
   }
@@ -335,3 +335,25 @@ class _EditTile extends StatelessWidget {
     );
   }
 }
+
+class _KeepAliveWrapper extends StatefulWidget {
+  final Widget child;
+
+  const _KeepAliveWrapper({required this.child});
+
+  @override
+  State<_KeepAliveWrapper> createState() => _KeepAliveWrapperState();
+}
+
+class _KeepAliveWrapperState extends State<_KeepAliveWrapper>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
+
+  @override
+  bool get wantKeepAlive => true;
+}
+

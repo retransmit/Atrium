@@ -67,7 +67,7 @@ void _openDetail(BuildContext context, _RecentDownloadItem item) {
 
 /// The most recently downloaded Sonarr series and Radarr movies across every
 /// instance, merged and shown as a horizontally scrollable poster row.
-class DashboardRecentlyDownloadedWidget extends ConsumerWidget {
+class DashboardRecentlyDownloadedWidget extends ConsumerStatefulWidget {
   const DashboardRecentlyDownloadedWidget({
     required this.sonarrInstances,
     required this.radarrInstances,
@@ -78,14 +78,30 @@ class DashboardRecentlyDownloadedWidget extends ConsumerWidget {
   final List<Instance> radarrInstances;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardRecentlyDownloadedWidget> createState() =>
+      _DashboardRecentlyDownloadedWidgetState();
+}
+
+class _DashboardRecentlyDownloadedWidgetState
+    extends ConsumerState<DashboardRecentlyDownloadedWidget> {
+  final ScrollController _scrollController = ScrollController();
+  bool _needsReset = false;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
 
     final List<_RecentDownloadItem> items = <_RecentDownloadItem>[];
     bool anyLoading = false;
     bool anyError = false;
 
-    for (final Instance i in sonarrInstances) {
+    for (final Instance i in widget.sonarrInstances) {
       final AsyncValue<List<SonarrHistoryItem>> history =
           ref.watch(sonarrHistoryProvider(i));
       final SonarrApi? api = ref.watch(sonarrApiProvider(i)).value;
@@ -108,7 +124,7 @@ class DashboardRecentlyDownloadedWidget extends ConsumerWidget {
         ));
       }
     }
-    for (final Instance i in radarrInstances) {
+    for (final Instance i in widget.radarrInstances) {
       final AsyncValue<List<RadarrHistoryItem>> history =
           ref.watch(radarrHistoryProvider(i));
       final RadarrApi? api = ref.watch(radarrApiProvider(i)).value;
@@ -132,6 +148,10 @@ class DashboardRecentlyDownloadedWidget extends ConsumerWidget {
       }
     }
 
+    if (anyLoading) {
+      _needsReset = true;
+    }
+
     items.sort((_RecentDownloadItem a, _RecentDownloadItem b) =>
         b.date.compareTo(a.date));
     final List<_RecentDownloadItem> top = items.take(15).toList();
@@ -151,10 +171,10 @@ class DashboardRecentlyDownloadedWidget extends ConsumerWidget {
     } else if (items.isEmpty && anyError) {
       body = DashboardErrorRow(
         onRetry: () {
-          for (final Instance i in sonarrInstances) {
+          for (final Instance i in widget.sonarrInstances) {
             ref.invalidate(sonarrHistoryProvider(i));
           }
-          for (final Instance i in radarrInstances) {
+          for (final Instance i in widget.radarrInstances) {
             ref.invalidate(radarrHistoryProvider(i));
           }
         },
@@ -162,9 +182,18 @@ class DashboardRecentlyDownloadedWidget extends ConsumerWidget {
     } else if (items.isEmpty) {
       body = const DashboardIdleRow(text: 'No recent downloads found');
     } else {
+      if (_needsReset) {
+        _needsReset = false;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.jumpTo(0.0);
+          }
+        });
+      }
       body = SizedBox(
         height: 184,
         child: ListView.separated(
+          controller: _scrollController,
           scrollDirection: Axis.horizontal,
           padding: EdgeInsets.zero,
           itemCount: top.length,
