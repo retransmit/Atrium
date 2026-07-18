@@ -680,6 +680,26 @@ class RadarrApi {
     }
   }
 
+  Future<Map<String, dynamic>> createRootFolder(Map<String, dynamic> payload) async {
+    try {
+      final Response<dynamic> resp = await _dio.post<dynamic>(
+        '$_base/rootfolder',
+        data: payload,
+      );
+      return resp.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<void> deleteRootFolder(int id) async {
+    try {
+      await _dio.delete<dynamic>('$_base/rootfolder/$id');
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getTags() async {
     try {
       final Response<dynamic> resp = await _dio.get<dynamic>('$_base/tag');
@@ -1406,20 +1426,23 @@ class RadarrApi {
   Future<Map<String, dynamic>> getLogs({
     int page = 1,
     int pageSize = 20,
-    String? sortKey,
-    String? filterKey,
-    String? filterValue,
+    String sortKey = 'time',
+    String sortDirection = 'descending',
+    String? level,
   }) async {
     try {
+      final Map<String, dynamic> queryParams = <String, dynamic>{
+        'page': page,
+        'pageSize': pageSize,
+        'sortKey': sortKey,
+        'sortDirection': sortDirection,
+      };
+      if (level != null) {
+        queryParams['level'] = level;
+      }
       final Response<dynamic> resp = await _dio.get<dynamic>(
         '$_base/log',
-        queryParameters: <String, dynamic>{
-          'page': page,
-          'pageSize': pageSize,
-          if (sortKey != null) 'sortKey': sortKey,
-          if (filterKey != null) 'filterKey': filterKey,
-          if (filterValue != null) 'filterValue': filterValue,
-        },
+        queryParameters: queryParams,
       );
       return resp.data as Map<String, dynamic>;
     } on DioException catch (e) {

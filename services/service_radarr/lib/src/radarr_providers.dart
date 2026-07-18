@@ -192,9 +192,9 @@ final radarrFilteredMoviesProvider = Provider.autoDispose
 final radarrBottomNavVisibleProvider =
     StateProvider.family<bool, Instance>((ref, instance) => true);
 
-/// Trigger value to scroll the movies list to top when the active tab is tapped again.
-final radarrMoviesScrollToTopProvider =
-    StateProvider.family<int, Instance>((ref, instance) => 0);
+/// Trigger value to scroll home tabs to top when active tab is tapped again.
+final radarrHomeScrollToTopProvider =
+    StateProvider.family<int, (Instance, int)>((ref, arg) => 0);
 
 /// All releases for a movie (interactive search).
 final radarrReleasesProvider = FutureProvider.autoDispose
@@ -693,12 +693,10 @@ final radarrLogsProvider = FutureProvider.autoDispose.family<
 ) async {
   final (Instance instance, :int page, :int pageSize, :String? level) = key;
   final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
-  final bool filterByLevel = level != null && level != 'all';
   return api.getLogs(
     page: page,
     pageSize: pageSize,
-    filterKey: filterByLevel ? 'level' : null,
-    filterValue: filterByLevel ? level : null,
+    level: level,
   );
 });
 
