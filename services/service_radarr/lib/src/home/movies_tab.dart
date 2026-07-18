@@ -417,6 +417,7 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                                           MovieDetailScreen(
                                         instance: widget.instance,
                                         movieId: m.id,
+                                        movie: m,
                                       ),
                                     ),
                                   );
@@ -484,6 +485,7 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                                             MovieDetailScreen(
                                           instance: widget.instance,
                                           movieId: m.id,
+                                          movie: m,
                                         ),
                                       ),
                                     );
@@ -764,6 +766,7 @@ class _MovieBannerCard extends ConsumerWidget {
                               child: CachedNetworkImage(
                                 imageUrl: posterUrl,
                                 fit: BoxFit.cover,
+                                memCacheWidth: 500,
                                 placeholder: (_, __) => Container(
                                   color:
                                       theme.colorScheme.surfaceContainerHighest,
@@ -871,6 +874,7 @@ class _Poster extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: imageUrl!,
       fit: BoxFit.cover,
+      memCacheWidth: 500,
       placeholder: (BuildContext context, String url) =>
           Container(color: theme.colorScheme.surfaceContainerHighest),
       errorWidget: (BuildContext context, String url, Object error) => fallback,

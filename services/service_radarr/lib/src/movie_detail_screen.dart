@@ -14,16 +14,29 @@ class MovieDetailScreen extends ConsumerWidget {
   const MovieDetailScreen({
     required this.instance,
     required this.movieId,
+    this.movie,
     super.key,
   });
 
   final Instance instance;
   final int movieId;
+  final RadarrMovie? movie;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<RadarrMovie> movieAsync =
         ref.watch(radarrMovieByIdProvider((instance, movieId)));
+
+    final RadarrMovie? activeMovie = movieAsync.value ?? movie;
+
+    if (activeMovie != null) {
+      return Scaffold(
+        body: _MovieDetailBody(
+          instance: instance,
+          movie: activeMovie,
+        ),
+      );
+    }
 
     return Scaffold(
       body: movieAsync.when(

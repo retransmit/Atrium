@@ -222,6 +222,7 @@ class _AddMovieScreenState extends ConsumerState<AddMovieScreen>
                                   builder: (_) => MovieDetailScreen(
                                     instance: widget.instance,
                                     movieId: localMatch.id,
+                                    movie: localMatch,
                                   ),
                                 ),
                               );

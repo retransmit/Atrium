@@ -1012,6 +1012,7 @@ class _EventTile extends ConsumerWidget {
               builder: (_) => MovieDetailScreen(
                 instance: instance,
                 movieId: movie.id,
+                movie: movie,
               ),
             ),
           );

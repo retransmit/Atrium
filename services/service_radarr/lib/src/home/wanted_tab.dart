@@ -561,6 +561,7 @@ class _WantedMovieCard extends ConsumerWidget {
               MovieDetailScreen(
                 instance: instance,
                 movieId: movie.id,
+                movie: movie,
               ),
             );
           }
