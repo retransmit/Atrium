@@ -24,10 +24,12 @@ class _WantedTabState extends ConsumerState<WantedTab>
   late final FocusNode _searchFocusNode;
   late final void Function() _resetSearchActive;
   double _lastBottomInset = 0;
+  late final ScrollController _scrollController;
 
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController();
     WidgetsBinding.instance.addObserver(this);
     final notifier =
         ref.read(radarrSearchActiveProvider(widget.instance).notifier);
@@ -45,6 +47,7 @@ class _WantedTabState extends ConsumerState<WantedTab>
     _searchController.dispose();
     _searchFocusNode.removeListener(_onFocusChange);
     _searchFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -173,8 +176,6 @@ class _WantedTabState extends ConsumerState<WantedTab>
     final Set<int> selectedMovieIds =
         ref.watch(radarrWantedSelectionProvider(widget.instance));
     final bool hasSelection = selectedMovieIds.isNotEmpty;
-    final bool isGrouped =
-        ref.watch(radarrWantedGroupedProvider(widget.instance));
 
     ref.listen<String>(radarrWantedSearchQueryProvider(widget.instance),
         (String? previous, String next) {
@@ -187,11 +188,23 @@ class _WantedTabState extends ConsumerState<WantedTab>
       }
     });
 
+    ref.listen<int>(radarrHomeScrollToTopProvider((widget.instance, 2)),
+        (previous, next) {
+      if (next > 0 && _scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         backgroundColor: theme.colorScheme.surface,
         body: NestedScrollView(
+          controller: _scrollController,
           headerSliverBuilder:
               (BuildContext innerContext, bool innerBoxIsScrolled) {
             return <Widget>[
@@ -284,24 +297,7 @@ class _WantedTabState extends ConsumerState<WantedTab>
                         const SizedBox(width: 8),
                       ]
                     : <Widget>[
-                        IconButton(
-                          icon: Icon(
-                            isGrouped
-                                ? Icons.format_list_bulleted
-                                : Icons.group_work_outlined,
-                          ),
-                          tooltip: isGrouped
-                              ? 'Switch to plain list'
-                              : 'Switch to grouped view',
-                          onPressed: () {
-                            ref
-                                .read(
-                                  radarrWantedGroupedProvider(widget.instance)
-                                      .notifier,
-                                )
-                                .update((state) => !state);
-                          },
-                        ),
+                        const SizedBox(width: 48),
                         const SizedBox(width: 8),
                       ],
                 bottom: TabBar(
@@ -369,7 +365,6 @@ class _WantedListView extends ConsumerWidget {
 
     final selectedIds = ref.watch(radarrWantedSelectionProvider(instance));
     final hasSelection = selectedIds.isNotEmpty;
-    final bool isGrouped = ref.watch(radarrWantedGroupedProvider(instance));
 
     return listAsync.when(
       loading: () => const Center(child: ExpressiveProgressIndicator()),
@@ -405,17 +400,7 @@ class _WantedListView extends ConsumerWidget {
           );
         }
 
-        final Widget content;
-        if (isGrouped) {
-          // Group by studio
-          final Map<String, List<RadarrMovie>> groupedMap = {};
-          for (final movie in movies) {
-            final studio = movie.studio ?? 'Unknown Studio';
-            groupedMap.putIfAbsent(studio, () => []).add(movie);
-          }
-          final studioKeys = groupedMap.keys.toList()..sort();
-
-          content = EasyRefresh(
+        final Widget content = EasyRefresh(
           header: const ClassicHeader(
             dragText: 'Pull to refresh',
             armedText: 'Release ready',
@@ -425,133 +410,65 @@ class _WantedListView extends ConsumerWidget {
             failedText: 'Failed',
             messageText: 'Last updated at %T',
           ),
-            onRefresh: () async {
-              if (isCutoffTab) {
-                ref.invalidate(radarrWantedCutoffProvider(instance));
-                await ref.read(radarrWantedCutoffProvider(instance).future);
-              } else {
-                ref.invalidate(radarrWantedMissingProvider(instance));
-                await ref.read(radarrWantedMissingProvider(instance).future);
-              }
-            },
-            child: ListView.builder(
-              padding: const EdgeInsets.all(Insets.md),
-              itemCount: studioKeys.length + 1,
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12.0),
-                    child: Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: onBulkSearch,
-                            icon: const Icon(Icons.search, size: 18),
-                            label: Text(
-                              isCutoffTab
-                                  ? 'Search Cutoff Unmet'
-                                  : 'Search All Missing',
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: Insets.md),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              showManualImportFlow(context, ref, instance);
-                            },
-                            icon: const Icon(Icons.folder_open, size: 18),
-                            label: const Text('Manual Import'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                final studio = studioKeys[index - 1];
-                final studioMovies = groupedMap[studio]!;
-                return _GroupedWantedCard(
-                  instance: instance,
-                  studioName: studio,
-                  movies: studioMovies,
-                  selectedIds: selectedIds,
-                  hasSelection: hasSelection,
-                  isCutoffTab: isCutoffTab,
-                );
-              },
-            ),
-          );
-        } else {
-          content = EasyRefresh(
-          header: const ClassicHeader(
-            dragText: 'Pull to refresh',
-            armedText: 'Release ready',
-            readyText: 'Refreshing...',
-            processingText: 'Refreshing...',
-            processedText: 'Succeeded',
-            failedText: 'Failed',
-            messageText: 'Last updated at %T',
-          ),
-            onRefresh: () async {
-              if (isCutoffTab) {
-                ref.invalidate(radarrWantedCutoffProvider(instance));
-                await ref.read(radarrWantedCutoffProvider(instance).future);
-              } else {
-                ref.invalidate(radarrWantedMissingProvider(instance));
-                await ref.read(radarrWantedMissingProvider(instance).future);
-              }
-            },
-            child: ListView.builder(
-              padding: const EdgeInsets.all(Insets.md),
-              itemCount: movies.length + 1,
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12.0),
-                    child: Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: onBulkSearch,
-                            icon: const Icon(Icons.search, size: 18),
-                            label: Text(
-                              isCutoffTab
-                                  ? 'Search Cutoff Unmet'
-                                  : 'Search All Missing',
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: Insets.md),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              showManualImportFlow(context, ref, instance);
-                            },
-                            icon: const Icon(Icons.folder_open, size: 18),
-                            label: const Text('Manual Import'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-                final movie = movies[index - 1];
-                final isSelected = selectedIds.contains(movie.id);
-
+          onRefresh: () async {
+            if (isCutoffTab) {
+              ref.invalidate(radarrWantedCutoffProvider(instance));
+              await ref.read(radarrWantedCutoffProvider(instance).future);
+            } else {
+              ref.invalidate(radarrWantedMissingProvider(instance));
+              await ref.read(radarrWantedMissingProvider(instance).future);
+            }
+          },
+          child: ListView.builder(
+            padding: const EdgeInsets.all(Insets.md),
+            itemCount: movies.length + 1,
+            itemBuilder: (context, index) {
+              if (index == 0) {
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12.0),
-                  child: _WantedMovieCard(
-                    instance: instance,
-                    movie: movie,
-                    isSelected: isSelected,
-                    hasSelection: hasSelection,
-                    isCutoffTab: isCutoffTab,
+                  child: Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: FilledButton.tonalIcon(
+                          onPressed: onBulkSearch,
+                          icon: const Icon(Icons.search, size: 18),
+                          label: Text(
+                            isCutoffTab
+                                ? 'Search Cutoff'
+                                : 'Search All',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: Insets.md),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            showManualImportFlow(context, ref, instance);
+                          },
+                          icon: const Icon(Icons.folder_open, size: 18),
+                          label: const Text('Manual Import'),
+                        ),
+                      ),
+                    ],
                   ),
                 );
-              },
-            ),
-          );
-        }
+              }
+              final movie = movies[index - 1];
+              final isSelected = selectedIds.contains(movie.id);
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: _WantedMovieCard(
+                  instance: instance,
+                  movie: movie,
+                  isSelected: isSelected,
+                  hasSelection: hasSelection,
+                  isCutoffTab: isCutoffTab,
+                ),
+              );
+            },
+          ),
+        );
 
         if (totalRecords <= fetchedCount) return content;
 

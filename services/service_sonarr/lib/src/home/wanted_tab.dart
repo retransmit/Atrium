@@ -31,10 +31,12 @@ class _WantedTabState extends ConsumerState<WantedTab>
   late final void Function() _resetSearchActive;
 
   double _lastBottomInset = 0;
+  late final ScrollController _scrollController;
 
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController();
     WidgetsBinding.instance.addObserver(this);
     final notifier =
         ref.read(sonarrSearchActiveProvider(widget.instance).notifier);
@@ -52,6 +54,7 @@ class _WantedTabState extends ConsumerState<WantedTab>
     _searchController.dispose();
     _searchFocusNode.removeListener(_onFocusChange);
     _searchFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -208,11 +211,23 @@ class _WantedTabState extends ConsumerState<WantedTab>
       }
     });
 
+    ref.listen<int>(sonarrHomeScrollToTopProvider((widget.instance, 2)),
+        (previous, next) {
+      if (next > 0 && _scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         backgroundColor: theme.colorScheme.surface,
         body: NestedScrollView(
+          controller: _scrollController,
           headerSliverBuilder:
               (BuildContext innerContext, bool innerBoxIsScrolled) {
             return <Widget>[
@@ -870,8 +885,8 @@ class _EpisodeListLayout extends ConsumerWidget {
                           icon: const Icon(Icons.search, size: 18),
                           label: Text(
                             isCutoffTab
-                                ? 'Search Cutoff Unmet'
-                                : 'Search All Missing',
+                                ? 'Search Cutoff'
+                                : 'Search All',
                           ),
                         ),
                       ),
