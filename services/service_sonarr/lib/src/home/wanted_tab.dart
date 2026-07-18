@@ -643,17 +643,31 @@ class _EpisodeListLayout extends ConsumerWidget {
                   ),
                 ),
                 color: isSelected
-                    ? theme.colorScheme.primaryContainer.withValues(alpha: 0.3)
+                    ? theme.colorScheme.primaryContainer.withValues(alpha: 0.15)
                     : theme.colorScheme.surfaceContainerLow,
                 margin: const EdgeInsets.only(bottom: 8),
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
-                  onTap: () => _showEpisodeDetails(context, ref, episode),
-                  onLongPress: () {
-                    if (isSelected) {
-                      selectedIds.remove(episode.id);
+                  onTap: () {
+                    final bool hasSelection = selectedIds.isNotEmpty;
+                    if (hasSelection) {
+                      final notifier = ref.read(sonarrWantedSelectionProvider(instance).notifier);
+                      if (isSelected) {
+                        notifier.state = selectedIds.where((id) => id != episode.id).toSet();
+                      } else {
+                        notifier.state = {...selectedIds, episode.id};
+                      }
+                      onSelectionChanged();
                     } else {
-                      selectedIds.add(episode.id);
+                      _showEpisodeDetails(context, ref, episode);
+                    }
+                  },
+                  onLongPress: () {
+                    final notifier = ref.read(sonarrWantedSelectionProvider(instance).notifier);
+                    if (isSelected) {
+                      notifier.state = selectedIds.where((id) => id != episode.id).toSet();
+                    } else {
+                      notifier.state = {...selectedIds, episode.id};
                     }
                     onSelectionChanged();
                   },
@@ -662,18 +676,6 @@ class _EpisodeListLayout extends ConsumerWidget {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        Checkbox(
-                          value: isSelected,
-                          onChanged: (bool? val) {
-                            if (val == true) {
-                              selectedIds.add(episode.id);
-                            } else {
-                              selectedIds.remove(episode.id);
-                            }
-                            onSelectionChanged();
-                          },
-                        ),
-                        const SizedBox(width: 4),
                         if (posterUrl != null)
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
@@ -946,7 +948,8 @@ class _GroupedEpisodeCardState extends ConsumerState<_GroupedEpisodeCard> {
     final bool allSelected = widget.selectedIds.containsAll(groupEpIds);
     final bool someSelected =
         !allSelected && widget.selectedIds.any(groupEpIds.contains);
-    final bool? checkboxState = someSelected ? null : allSelected;
+
+    final int selectedCount = widget.episodes.where((e) => widget.selectedIds.contains(e.id)).length;
 
     return Card(
       elevation: 0,
@@ -954,42 +957,53 @@ class _GroupedEpisodeCardState extends ConsumerState<_GroupedEpisodeCard> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          color: allSelected
+              ? theme.colorScheme.primary
+              : someSelected
+                  ? theme.colorScheme.primary.withValues(alpha: 0.5)
+                  : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+          width: allSelected || someSelected ? 2.0 : 1.0,
         ),
       ),
-      color: theme.colorScheme.surfaceContainerLow,
+      color: allSelected
+          ? theme.colorScheme.primaryContainer.withValues(alpha: 0.15)
+          : someSelected
+              ? theme.colorScheme.primaryContainer.withValues(alpha: 0.05)
+              : theme.colorScheme.surfaceContainerLow,
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           InkWell(
             onTap: () {
-              setState(() {
-                _isExpanded = !_isExpanded;
-              });
+              final bool hasSelection = widget.selectedIds.isNotEmpty;
+              if (hasSelection) {
+                final notifier = ref.read(sonarrWantedSelectionProvider(widget.instance).notifier);
+                if (allSelected) {
+                  notifier.state = widget.selectedIds.difference(groupEpIds);
+                } else {
+                  notifier.state = {...widget.selectedIds, ...groupEpIds};
+                }
+                widget.onSelectionChanged();
+              } else {
+                setState(() {
+                  _isExpanded = !_isExpanded;
+                });
+              }
+            },
+            onLongPress: () {
+              final notifier = ref.read(sonarrWantedSelectionProvider(widget.instance).notifier);
+              if (allSelected) {
+                notifier.state = widget.selectedIds.difference(groupEpIds);
+              } else {
+                notifier.state = {...widget.selectedIds, ...groupEpIds};
+              }
+              widget.onSelectionChanged();
             },
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: <Widget>[
-                  // Header Checkbox
-                  Checkbox(
-                    value: checkboxState,
-                    tristate: true,
-                    onChanged: (bool? val) {
-                      setState(() {
-                        if (val == true) {
-                          // Select all in group
-                          widget.selectedIds.addAll(groupEpIds);
-                        } else {
-                          // Deselect all in group
-                          widget.selectedIds.removeAll(groupEpIds);
-                        }
-                        widget.onSelectionChanged();
-                      });
-                    },
-                  ),
-                  const SizedBox(width: 4),
 
                   // Poster Thumbnail
                   if (posterUrl != null)
@@ -1051,27 +1065,41 @@ class _GroupedEpisodeCardState extends ConsumerState<_GroupedEpisodeCard> {
                   ),
                   const SizedBox(width: 8),
 
-                  // Wanted Count Badge
+                  // Selection / Wanted Count Badge
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer,
+                      color: selectedCount > 0
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.primaryContainer,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      '${widget.episodes.length} wanted',
+                      selectedCount > 0
+                          ? '$selectedCount/${widget.episodes.length} selected'
+                          : '${widget.episodes.length} wanted',
                       style: theme.textTheme.labelMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onPrimaryContainer,
+                        color: selectedCount > 0
+                            ? theme.colorScheme.onPrimary
+                            : theme.colorScheme.onPrimaryContainer,
                         fontSize: 11,
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Icon(
-                    _isExpanded ? Icons.expand_less : Icons.expand_more,
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    icon: Icon(
+                      _isExpanded ? Icons.expand_less : Icons.expand_more,
+                    ),
                     color: theme.colorScheme.outline,
+                    onPressed: () {
+                      setState(() {
+                        _isExpanded = !_isExpanded;
+                      });
+                    },
                   ),
                 ],
               ),
@@ -1119,13 +1147,36 @@ class _GroupedEpisodeCardState extends ConsumerState<_GroupedEpisodeCard> {
                       borderRadius: BorderRadius.circular(12),
                       side: BorderSide(
                         color: isEpSelected
-                            ? theme.colorScheme.primary.withValues(alpha: 0.5)
+                            ? theme.colorScheme.primary
                             : Colors.transparent,
+                        width: isEpSelected ? 2.0 : 1.0,
                       ),
                     ),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(12),
-                      onTap: () => widget.onShowDetails(episode),
+                      onTap: () {
+                        final bool hasSelection = widget.selectedIds.isNotEmpty;
+                        if (hasSelection) {
+                          final notifier = ref.read(sonarrWantedSelectionProvider(widget.instance).notifier);
+                          if (isEpSelected) {
+                            notifier.state = widget.selectedIds.where((id) => id != episode.id).toSet();
+                          } else {
+                            notifier.state = {...widget.selectedIds, episode.id};
+                          }
+                          widget.onSelectionChanged();
+                        } else {
+                          widget.onShowDetails(episode);
+                        }
+                      },
+                      onLongPress: () {
+                        final notifier = ref.read(sonarrWantedSelectionProvider(widget.instance).notifier);
+                        if (isEpSelected) {
+                          notifier.state = widget.selectedIds.where((id) => id != episode.id).toSet();
+                        } else {
+                          notifier.state = {...widget.selectedIds, episode.id};
+                        }
+                        widget.onSelectionChanged();
+                      },
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
@@ -1133,20 +1184,6 @@ class _GroupedEpisodeCardState extends ConsumerState<_GroupedEpisodeCard> {
                         ),
                         child: Row(
                           children: <Widget>[
-                            Checkbox(
-                              value: isEpSelected,
-                              onChanged: (bool? val) {
-                                setState(() {
-                                  if (val == true) {
-                                    widget.selectedIds.add(episode.id);
-                                  } else {
-                                    widget.selectedIds.remove(episode.id);
-                                  }
-                                  widget.onSelectionChanged();
-                                });
-                              },
-                            ),
-                            const SizedBox(width: 4),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 6,

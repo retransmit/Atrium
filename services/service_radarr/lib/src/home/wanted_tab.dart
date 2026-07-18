@@ -141,6 +141,32 @@ class _WantedTabState extends ConsumerState<WantedTab>
     }
   }
 
+  Future<void> _bulkSearchAll(bool isCutoffTab) async {
+    try {
+      final api = await ref.read(radarrApiProvider(widget.instance).future);
+      await api.runCommand(<String, dynamic>{
+        'name': isCutoffTab ? 'CutoffUnmetMoviesSearch' : 'MissingMoviesSearch',
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              isCutoffTab
+                  ? 'Cutoff unmet movie search started.'
+                  : 'Missing movie search started.',
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to start bulk search: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
@@ -301,10 +327,12 @@ class _WantedTabState extends ConsumerState<WantedTab>
               _WantedListView(
                 instance: widget.instance,
                 isCutoffTab: false,
+                onBulkSearch: () => _bulkSearchAll(false),
               ),
               _WantedListView(
                 instance: widget.instance,
                 isCutoffTab: true,
+                onBulkSearch: () => _bulkSearchAll(true),
               ),
             ],
           ),
@@ -318,10 +346,12 @@ class _WantedListView extends ConsumerWidget {
   const _WantedListView({
     required this.instance,
     required this.isCutoffTab,
+    required this.onBulkSearch,
   });
 
   final Instance instance;
   final bool isCutoffTab;
+  final VoidCallback onBulkSearch;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -411,12 +441,30 @@ class _WantedListView extends ConsumerWidget {
                 if (index == 0) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12.0),
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        showManualImportFlow(context, ref, instance);
-                      },
-                      icon: const Icon(Icons.folder_open, size: 18),
-                      label: const Text('Manual Import'),
+                    child: Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: onBulkSearch,
+                            icon: const Icon(Icons.search, size: 18),
+                            label: Text(
+                              isCutoffTab
+                                  ? 'Search Cutoff Unmet'
+                                  : 'Search All Missing',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: Insets.md),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              showManualImportFlow(context, ref, instance);
+                            },
+                            icon: const Icon(Icons.folder_open, size: 18),
+                            label: const Text('Manual Import'),
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 }
@@ -460,12 +508,30 @@ class _WantedListView extends ConsumerWidget {
                 if (index == 0) {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12.0),
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        showManualImportFlow(context, ref, instance);
-                      },
-                      icon: const Icon(Icons.folder_open, size: 18),
-                      label: const Text('Manual Import'),
+                    child: Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: onBulkSearch,
+                            icon: const Icon(Icons.search, size: 18),
+                            label: Text(
+                              isCutoffTab
+                                  ? 'Search Cutoff Unmet'
+                                  : 'Search All Missing',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: Insets.md),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              showManualImportFlow(context, ref, instance);
+                            },
+                            icon: const Icon(Icons.folder_open, size: 18),
+                            label: const Text('Manual Import'),
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 }
