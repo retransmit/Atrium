@@ -109,6 +109,18 @@ class _MovieDetailBodyState extends ConsumerState<_MovieDetailBody> {
     final String? fanartUrl =
         fanart == null ? null : api?.posterUrl(fanart, width: 1080);
 
+    final queueAsync = ref.watch(radarrMovieQueueProvider((widget.instance, widget.movie.id)));
+    final download = queueAsync.value?.firstOrNull;
+
+    double? dlProgress;
+    if (download != null) {
+      final double totalSize = download.size ?? 0.0;
+      final double sizeLeft = download.sizeleft ?? 0.0;
+      if (totalSize > 0) {
+        dlProgress = (totalSize - sizeLeft) / totalSize;
+      }
+    }
+
     return EasyRefresh(
           header: const ClassicHeader(
             position: IndicatorPosition.locator,
@@ -161,6 +173,80 @@ class _MovieDetailBodyState extends ConsumerState<_MovieDetailBody> {
                   movie: widget.movie,
                   posterUrl: posterUrl,
                 ),
+                if (download != null) ...[
+                  Card(
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Radii.lg),
+                      side: BorderSide(
+                        color: cs.primary.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    color: cs.primaryContainer.withValues(alpha: 0.1),
+                    margin: const EdgeInsets.only(top: Insets.lg),
+                    child: Padding(
+                      padding: const EdgeInsets.all(Insets.md),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.downloading, color: cs.primary),
+                              const SizedBox(width: Insets.sm),
+                              Expanded(
+                                child: Text(
+                                  'Downloading • ETA: ${_formatTimeLeft(download.timeleft)}',
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: cs.primary,
+                                  ),
+                                ),
+                              ),
+                              if (dlProgress != null)
+                                Text(
+                                  '${(dlProgress * 100).toStringAsFixed(0)}%',
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: cs.primary,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          if (dlProgress != null) ...[
+                            const SizedBox(height: Insets.sm),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: dlProgress,
+                                minHeight: 6,
+                                backgroundColor: cs.primaryContainer.withValues(alpha: 0.3),
+                                color: cs.primary,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: Insets.xs),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Client: ${download.downloadClient ?? 'unknown'}',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: cs.outline,
+                                ),
+                              ),
+                              Text(
+                                'Indexer: ${download.indexer ?? 'unknown'}',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: cs.outline,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: Insets.lg),
                 _ActionsRow(
                   instance: widget.instance,
@@ -838,6 +924,8 @@ class _OverflowMenu extends ConsumerWidget {
           await _showRenameDialog(context);
         } else if (v == 'edit') {
           _showEditScreen(context);
+        } else if (v == 'history') {
+          _showHistoryScreen(context);
         }
       },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -858,6 +946,14 @@ class _OverflowMenu extends ConsumerWidget {
           ),
         ),
         const PopupMenuItem<String>(
+          value: 'history',
+          child: ListTile(
+            leading: Icon(Icons.history),
+            title: Text('History'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        const PopupMenuItem<String>(
           value: 'delete',
           child: ListTile(
             leading: Icon(Icons.delete_outline),
@@ -873,6 +969,17 @@ class _OverflowMenu extends ConsumerWidget {
     Navigator.of(context, rootNavigator: true).push(
       FadePageRoute<void>(
         builder: (_) => RadarrSettingsFormScreen(
+          instance: instance,
+          movie: movie,
+        ),
+      ),
+    );
+  }
+
+  void _showHistoryScreen(BuildContext context) {
+    Navigator.of(context, rootNavigator: true).push(
+      FadePageRoute<void>(
+        builder: (_) => RadarrMovieHistoryScreen(
           instance: instance,
           movie: movie,
         ),
@@ -1127,3 +1234,336 @@ class _AppBarActionsState extends State<_AppBarActions> {
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Movie History Screen
+// ---------------------------------------------------------------------------
+
+class RadarrMovieHistoryScreen extends ConsumerWidget {
+  const RadarrMovieHistoryScreen({
+    super.key,
+    required this.instance,
+    required this.movie,
+  });
+
+  final Instance instance;
+  final RadarrMovie movie;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final historyAsync = ref.watch(
+      radarrMovieHistoryProvider((instance, movie.id)),
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('${movie.title} - History'),
+        surfaceTintColor: Colors.transparent,
+      ),
+      body: historyAsync.when(
+        loading: () => const Center(child: ExpressiveProgressIndicator()),
+        error: (Object error, StackTrace? _) => ErrorView(
+          title: 'Failed to load history',
+          message: error.toString(),
+          onRetry: () => ref.invalidate(radarrMovieHistoryProvider((instance, movie.id))),
+        ),
+        data: (List<RadarrHistoryItem> items) {
+          if (items.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Icon(
+                    Icons.history,
+                    size: 48,
+                    color: cs.outline,
+                  ),
+                  const SizedBox(height: Insets.lg),
+                  Text(
+                    'No history items found.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: cs.outline,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return EasyRefresh(
+            onRefresh: () async {
+              ref.invalidate(radarrMovieHistoryProvider((instance, movie.id)));
+              await ref.read(radarrMovieHistoryProvider((instance, movie.id)).future);
+            },
+            child: ListView.separated(
+              padding: const EdgeInsets.all(Insets.md),
+              itemCount: items.length,
+              separatorBuilder: (BuildContext context, int index) => const Divider(
+                height: 1,
+                indent: Insets.lg,
+                endIndent: Insets.lg,
+              ),
+              itemBuilder: (BuildContext context, int index) {
+                final RadarrHistoryItem item = items[index];
+                final String formattedDate = _formatDateTime(item.date);
+
+                return ListTile(
+                  leading: _buildHistoryEventIcon(context, item.eventType),
+                  title: Text(
+                    item.eventType?.toUpperCase() ?? 'UNKNOWN',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Text(
+                    item.sourceTitle ?? 'No release title',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: Text(
+                    formattedDate,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 10,
+                      color: cs.outline,
+                    ),
+                  ),
+                  onTap: () => _showHistoryDetails(context, ref, instance, movie.id, item),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _formatDateTime(String? isoDate) {
+  if (isoDate == null) return 'Unknown Date';
+  try {
+    final DateTime dt = DateTime.parse(isoDate).toLocal();
+    final String monthStr = dt.month.toString().padLeft(2, '0');
+    final String dayStr = dt.day.toString().padLeft(2, '0');
+    final String hourStr = dt.hour.toString().padLeft(2, '0');
+    final String minStr = dt.minute.toString().padLeft(2, '0');
+    return '${dt.year}-$monthStr-$dayStr $hourStr:$minStr';
+  } catch (_) {
+    return isoDate;
+  }
+}
+
+Widget _buildHistoryEventIcon(BuildContext context, String? eventType) {
+  final ThemeData theme = Theme.of(context);
+  final String label = eventType?.toLowerCase() ?? '';
+
+  IconData icon;
+  Color color;
+
+  switch (label) {
+    case 'grabbed':
+      icon = Icons.cloud_download_outlined;
+      color = theme.colorScheme.secondary;
+      break;
+    case 'downloadfolderimported':
+      icon = Icons.download_done_outlined;
+      color = theme.colorScheme.primary;
+      break;
+    case 'failed':
+      icon = Icons.error_outline;
+      color = theme.colorScheme.error;
+      break;
+    default:
+      icon = Icons.history;
+      color = theme.colorScheme.onSurfaceVariant;
+  }
+
+  return Icon(icon, color: color, size: 22);
+}
+
+void _showHistoryDetails(
+  BuildContext context,
+  WidgetRef ref,
+  Instance instance,
+  int movieId,
+  RadarrHistoryItem item,
+) {
+  final ThemeData theme = Theme.of(context);
+  final String eventType = item.eventType ?? 'Unknown';
+
+  showDialog<void>(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: Text(
+          'History Event Details',
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              _DetailRow(label: 'Event Type', value: eventType.toUpperCase()),
+              _DetailRow(label: 'Date', value: _formatDateTime(item.date)),
+              _DetailRow(
+                label: 'Source Title',
+                value: item.sourceTitle ?? 'None',
+              ),
+              if (item.downloadId != null)
+                _DetailRow(label: 'Download ID', value: item.downloadId!),
+              if (item.data != null && item.data!.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Metadata:',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  width: double.maxFinite,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: item.data!.entries.map((MapEntry<String, String?> e) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '${e.key}: ${e.value}',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: <Widget>[
+          if (eventType.toLowerCase() == 'grabbed')
+            TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.error,
+              ),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                try {
+                  final RadarrApi api =
+                      await ref.read(radarrApiProvider(instance).future);
+                  await api.failHistoryItem(item.id);
+                  ref.invalidate(radarrMovieHistoryProvider((instance, movieId)));
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Marked release as failed. Radarr will search for replacements.',
+                        ),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to flag release: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Mark Failed'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+String _formatTimeLeft(String? timeleft) {
+  if (timeleft == null || timeleft == '00:00:00' || timeleft.isEmpty) {
+    return 'calculating...';
+  }
+  try {
+    final List<String> parts = timeleft.split(':');
+    if (parts.length < 3) return timeleft;
+
+    final String hoursPart = parts[0];
+    final String minutesPart = parts[1];
+
+    int days = 0;
+    int hours = 0;
+
+    if (hoursPart.contains('.')) {
+      final List<String> hourSplit = hoursPart.split('.');
+      days = int.tryParse(hourSplit[0]) ?? 0;
+      hours = int.tryParse(hourSplit[1]) ?? 0;
+    } else {
+      hours = int.tryParse(hoursPart) ?? 0;
+    }
+
+    final int minutes = int.tryParse(minutesPart) ?? 0;
+
+    final List<String> result = [];
+    if (days > 0) result.add('${days}d');
+    if (hours > 0) result.add('${hours}h');
+    if (days == 0 && hours == 0 && minutes > 0) result.add('${minutes}m');
+
+    if (result.isEmpty) return 'few seconds';
+    return result.join(' ');
+  } catch (_) {
+    return timeleft;
+  }
+}
+

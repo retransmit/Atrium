@@ -465,8 +465,30 @@ class SonarrApi {
     int page = 1,
     int pageSize = 20,
     int? episodeId,
+    int? seriesId,
   }) async {
     try {
+      if (seriesId != null) {
+        final Response<dynamic> resp = await _dio.get<dynamic>(
+          '$_base/history/series',
+          queryParameters: <String, dynamic>{
+            'seriesId': seriesId,
+            'includeSeries': true,
+            'includeEpisode': true,
+          },
+        );
+        final dynamic data = resp.data;
+        if (data is List<dynamic>) {
+          return data
+              .map(
+                (dynamic e) =>
+                    SonarrHistoryItem.fromJson(e as Map<String, dynamic>),
+              )
+              .toList();
+        }
+        return <SonarrHistoryItem>[];
+      }
+
       final Response<dynamic> resp = await _dio.get<dynamic>(
         '$_base/history',
         queryParameters: <String, dynamic>{

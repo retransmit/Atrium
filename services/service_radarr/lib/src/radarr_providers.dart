@@ -749,3 +749,26 @@ final radarrParseResultProvider = FutureProvider.autoDispose
   final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
   return api.parseTitle(title);
 });
+
+/// Movie-specific history provider. Fetches up to 150 history items for a movie.
+final radarrMovieHistoryProvider = FutureProvider.autoDispose
+    .family<List<RadarrHistoryItem>, (Instance, int)>((
+  Ref ref,
+  (Instance, int) arg,
+) async {
+  final (Instance instance, int movieId) = arg;
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getHistory(movieId: movieId, pageSize: 150);
+});
+
+/// Movie-specific active download queue provider. Watches the global queue and filters for movieId.
+final radarrMovieQueueProvider = FutureProvider.autoDispose
+    .family<List<RadarrQueueItem>, (Instance, int)>((
+  Ref ref,
+  (Instance, int) arg,
+) async {
+  final (Instance instance, int movieId) = arg;
+  final queue = await ref.watch(radarrQueueProvider(instance).future);
+  return queue.where((item) => item.movieId == movieId).toList();
+});
+

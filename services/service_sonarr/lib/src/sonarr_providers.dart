@@ -878,3 +878,15 @@ final sonarrParseResultProvider = FutureProvider.autoDispose
   final SonarrApi api = await ref.watch(sonarrApiProvider(instance).future);
   return api.parseTitle(title);
 });
+
+/// Series-specific history provider. Fetches up to 150 history items for a series.
+final sonarrSeriesHistoryProvider = FutureProvider.autoDispose
+    .family<List<SonarrHistoryItem>, (Instance, int)>((
+  Ref ref,
+  (Instance, int) arg,
+) async {
+  final (Instance instance, int seriesId) = arg;
+  final SonarrApi api = await ref.watch(sonarrApiProvider(instance).future);
+  return api.getHistory(seriesId: seriesId, pageSize: 150);
+});
+
