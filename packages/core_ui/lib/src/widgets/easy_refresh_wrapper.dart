@@ -43,10 +43,86 @@ class EasyRefresh extends material.StatelessWidget {
       onRefresh: onRefresh,
       onLoad: onLoad,
       triggerAxis: material.Axis.vertical,
+      scrollBehaviorBuilder: (material.ScrollPhysics? physics) {
+        if (physics != null) {
+          return er.ERScrollBehavior(ClampingERScrollPhysics(physics));
+        }
+        return const er.ERScrollBehavior();
+      },
       child: child,
     );
   }
 }
+
+class ClampingERScrollPhysics extends material.ScrollPhysics {
+  final material.ScrollPhysics _delegate;
+  final Set<material.ScrollMetrics> _activeDrags = <material.ScrollMetrics>{};
+
+  ClampingERScrollPhysics(this._delegate, {super.parent});
+
+  @override
+  ClampingERScrollPhysics applyTo(material.ScrollPhysics? ancestor) {
+    return ClampingERScrollPhysics(
+      _delegate.applyTo(ancestor),
+      parent: buildParent(ancestor),
+    );
+  }
+
+  @override
+  double applyPhysicsToUserOffset(material.ScrollMetrics position, double offset) {
+    _activeDrags.add(position);
+    return _delegate.applyPhysicsToUserOffset(position, offset);
+  }
+
+  @override
+  double applyBoundaryConditions(material.ScrollMetrics position, double value) {
+    // If dragging or already out of range, let the delegate handle it.
+    if (_activeDrags.contains(position) || position.outOfRange) {
+      return _delegate.applyBoundaryConditions(position, value);
+    }
+
+    // Otherwise, clamp it so that ballistic flings stop exactly at the boundaries.
+    return const material.ClampingScrollPhysics().applyBoundaryConditions(position, value);
+  }
+
+  @override
+  material.Simulation? createBallisticSimulation(
+    material.ScrollMetrics position,
+    double velocity,
+  ) {
+    _activeDrags.remove(position);
+
+    if (position.outOfRange) {
+      return _delegate.createBallisticSimulation(position, velocity);
+    }
+
+    final clampingSimulation = const material.ClampingScrollPhysics()
+        .createBallisticSimulation(position, velocity);
+    if (clampingSimulation != null) {
+      return clampingSimulation;
+    }
+
+    return _delegate.createBallisticSimulation(position, velocity);
+  }
+
+  @override
+  material.SpringDescription get spring => _delegate.spring;
+
+  @override
+  double get minFlingVelocity => _delegate.minFlingVelocity;
+
+  @override
+  double get maxFlingVelocity => _delegate.maxFlingVelocity;
+
+  @override
+  double? get dragStartDistanceMotionThreshold =>
+      _delegate.dragStartDistanceMotionThreshold;
+
+  @override
+  material.Tolerance toleranceFor(material.ScrollMetrics metrics) =>
+      _delegate.toleranceFor(metrics);
+}
+
 
 class HeaderLocator extends material.StatelessWidget {
   final bool _isSliver;

@@ -197,26 +197,36 @@ class _MetricTile extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        SizedBox(
-          width: 52,
-          height: 52,
-          child: Stack(
-            alignment: Alignment.center,
-            children: <Widget>[
-              CircularProgressIndicatorM3E(
-                value: (percent / 100).clamp(0, 1).toDouble(),
-                size: CircularProgressM3ESize.m,
-                shape: ProgressM3EShape.flat,
-                activeColor: color,
-                trackColor: cs.surfaceContainerHighest,
-              ),
-              Text(
-                '${percent.round()}%',
-                style: theme.textTheme.labelLarge
-                    ?.copyWith(fontWeight: FontWeight.w800),
-              ),
-            ],
+        TweenAnimationBuilder<double>(
+          tween: Tween<double>(
+            begin: 0.0,
+            end: (percent / 100).clamp(0.0, 1.0),
           ),
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeOutCubic,
+          builder: (BuildContext context, double value, Widget? child) {
+            return SizedBox(
+              width: 52,
+              height: 52,
+              child: Stack(
+                alignment: Alignment.center,
+                children: <Widget>[
+                  CircularProgressIndicatorM3E(
+                    value: value,
+                    size: CircularProgressM3ESize.m,
+                    shape: ProgressM3EShape.flat,
+                    activeColor: color,
+                    trackColor: cs.surfaceContainerHighest,
+                  ),
+                  Text(
+                    '${(value * 100).round()}%',
+                    style: theme.textTheme.labelLarge
+                        ?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
         const SizedBox(height: 8),
         Text(
@@ -273,14 +283,21 @@ class _DiskBar extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: fraction,
-              minHeight: 5,
-              color: _loadColor(disk.percentage, cs),
-              backgroundColor: cs.surfaceContainerHighest,
-            ),
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0.0, end: fraction),
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOutCubic,
+            builder: (BuildContext context, double value, Widget? child) {
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: value,
+                  minHeight: 5,
+                  color: _loadColor(disk.percentage, cs),
+                  backgroundColor: cs.surfaceContainerHighest,
+                ),
+              );
+            },
           ),
         ],
       ),
