@@ -48,9 +48,9 @@ class GlancesHome extends ConsumerWidget {
                 padding: const EdgeInsets.all(Insets.md),
                 child: Row(
                   children: <Widget>[
-                    const Icon(
+                    Icon(
                       Icons.schedule_outlined,
-                      color: Color(0xFF3B82F6),
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                     const SizedBox(width: Insets.md),
                     Expanded(
@@ -289,7 +289,7 @@ class GlancesHome extends ConsumerWidget {
                 subtitle: '${stats.cpu.packageTemp.toStringAsFixed(1)}°C',
                 subtitleIcon: Icons.thermostat_outlined,
                 icon: Icons.speed_outlined,
-                color: const Color(0xFF10B981), // Emerald green
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             const SizedBox(width: Insets.sm),
@@ -301,7 +301,7 @@ class GlancesHome extends ConsumerWidget {
                     '${(stats.memory.used / 1024 / 1024 / 1024).toStringAsFixed(2)} / ${(stats.memory.total / 1024 / 1024 / 1024).toStringAsFixed(2)} GB',
                 subtitleIcon: Icons.data_usage_outlined,
                 icon: Icons.memory_outlined,
-                color: const Color(0xFF6366F1), // Indigo
+                color: Theme.of(context).colorScheme.secondary,
               ),
             ),
           ],
@@ -318,7 +318,7 @@ class GlancesHome extends ConsumerWidget {
             padding: const EdgeInsets.all(Insets.md),
             child: Row(
               children: <Widget>[
-                const Icon(Icons.swap_horiz_outlined, color: Color(0xFFF59E0B)),
+                Icon(Icons.swap_horiz_outlined, color: Theme.of(context).colorScheme.tertiary),
                 const SizedBox(width: Insets.md),
                 Expanded(
                   child: Column(
@@ -333,8 +333,8 @@ class GlancesHome extends ConsumerWidget {
                         shape: ProgressM3EShape.flat,
                         value: (stats.swap.percentage / 100.0).clamp(0.0, 1.0),
                         trackColor:
-                            const Color(0xFFF59E0B).withValues(alpha: 0.15),
-                        activeColor: const Color(0xFFF59E0B),
+                            Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.15),
+                        activeColor: Theme.of(context).colorScheme.tertiary,
                       ),
                     ],
                   ),
