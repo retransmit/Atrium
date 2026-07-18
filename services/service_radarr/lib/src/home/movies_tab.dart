@@ -99,7 +99,7 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
     final selection = ref.watch(radarrMoviesSelectionProvider(widget.instance));
     final isSelecting = selection.isNotEmpty;
 
-    ref.listen<int>(radarrMoviesScrollToTopProvider(widget.instance),
+    ref.listen<int>(radarrHomeScrollToTopProvider((widget.instance, 0)),
         (previous, next) {
       if (next > 0 && _scrollController.hasClients) {
         _scrollController.animateTo(
@@ -661,7 +661,15 @@ class _MovieBannerCard extends ConsumerWidget {
 
     final RadarrImage? banner = movie.images
         .firstWhereOrNull((RadarrImage i) => i.coverType == 'banner');
-    final String? bannerUrl = banner == null ? null : api?.posterUrl(banner);
+    final RadarrImage? fanart = movie.images
+        .firstWhereOrNull((RadarrImage i) => i.coverType == 'fanart');
+    final RadarrImage? imageToUse = banner ?? fanart;
+    final String? bannerUrl = imageToUse == null
+        ? null
+        : api?.posterUrl(
+            imageToUse,
+            width: imageToUse.coverType == 'fanart' ? 1080 : null,
+          );
 
     final RadarrImage? poster = movie.images
         .firstWhereOrNull((RadarrImage i) => i.coverType == 'poster');

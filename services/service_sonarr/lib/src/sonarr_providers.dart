@@ -262,9 +262,9 @@ final sonarrFilteredSeriesProvider = Provider.autoDispose
 final sonarrBottomNavVisibleProvider =
     StateProvider.family<bool, Instance>((ref, instance) => true);
 
-/// Trigger value to scroll the series list to top when the active tab is tapped again.
-final sonarrSeriesScrollToTopProvider =
-    StateProvider.family<int, Instance>((ref, instance) => 0);
+/// Trigger value to scroll home tabs to top when active tab is tapped again.
+final sonarrHomeScrollToTopProvider =
+    StateProvider.family<int, (Instance, int)>((ref, arg) => 0);
 
 /// All episodes for a given series.
 final sonarrEpisodesProvider =

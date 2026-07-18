@@ -28,10 +28,12 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
   late final void Function() _resetSearchActive;
   double _lastBottomInset = 0;
   late final TabController _tabController;
+  late final ScrollController _scrollController;
 
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController();
     WidgetsBinding.instance.addObserver(this);
     final notifier =
         ref.read(radarrSearchActiveProvider(widget.instance).notifier);
@@ -61,6 +63,7 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
     _searchFocusNode.removeListener(_onFocusChange);
     _searchFocusNode.dispose();
     _tabController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -115,6 +118,17 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
       }
     });
 
+    ref.listen<int>(radarrHomeScrollToTopProvider((widget.instance, 1)),
+        (previous, next) {
+      if (next > 0 && _scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
+
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       bottomNavigationBar: isSelecting
@@ -138,6 +152,7 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
             )
           : null,
       body: NestedScrollView(
+        controller: _scrollController,
         headerSliverBuilder:
             (BuildContext innerContext, bool innerBoxIsScrolled) {
           return <Widget>[
@@ -317,6 +332,13 @@ class _QueueView extends ConsumerWidget {
               messageText: 'Last updated at %T',
             ),
             onRefresh: () async {
+              try {
+                final api = await ref.read(radarrApiProvider(instance).future);
+                await api.runCommand(<String, dynamic>{
+                  'name': 'RefreshMonitoredDownloads',
+                });
+                await Future<void>.delayed(const Duration(seconds: 1));
+              } catch (_) {}
               ref.invalidate(radarrQueueProvider(instance));
               await ref.read(radarrQueueProvider(instance).future);
             },
@@ -359,6 +381,13 @@ class _QueueView extends ConsumerWidget {
             messageText: 'Last updated at %T',
           ),
           onRefresh: () async {
+            try {
+              final api = await ref.read(radarrApiProvider(instance).future);
+              await api.runCommand(<String, dynamic>{
+                'name': 'RefreshMonitoredDownloads',
+              });
+              await Future<void>.delayed(const Duration(seconds: 1));
+            } catch (_) {}
             ref.invalidate(radarrQueueProvider(instance));
             await ref.read(radarrQueueProvider(instance).future);
           },

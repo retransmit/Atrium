@@ -98,7 +98,7 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
     final selection = ref.watch(sonarrSeriesSelectionProvider(widget.instance));
     final isSelecting = selection.isNotEmpty;
 
-    ref.listen<int>(sonarrSeriesScrollToTopProvider(widget.instance),
+    ref.listen<int>(sonarrHomeScrollToTopProvider((widget.instance, 0)),
         (previous, next) {
       if (next > 0 && _scrollController.hasClients) {
         _scrollController.animateTo(

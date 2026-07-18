@@ -171,10 +171,10 @@ class SonarrHome extends ConsumerWidget {
             child: NavigationBar(
               selectedIndex: currentIndex,
               onDestinationSelected: (index) {
-                if (index == 0 && currentIndex == 0) {
+                if (index == currentIndex) {
                   ref
                       .read(
-                        sonarrSeriesScrollToTopProvider(instance).notifier,
+                        sonarrHomeScrollToTopProvider((instance, index)).notifier,
                       )
                       .update((state) => state + 1);
                 } else {
