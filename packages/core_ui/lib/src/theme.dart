@@ -39,21 +39,19 @@ abstract final class AtriumTheme {
         ? FlexColorScheme.dark(
             colorScheme: scheme,
             fontFamily: fontFamily,
-            surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
-            blendLevel: 7,
             subThemesData: const FlexSubThemesData(
               defaultRadius: 12.0,
-              inputDecoratorIsFilled: true,
+              inputDecoratorIsFilled: false,
+              inputDecoratorBorderType: FlexInputBorderType.outline,
             ),
           )
         : FlexColorScheme.light(
             colorScheme: scheme,
             fontFamily: fontFamily,
-            surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
-            blendLevel: 7,
             subThemesData: const FlexSubThemesData(
               defaultRadius: 12.0,
-              inputDecoratorIsFilled: true,
+              inputDecoratorIsFilled: false,
+              inputDecoratorBorderType: FlexInputBorderType.outline,
             ),
           );
 
