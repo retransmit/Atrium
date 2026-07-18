@@ -8,6 +8,7 @@ library;
 // M3 pull-to-refresh from m3_expressive, surfaced through core_ui so modules
 // use it without each taking a direct m3_expressive dependency.
 export 'package:easy_refresh/easy_refresh.dart' hide EasyRefresh, HeaderLocator;
+export 'package:flex_color_scheme/flex_color_scheme.dart';
 
 export 'src/design_tokens.dart';
 export 'src/navigation.dart';

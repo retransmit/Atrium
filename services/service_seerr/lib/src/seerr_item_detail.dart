@@ -95,7 +95,19 @@ class _SeerrItemDetailScreenState extends ConsumerState<SeerrItemDetailScreen> {
         _palette?.dominantColor?.color;
     final ColorScheme accent = seed == null
         ? cs
-        : ColorScheme.fromSeed(seedColor: seed, brightness: cs.brightness);
+        : (cs.brightness == Brightness.dark
+            ? FlexColorScheme.dark(
+                colors: FlexSchemeColor.from(primary: seed),
+                keyColors: const FlexKeyColors(
+                  keepPrimary: true,
+                ),
+              ).toScheme
+            : FlexColorScheme.light(
+                colors: FlexSchemeColor.from(primary: seed),
+                keyColors: const FlexKeyColors(
+                  keepPrimary: true,
+                ),
+              ).toScheme);
 
     final List<String> genreNames = full.genres
         .map((SeerrGenre g) => g.name)
