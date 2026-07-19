@@ -74,7 +74,7 @@ class _MovieDetailBody extends ConsumerStatefulWidget {
 
 class _MovieDetailBodyState extends ConsumerState<_MovieDetailBody> {
   final ScrollController _scrollController = ScrollController();
-  bool _showBackToTop = false;
+  final ValueNotifier<bool> _showBackToTop = ValueNotifier<bool>(false);
 
   @override
   void initState() {
@@ -85,12 +85,12 @@ class _MovieDetailBodyState extends ConsumerState<_MovieDetailBody> {
   void _scrollListener() {
     final threshold = MediaQuery.sizeOf(context).height * 0.5;
     if (_scrollController.hasClients && _scrollController.offset >= threshold) {
-      if (!_showBackToTop) {
-        setState(() => _showBackToTop = true);
+      if (!_showBackToTop.value) {
+        _showBackToTop.value = true;
       }
     } else {
-      if (_showBackToTop) {
-        setState(() => _showBackToTop = false);
+      if (_showBackToTop.value) {
+        _showBackToTop.value = false;
       }
     }
   }
@@ -99,6 +99,7 @@ class _MovieDetailBodyState extends ConsumerState<_MovieDetailBody> {
   void dispose() {
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
+    _showBackToTop.dispose();
     super.dispose();
   }
 
@@ -162,18 +163,31 @@ class _MovieDetailBodyState extends ConsumerState<_MovieDetailBody> {
     }
 
     return Scaffold(
-      floatingActionButton: _showBackToTop
-          ? FloatingActionButton(
-              onPressed: () {
-                _scrollController.animateTo(
-                  0.0,
-                  duration: const Duration(milliseconds: 350),
-                  curve: Curves.easeOutCubic,
-                );
-              },
-              child: const Icon(Icons.arrow_upward),
-            )
-          : null,
+      floatingActionButton: ValueListenableBuilder<bool>(
+        valueListenable: _showBackToTop,
+        builder: (context, show, child) {
+          return AnimatedScale(
+            scale: show ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            child: AnimatedOpacity(
+              opacity: show ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              child: FloatingActionButton.small(
+                onPressed: () {
+                  _scrollController.animateTo(
+                    0.0,
+                    duration: const Duration(milliseconds: 350),
+                    curve: Curves.easeOutCubic,
+                  );
+                },
+                child: const Icon(Icons.arrow_upward),
+              ),
+            ),
+          );
+        },
+      ),
       body: EasyRefresh(
           header: const ClassicHeader(
             position: IndicatorPosition.locator,

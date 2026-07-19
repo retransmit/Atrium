@@ -69,7 +69,7 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
   final Map<int, GlobalKey> _seasonKeys = {};
   final GlobalKey _seasonsHeaderKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
-  bool _showBackToTop = false;
+  final ValueNotifier<bool> _showBackToTop = ValueNotifier<bool>(false);
 
   @override
   void initState() {
@@ -80,12 +80,12 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
   void _scrollListener() {
     final threshold = MediaQuery.sizeOf(context).height * 0.5;
     if (_scrollController.hasClients && _scrollController.offset >= threshold) {
-      if (!_showBackToTop) {
-        setState(() => _showBackToTop = true);
+      if (!_showBackToTop.value) {
+        _showBackToTop.value = true;
       }
     } else {
-      if (_showBackToTop) {
-        setState(() => _showBackToTop = false);
+      if (_showBackToTop.value) {
+        _showBackToTop.value = false;
       }
     }
   }
@@ -94,6 +94,7 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
   void dispose() {
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
+    _showBackToTop.dispose();
     super.dispose();
   }
 
@@ -118,6 +119,7 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
     } finally {
       if (mounted) {
         _invalidateProviders();
+        setState(_expandedSeasons.clear);
       }
     }
   }
@@ -151,18 +153,31 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
     final int totalEpisodes = widget.series.statistics?.episodeCount ?? 0;
 
     return Scaffold(
-      floatingActionButton: _showBackToTop
-          ? FloatingActionButton(
-              onPressed: () {
-                _scrollController.animateTo(
-                  0.0,
-                  duration: const Duration(milliseconds: 350),
-                  curve: Curves.easeOutCubic,
-                );
-              },
-              child: const Icon(Icons.arrow_upward),
-            )
-          : null,
+      floatingActionButton: ValueListenableBuilder<bool>(
+        valueListenable: _showBackToTop,
+        builder: (context, show, child) {
+          return AnimatedScale(
+            scale: show ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            child: AnimatedOpacity(
+              opacity: show ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              child: FloatingActionButton.small(
+                onPressed: () {
+                  _scrollController.animateTo(
+                    0.0,
+                    duration: const Duration(milliseconds: 350),
+                    curve: Curves.easeOutCubic,
+                  );
+                },
+                child: const Icon(Icons.arrow_upward),
+              ),
+            ),
+          );
+        },
+      ),
       body: EasyRefresh(
           header: const ClassicHeader(
             position: IndicatorPosition.locator,
@@ -1246,13 +1261,33 @@ class _SeasonCard extends ConsumerWidget {
                   height: 1,
                   color: cs.outlineVariant.withValues(alpha: 0.3),
                 ),
-                ...episodes.map(
-                  (SonarrEpisode episode) => _EpisodeRow(
-                    instance: instance,
-                    series: series,
-                    episode: episode,
+                if (isExpanded)
+                  ...episodes.map(
+                    (SonarrEpisode episode) {
+                      final downloadingItem = queue.firstWhereOrNull(
+                        (item) =>
+                            item.episodeId == episode.id &&
+                            (item.downloadId == null || !seasonPackDownloadIds.contains(item.downloadId)),
+                      );
+
+                      double? dlProgress;
+                      if (downloadingItem != null) {
+                        final double totalSize = downloadingItem.size ?? 0.0;
+                        final double sizeLeft = downloadingItem.sizeleft ?? 0.0;
+                        if (totalSize > 0) {
+                          dlProgress = (totalSize - sizeLeft) / totalSize;
+                        }
+                      }
+
+                      return _EpisodeRow(
+                        instance: instance,
+                        series: series,
+                        episode: episode,
+                        downloadingItem: downloadingItem,
+                        dlProgress: dlProgress,
+                      );
+                    },
                   ),
-                ),
               ],
             ),
             crossFadeState: isExpanded
@@ -1447,11 +1482,15 @@ class _EpisodeRow extends ConsumerWidget {
     required this.instance,
     required this.series,
     required this.episode,
+    required this.downloadingItem,
+    required this.dlProgress,
   });
 
   final Instance instance;
   final SonarrSeries series;
   final SonarrEpisode episode;
+  final SonarrQueueItem? downloadingItem;
+  final double? dlProgress;
 
   Future<void> _toggleEpisodeMonitored(
     BuildContext context,
@@ -1525,33 +1564,9 @@ class _EpisodeRow extends ConsumerWidget {
       if (sizeStr != null) sizeStr,
     ].join(' • ');
 
-    final queue = ref.watch(sonarrQueueProvider(instance)).value ?? <SonarrQueueItem>[];
-    final Map<String, List<SonarrQueueItem>> groupedByDownload = {};
-    for (final item in queue) {
-      final dlId = item.downloadId;
-      if (dlId != null) {
-        groupedByDownload.putIfAbsent(dlId, () => []).add(item);
-      }
-    }
-    final seasonPackDownloadIds = groupedByDownload.entries
-        .where((e) => e.value.length > 1)
-        .map((e) => e.key)
-        .toSet();
-
-    final downloadingItem = queue.firstWhereOrNull(
-      (item) =>
-          item.episodeId == episode.id &&
-          (item.downloadId == null || !seasonPackDownloadIds.contains(item.downloadId)),
-    );
-
-    double? dlProgress;
-    if (downloadingItem != null) {
-      final double totalSize = downloadingItem.size ?? 0.0;
-      final double sizeLeft = downloadingItem.sizeleft ?? 0.0;
-      if (totalSize > 0) {
-        dlProgress = (totalSize - sizeLeft) / totalSize;
-      }
-    }
+    // downloadingItem and dlProgress are now passed in from the parent SeasonCard
+    final downloadingItem = this.downloadingItem;
+    final dlProgress = this.dlProgress;
 
     return InkWell(
       onTap: () => _showEpisodeBottomSheet(
