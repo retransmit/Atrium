@@ -14,6 +14,24 @@ class _Release {
 /// Newest first. Update alongside the version in the app's pubspec.
 const List<_Release> _releases = <_Release>[
   _Release(
+    version: '1.0.7',
+    changes: <String>[
+      'The app moved to a new theming engine and has a cleaner, flatter look. '
+          'The Settings preview updates live as you change the accent color or '
+          'switch between light and dark, inputs stay clearly outlined, and the '
+          'Glances gauges follow your theme instead of fixed colors.',
+      'Radarr\'s settings now match Sonarr\'s, so both can be configured to the '
+          'same depth from the app. Log views keep loading as you scroll instead '
+          'of stopping after the first page, and the wanted lists and detail '
+          'screens picked up a range of smaller improvements.',
+      'Series and movie detail screens scroll noticeably more smoothly and the '
+          'back-to-top button eases in and out instead of popping. Scrolling no '
+          'longer over-stretches at the edges, dashboard widgets keep their '
+          'state as you move around, and the dashboard gauges animate to their '
+          'values.',
+    ],
+  ),
+  _Release(
     version: '1.0.6',
     changes: <String>[
       'Pull to refresh is unified across every screen with a smoother, more '

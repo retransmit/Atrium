@@ -2,7 +2,7 @@ name: atrium
 description: Atrium - mobile controller for a self-hosted media stack.
 publish_to: none
 resolution: workspace
-version: 1.0.6+7
+version: 1.0.7+8
 
 environment:
   sdk: ^3.6.0

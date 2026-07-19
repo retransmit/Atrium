@@ -13,6 +13,7 @@ dependencies:
   core_models:
   dynamic_system_colors: ^1.9.0
   easy_refresh: ^3.4.0
+  flex_color_scheme: ^8.4.0
   flutter:
     sdk: flutter
   flutter_riverpod: ^3.3.2

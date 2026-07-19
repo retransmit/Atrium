@@ -71,6 +71,9 @@ class _ReorderSidebarScreenState extends ConsumerState<ReorderSidebarScreen> {
                     itemCount: _localInstances!.length,
                     onReorder: (int oldIndex, int newIndex) {
                       setState(() {
+                        if (oldIndex < newIndex) {
+                          newIndex -= 1;
+                        }
                         final Instance item =
                             _localInstances!.removeAt(oldIndex);
                         _localInstances!.insert(newIndex, item);
@@ -166,10 +169,21 @@ class _ReorderSidebarScreenState extends ConsumerState<ReorderSidebarScreen> {
                                     ],
                                   ),
                                 ),
-                                const SizedBox(width: Insets.md),
-                                Icon(
-                                  Icons.drag_handle_rounded,
-                                  color: cs.onSurfaceVariant,
+                                ReorderableDragStartListener(
+                                  index: index,
+                                  child: Container(
+                                    color: Colors.transparent,
+                                    padding: const EdgeInsets.only(
+                                      left: Insets.md,
+                                      right: Insets.xs,
+                                      top: Insets.md,
+                                      bottom: Insets.md,
+                                    ),
+                                    child: Icon(
+                                      Icons.drag_handle_rounded,
+                                      color: cs.onSurfaceVariant,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),

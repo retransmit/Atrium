@@ -30,10 +30,12 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
   late final void Function() _resetSearchActive;
   double _lastBottomInset = 0;
   late final TabController _tabController;
+  late final ScrollController _scrollController;
 
   @override
   void initState() {
     super.initState();
+    _scrollController = ScrollController();
     WidgetsBinding.instance.addObserver(this);
     final notifier =
         ref.read(sonarrSearchActiveProvider(widget.instance).notifier);
@@ -63,6 +65,7 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
     _searchFocusNode.removeListener(_onFocusChange);
     _searchFocusNode.dispose();
     _tabController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -119,6 +122,17 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
       }
     });
 
+    ref.listen<int>(sonarrHomeScrollToTopProvider((widget.instance, 1)),
+        (previous, next) {
+      if (next > 0 && _scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
+
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
       bottomNavigationBar: isSelecting
@@ -142,6 +156,7 @@ class _ActivityTabState extends ConsumerState<ActivityTab>
             )
           : null,
       body: NestedScrollView(
+        controller: _scrollController,
         headerSliverBuilder:
             (BuildContext innerContext, bool innerBoxIsScrolled) {
           return <Widget>[
@@ -328,25 +343,53 @@ class _QueueView extends ConsumerWidget {
         }
 
         if (groupedList.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Icon(
-                  Icons.queue,
-                  size: 48,
-                  color: theme.colorScheme.outlineVariant,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  searchQuery.isEmpty
-                      ? 'Queue is empty'
-                      : 'No items match search',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+          return EasyRefresh(
+            header: const ClassicHeader(
+              dragText: 'Pull to refresh',
+              armedText: 'Release ready',
+              readyText: 'Refreshing...',
+              processingText: 'Refreshing...',
+              processedText: 'Succeeded',
+              failedText: 'Failed',
+              messageText: 'Last updated at %T',
+            ),
+            onRefresh: () async {
+              try {
+                final api = await ref.read(sonarrApiProvider(instance).future);
+                await api.runCommand(<String, dynamic>{
+                  'name': 'RefreshMonitoredDownloads',
+                });
+                await Future<void>.delayed(const Duration(seconds: 1));
+              } catch (_) {}
+              ref.invalidate(sonarrQueueProvider(instance));
+              await ref.read(sonarrQueueProvider(instance).future);
+            },
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height * 0.6,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Icon(
+                        Icons.queue,
+                        size: 48,
+                        color: theme.colorScheme.outlineVariant,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        searchQuery.isEmpty
+                            ? 'Queue is empty'
+                            : 'No items match search',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
           );
         }
@@ -362,6 +405,13 @@ class _QueueView extends ConsumerWidget {
             messageText: 'Last updated at %T',
           ),
           onRefresh: () async {
+            try {
+              final api = await ref.read(sonarrApiProvider(instance).future);
+              await api.runCommand(<String, dynamic>{
+                'name': 'RefreshMonitoredDownloads',
+              });
+              await Future<void>.delayed(const Duration(seconds: 1));
+            } catch (_) {}
             ref.invalidate(sonarrQueueProvider(instance));
             await ref.read(sonarrQueueProvider(instance).future);
           },

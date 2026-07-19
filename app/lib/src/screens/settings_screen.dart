@@ -1,12 +1,13 @@
 import 'dart:io';
 
 import 'package:core_profile/core_profile.dart';
+import 'package:core_router/core_router.dart';
 import 'package:core_storage/core_storage.dart';
 import 'package:core_ui/core_ui.dart';
+import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:palette_generator_plus/palette_generator_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../custom_theme_providers.dart';
@@ -31,8 +32,14 @@ class SettingsScreen extends ConsumerWidget {
     final int wolCount =
         ref.watch(activeProfileProvider)?.wolDevices.length ?? 0;
 
-    return Scaffold(
-      appBar: AppBar(
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (didPop) return;
+        context.go(AtriumRoutes.dashboard);
+      },
+      child: Scaffold(
+        appBar: AppBar(
         leading: Builder(
           builder: (BuildContext context) {
             return IconButton(
@@ -180,7 +187,7 @@ class SettingsScreen extends ConsumerWidget {
           const ListTile(
             leading: Icon(Icons.info_outline),
             title: Text('Atrium'),
-            subtitle: Text('Version 1.0.6 • GPL-3.0-or-later'),
+            subtitle: Text('Version 1.0.7 • GPL-3.0-or-later'),
           ),
           ListTile(
             leading: const Icon(Icons.code),
@@ -218,7 +225,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ],
       ),
-    );
+    ),);
   }
 }
 
@@ -302,7 +309,7 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
   ThemeSource _localSource = ThemeSource.system;
   String? _localSeedColorHex;
   String? _localImagePath;
-  PaletteStyle _localPaletteStyle = PaletteStyle.tonalSpot;
+  PaletteStyle _localPaletteStyle = PaletteStyle.material;
 
   static const List<Color> _presets = [
     Color(0xFF6750A4), // Violet (Atrium default)
@@ -359,56 +366,28 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
       if (!await file.exists()) {
         return;
       }
-      final PaletteGenerator palette = await PaletteGenerator.fromImageProvider(
-        FileImage(file),
-        size: const Size(200, 200),
-        timeout: Duration.zero,
+      final ColorScheme imageScheme = await ColorScheme.fromImageProvider(
+        provider: FileImage(file),
       );
       final List<Color> rawColors = <Color>{
-        if (palette.vibrantColor?.color != null) palette.vibrantColor!.color,
-        if (palette.lightVibrantColor?.color != null)
-          palette.lightVibrantColor!.color,
-        if (palette.darkVibrantColor?.color != null)
-          palette.darkVibrantColor!.color,
-        if (palette.mutedColor?.color != null) palette.mutedColor!.color,
-        if (palette.lightMutedColor?.color != null)
-          palette.lightMutedColor!.color,
-        if (palette.darkMutedColor?.color != null)
-          palette.darkMutedColor!.color,
-        if (palette.dominantColor?.color != null) palette.dominantColor!.color,
+        imageScheme.primary,
+        imageScheme.secondary,
+        imageScheme.tertiary,
+        imageScheme.error,
+        imageScheme.primaryContainer,
+        imageScheme.secondaryContainer,
+        imageScheme.tertiaryContainer,
       }.toList();
 
-      // Filter out colors that are visually too similar to each other
-      final List<Color> distinctColors = [];
-      for (final color in rawColors) {
-        final hsl = HSLColor.fromColor(color);
-        bool isDuplicate = false;
-        for (final existing in distinctColors) {
-          final existingHsl = HSLColor.fromColor(existing);
-          final hueDiff = (hsl.hue - existingHsl.hue).abs();
-          final minHueDiff = hueDiff > 180 ? 360 - hueDiff : hueDiff;
-          final satDiff = (hsl.saturation - existingHsl.saturation).abs();
-          final lightDiff = (hsl.lightness - existingHsl.lightness).abs();
-
-          if (minHueDiff < 30.0 && satDiff < 0.2 && lightDiff < 0.2) {
-            isDuplicate = true;
-            break;
-          }
-        }
-        if (!isDuplicate) {
-          distinctColors.add(color);
-        }
-      }
-
       // Store colors to prevent recalculation when reloading page
-      final csv = distinctColors
+      final csv = rawColors
           .map((c) =>
               c.toARGB32().toRadixString(16).padLeft(8, '0').substring(2))
           .join(',');
 
       if (!mounted) return;
       setState(() {
-        _extractedColors = distinctColors;
+        _extractedColors = rawColors;
       });
       await ref.read(preferencesProvider.notifier).setCustomImageColorsCsv(csv);
     } catch (_) {
@@ -643,14 +622,14 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
             ),
             items: PaletteStyle.values.map((style) {
               final String label = switch (style) {
-                PaletteStyle.tonalSpot => 'Tonal Spot',
-                PaletteStyle.content => 'Content',
-                PaletteStyle.expressive => 'Expressive',
-                PaletteStyle.fidelity => 'Fidelity',
-                PaletteStyle.fruitSalad => 'Fruit Salad',
-                PaletteStyle.monochrome => 'Monochrome',
-                PaletteStyle.neutral => 'Neutral',
-                PaletteStyle.rainbow => 'Rainbow',
+                PaletteStyle.material => 'Material',
+                PaletteStyle.vivid => 'Vivid',
+                PaletteStyle.highContrast => 'High Contrast',
+                PaletteStyle.candyPop => 'Candy Pop',
+                PaletteStyle.jolly => 'Jolly',
+                PaletteStyle.oneHue => 'One Hue',
+                PaletteStyle.chroma => 'Chroma',
+                PaletteStyle.ultraContrast => 'Ultra Contrast',
               };
               return DropdownMenuItem<PaletteStyle>(
                 value: style,
@@ -831,20 +810,10 @@ class _ThemeSettingsSectionState extends ConsumerState<_ThemeSettingsSection> {
                             theme.brightness,
                           );
 
-                          // Include two tertiary colors in the 6-band dynamic pill stack
-                          final List<Color> pillColors = [
-                            previewScheme.primary,
-                            previewScheme.primaryContainer,
-                            previewScheme.secondaryContainer,
-                            previewScheme.tertiary,
-                            previewScheme.tertiaryContainer,
-                            previewScheme.surfaceContainerHigh,
-                          ];
-
                           return Padding(
-                            padding: const EdgeInsets.only(right: 14.0),
-                            child: _ColorPillStack(
-                              colors: pillColors,
+                            padding: const EdgeInsets.only(right: 10.0),
+                            child: _ColorMiniGrid(
+                              scheme: previewScheme,
                               isSelected: isSelected,
                               activeColorScheme: previewColorScheme,
                               onTap: () async {
@@ -1014,94 +983,161 @@ class _ThemePalettePreviewGrid extends StatelessWidget {
   const _ThemePalettePreviewGrid({required this.colorScheme});
   final ColorScheme colorScheme;
 
-  Widget _buildSwatch(String label, Color bg, Color fg) {
+  @override
+  Widget build(BuildContext context) {
+    final cs = colorScheme;
+
+    // Define all 32 ColorScheme slots in 8 rows of 4
+    final List<List<_SwatchData>> rows = [
+      [
+        _SwatchData('Primary', cs.primary, cs.onPrimary),
+        _SwatchData('onPrimary', cs.onPrimary, cs.primary),
+        _SwatchData('Primary\nContainer', cs.primaryContainer, cs.onPrimaryContainer),
+        _SwatchData('onPrimary\nContainer', cs.onPrimaryContainer, cs.primaryContainer),
+      ],
+      [
+        _SwatchData('Secondary', cs.secondary, cs.onSecondary),
+        _SwatchData('onSecondary', cs.onSecondary, cs.secondary),
+        _SwatchData('Secondary\nContainer', cs.secondaryContainer, cs.onSecondaryContainer),
+        _SwatchData('onSecondary\nContainer', cs.onSecondaryContainer, cs.secondaryContainer),
+      ],
+      [
+        _SwatchData('Tertiary', cs.tertiary, cs.onTertiary),
+        _SwatchData('onTertiary', cs.onTertiary, cs.tertiary),
+        _SwatchData('Tertiary\nContainer', cs.tertiaryContainer, cs.onTertiaryContainer),
+        _SwatchData('onTertiary\nContainer', cs.onTertiaryContainer, cs.tertiaryContainer),
+      ],
+      [
+        _SwatchData('Error', cs.error, cs.onError),
+        _SwatchData('onError', cs.onError, cs.error),
+        _SwatchData('Error\nContainer', cs.errorContainer, cs.onErrorContainer),
+        _SwatchData('onError\nContainer', cs.onErrorContainer, cs.errorContainer),
+      ],
+      [
+        _SwatchData('Surface', cs.surface, cs.onSurface),
+        _SwatchData('onSurface', cs.onSurface, cs.surface),
+        _SwatchData('Surface Dim', cs.surfaceDim, cs.onSurface),
+        _SwatchData('Surface\nBright', cs.surfaceBright, cs.onSurface),
+      ],
+      [
+        _SwatchData('Surf Cont\nLowest', cs.surfaceContainerLowest, cs.onSurface),
+        _SwatchData('Surf Cont\nLow', cs.surfaceContainerLow, cs.onSurface),
+        _SwatchData('Surface\nContainer', cs.surfaceContainer, cs.onSurface),
+        _SwatchData('Surf Cont\nHigh', cs.surfaceContainerHigh, cs.onSurface),
+      ],
+      [
+        _SwatchData('Surf Cont\nHighest', cs.surfaceContainerHighest, cs.onSurface),
+        _SwatchData('onSurface\nVariant', cs.onSurfaceVariant, cs.surfaceContainerHighest),
+        _SwatchData('Outline', cs.outline, cs.surface),
+        _SwatchData('Outline\nVariant', cs.outlineVariant, cs.onSurface),
+      ],
+      [
+        _SwatchData('Inverse\nSurface', cs.inverseSurface, cs.onInverseSurface),
+        _SwatchData('onInverse\nSurface', cs.onInverseSurface, cs.inverseSurface),
+        _SwatchData('Inverse\nPrimary', cs.inversePrimary, cs.inverseSurface),
+        _SwatchData('Scrim', cs.scrim, Colors.white),
+      ],
+    ];
+
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+      padding: const EdgeInsets.all(Insets.sm),
       decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: fg.withValues(alpha: 0.15),
-          width: 1,
-        ),
+        color: cs.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: cs.outlineVariant, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: fg,
+          Padding(
+            padding: const EdgeInsets.only(
+                left: Insets.xs, top: Insets.xs, bottom: Insets.sm),
+            child: Row(
+              children: [
+                Icon(Icons.palette_outlined, color: cs.primary, size: 18),
+                const SizedBox(width: Insets.xs),
+                Text(
+                  'ColorScheme Colors',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: cs.onSurface,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            '#${bg.toARGB32().toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}',
-            style: TextStyle(
-              fontSize: 9,
-              fontFamily: 'JetBrainsMono Nerd Font',
-              color: fg.withValues(alpha: 0.7),
-            ),
-          ),
+          ...rows.map((row) => Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: row
+                        .map((swatch) => Expanded(
+                              child: Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 1.5),
+                                child: _ColorSwatch(data: swatch),
+                              ),
+                            ))
+                        .toList(),
+                  ),
+                ),
+              )),
         ],
       ),
     );
   }
+}
+
+class _SwatchData {
+  const _SwatchData(this.label, this.bg, this.fg);
+  final String label;
+  final Color bg;
+  final Color fg;
+}
+
+class _ColorSwatch extends StatelessWidget {
+  const _ColorSwatch({required this.data});
+  final _SwatchData data;
 
   @override
   Widget build(BuildContext context) {
-    final cs = colorScheme;
+    final hexStr = data.bg
+        .toARGB32()
+        .toRadixString(16)
+        .padLeft(8, '0')
+        .substring(2)
+        .toUpperCase();
+
     return Container(
-      padding: const EdgeInsets.all(Insets.md),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 5),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: cs.outlineVariant, width: 1.5),
+        color: data.bg,
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.palette_outlined, color: cs.primary, size: 20),
-              const SizedBox(width: Insets.xs),
-              Text(
-                'Palette Preview',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
-                  color: cs.onSurface,
-                ),
-              ),
-            ],
+          Text(
+            data.label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 8.5,
+              fontWeight: FontWeight.w600,
+              color: data.fg,
+              height: 1.15,
+            ),
           ),
-          const SizedBox(height: Insets.md),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            childAspectRatio: 2.3,
-            children: [
-              _buildSwatch('Primary', cs.primary, cs.onPrimary),
-              _buildSwatch('Primary Container', cs.primaryContainer,
-                  cs.onPrimaryContainer),
-              _buildSwatch('Secondary', cs.secondary, cs.onSecondary),
-              _buildSwatch('Secondary Container', cs.secondaryContainer,
-                  cs.onSecondaryContainer),
-              _buildSwatch('Tertiary', cs.tertiary, cs.onTertiary),
-              _buildSwatch('Tertiary Container', cs.tertiaryContainer,
-                  cs.onTertiaryContainer),
-              _buildSwatch('Surface', cs.surface, cs.onSurface),
-              _buildSwatch('Surface Container High', cs.surfaceContainerHigh,
-                  cs.onSurfaceVariant),
-              _buildSwatch('Outline', cs.outline, cs.surface),
-              _buildSwatch('Inverse Primary', cs.inversePrimary, cs.primary),
-            ],
+          const SizedBox(height: 2),
+          Text(
+            '#$hexStr',
+            style: TextStyle(
+              fontSize: 7.5,
+              color: data.fg.withValues(alpha: 0.7),
+              height: 1.0,
+            ),
           ),
         ],
       ),
@@ -1109,15 +1145,15 @@ class _ThemePalettePreviewGrid extends StatelessWidget {
   }
 }
 
-class _ColorPillStack extends StatelessWidget {
-  const _ColorPillStack({
-    required this.colors,
+class _ColorMiniGrid extends StatelessWidget {
+  const _ColorMiniGrid({
+    required this.scheme,
     required this.isSelected,
     required this.activeColorScheme,
     required this.onTap,
   });
 
-  final List<Color> colors;
+  final ColorScheme scheme;
   final bool isSelected;
   final ColorScheme activeColorScheme;
   final VoidCallback onTap;
@@ -1126,55 +1162,41 @@ class _ColorPillStack extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: 54,
-            height: 96,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(27),
-              border: Border.all(
-                color:
-                    isSelected ? activeColorScheme.primary : Colors.transparent,
-                width: 3.5,
-              ),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(23),
-              child: Column(
-                children: [
-                  Expanded(child: Container(color: colors[0])),
-                  Expanded(child: Container(color: colors[1])),
-                  Expanded(child: Container(color: colors[2])),
-                  Expanded(child: Container(color: colors[3])),
-                  Expanded(child: Container(color: colors[4])),
-                  Expanded(child: Container(color: colors[5])),
-                ],
-              ),
-            ),
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? activeColorScheme.primary
+                : Colors.transparent,
+            width: 3,
           ),
-          if (isSelected)
-            Positioned(
-              bottom: 8,
-              child: Container(
-                padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  color: activeColorScheme.primary,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: colors[5],
-                    width: 1.5,
-                  ),
-                ),
-                child: Icon(
-                  Icons.check,
-                  size: 14,
-                  color: activeColorScheme.onPrimary,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Column(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(child: Container(color: scheme.primary)),
+                    Expanded(child: Container(color: scheme.primaryContainer)),
+                  ],
                 ),
               ),
-            ),
-        ],
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(child: Container(color: scheme.secondary)),
+                    Expanded(child: Container(color: scheme.tertiary)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

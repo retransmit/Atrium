@@ -780,6 +780,7 @@ class EmbyPosterCard extends ConsumerWidget {
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(6),
                             child: LinearProgressIndicatorM3E(
+                              size: LinearProgressM3ESize.s,
                               shape: ProgressM3EShape.flat,
                               value: progress.clamp(0, 1),
                               trackColor: Colors.black.withValues(alpha: 0.5),
@@ -1148,6 +1149,7 @@ class EmbyBannerCard extends ConsumerWidget {
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(6),
                                 child: LinearProgressIndicatorM3E(
+                                  size: LinearProgressM3ESize.s,
                                   shape: ProgressM3EShape.flat,
                                   value: progress.clamp(0, 1),
                                   trackColor:

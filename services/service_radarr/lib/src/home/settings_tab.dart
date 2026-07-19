@@ -2,8 +2,10 @@ import 'package:core_models/core_models.dart';
 import 'package:core_router/core_router.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../radarr_providers.dart';
 import 'settings/connect_settings_screen.dart';
 import 'settings/download_clients_screen.dart';
 import 'settings/general_settings_screen.dart';
@@ -16,7 +18,7 @@ import 'settings/quality_definitions_screen.dart';
 import 'settings/tags_settings_screen.dart';
 import 'settings/ui_settings_screen.dart';
 
-class SettingsTab extends StatelessWidget {
+class SettingsTab extends ConsumerStatefulWidget {
   const SettingsTab({
     required this.instance,
     super.key,
@@ -25,7 +27,38 @@ class SettingsTab extends StatelessWidget {
   final Instance instance;
 
   @override
+  ConsumerState<SettingsTab> createState() => _SettingsTabState();
+}
+
+class _SettingsTabState extends ConsumerState<SettingsTab> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final Instance instance = widget.instance;
+    ref.listen<int>(radarrHomeScrollToTopProvider((widget.instance, 3)),
+        (previous, next) {
+      if (next > 0 && _scrollController.hasClients) {
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+        );
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -35,6 +68,7 @@ class SettingsTab extends StatelessWidget {
         title: const Text('Radarr Settings'),
       ),
       body: ListView(
+        controller: _scrollController,
         padding: const EdgeInsets.all(Insets.md),
         children: [
           _buildCategoryHeader(context, 'Media Handling'),

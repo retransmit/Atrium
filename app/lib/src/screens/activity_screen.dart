@@ -115,21 +115,28 @@ class ActivityScreen extends ConsumerWidget {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: Builder(
-          builder: (BuildContext context) {
-            return IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: () {
-                openDrawer(context);
-              },
-            );
-          },
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (didPop) return;
+        context.go(AtriumRoutes.dashboard);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: Builder(
+            builder: (BuildContext context) {
+              return IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () {
+                  openDrawer(context);
+                },
+              );
+            },
+          ),
+          title: const Text('Activity'),
         ),
-        title: const Text('Activity'),
+        body: body,
       ),
-      body: body,
     );
   }
 

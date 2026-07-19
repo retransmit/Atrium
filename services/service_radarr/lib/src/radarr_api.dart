@@ -142,19 +142,18 @@ class RadarrApi {
       final Uri base = Uri.parse(_dio.options.baseUrl);
       String pathOrUrl = remote;
 
-      if (width != null) {
-        final int queryIdx = pathOrUrl.indexOf('?');
-        final String pathPart =
-            queryIdx == -1 ? pathOrUrl : pathOrUrl.substring(0, queryIdx);
-        final String queryPart =
-            queryIdx == -1 ? '' : pathOrUrl.substring(queryIdx);
+      final int targetWidth = width ?? 500;
+      final int queryIdx = pathOrUrl.indexOf('?');
+      final String pathPart =
+          queryIdx == -1 ? pathOrUrl : pathOrUrl.substring(0, queryIdx);
+      final String queryPart =
+          queryIdx == -1 ? '' : pathOrUrl.substring(queryIdx);
 
-        final int dotIdx = pathPart.lastIndexOf('.');
-        if (dotIdx != -1) {
-          final String basePart = pathPart.substring(0, dotIdx);
-          final String extPart = pathPart.substring(dotIdx);
-          pathOrUrl = '$basePart-$width$extPart$queryPart';
-        }
+      final int dotIdx = pathPart.lastIndexOf('.');
+      if (dotIdx != -1) {
+        final String basePart = pathPart.substring(0, dotIdx);
+        final String extPart = pathPart.substring(dotIdx);
+        pathOrUrl = '$basePart-$targetWidth$extPart$queryPart';
       }
 
       if (pathOrUrl.startsWith('/MediaCover/')) {
@@ -281,13 +280,32 @@ class RadarrApi {
     int? movieId,
   }) async {
     try {
+      if (movieId != null) {
+        final Response<dynamic> resp = await _dio.get<dynamic>(
+          '$_base/history/movie',
+          queryParameters: <String, dynamic>{
+            'movieId': movieId,
+            'includeMovie': true,
+          },
+        );
+        final dynamic data = resp.data;
+        if (data is List<dynamic>) {
+          return data
+              .map(
+                (dynamic e) =>
+                    RadarrHistoryItem.fromJson(e as Map<String, dynamic>),
+              )
+              .toList();
+        }
+        return <RadarrHistoryItem>[];
+      }
+
       final Response<dynamic> resp = await _dio.get<dynamic>(
         '$_base/history',
         queryParameters: <String, dynamic>{
           'page': page,
           'pageSize': pageSize,
           'includeMovie': true,
-          if (movieId != null) 'movieId': movieId,
         },
       );
       final dynamic records = (resp.data as Map<String, dynamic>)['records'];
@@ -657,6 +675,26 @@ class RadarrApi {
       return (resp.data as List<dynamic>)
           .map((dynamic e) => e as Map<String, dynamic>)
           .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> createRootFolder(Map<String, dynamic> payload) async {
+    try {
+      final Response<dynamic> resp = await _dio.post<dynamic>(
+        '$_base/rootfolder',
+        data: payload,
+      );
+      return resp.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<void> deleteRootFolder(int id) async {
+    try {
+      await _dio.delete<dynamic>('$_base/rootfolder/$id');
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -1388,20 +1426,23 @@ class RadarrApi {
   Future<Map<String, dynamic>> getLogs({
     int page = 1,
     int pageSize = 20,
-    String? sortKey,
-    String? filterKey,
-    String? filterValue,
+    String sortKey = 'time',
+    String sortDirection = 'descending',
+    String? level,
   }) async {
     try {
+      final Map<String, dynamic> queryParams = <String, dynamic>{
+        'page': page,
+        'pageSize': pageSize,
+        'sortKey': sortKey,
+        'sortDirection': sortDirection,
+      };
+      if (level != null) {
+        queryParams['level'] = level;
+      }
       final Response<dynamic> resp = await _dio.get<dynamic>(
         '$_base/log',
-        queryParameters: <String, dynamic>{
-          'page': page,
-          'pageSize': pageSize,
-          if (sortKey != null) 'sortKey': sortKey,
-          if (filterKey != null) 'filterKey': filterKey,
-          if (filterValue != null) 'filterValue': filterValue,
-        },
+        queryParameters: queryParams,
       );
       return resp.data as Map<String, dynamic>;
     } on DioException catch (e) {

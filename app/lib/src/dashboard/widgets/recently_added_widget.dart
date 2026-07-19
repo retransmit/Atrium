@@ -40,7 +40,7 @@ class _RecentItem {
 
 /// The most recently added Sonarr series and Radarr movies across every
 /// instance, merged and shown as a horizontally scrollable poster row.
-class DashboardRecentlyAddedWidget extends ConsumerWidget {
+class DashboardRecentlyAddedWidget extends ConsumerStatefulWidget {
   const DashboardRecentlyAddedWidget({
     required this.sonarrInstances,
     required this.radarrInstances,
@@ -51,14 +51,30 @@ class DashboardRecentlyAddedWidget extends ConsumerWidget {
   final List<Instance> radarrInstances;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardRecentlyAddedWidget> createState() =>
+      _DashboardRecentlyAddedWidgetState();
+}
+
+class _DashboardRecentlyAddedWidgetState
+    extends ConsumerState<DashboardRecentlyAddedWidget> {
+  final ScrollController _scrollController = ScrollController();
+  bool _needsReset = false;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
 
     final List<_RecentItem> items = <_RecentItem>[];
     bool anyLoading = false;
     bool anyError = false;
 
-    for (final Instance i in sonarrInstances) {
+    for (final Instance i in widget.sonarrInstances) {
       final AsyncValue<List<SonarrSeries>> series =
           ref.watch(sonarrSeriesProvider(i));
       anyLoading |= series.isLoading && !series.hasValue;
@@ -80,7 +96,7 @@ class DashboardRecentlyAddedWidget extends ConsumerWidget {
         ));
       }
     }
-    for (final Instance i in radarrInstances) {
+    for (final Instance i in widget.radarrInstances) {
       final AsyncValue<List<RadarrMovie>> movies =
           ref.watch(radarrMoviesProvider(i));
       anyLoading |= movies.isLoading && !movies.hasValue;
@@ -103,6 +119,10 @@ class DashboardRecentlyAddedWidget extends ConsumerWidget {
       }
     }
 
+    if (anyLoading) {
+      _needsReset = true;
+    }
+
     items.sort((_RecentItem a, _RecentItem b) => b.added.compareTo(a.added));
     final List<_RecentItem> top = items.take(15).toList();
 
@@ -121,10 +141,10 @@ class DashboardRecentlyAddedWidget extends ConsumerWidget {
     } else if (items.isEmpty && anyError) {
       body = DashboardErrorRow(
         onRetry: () {
-          for (final Instance i in sonarrInstances) {
+          for (final Instance i in widget.sonarrInstances) {
             ref.invalidate(sonarrSeriesProvider(i));
           }
-          for (final Instance i in radarrInstances) {
+          for (final Instance i in widget.radarrInstances) {
             ref.invalidate(radarrMoviesProvider(i));
           }
         },
@@ -132,9 +152,18 @@ class DashboardRecentlyAddedWidget extends ConsumerWidget {
     } else if (items.isEmpty) {
       body = const DashboardIdleRow(text: 'Nothing added yet');
     } else {
+      if (_needsReset) {
+        _needsReset = false;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController.jumpTo(0.0);
+          }
+        });
+      }
       body = SizedBox(
         height: 184,
         child: ListView.separated(
+          controller: _scrollController,
           scrollDirection: Axis.horizontal,
           padding: EdgeInsets.zero,
           itemCount: top.length,

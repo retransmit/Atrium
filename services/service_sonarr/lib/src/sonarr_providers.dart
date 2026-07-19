@@ -262,9 +262,9 @@ final sonarrFilteredSeriesProvider = Provider.autoDispose
 final sonarrBottomNavVisibleProvider =
     StateProvider.family<bool, Instance>((ref, instance) => true);
 
-/// Trigger value to scroll the series list to top when the active tab is tapped again.
-final sonarrSeriesScrollToTopProvider =
-    StateProvider.family<int, Instance>((ref, instance) => 0);
+/// Trigger value to scroll home tabs to top when active tab is tapped again.
+final sonarrHomeScrollToTopProvider =
+    StateProvider.family<int, (Instance, int)>((ref, arg) => 0);
 
 /// All episodes for a given series.
 final sonarrEpisodesProvider =
@@ -878,3 +878,15 @@ final sonarrParseResultProvider = FutureProvider.autoDispose
   final SonarrApi api = await ref.watch(sonarrApiProvider(instance).future);
   return api.parseTitle(title);
 });
+
+/// Series-specific history provider. Fetches up to 150 history items for a series.
+final sonarrSeriesHistoryProvider = FutureProvider.autoDispose
+    .family<List<SonarrHistoryItem>, (Instance, int)>((
+  Ref ref,
+  (Instance, int) arg,
+) async {
+  final (Instance instance, int seriesId) = arg;
+  final SonarrApi api = await ref.watch(sonarrApiProvider(instance).future);
+  return api.getHistory(seriesId: seriesId, pageSize: 150);
+});
+

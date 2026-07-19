@@ -99,7 +99,7 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
     final selection = ref.watch(radarrMoviesSelectionProvider(widget.instance));
     final isSelecting = selection.isNotEmpty;
 
-    ref.listen<int>(radarrMoviesScrollToTopProvider(widget.instance),
+    ref.listen<int>(radarrHomeScrollToTopProvider((widget.instance, 0)),
         (previous, next) {
       if (next > 0 && _scrollController.hasClients) {
         _scrollController.animateTo(
@@ -417,6 +417,7 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                                           MovieDetailScreen(
                                         instance: widget.instance,
                                         movieId: m.id,
+                                        movie: m,
                                       ),
                                     ),
                                   );
@@ -484,6 +485,7 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                                             MovieDetailScreen(
                                           instance: widget.instance,
                                           movieId: m.id,
+                                          movie: m,
                                         ),
                                       ),
                                     );
@@ -661,7 +663,15 @@ class _MovieBannerCard extends ConsumerWidget {
 
     final RadarrImage? banner = movie.images
         .firstWhereOrNull((RadarrImage i) => i.coverType == 'banner');
-    final String? bannerUrl = banner == null ? null : api?.posterUrl(banner);
+    final RadarrImage? fanart = movie.images
+        .firstWhereOrNull((RadarrImage i) => i.coverType == 'fanart');
+    final RadarrImage? imageToUse = banner ?? fanart;
+    final String? bannerUrl = imageToUse == null
+        ? null
+        : api?.posterUrl(
+            imageToUse,
+            width: imageToUse.coverType == 'fanart' ? 1080 : null,
+          );
 
     final RadarrImage? poster = movie.images
         .firstWhereOrNull((RadarrImage i) => i.coverType == 'poster');
@@ -756,6 +766,7 @@ class _MovieBannerCard extends ConsumerWidget {
                               child: CachedNetworkImage(
                                 imageUrl: posterUrl,
                                 fit: BoxFit.cover,
+                                memCacheWidth: 500,
                                 placeholder: (_, __) => Container(
                                   color:
                                       theme.colorScheme.surfaceContainerHighest,
@@ -863,6 +874,7 @@ class _Poster extends StatelessWidget {
     return CachedNetworkImage(
       imageUrl: imageUrl!,
       fit: BoxFit.cover,
+      memCacheWidth: 500,
       placeholder: (BuildContext context, String url) =>
           Container(color: theme.colorScheme.surfaceContainerHighest),
       errorWidget: (BuildContext context, String url, Object error) => fallback,

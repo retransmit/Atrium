@@ -8,6 +8,8 @@ import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'home/sonarr_rename_dialog.dart';
 import 'models/sonarr_episode.dart';
+import 'models/sonarr_history_item.dart';
+import 'models/sonarr_queue_item.dart';
 import 'models/sonarr_series.dart';
 import 'sonarr_api.dart';
 import 'sonarr_providers.dart';
@@ -67,10 +69,32 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
   final Map<int, GlobalKey> _seasonKeys = {};
   final GlobalKey _seasonsHeaderKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
+  final ValueNotifier<bool> _showBackToTop = ValueNotifier<bool>(false);
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_scrollListener);
+  }
+
+  void _scrollListener() {
+    final threshold = MediaQuery.sizeOf(context).height * 0.5;
+    if (_scrollController.hasClients && _scrollController.offset >= threshold) {
+      if (!_showBackToTop.value) {
+        _showBackToTop.value = true;
+      }
+    } else {
+      if (_showBackToTop.value) {
+        _showBackToTop.value = false;
+      }
+    }
+  }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
+    _showBackToTop.dispose();
     super.dispose();
   }
 
@@ -81,6 +105,11 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
         'name': 'RefreshSeries',
         'seriesId': widget.series.id,
       });
+      try {
+        await api.runCommand(<String, dynamic>{
+          'name': 'RefreshMonitoredDownloads',
+        });
+      } catch (_) {}
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -90,6 +119,7 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
     } finally {
       if (mounted) {
         _invalidateProviders();
+        setState(_expandedSeasons.clear);
       }
     }
   }
@@ -100,6 +130,7 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
     );
     ref.invalidate(sonarrEpisodesProvider((widget.instance, widget.series.id)));
     ref.invalidate(sonarrSeriesProvider(widget.instance));
+    ref.invalidate(sonarrQueueProvider(widget.instance));
   }
 
   @override
@@ -121,7 +152,33 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
     final int downloadedCount = widget.series.statistics?.episodeFileCount ?? 0;
     final int totalEpisodes = widget.series.statistics?.episodeCount ?? 0;
 
-    return EasyRefresh(
+    return Scaffold(
+      floatingActionButton: ValueListenableBuilder<bool>(
+        valueListenable: _showBackToTop,
+        builder: (context, show, child) {
+          return AnimatedScale(
+            scale: show ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            child: AnimatedOpacity(
+              opacity: show ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              child: FloatingActionButton.small(
+                onPressed: () {
+                  _scrollController.animateTo(
+                    0.0,
+                    duration: const Duration(milliseconds: 350),
+                    curve: Curves.easeOutCubic,
+                  );
+                },
+                child: const Icon(Icons.arrow_upward),
+              ),
+            ),
+          );
+        },
+      ),
+      body: EasyRefresh(
           header: const ClassicHeader(
             position: IndicatorPosition.locator,
             dragText: 'Pull to refresh',
@@ -379,6 +436,7 @@ class _SeriesDetailBodyState extends ConsumerState<_SeriesDetailBody> {
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -963,6 +1021,36 @@ class _SeasonCard extends ConsumerWidget {
     final String seasonSizeStr =
         seasonSizeBytes > 0 ? ' • ${_formatSize(seasonSizeBytes.toInt())}' : '';
 
+    final queue = ref.watch(sonarrQueueProvider(instance)).value ?? <SonarrQueueItem>[];
+    final Map<String, List<SonarrQueueItem>> groupedByDownload = {};
+    for (final item in queue) {
+      final dlId = item.downloadId;
+      if (dlId != null) {
+        groupedByDownload.putIfAbsent(dlId, () => []).add(item);
+      }
+    }
+    final seasonPackDownloadIds = groupedByDownload.entries
+        .where((e) => e.value.length > 1)
+        .map((e) => e.key)
+        .toSet();
+
+    final seasonPackDownload = queue.firstWhereOrNull(
+      (item) =>
+          item.seriesId == series.id &&
+          item.seasonNumber == seasonNumber &&
+          (item.episodeId == null ||
+              (item.downloadId != null && seasonPackDownloadIds.contains(item.downloadId))),
+    );
+
+    double? dlProgress;
+    if (seasonPackDownload != null) {
+      final double totalSize = seasonPackDownload.size ?? 0.0;
+      final double sizeLeft = seasonPackDownload.sizeleft ?? 0.0;
+      if (totalSize > 0) {
+        dlProgress = (totalSize - sizeLeft) / totalSize;
+      }
+    }
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
@@ -1046,6 +1134,50 @@ class _SeasonCard extends ConsumerWidget {
                             ),
                           ],
                         ),
+                        if (seasonPackDownload != null) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            children: <Widget>[
+                              Icon(
+                                Icons.downloading,
+                                size: 14,
+                                color: cs.primary,
+                              ),
+                              const SizedBox(width: Insets.xs),
+                              Expanded(
+                                child: Text(
+                                  'Downloading Season Pack • ETA: ${_formatTimeLeft(seasonPackDownload.timeleft)}',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: cs.primary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (dlProgress != null)
+                                Text(
+                                  '${(dlProgress * 100).toStringAsFixed(0)}%',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: cs.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          if (dlProgress != null) ...[
+                            const SizedBox(height: 4),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(2),
+                              child: LinearProgressIndicator(
+                                value: dlProgress,
+                                minHeight: 3,
+                                backgroundColor: cs.primaryContainer.withValues(alpha: 0.3),
+                                color: cs.primary,
+                              ),
+                            ),
+                          ],
+                        ],
                       ],
                     ),
                   ),
@@ -1129,13 +1261,33 @@ class _SeasonCard extends ConsumerWidget {
                   height: 1,
                   color: cs.outlineVariant.withValues(alpha: 0.3),
                 ),
-                ...episodes.map(
-                  (SonarrEpisode episode) => _EpisodeRow(
-                    instance: instance,
-                    series: series,
-                    episode: episode,
+                if (isExpanded)
+                  ...episodes.map(
+                    (SonarrEpisode episode) {
+                      final downloadingItem = queue.firstWhereOrNull(
+                        (item) =>
+                            item.episodeId == episode.id &&
+                            (item.downloadId == null || !seasonPackDownloadIds.contains(item.downloadId)),
+                      );
+
+                      double? dlProgress;
+                      if (downloadingItem != null) {
+                        final double totalSize = downloadingItem.size ?? 0.0;
+                        final double sizeLeft = downloadingItem.sizeleft ?? 0.0;
+                        if (totalSize > 0) {
+                          dlProgress = (totalSize - sizeLeft) / totalSize;
+                        }
+                      }
+
+                      return _EpisodeRow(
+                        instance: instance,
+                        series: series,
+                        episode: episode,
+                        downloadingItem: downloadingItem,
+                        dlProgress: dlProgress,
+                      );
+                    },
                   ),
-                ),
               ],
             ),
             crossFadeState: isExpanded
@@ -1330,11 +1482,15 @@ class _EpisodeRow extends ConsumerWidget {
     required this.instance,
     required this.series,
     required this.episode,
+    required this.downloadingItem,
+    required this.dlProgress,
   });
 
   final Instance instance;
   final SonarrSeries series;
   final SonarrEpisode episode;
+  final SonarrQueueItem? downloadingItem;
+  final double? dlProgress;
 
   Future<void> _toggleEpisodeMonitored(
     BuildContext context,
@@ -1408,6 +1564,10 @@ class _EpisodeRow extends ConsumerWidget {
       if (sizeStr != null) sizeStr,
     ].join(' • ');
 
+    // downloadingItem and dlProgress are now passed in from the parent SeasonCard
+    final downloadingItem = this.downloadingItem;
+    final dlProgress = this.dlProgress;
+
     return InkWell(
       onTap: () => _showEpisodeBottomSheet(
         context: context,
@@ -1458,14 +1618,58 @@ class _EpisodeRow extends ConsumerWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  Text(
-                    subtitleText,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: cs.outline,
+                  if (downloadingItem != null) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.downloading,
+                          size: 12,
+                          color: cs.primary,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            'Downloading • ETA: ${_formatTimeLeft(downloadingItem.timeleft)}',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: cs.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (dlProgress != null)
+                          Text(
+                            '${(dlProgress * 100).toStringAsFixed(0)}%',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: cs.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                      ],
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                    if (dlProgress != null) ...[
+                      const SizedBox(height: 4),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(2),
+                        child: LinearProgressIndicator(
+                          value: dlProgress,
+                          minHeight: 2,
+                          backgroundColor: cs.primaryContainer.withValues(alpha: 0.3),
+                          color: cs.primary,
+                        ),
+                      ),
+                    ],
+                  ] else
+                    Text(
+                      subtitleText,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.outline,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                 ],
               ),
             ),
@@ -1797,6 +2001,14 @@ class _OverflowMenu extends ConsumerWidget {
             contentPadding: EdgeInsets.zero,
           ),
         ),
+        const PopupMenuItem<String>(
+          value: 'history',
+          child: ListTile(
+            leading: Icon(Icons.history),
+            title: Text('History'),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
         const PopupMenuDivider(),
         PopupMenuItem<String>(
           value: 'delete',
@@ -1843,6 +2055,15 @@ class _OverflowMenu extends ConsumerWidget {
           instance: instance,
           series: series,
           onRefreshed: onRefreshed,
+        );
+
+      case 'history':
+        pushScreen<void>(
+          context,
+          SonarrSeriesHistoryScreen(
+            instance: instance,
+            series: series,
+          ),
         );
 
       case 'delete':
@@ -2337,3 +2558,361 @@ class _AppBarActionsState extends State<_AppBarActions> {
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Series History Screen
+// ---------------------------------------------------------------------------
+
+class SonarrSeriesHistoryScreen extends ConsumerWidget {
+  const SonarrSeriesHistoryScreen({
+    super.key,
+    required this.instance,
+    required this.series,
+  });
+
+  final Instance instance;
+  final SonarrSeries series;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final historyAsync = ref.watch(
+      sonarrSeriesHistoryProvider((instance, series.id)),
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('${series.title} - History'),
+        surfaceTintColor: Colors.transparent,
+      ),
+      body: historyAsync.when(
+        loading: () => const Center(child: ExpressiveProgressIndicator()),
+        error: (Object error, StackTrace? _) => ErrorView(
+          title: 'Failed to load history',
+          message: error.toString(),
+          onRetry: () => ref.invalidate(sonarrSeriesHistoryProvider((instance, series.id))),
+        ),
+        data: (List<SonarrHistoryItem> items) {
+          if (items.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Icon(
+                    Icons.history,
+                    size: 48,
+                    color: cs.outline,
+                  ),
+                  const SizedBox(height: Insets.lg),
+                  Text(
+                    'No history items found.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: cs.outline,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return EasyRefresh(
+            onRefresh: () async {
+              ref.invalidate(sonarrSeriesHistoryProvider((instance, series.id)));
+              await ref.read(sonarrSeriesHistoryProvider((instance, series.id)).future);
+            },
+            child: ListView.separated(
+              padding: const EdgeInsets.all(Insets.md),
+              itemCount: items.length,
+              separatorBuilder: (BuildContext context, int index) => const Divider(
+                height: 1,
+                indent: Insets.lg,
+                endIndent: Insets.lg,
+              ),
+              itemBuilder: (BuildContext context, int index) {
+                final SonarrHistoryItem item = items[index];
+                final String formattedDate = _formatDateTime(item.date);
+
+                String epInfo = '';
+                if (item.episode != null) {
+                  final String season = item.episode!.seasonNumber.toString().padLeft(2, '0');
+                  final String ep = item.episode!.episodeNumber.toString().padLeft(2, '0');
+                  epInfo = 'S${season}E$ep';
+                }
+
+                final String subtitle = [
+                  if (epInfo.isNotEmpty) epInfo,
+                  if (item.sourceTitle != null) item.sourceTitle!,
+                ].join(' • ');
+
+                return ListTile(
+                  leading: _buildHistoryEventIcon(context, item.eventType),
+                  title: Text(
+                    item.eventType?.toUpperCase() ?? 'UNKNOWN',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Text(
+                    subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: Text(
+                    formattedDate,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 10,
+                      color: cs.outline,
+                    ),
+                  ),
+                  onTap: () => _showHistoryDetails(context, ref, instance, series.id, item),
+                );
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({
+    required this.label,
+    required this.value,
+  });
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _formatDateTime(String? isoDate) {
+  if (isoDate == null) return 'Unknown Date';
+  try {
+    final DateTime dt = DateTime.parse(isoDate).toLocal();
+    final String monthStr = dt.month.toString().padLeft(2, '0');
+    final String dayStr = dt.day.toString().padLeft(2, '0');
+    final String hourStr = dt.hour.toString().padLeft(2, '0');
+    final String minStr = dt.minute.toString().padLeft(2, '0');
+    return '${dt.year}-$monthStr-$dayStr $hourStr:$minStr';
+  } catch (_) {
+    return isoDate;
+  }
+}
+
+Widget _buildHistoryEventIcon(BuildContext context, String? eventType) {
+  final ThemeData theme = Theme.of(context);
+  final String label = eventType?.toLowerCase() ?? '';
+
+  IconData icon;
+  Color color;
+
+  switch (label) {
+    case 'grabbed':
+      icon = Icons.cloud_download_outlined;
+      color = theme.colorScheme.secondary;
+      break;
+    case 'downloadfolderimported':
+    case 'seriesfolderimported':
+      icon = Icons.download_done_outlined;
+      color = theme.colorScheme.primary;
+      break;
+    case 'downloadfailed':
+      icon = Icons.error_outline;
+      color = theme.colorScheme.error;
+      break;
+    case 'episodefiledeleted':
+      icon = Icons.delete_outline;
+      color = theme.colorScheme.outline;
+      break;
+    case 'episodefilerenamed':
+      icon = Icons.edit_outlined;
+      color = theme.colorScheme.primary;
+      break;
+    case 'downloadignored':
+      icon = Icons.block_outlined;
+      color = theme.colorScheme.outline;
+      break;
+    default:
+      icon = Icons.history;
+      color = theme.colorScheme.onSurfaceVariant;
+  }
+
+  return Icon(icon, color: color, size: 22);
+}
+
+void _showHistoryDetails(
+  BuildContext context,
+  WidgetRef ref,
+  Instance instance,
+  int seriesId,
+  SonarrHistoryItem item,
+) {
+  final ThemeData theme = Theme.of(context);
+  final String eventType = item.eventType ?? 'Unknown';
+
+  showDialog<void>(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: Text(
+          'History Event Details',
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              _DetailRow(label: 'Event Type', value: eventType.toUpperCase()),
+              _DetailRow(label: 'Date', value: _formatDateTime(item.date)),
+              _DetailRow(
+                label: 'Source Title',
+                value: item.sourceTitle ?? 'None',
+              ),
+              if (item.downloadId != null)
+                _DetailRow(label: 'Download ID', value: item.downloadId!),
+              if (item.data != null && item.data!.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Metadata:',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  width: double.maxFinite,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: item.data!.entries.map((MapEntry<String, String?> e) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          '${e.key}: ${e.value}',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        actions: <Widget>[
+          if (eventType.toLowerCase() == 'grabbed')
+            TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.error,
+              ),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                try {
+                  final SonarrApi api =
+                      await ref.read(sonarrApiProvider(instance).future);
+                  await api.failHistoryItem(item.id);
+                  ref.invalidate(sonarrSeriesHistoryProvider((instance, seriesId)));
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Marked release as failed. Sonarr will search for replacements.',
+                        ),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to flag release: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Mark Failed'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+String _formatTimeLeft(String? timeleft) {
+  if (timeleft == null || timeleft == '00:00:00' || timeleft.isEmpty) {
+    return 'calculating...';
+  }
+  try {
+    final List<String> parts = timeleft.split(':');
+    if (parts.length < 3) return timeleft;
+
+    final String hoursPart = parts[0];
+    final String minutesPart = parts[1];
+
+    int days = 0;
+    int hours = 0;
+
+    if (hoursPart.contains('.')) {
+      final List<String> hourSplit = hoursPart.split('.');
+      days = int.tryParse(hourSplit[0]) ?? 0;
+      hours = int.tryParse(hourSplit[1]) ?? 0;
+    } else {
+      hours = int.tryParse(hoursPart) ?? 0;
+    }
+
+    final int minutes = int.tryParse(minutesPart) ?? 0;
+
+    final List<String> result = [];
+    if (days > 0) result.add('${days}d');
+    if (hours > 0) result.add('${hours}h');
+    if (days == 0 && hours == 0 && minutes > 0) result.add('${minutes}m');
+
+    if (result.isEmpty) return 'few seconds';
+    return result.join(' ');
+  } catch (_) {
+    return timeleft;
+  }
+}
+
