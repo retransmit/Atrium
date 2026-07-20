@@ -1,8 +1,10 @@
 /* Material 3 Expressive - Native BeerCSS Overrides & Utilities */
 
-/* Base Typography: We use Outfit to give it that modern 'expressive' feel */
+/* Base typography. Archivo is a variable face covering 100 to 900, so the 800
+   weight the headings use is real rather than synthesised, and it ships from
+   our own bundle instead of a font CDN. */
 :root {
-  --font-family: 'Outfit', sans-serif;
+  --font-family: 'Archivo Variable', system-ui, sans-serif;
 }
 body, h1, h2, h3, h4, h5, h6, .button, .chip, .logo-text {
   font-family: var(--font-family) !important;
