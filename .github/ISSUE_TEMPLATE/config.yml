@@ -1,0 +1,9 @@
+# Discussions are not enabled on this repo, so nothing links to them here.
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/retransmit/Atrium/blob/main/SECURITY.md
+    about: Report privately. Please do not open a public issue for these.
+  - name: Website
+    url: https://retransmit.github.io/Atrium/
+    about: Screenshots and what Atrium does, before you file anything.
