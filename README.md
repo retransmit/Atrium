@@ -6,8 +6,10 @@ Seerr, Tautulli, Jellyfin, Emby, Plex, qBittorrent,
 SABnzbd and Glances - and routes every request through the right URL
 whether you're on the home Wi-Fi or out in the world.
 
-> **Status:** v1.0.0, the first release. Signed APKs are on the
-> [releases page][releases]; the F-Droid submission is in progress.
+**[Website][site]** - screenshots and a tour, no install needed.
+
+> **Status:** v1.0.7. Signed APKs are on the [releases page][releases];
+> the F-Droid submission is in review.
 
 ## Why
 
@@ -70,9 +72,11 @@ Grab the APK for your device from the [releases page][releases]. Most
 phones want `app-arm64-v8a-release.apk`; `armeabi-v7a` covers older
 32-bit devices. Android 7.0 (API 24) or newer.
 
-F-Droid submission is in progress. The F-Droid build will be signed with
-F-Droid's key rather than ours, so once it lands, pick one source and
-stay on it - Android will not update an APK across a signature change.
+The F-Droid submission is in review. Atrium is built reproducibly, so
+F-Droid rebuilds it from source, verifies the result matches the published
+APK byte for byte, and ships it carrying this project's own signature.
+The two sources are therefore interchangeable: you can move between the
+releases page and F-Droid without uninstalling.
 
 ## Build
 
@@ -142,3 +146,4 @@ Jellyfin, qBittorrent, and LunaSea.
 
 [lunasea]: https://github.com/JagandeepBrar/LunaSea
 [releases]: https://github.com/retransmit/Atrium/releases
+[site]: https://retransmit.github.io/Atrium/
