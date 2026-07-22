@@ -85,7 +85,6 @@ class HealthProbe {
         cfg.path,
         options: Options(
           validateStatus: (_) => true,
-          followRedirects: false,
           receiveTimeout: const Duration(seconds: 8),
         ),
       );

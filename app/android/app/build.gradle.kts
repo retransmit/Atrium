@@ -81,12 +81,6 @@ android {
     }
 
     buildTypes {
-        debug {
-            // Development builds coexist with the release app and are
-            // visually distinct during live-device testing.
-            applicationIdSuffix = ".debug"
-            manifestPlaceholders["appName"] = "Atrium Dev"
-        }
         release {
             // No signing config at all leaves the APK unsigned. A config
             // carrying a null storeFile is rejected outright by the Android

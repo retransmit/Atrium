@@ -209,7 +209,7 @@ class _EditBoard extends ConsumerWidget {
     return ReorderableListView(
       padding: Insets.page,
       buildDefaultDragHandles: false,
-      onReorderItem: (int oldIndex, int newIndex) => ref
+      onReorder: (int oldIndex, int newIndex) => ref
           .read(dashboardLayoutProvider.notifier)
           .moveEnabled(oldIndex, newIndex),
       footer: hidden.isEmpty
