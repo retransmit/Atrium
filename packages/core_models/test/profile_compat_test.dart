@@ -83,6 +83,26 @@ void main() {
     expect(instance.customHeaders, const <String, String>{});
   });
 
+  test('Speedtest Tracker instance round-trips by stable enum name', () {
+    const Instance instance = Instance(
+      id: 'speedtest-1',
+      name: 'Home speed',
+      kind: ServiceKind.speedtestTracker,
+      localUrl: 'https://speedtest.example.test',
+      externalUrl: '',
+      urlMode: UrlMode.auto,
+      auth: InstanceAuth.apiKey(apiKey: ''),
+    );
+
+    final Map<String, dynamic> json = jsonDecode(
+      jsonEncode(instance.toJson()),
+    ) as Map<String, dynamic>;
+    final Instance decoded = Instance.fromJson(json);
+
+    expect(json['kind'], 'speedtestTracker');
+    expect(decoded.kind, ServiceKind.speedtestTracker);
+  });
+
   test('WolDevice.fromJson fills broadcast and port defaults', () {
     final WolDevice device = WolDevice.fromJson(<String, dynamic>{
       'id': 'w1',

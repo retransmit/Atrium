@@ -9,6 +9,7 @@ import 'package:dio/dio.dart';
 /// |--------------------------|---------------------------------------------|
 /// | *arr family, Seerr   | `X-Api-Key` header                          |
 /// | SABnzbd, Tautulli        | `?apikey=` query param                      |
+/// | Speedtest Tracker        | `Authorization: Bearer ...`                 |
 /// | Plex                     | `X-Plex-Token` header                       |
 /// | Jellyfin / Emby          | `X-Emby-Authorization` (token only after login) |
 /// | qBittorrent              | `Cookie: SID=...` after `/api/v2/auth/login`    |
@@ -31,6 +32,9 @@ class AuthInterceptor extends Interceptor {
     switch (auth) {
       case InstanceAuthApiKey(:final String apiKey):
         switch (kind) {
+          case ServiceKind.speedtestTracker:
+            options.headers['Authorization'] = 'Bearer $apiKey';
+            options.headers['Accept'] = 'application/json';
           case ServiceKind.sabnzbd || ServiceKind.tautulli:
             options.queryParameters['apikey'] = apiKey;
             // Tautulli's endpoints all require `cmd=` too - that's the

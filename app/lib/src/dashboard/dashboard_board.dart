@@ -12,6 +12,7 @@ import 'package:service_radarr/service_radarr.dart';
 import 'package:service_sabnzbd/service_sabnzbd.dart';
 import 'package:service_seerr/service_seerr.dart';
 import 'package:service_sonarr/service_sonarr.dart';
+import 'package:service_speedtest_tracker/service_speedtest_tracker.dart';
 import 'package:service_tautulli/service_tautulli.dart';
 
 import '../health_providers.dart';
@@ -23,6 +24,7 @@ import 'widgets/recently_added_widget.dart';
 import 'widgets/recently_downloaded_widget.dart';
 import 'widgets/requests_widget.dart';
 import 'widgets/server_info_widget.dart';
+import 'widgets/speedtest_results_widget.dart';
 import 'widgets/streams_widget.dart';
 import 'widgets/upcoming_widget.dart';
 
@@ -140,6 +142,10 @@ class DashboardBoard extends ConsumerWidget {
         return DashboardServerInfoWidget(
           instances: _byKind(instances, ServiceKind.glances),
         );
+      case DashboardWidgetKind.speedtestResults:
+        return DashboardSpeedtestResultsWidget(
+          instances: _byKind(instances, ServiceKind.speedtestTracker),
+        );
     }
   }
 
@@ -169,6 +175,8 @@ class DashboardBoard extends ConsumerWidget {
           ref.invalidate(seerrRequestsProvider(i));
         case ServiceKind.glances:
           ref.invalidate(glancesStatsProvider(i));
+        case ServiceKind.speedtestTracker:
+          ref.invalidate(speedtestOverviewProvider(i));
         default:
           break;
       }
@@ -201,7 +209,7 @@ class _EditBoard extends ConsumerWidget {
     return ReorderableListView(
       padding: Insets.page,
       buildDefaultDragHandles: false,
-      onReorder: (int oldIndex, int newIndex) => ref
+      onReorderItem: (int oldIndex, int newIndex) => ref
           .read(dashboardLayoutProvider.notifier)
           .moveEnabled(oldIndex, newIndex),
       footer: hidden.isEmpty
@@ -356,4 +364,3 @@ class _KeepAliveWrapperState extends State<_KeepAliveWrapper>
   @override
   bool get wantKeepAlive => true;
 }
-

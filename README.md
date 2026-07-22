@@ -3,7 +3,7 @@
 The central courtyard for your self-hosted media stack.
 One Android app that fronts Sonarr, Radarr, Prowlarr, Bazarr,
 Seerr, Tautulli, Jellyfin, Emby, Plex, qBittorrent,
-SABnzbd and Glances - and routes every request through the right URL
+SABnzbd, Glances and Speedtest Tracker - and routes every request through the right URL
 whether you're on the home Wi-Fi or out in the world.
 
 **[Website][site]** - screenshots and a tour, no install needed.
@@ -65,6 +65,7 @@ each one covers:
 | qBittorrent            | realtime list, add/manage, torrent detail                             |
 | SABnzbd                | queue control (history / categories / limits still to come)           |
 | Glances                | CPU/memory/network/disk monitoring                                    |
+| Speedtest Tracker      | latest result, history chart, dashboard, confirmed remote test runs   |
 
 ## Install
 

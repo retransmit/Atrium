@@ -40,8 +40,10 @@ final StateProvider<Map<String, String>> globalHeadersProvider =
 /// A [Dio] bound to a specific [Instance], with the right base URL and auth
 /// wired in. Cached per instance value; closed automatically when no longer
 /// watched.
-final instanceDioProvider =
-    FutureProvider.family<Dio, Instance>((Ref ref, Instance instance) async {
+final instanceDioProvider = FutureProvider.autoDispose.family<Dio, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
   final Map<String, String> global = ref.watch(globalHeadersProvider);
   final Dio dio = await ref
       .watch(dioFactoryProvider)

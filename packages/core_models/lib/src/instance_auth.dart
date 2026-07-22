@@ -21,8 +21,10 @@ part 'instance_auth.g.dart';
 /// stripped before the model is written to a Hive box; the storage layer
 /// holds them in the platform secure store (Android Keystore via
 /// flutter_secure_storage) keyed by `instance.id`.
-@freezed
+@Freezed(toStringOverride: false)
 sealed class InstanceAuth with _$InstanceAuth {
+  const InstanceAuth._();
+
   /// Static API key in a header or query param. Used by every *arr service,
   /// Seerr / Jellyseerr, Tautulli, and SABnzbd.
   const factory InstanceAuth.apiKey({required String apiKey}) =
@@ -48,4 +50,15 @@ sealed class InstanceAuth with _$InstanceAuth {
 
   factory InstanceAuth.fromJson(Map<String, dynamic> json) =>
       _$InstanceAuthFromJson(json);
+
+  /// Never include secret material in diagnostics, provider labels, or logs.
+  @override
+  String toString() => switch (this) {
+        InstanceAuthApiKey() => 'InstanceAuth.apiKey(***redacted***)',
+        InstanceAuthUserPass(:final String username) =>
+          'InstanceAuth.userPass(username: $username, password: ***redacted***)',
+        InstanceAuthPlex() => 'InstanceAuth.plexToken(***redacted***)',
+        InstanceAuthCookie(:final String username) =>
+          'InstanceAuth.cookieLogin(username: $username, password: ***redacted***)',
+      };
 }
