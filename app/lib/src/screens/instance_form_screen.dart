@@ -1,12 +1,13 @@
 import 'package:core_models/core_models.dart';
-import 'package:core_networking/core_networking.dart';
 import 'package:core_profile/core_profile.dart';
 import 'package:core_ui/core_ui.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:service_speedtest_tracker/service_speedtest_tracker.dart';
+
+import '../connection_test/connection_test_result.dart';
+import '../connection_test/connection_tester.dart';
 
 const String speedtestConnectionSuccessMessage =
     'Connected with results:read. Run permission cannot be verified until used.';
@@ -59,8 +60,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
   /// tracks which the user picked (qBit only).
   bool _qbitUseApiKey = false;
   bool _testingConnection = false;
-  bool _connectionTestFailed = false;
-  String? _connectionTestMessage;
+  Map<String, ConnectionTestResult> _connectionResults =
+      <String, ConnectionTestResult>{};
   final TextEditingController _pollingInterval =
       TextEditingController(text: '5');
 
@@ -146,9 +147,27 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
 
   void _clearConnectionTest(String _) {
     setState(() {
-      _connectionTestMessage = null;
-      _connectionTestFailed = false;
+      _connectionResults = <String, ConnectionTestResult>{};
     });
+  }
+
+  IconData _connectionOutcomeIcon(ConnectionOutcome outcome) =>
+      switch (outcome) {
+        ConnectionOutcome.connected => Icons.check_circle_outline,
+        ConnectionOutcome.authFailed => Icons.warning_amber_outlined,
+        ConnectionOutcome.unreachable => Icons.error_outline,
+      };
+
+  Color _connectionOutcomeColor(
+    BuildContext context,
+    ConnectionOutcome outcome,
+  ) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    return switch (outcome) {
+      ConnectionOutcome.connected => scheme.primary,
+      ConnectionOutcome.authFailed => scheme.tertiary,
+      ConnectionOutcome.unreachable => scheme.error,
+    };
   }
 
   bool get _warnAboutExternalHttp {
@@ -179,54 +198,37 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     }
   }
 
-  Future<void> _testSpeedtestConnection() async {
+  Future<void> _testConnection() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
     setState(() {
       _testingConnection = true;
-      _connectionTestFailed = false;
-      _connectionTestMessage = null;
+      _connectionResults = <String, ConnectionTestResult>{};
     });
     final Instance candidate = _buildInstance(
-      widget.instanceId ?? 'speedtest-connection-test',
+      widget.instanceId ?? 'connection-test',
     );
-    Dio? dio;
+    final ConnectionTester tester = ref.read(connectionTesterProvider);
+    final Map<String, ConnectionTestResult> results =
+        <String, ConnectionTestResult>{};
     try {
-      dio = await ref.read(dioFactoryProvider).create(
-            candidate,
-            globalHeaders: ref.read(globalHeadersProvider),
-          );
-      final SpeedtestTrackerApi api = SpeedtestTrackerApi(dio);
-      await api.checkHealth();
-      await api.listResults(pageSize: 1);
-      if (!mounted) {
-        return;
+      if (_localUrl.text.trim().isNotEmpty) {
+        results['Local'] =
+            await tester.test(candidate: candidate, url: UrlMode.forceLocal);
       }
-      setState(() {
-        _connectionTestMessage = speedtestConnectionSuccessMessage;
-      });
-    } on SpeedtestTrackerException catch (error) {
-      if (!mounted) {
-        return;
+      if (_externalUrl.text.trim().isNotEmpty) {
+        results['External'] = await tester.test(
+          candidate: candidate,
+          url: UrlMode.forceExternal,
+        );
       }
-      setState(() {
-        _connectionTestFailed = true;
-        _connectionTestMessage = speedtestConnectionErrorMessage(error);
-      });
-    } on Object {
-      if (!mounted) {
-        return;
-      }
-      setState(() {
-        _connectionTestFailed = true;
-        _connectionTestMessage =
-            'Could not test the Speedtest Tracker connection.';
-      });
     } finally {
-      dio?.close(force: true);
       if (mounted) {
-        setState(() => _testingConnection = false);
+        setState(() {
+          _testingConnection = false;
+          _connectionResults = results;
+        });
       }
     }
   }
@@ -288,7 +290,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
               ],
               onSelected: (ServiceKind? k) => setState(() {
                 _kind = k ?? _kind;
-                _connectionTestMessage = null;
+                _connectionResults = <String, ConnectionTestResult>{};
               }),
             ),
             const SizedBox(height: Insets.md),
@@ -379,7 +381,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
               ],
               onSelected: (UrlMode? m) => setState(() {
                 _urlMode = m ?? _urlMode;
-                _connectionTestMessage = null;
+                _connectionResults = <String, ConnectionTestResult>{};
               }),
             ),
             const SizedBox(height: Insets.lg),
@@ -399,43 +401,41 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
               value: _allowSelfSigned,
               onChanged: (bool v) => setState(() {
                 _allowSelfSigned = v;
-                _connectionTestMessage = null;
+                _connectionResults = <String, ConnectionTestResult>{};
               }),
             ),
-            if (_kind == ServiceKind.speedtestTracker) ...<Widget>[
-              const SizedBox(height: Insets.sm),
-              OutlinedButton.icon(
-                onPressed: _testingConnection ? null : _testSpeedtestConnection,
-                icon: _testingConnection
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.cable_outlined),
-                label: Text(
-                  _testingConnection ? 'Testing...' : 'Test connection',
-                ),
+            const SizedBox(height: Insets.sm),
+            OutlinedButton.icon(
+              onPressed: _testingConnection ? null : _testConnection,
+              icon: _testingConnection
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.cable_outlined),
+              label: Text(
+                _testingConnection ? 'Testing...' : 'Test connection',
               ),
-              if (_connectionTestMessage != null) ...<Widget>[
-                const SizedBox(height: Insets.sm),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Icon(
-                      _connectionTestFailed
-                          ? Icons.error_outline
-                          : Icons.check_circle_outline,
-                      size: 18,
-                      color: _connectionTestFailed
-                          ? Theme.of(context).colorScheme.error
-                          : Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(width: Insets.sm),
-                    Expanded(child: Text(_connectionTestMessage!)),
-                  ],
-                ),
-              ],
+            ),
+            for (final MapEntry<String, ConnectionTestResult> entry
+                in _connectionResults.entries) ...<Widget>[
+              const SizedBox(height: Insets.sm),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Icon(
+                    _connectionOutcomeIcon(entry.value.outcome),
+                    size: 18,
+                    color:
+                        _connectionOutcomeColor(context, entry.value.outcome),
+                  ),
+                  const SizedBox(width: Insets.sm),
+                  Expanded(
+                    child: Text('${entry.key}: ${entry.value.message}'),
+                  ),
+                ],
+              ),
             ],
             if (_kind == ServiceKind.glances) ...<Widget>[
               const SizedBox(height: Insets.lg),
