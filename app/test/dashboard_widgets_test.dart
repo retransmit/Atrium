@@ -452,14 +452,14 @@ void main() {
       ],
       const DashboardBoard(),
     );
-    // All seven widgets are arrangeable in edit mode, configured or not.
-    expect(find.byIcon(Icons.drag_indicator), findsNWidgets(7));
+    // All eight widgets are arrangeable in edit mode, configured or not.
+    expect(find.byIcon(Icons.drag_indicator), findsNWidgets(8));
     expect(find.text('Hidden'), findsNothing);
     // Hide the first widget -> it moves to the Hidden section.
     await tester.tap(find.byIcon(Icons.visibility_off_outlined).first);
     await tester.pump();
     expect(find.text('Hidden'), findsOneWidget);
-    expect(find.byIcon(Icons.drag_indicator), findsNWidgets(6));
+    expect(find.byIcon(Icons.drag_indicator), findsNWidgets(7));
     expect(find.byIcon(Icons.add_circle_outline), findsOneWidget);
   });
 }

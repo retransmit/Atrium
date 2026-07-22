@@ -10,6 +10,7 @@ enum DashboardWidgetKind {
   recentlyDownloaded,
   requests,
   serverInfo,
+  speedtestResults,
 }
 
 extension DashboardWidgetKindX on DashboardWidgetKind {
@@ -21,6 +22,7 @@ extension DashboardWidgetKindX on DashboardWidgetKind {
         DashboardWidgetKind.recentlyDownloaded => 'Recently downloaded',
         DashboardWidgetKind.requests => 'Requests',
         DashboardWidgetKind.serverInfo => 'Server info',
+        DashboardWidgetKind.speedtestResults => 'Speedtest results',
       };
 
   IconData get icon => switch (this) {
@@ -31,6 +33,7 @@ extension DashboardWidgetKindX on DashboardWidgetKind {
         DashboardWidgetKind.recentlyDownloaded => Icons.history,
         DashboardWidgetKind.requests => Icons.bookmark_added_outlined,
         DashboardWidgetKind.serverInfo => Icons.memory,
+        DashboardWidgetKind.speedtestResults => Icons.speed_outlined,
       };
 
   /// Service kinds whose presence makes this widget "configured".
@@ -59,6 +62,9 @@ extension DashboardWidgetKindX on DashboardWidgetKind {
         DashboardWidgetKind.requests => const <ServiceKind>[ServiceKind.seerr],
         DashboardWidgetKind.serverInfo => const <ServiceKind>[
             ServiceKind.glances
+          ],
+        DashboardWidgetKind.speedtestResults => const <ServiceKind>[
+            ServiceKind.speedtestTracker
           ],
       };
 }

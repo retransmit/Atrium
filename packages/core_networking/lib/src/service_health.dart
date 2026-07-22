@@ -56,6 +56,8 @@ enum _HealthMode {
       return (path: 'api/v2/app/version', mode: _HealthMode.reachable);
     case ServiceKind.glances:
       return (path: 'api/4/core', mode: _HealthMode.authed);
+    case ServiceKind.speedtestTracker:
+      return (path: 'api/v1/results?page[size]=1', mode: _HealthMode.authed);
   }
 }
 
@@ -83,11 +85,16 @@ class HealthProbe {
         cfg.path,
         options: Options(
           validateStatus: (_) => true,
+          followRedirects: false,
           receiveTimeout: const Duration(seconds: 8),
         ),
       );
       final int status = resp.statusCode ?? 0;
-      return _interpret(status, cfg.mode);
+      return interpretServiceHealthResponse(
+        instance.kind,
+        status,
+        resp.data,
+      );
     } on DioException {
       return Health.error;
     } on Object {
@@ -96,26 +103,40 @@ class HealthProbe {
       dio?.close(force: true);
     }
   }
+}
 
-  Health _interpret(int status, _HealthMode mode) {
-    if (status == 0) {
-      return Health.error;
-    }
-    switch (mode) {
-      case _HealthMode.authed:
-        if (status >= 200 && status < 300) {
-          return Health.ok;
-        }
-        if (status == 401 || status == 403) {
+/// Interprets a completed HTTP health response without retaining or exposing
+/// its body. Public for focused tests; callers should normally use
+/// [HealthProbe].
+Health interpretServiceHealthResponse(
+  ServiceKind kind,
+  int status,
+  Object? data,
+) {
+  if (status == 0) {
+    return Health.error;
+  }
+  final _HealthMode mode = _config(kind).mode;
+  switch (mode) {
+    case _HealthMode.authed:
+      if (status >= 200 && status < 300) {
+        if (kind == ServiceKind.speedtestTracker &&
+            !_isSpeedtestResultsEnvelope(data)) {
+          // The host answered, but not with the authenticated API contract.
           return Health.warning;
         }
-        // 5xx = reachable but unhealthy; 4xx (e.g. 404 wrong path) = warning.
-        return Health.warning;
-      case _HealthMode.publicEndpoint:
-        return (status >= 200 && status < 300) ? Health.ok : Health.error;
-      case _HealthMode.reachable:
-        // Any HTTP status proves the host answered.
         return Health.ok;
-    }
+      }
+      // 401/403, API-level 4xx, redirects, and 5xx all prove the host answered
+      // while indicating credentials, compatibility, or server health needs
+      // attention.
+      return Health.warning;
+    case _HealthMode.publicEndpoint:
+      return (status >= 200 && status < 300) ? Health.ok : Health.error;
+    case _HealthMode.reachable:
+      return Health.ok;
   }
 }
+
+bool _isSpeedtestResultsEnvelope(Object? data) =>
+    data is Map && data['data'] is List;

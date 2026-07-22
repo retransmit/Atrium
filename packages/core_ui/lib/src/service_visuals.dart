@@ -20,6 +20,7 @@ abstract final class ServiceVisuals {
         ServiceKind.qbittorrent => Icons.cloud_download_outlined,
         ServiceKind.sabnzbd => Icons.downloading_outlined,
         ServiceKind.glances => Icons.memory_outlined,
+        ServiceKind.speedtestTracker => Icons.speed_outlined,
       };
 
   static Color accent(ServiceKind kind) => switch (kind) {
@@ -35,6 +36,7 @@ abstract final class ServiceVisuals {
         ServiceKind.qbittorrent => const Color(0xFF2F67BA),
         ServiceKind.sabnzbd => const Color(0xFFFFD24D),
         ServiceKind.glances => const Color(0xFF10B981),
+        ServiceKind.speedtestTracker => const Color(0xFF2563EB),
       };
 
   /// Human label for a [ServiceRole] section header.

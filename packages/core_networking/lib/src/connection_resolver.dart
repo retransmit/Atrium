@@ -1,11 +1,15 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:core_models/core_models.dart';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:meta/meta.dart';
 
 import 'network_fingerprint.dart';
+
+typedef ProbeClientFactory = Dio Function(bool allowSelfSignedCerts);
 
 /// Picks between the LAN URL and WAN URL of an [Instance] for outgoing
 /// requests.
@@ -27,15 +31,20 @@ class ConnectionResolver {
   ConnectionResolver({
     required Connectivity connectivity,
     Dio? probeClient,
+    ProbeClientFactory? probeClientFactory,
     ConnectionCacheStore? cacheStore,
     this.probeTimeout = const Duration(milliseconds: 1500),
     this.cacheTtl = const Duration(minutes: 5),
   })  : _connectivity = connectivity,
         _store = cacheStore,
-        _probeClient = probeClient ?? _buildProbeClient();
+        _sharedProbeClient = probeClient,
+        _probeClientFactory = probeClientFactory ??
+            ((bool allowSelfSignedCerts) =>
+                probeClient ?? _buildProbeClient(allowSelfSignedCerts));
 
   final Connectivity _connectivity;
-  final Dio _probeClient;
+  final Dio? _sharedProbeClient;
+  final ProbeClientFactory _probeClientFactory;
 
   /// Optional persistence for verdicts across cold starts. Null = in-memory
   /// only (the resolver works fine without it).
@@ -73,7 +82,7 @@ class ConnectionResolver {
   /// Release resources. Call on app dispose.
   Future<void> dispose() async {
     await _connectivitySub?.cancel();
-    _probeClient.close(force: true);
+    _sharedProbeClient?.close(force: true);
   }
 
   /// Resolve the URL to use for [instance] right now. Always returns a
@@ -117,7 +126,10 @@ class ConnectionResolver {
           return restored.useLocal ? local : external;
         }
 
-        final bool reachable = await _probe(local);
+        final bool reachable = await _probe(
+          local,
+          allowSelfSignedCerts: instance.allowSelfSignedCerts,
+        );
         final _CacheEntry entry = _CacheEntry(
           useLocal: reachable,
           expiresAt: DateTime.now().add(cacheTtl),
@@ -142,9 +154,13 @@ class ConnectionResolver {
     _store?.deleteWhereKeyStartsWith(prefix);
   }
 
-  Future<bool> _probe(Uri url) async {
+  Future<bool> _probe(
+    Uri url, {
+    required bool allowSelfSignedCerts,
+  }) async {
+    final Dio client = _probeClientFactory(allowSelfSignedCerts);
     try {
-      final Response<dynamic> response = await _probeClient.requestUri(
+      final Response<dynamic> response = await client.requestUri(
         url,
         options: Options(
           method: 'GET',
@@ -158,6 +174,10 @@ class ConnectionResolver {
       return response.statusCode != null;
     } on Exception {
       return false;
+    } finally {
+      if (!identical(client, _sharedProbeClient)) {
+        client.close(force: true);
+      }
     }
   }
 
@@ -176,8 +196,8 @@ class ConnectionResolver {
     }
   }
 
-  static Dio _buildProbeClient() {
-    return Dio(
+  static Dio _buildProbeClient(bool allowSelfSignedCerts) {
+    final Dio dio = Dio(
       BaseOptions(
         connectTimeout: const Duration(milliseconds: 1500),
         sendTimeout: const Duration(milliseconds: 1500),
@@ -185,6 +205,14 @@ class ConnectionResolver {
         followRedirects: false,
       ),
     );
+    if (allowSelfSignedCerts) {
+      final IOHttpClientAdapter adapter =
+          dio.httpClientAdapter as IOHttpClientAdapter;
+      adapter.createHttpClient = () => HttpClient()
+        ..badCertificateCallback =
+            (X509Certificate _, String __, int ___) => true;
+    }
+    return dio;
   }
 
   @visibleForTesting

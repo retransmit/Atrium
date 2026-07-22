@@ -1,6 +1,6 @@
 # Atrium - Status
 
-> Snapshot of what genuinely works and what is left, as of 2026-07-10.
+> Snapshot of what genuinely works and what is left, as of 2026-07-21.
 > Atrium is in early development and every module is still work in
 > progress; nothing here is a release promise.
 
@@ -74,6 +74,10 @@ Atrium is a **controller** app. Video playback was removed by design
   transport commands are exercised best-effort
 - **Glances**: per-instance polling, CPU/memory gauges, swap + per-core
   bars, network with interface pinning, disks, uptime
+- **Speedtest Tracker** (live-verified): authenticated 1.1+ result history,
+  latest metrics, combined download / upload chart, multi-instance dashboard
+  widget, and confirmed 1.6+ remote runs with queued/running/terminal-state
+  polling and automatic result refresh
 
 ## Partially done
 
@@ -82,7 +86,7 @@ Atrium is a **controller** app. Video playback was removed by design
 
 ## App-wide TODO
 
-1. A Wake-on-LAN dashboard widget (the board and its seven widgets ship
+1. A Wake-on-LAN dashboard widget (the board and its eight widgets ship
    in 1.0.0)
 2. iOS platform scaffold
 3. Live-stack testing of SABnzbd

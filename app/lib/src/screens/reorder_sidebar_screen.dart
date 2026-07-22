@@ -69,11 +69,10 @@ class _ReorderSidebarScreenState extends ConsumerState<ReorderSidebarScreen> {
                 Expanded(
                   child: ReorderableListView.builder(
                     itemCount: _localInstances!.length,
-                    onReorder: (int oldIndex, int newIndex) {
+                    // Flutter 3.44 deprecates onReorder in favor of this
+                    // callback, which already adjusts newIndex after removal.
+                    onReorderItem: (int oldIndex, int newIndex) {
                       setState(() {
-                        if (oldIndex < newIndex) {
-                          newIndex -= 1;
-                        }
                         final Instance item =
                             _localInstances!.removeAt(oldIndex);
                         _localInstances!.insert(newIndex, item);

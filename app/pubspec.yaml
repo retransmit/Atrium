@@ -45,6 +45,7 @@ dependencies:
   service_sabnzbd:
   service_sonarr:
   service_glances:
+  service_speedtest_tracker:
   service_tautulli:
   url_launcher: ^6.3.2
 dev_dependencies:
