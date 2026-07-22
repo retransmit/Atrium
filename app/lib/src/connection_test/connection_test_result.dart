@@ -1,4 +1,5 @@
 import 'package:core_models/core_models.dart';
+import 'package:core_networking/core_networking.dart';
 
 /// The outcome of testing one URL of an instance before it is saved.
 enum ConnectionOutcome { connected, authFailed, unreachable }
@@ -35,4 +36,21 @@ ConnectionTestResult connectionResultFromHealth(Health health) {
         'Could not determine the connection',
       );
   }
+}
+
+/// Maps an error thrown while verifying a session service (qBittorrent,
+/// Jellyfin, Emby, Plex) to a [ConnectionTestResult]. A rejected credential
+/// surfaces as [NetworkAuthException]; anything else is treated as a transport
+/// or server problem.
+ConnectionTestResult connectionResultFromError(Object error) {
+  if (error is NetworkAuthException) {
+    return const ConnectionTestResult(
+      ConnectionOutcome.authFailed,
+      'Reachable, but the credentials were rejected',
+    );
+  }
+  return const ConnectionTestResult(
+    ConnectionOutcome.unreachable,
+    'Could not reach the server',
+  );
 }
