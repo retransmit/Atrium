@@ -54,6 +54,7 @@ List<Widget> buildNotes(String notes, ThemeData theme) {
     if (para.startsWith('- ')) {
       for (final String raw in para.split('\n')) {
         final String line = raw.trim();
+        // A non-bullet continuation line inside a bullet block is dropped, which is fine because Atrium's notes are bold-lead paragraphs, not multi-line bullets.
         if (!line.startsWith('- ')) continue;
         widgets.add(Padding(
           padding: const EdgeInsets.only(bottom: 6),

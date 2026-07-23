@@ -32,11 +32,14 @@ class AvailableReleaseCard extends ConsumerWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              Text(
-                'v${state.latestVersion}',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: scheme.onSurface,
+              Flexible(
+                child: Text(
+                  'v${state.latestVersion}',
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: scheme.onSurface,
+                  ),
                 ),
               ),
               const SizedBox(width: Insets.sm),
