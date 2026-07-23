@@ -1,0 +1,202 @@
+/* Material 3 Expressive - Native BeerCSS Overrides & Utilities */
+
+/* Base typography. Archivo is a variable face covering 100 to 900, so the 800
+   weight the headings use is real rather than synthesised, and it ships from
+   our own bundle instead of a font CDN. */
+:root {
+  --font-family: 'Archivo Variable', system-ui, sans-serif;
+}
+body, h1, h2, h3, h4, h5, h6, .button, .chip, .logo-text {
+  font-family: var(--font-family) !important;
+}
+
+h1, h2, h3, h4 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Navbar */
+.logo-text {
+  background: linear-gradient(135deg, var(--primary), var(--tertiary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+/* Hero Section */
+.hero-section {
+  padding: 6rem 0 4rem 0;
+  min-height: 70vh;
+  display: flex;
+  align-items: center;
+}
+.hero-text-col {
+  padding-right: 2rem;
+}
+.hero-title {
+  font-size: clamp(3rem, 6vw, 5rem);
+  line-height: 1.05;
+  margin-bottom: 1rem;
+  margin-top: 1rem;
+}
+.hero-subtitle {
+  font-size: clamp(1.1rem, 2vw, 1.3rem);
+  color: var(--on-surface-variant);
+  margin-bottom: 2rem;
+  font-weight: 400;
+}
+.hero-actions {
+  gap: 1rem;
+}
+
+/* 3D App Screenshot Effect */
+.hero-image-col {
+  display: flex;
+  justify-content: center;
+  perspective: 1200px;
+}
+.hero-image-wrapper {
+  position: relative;
+  transform: rotateY(-15deg) rotateX(10deg);
+  transition: transform 0.6s cubic-bezier(0.2, 0, 0, 1);
+  box-shadow: var(--elevation-3);
+  border-radius: var(--border-radius-large, 28px);
+  overflow: hidden;
+  border: 4px solid var(--surface-container-highest);
+  max-width: 320px;
+}
+.hero-image-wrapper:hover {
+  transform: rotateY(0deg) rotateX(0deg) scale(1.05);
+  box-shadow: var(--elevation-5);
+}
+.hero-image {
+  width: 100%;
+  display: block;
+}
+
+/* Services Marquee */
+.services-marquee {
+  width: 100%;
+  overflow: hidden;
+  position: relative;
+  white-space: nowrap;
+  mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+.marquee-track {
+  display: inline-flex;
+  gap: 1.5rem;
+  animation: marquee 35s linear infinite;
+  padding: 1rem 0;
+}
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(calc(-50% - 0.75rem)); } 
+}
+
+/* Dynamic Chips for Marquee */
+.chip.large {
+  font-size: 1.25rem !important;
+  padding: 0.8rem 2rem !important;
+  height: auto !important;
+  font-weight: 600;
+  transition: transform 0.3s ease, background-color 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+}
+.chip.large:hover {
+  transform: translateY(-2px);
+  background-color: var(--primary-container);
+  color: var(--on-primary-container);
+}
+.service-icon {
+  width: 28px;
+  height: 28px;
+  margin-right: 12px;
+  object-fit: contain;
+}
+
+/* Material 3 Hover States for Native Cards */
+.hover-card, .feature-card {
+  transition: transform 0.3s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.3s ease !important;
+  background-color: var(--surface-container) !important;
+  border: none !important;
+}
+.hover-card:hover, .feature-card:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--elevation-3) !important;
+  background-color: var(--surface-container-high) !important;
+}
+
+.gallery-grid article {
+  padding: 0.5rem;
+}
+
+.icon-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-circle i {
+  font-size: 32px;
+}
+
+/* Spacing Utilities */
+.margin-bottom { margin-bottom: 2rem; }
+.padding-top { padding-top: 4rem; }
+.padding-bottom { padding-bottom: 4rem; }
+.opacity-50 { opacity: 0.6; }
+
+/* Custom Safe Wavy Divider */
+.wavy-divider {
+  width: 100%;
+  height: 6px;
+  margin: 4rem 0;
+  background-color: var(--primary);
+  opacity: 1;
+  -webkit-mask-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 100 20" xmlns="http://www.w3.org/2000/svg"><path d="M0 10 Q 25 20, 50 10 T 100 10" fill="none" stroke="black" stroke-width="6"/></svg>');
+  -webkit-mask-repeat: repeat-x;
+  -webkit-mask-size: 30px 100%;
+  animation: wavy-scroll 2s linear infinite;
+}
+
+@keyframes wavy-scroll {
+  from { -webkit-mask-position: 0 0; }
+  to { -webkit-mask-position: 30px 0; }
+}
+
+/* Mobile Responsiveness */
+.show-on-mobile {
+  display: none !important;
+}
+
+@media (max-width: 600px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+  .show-on-mobile {
+    display: inline-flex !important;
+  }
+  .center-align-mobile {
+    text-align: center;
+  }
+  .hero-section {
+    padding: 3rem 0;
+  }
+  .hero-text-col {
+    padding-right: 0;
+    margin-bottom: 2rem;
+  }
+  .hero-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .logo-text {
+    font-size: 1.25rem;
+  }
+}

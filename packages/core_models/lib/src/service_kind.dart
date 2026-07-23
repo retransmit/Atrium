@@ -16,6 +16,7 @@ enum ServiceKind {
   qbittorrent,
   sabnzbd,
   glances,
+  speedtestTracker,
 }
 
 /// Static metadata about a [ServiceKind] - display name, default port, the
@@ -37,6 +38,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.qbittorrent => 'qBittorrent',
         ServiceKind.sabnzbd => 'SABnzbd',
         ServiceKind.glances => 'Glances',
+        ServiceKind.speedtestTracker => 'Speedtest Tracker',
       };
 
   /// One-line role description.
@@ -53,11 +55,12 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.qbittorrent => 'Torrent client',
         ServiceKind.sabnzbd => 'Usenet client',
         ServiceKind.glances => 'System monitor',
+        ServiceKind.speedtestTracker => 'Internet performance',
       };
 
   /// Vendor-default port. Used as a hint when the user is entering a URL
   /// without one.
-  int get defaultPort => switch (this) {
+  int? get defaultPort => switch (this) {
         ServiceKind.sonarr => 8989,
         ServiceKind.radarr => 7878,
         ServiceKind.prowlarr => 9696,
@@ -70,6 +73,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.qbittorrent => 8080,
         ServiceKind.sabnzbd => 8080,
         ServiceKind.glances => 61208,
+        ServiceKind.speedtestTracker => null,
       };
 
   /// What auth flow the service uses by default. Some services (Jellyfin) can
@@ -87,6 +91,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.plex => AuthStyle.plexToken,
         ServiceKind.qbittorrent => AuthStyle.cookieLogin,
         ServiceKind.glances => AuthStyle.none,
+        ServiceKind.speedtestTracker => AuthStyle.bearerToken,
       };
 
   /// Broad role of the service in the stack - used for grouping in the
@@ -107,6 +112,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.sabnzbd =>
           ServiceRole.downloader,
         ServiceKind.glances => ServiceRole.analytics,
+        ServiceKind.speedtestTracker => ServiceRole.analytics,
       };
 }
 
@@ -114,6 +120,9 @@ extension ServiceKindX on ServiceKind {
 enum AuthStyle {
   /// Static API key passed in a header or query param.
   apiKey,
+
+  /// Static API token passed in an `Authorization: Bearer` header.
+  bearerToken,
 
   /// Username + password login that returns a session token.
   userPass,

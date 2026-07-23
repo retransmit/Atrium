@@ -104,3 +104,7 @@ v3implemented.yaml
 /atrium-*.apk
 openapi.json
 SESSION_CHANGES.md
+
+# site (Vite)
+site/node_modules/
+site/dist/

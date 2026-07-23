@@ -1,0 +1,7 @@
+Speedtest Tracker is now a service you can add. Point Atrium at your instance to
+follow your download, upload and ping speeds, with your recent results, right
+from the dashboard.
+
+Every service now has a Test Connection button on its add and edit screen. It
+checks each address you have entered and tells you whether the server answers
+and your login is accepted, so you can catch a wrong URL or key before you save.

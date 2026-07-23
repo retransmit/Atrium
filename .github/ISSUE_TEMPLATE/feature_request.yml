@@ -1,0 +1,56 @@
+name: Feature request
+description: Suggest something Atrium should do
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Atrium is a controller for services you already run, not a media
+        player. Playback is out of scope by design, so requests to stream
+        video in the app will be closed.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of request is this?
+      options:
+        - Support for a service Atrium does not cover yet
+        - More depth in a service it already covers
+        - App-wide feature (dashboard, profiles, theming, and so on)
+    validations:
+      required: true
+
+  - type: input
+    id: service
+    attributes:
+      label: Which service?
+      description: >
+        If you are asking for a new one, link its API docs. It has to be
+        something you self-host.
+      placeholder: "NZBGet - https://nzbget.com/documentation/api/"
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: >
+        Describe the problem rather than only the solution. There is often a
+        simpler fix once the underlying need is clear.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like Atrium to do?
+
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Testing
+      description: >
+        A service nobody here runs is hard to build for and impossible to
+        verify, so this matters more than it sounds.
+      options:
+        - label: I run this service and can test a build against it

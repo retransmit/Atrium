@@ -14,6 +14,18 @@ class _Release {
 /// Newest first. Update alongside the version in the app's pubspec.
 const List<_Release> _releases = <_Release>[
   _Release(
+    version: '1.1.0',
+    changes: <String>[
+      'Speedtest Tracker is now a service you can add. Point Atrium at your '
+          'instance to follow your download, upload and ping speeds, with your '
+          'recent results, right from the dashboard.',
+      'Every service now has a Test Connection button on its add and edit '
+          'screen. It checks each address you have entered and tells you whether '
+          'the server answers and your login is accepted, so you can catch a '
+          'wrong URL or key before you save.',
+    ],
+  ),
+  _Release(
     version: '1.0.7',
     changes: <String>[
       'The app moved to a new theming engine and has a cleaner, flatter look. '

@@ -15,8 +15,10 @@ part 'instance.g.dart';
 ///
 /// Users may have multiple instances of the same [kind] (e.g., two Sonarrs:
 /// "Home" and "Seedbox"); each is a separate [Instance] with its own [id].
-@freezed
+@Freezed(toStringOverride: false)
 abstract class Instance with _$Instance {
+  const Instance._();
+
   const factory Instance({
     /// Stable identifier, generated once at create time. Used as the key for
     /// secret storage and Riverpod scoping. Never reuse.
@@ -59,6 +61,30 @@ abstract class Instance with _$Instance {
 
   factory Instance.fromJson(Map<String, dynamic> json) =>
       _$InstanceFromJson(json);
+
+  /// A diagnostic representation that deliberately excludes credentials and
+  /// custom-header values. URLs with embedded user information are redacted.
+  @override
+  String toString() => 'Instance('
+      'id: $id, '
+      'name: $name, '
+      'kind: $kind, '
+      'localUrl: ${_redactUrlUserInfo(localUrl)}, '
+      'externalUrl: ${_redactUrlUserInfo(externalUrl)}, '
+      'urlMode: $urlMode, '
+      'auth: $auth, '
+      'allowSelfSignedCerts: $allowSelfSignedCerts, '
+      'pollingIntervalSeconds: $pollingIntervalSeconds, '
+      'customHeaderNames: ${customHeaders.keys.toList(growable: false)}'
+      ')';
+}
+
+String _redactUrlUserInfo(String raw) {
+  final Uri? uri = Uri.tryParse(raw);
+  if (uri == null || uri.userInfo.isEmpty) {
+    return raw;
+  }
+  return uri.replace(userInfo: '***redacted***').toString();
 }
 
 /// Decodes [ServiceKind], migrating the legacy `overseerr` value to

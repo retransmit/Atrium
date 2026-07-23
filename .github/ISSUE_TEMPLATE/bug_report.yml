@@ -1,0 +1,134 @@
+name: Bug report
+description: Something in Atrium does not work the way it should
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file this.
+
+        **Before you paste anything.** Atrium logs, screenshots and error
+        messages routinely carry your **API keys** and your **server
+        addresses**. Issues here are public and get indexed by search engines.
+        Redact both. An API key pasted here hands a stranger full control of
+        the service it belongs to, so if one slips through, rotate it.
+
+        **Found a security problem?** Do not file it here. See
+        [SECURITY.md](https://github.com/retransmit/Atrium/blob/main/SECURITY.md)
+        for private disclosure.
+
+  - type: input
+    id: version
+    attributes:
+      label: Atrium version
+      description: Settings, then About.
+      placeholder: "1.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: source
+    attributes:
+      label: Where did you install it from?
+      options:
+        - GitHub releases
+        - F-Droid
+        - Built from source
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app?
+      description: If it only happens with one service, pick that service.
+      options:
+        - Dashboard and widgets
+        - Calendar
+        - Activity
+        - Settings and profiles
+        - Sonarr
+        - Radarr
+        - Prowlarr
+        - Bazarr
+        - Seerr (Overseerr or Jellyseerr)
+        - Tautulli
+        - Jellyfin
+        - Emby
+        - Plex
+        - qBittorrent
+        - SABnzbd
+        - Glances
+        - Something else
+    validations:
+      required: true
+
+  - type: input
+    id: service-version
+    attributes:
+      label: Version of that service
+      description: Only if a service is involved. Leave blank otherwise.
+      placeholder: "Sonarr 4.0.15"
+
+  - type: dropdown
+    id: connection
+    attributes:
+      label: Which URL was in use?
+      description: >
+        Atrium picks between an instance's local and external URL depending on
+        the network. Plenty of problems only appear on one of them.
+      options:
+        - Local URL
+        - External URL
+        - Both
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Device and Android version
+      placeholder: "Pixel 7, Android 15"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead?
+      description: Screenshots help. Redact keys and hostnames first.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I removed API keys, tokens and server addresses from everything above
+          required: true
+        - label: I searched the existing issues and this is not a duplicate
+          required: true
+        - label: I am on the latest release, or I have explained above why not
+          required: true

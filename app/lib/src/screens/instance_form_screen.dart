@@ -4,13 +4,40 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:service_speedtest_tracker/service_speedtest_tracker.dart';
+
+import '../connection_test/connection_test_result.dart';
+import '../connection_test/connection_tester.dart';
+
+const String speedtestConnectionSuccessMessage =
+    'Connected with results:read. Run permission cannot be verified until used.';
+
+String speedtestConnectionErrorMessage(SpeedtestTrackerException error) =>
+    switch (error.kind) {
+      SpeedtestErrorKind.authentication =>
+        'The bearer token was rejected or lacks results:read.',
+      SpeedtestErrorKind.permission =>
+        'The API token does not have the required permission.',
+      SpeedtestErrorKind.unsupported =>
+        'Authenticated results require Speedtest Tracker 1.1 or newer.',
+      SpeedtestErrorKind.offline => 'Could not reach Speedtest Tracker.',
+      SpeedtestErrorKind.timeout =>
+        'Speedtest Tracker took too long to respond.',
+      SpeedtestErrorKind.server => 'Speedtest Tracker returned a server error.',
+      SpeedtestErrorKind.malformed =>
+        'Speedtest Tracker returned an unsupported response.',
+      SpeedtestErrorKind.notFound =>
+        'The requested Speedtest Tracker result was not found.',
+      SpeedtestErrorKind.other =>
+        'Speedtest Tracker returned an unexpected response.',
+    };
 
 /// Add / edit an instance. When [instanceId] is null this is an "add" form;
 /// otherwise it pre-fills from the existing instance.
 ///
 /// The auth fields shown depend on the selected [ServiceKind]'s auth style:
-/// api-key services show one field; user/pass services show two; Plex shows a
-/// token field.
+/// API-key and bearer-token services show one field; user/pass services show
+/// two; Plex shows a token field.
 class InstanceFormScreen extends ConsumerStatefulWidget {
   const InstanceFormScreen({this.instanceId, super.key});
 
@@ -32,6 +59,9 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
   /// qBittorrent 5.2+ supports both username/password and API-key auth; this
   /// tracks which the user picked (qBit only).
   bool _qbitUseApiKey = false;
+  bool _testingConnection = false;
+  Map<String, ConnectionTestResult> _connectionResults =
+      <String, ConnectionTestResult>{};
   final TextEditingController _pollingInterval =
       TextEditingController(text: '5');
 
@@ -86,6 +116,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
   InstanceAuth _buildAuth() {
     return switch (_kind.authStyle) {
       AuthStyle.apiKey => InstanceAuth.apiKey(apiKey: _apiKey.text.trim()),
+      AuthStyle.bearerToken => InstanceAuth.apiKey(apiKey: _apiKey.text.trim()),
       AuthStyle.plexToken => InstanceAuth.plexToken(token: _apiKey.text.trim()),
       AuthStyle.userPass => InstanceAuth.userPass(
           username: _username.text.trim(),
@@ -102,6 +133,51 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     };
   }
 
+  Instance _buildInstance(String id) => Instance(
+        id: id,
+        name: _name.text.trim(),
+        kind: _kind,
+        localUrl: _localUrl.text.trim(),
+        externalUrl: _externalUrl.text.trim(),
+        urlMode: _urlMode,
+        auth: _buildAuth(),
+        allowSelfSignedCerts: _allowSelfSigned,
+        pollingIntervalSeconds: int.tryParse(_pollingInterval.text.trim()) ?? 5,
+      );
+
+  void _clearConnectionTest(String _) {
+    setState(() {
+      _connectionResults = <String, ConnectionTestResult>{};
+    });
+  }
+
+  IconData _connectionOutcomeIcon(ConnectionOutcome outcome) =>
+      switch (outcome) {
+        ConnectionOutcome.connected => Icons.check_circle_outline,
+        ConnectionOutcome.authFailed => Icons.warning_amber_outlined,
+        ConnectionOutcome.unreachable => Icons.error_outline,
+      };
+
+  Color _connectionOutcomeColor(
+    BuildContext context,
+    ConnectionOutcome outcome,
+  ) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    return switch (outcome) {
+      ConnectionOutcome.connected => scheme.primary,
+      ConnectionOutcome.authFailed => scheme.tertiary,
+      ConnectionOutcome.unreachable => scheme.error,
+    };
+  }
+
+  bool get _warnAboutExternalHttp {
+    if (_kind != ServiceKind.speedtestTracker) {
+      return false;
+    }
+    final Uri? uri = Uri.tryParse(_externalUrl.text.trim());
+    return uri != null && uri.scheme.toLowerCase() == 'http';
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -115,20 +191,45 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
 
     final String id = widget.instanceId ??
         ref.read(profileRepositoryProvider).newInstanceId();
-    final Instance instance = Instance(
-      id: id,
-      name: _name.text.trim(),
-      kind: _kind,
-      localUrl: _localUrl.text.trim(),
-      externalUrl: _externalUrl.text.trim(),
-      urlMode: _urlMode,
-      auth: _buildAuth(),
-      allowSelfSignedCerts: _allowSelfSigned,
-      pollingIntervalSeconds: int.tryParse(_pollingInterval.text.trim()) ?? 5,
-    );
+    final Instance instance = _buildInstance(id);
     await controller.upsertInstance(profile.id, instance);
     if (mounted) {
       context.pop();
+    }
+  }
+
+  Future<void> _testConnection() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    setState(() {
+      _testingConnection = true;
+      _connectionResults = <String, ConnectionTestResult>{};
+    });
+    final Instance candidate = _buildInstance(
+      widget.instanceId ?? 'connection-test',
+    );
+    final ConnectionTester tester = ref.read(connectionTesterProvider);
+    final Map<String, ConnectionTestResult> results =
+        <String, ConnectionTestResult>{};
+    try {
+      if (_localUrl.text.trim().isNotEmpty) {
+        results['Local'] =
+            await tester.test(candidate: candidate, url: UrlMode.forceLocal);
+      }
+      if (_externalUrl.text.trim().isNotEmpty) {
+        results['External'] = await tester.test(
+          candidate: candidate,
+          url: UrlMode.forceExternal,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _testingConnection = false;
+          _connectionResults = results;
+        });
+      }
     }
   }
 
@@ -187,8 +288,10 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                     leadingIcon: _buildServiceIcon(k),
                   ),
               ],
-              onSelected: (ServiceKind? k) =>
-                  setState(() => _kind = k ?? _kind),
+              onSelected: (ServiceKind? k) => setState(() {
+                _kind = k ?? _kind;
+                _connectionResults = <String, ConnectionTestResult>{};
+              }),
             ),
             const SizedBox(height: Insets.md),
             TextFormField(
@@ -213,24 +316,50 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
               decoration: InputDecoration(
                 border: const OutlineInputBorder(),
                 labelText: 'Local URL',
-                hintText: 'http://192.168.1.10:${_kind.defaultPort}',
+                hintText: _kind.defaultPort == null
+                    ? 'http://192.168.1.10'
+                    : 'http://192.168.1.10:${_kind.defaultPort}',
               ),
               keyboardType: TextInputType.url,
               autocorrect: false,
+              onChanged: _clearConnectionTest,
               validator: _validateUrlsTogether,
             ),
             const SizedBox(height: Insets.md),
             TextFormField(
               controller: _externalUrl,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
                 labelText: 'External URL',
-                hintText: 'https://sonarr.example.com',
+                hintText: _kind == ServiceKind.speedtestTracker
+                    ? 'https://speedtest.example.com'
+                    : 'https://sonarr.example.com',
               ),
               keyboardType: TextInputType.url,
               autocorrect: false,
+              onChanged: _clearConnectionTest,
               validator: _validateUrlsTogether,
             ),
+            if (_warnAboutExternalHttp) ...<Widget>[
+              const SizedBox(height: Insets.sm),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                  const SizedBox(width: Insets.sm),
+                  const Expanded(
+                    child: Text(
+                      'An external or Tailscale HTTP URL does not protect the '
+                      'bearer token with TLS. Use HTTPS when possible.',
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: Insets.md),
             DropdownMenu<UrlMode>(
               initialSelection: _urlMode,
@@ -250,8 +379,10 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                   label: 'Always external',
                 ),
               ],
-              onSelected: (UrlMode? m) =>
-                  setState(() => _urlMode = m ?? _urlMode),
+              onSelected: (UrlMode? m) => setState(() {
+                _urlMode = m ?? _urlMode;
+                _connectionResults = <String, ConnectionTestResult>{};
+              }),
             ),
             const SizedBox(height: Insets.lg),
             Text(
@@ -268,8 +399,44 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                 'Skip TLS validation for this instance only.',
               ),
               value: _allowSelfSigned,
-              onChanged: (bool v) => setState(() => _allowSelfSigned = v),
+              onChanged: (bool v) => setState(() {
+                _allowSelfSigned = v;
+                _connectionResults = <String, ConnectionTestResult>{};
+              }),
             ),
+            const SizedBox(height: Insets.sm),
+            OutlinedButton.icon(
+              onPressed: _testingConnection ? null : _testConnection,
+              icon: _testingConnection
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.cable_outlined),
+              label: Text(
+                _testingConnection ? 'Testing...' : 'Test connection',
+              ),
+            ),
+            for (final MapEntry<String, ConnectionTestResult> entry
+                in _connectionResults.entries) ...<Widget>[
+              const SizedBox(height: Insets.sm),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Icon(
+                    _connectionOutcomeIcon(entry.value.outcome),
+                    size: 18,
+                    color:
+                        _connectionOutcomeColor(context, entry.value.outcome),
+                  ),
+                  const SizedBox(width: Insets.sm),
+                  Expanded(
+                    child: Text('${entry.key}: ${entry.value.message}'),
+                  ),
+                ],
+              ),
+            ],
             if (_kind == ServiceKind.glances) ...<Widget>[
               const SizedBox(height: Insets.lg),
               Text(
@@ -317,6 +484,23 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
               labelText: 'API key',
             ),
             autocorrect: false,
+            validator: (String? v) =>
+                (v == null || v.trim().isEmpty) ? 'Required' : null,
+          ),
+        ];
+      case AuthStyle.bearerToken:
+        return <Widget>[
+          TextFormField(
+            controller: _apiKey,
+            decoration: const InputDecoration(
+              border: OutlineInputBorder(),
+              labelText: 'Bearer API token',
+              helperText: 'Requires results:read; speedtests:run is optional.',
+            ),
+            obscureText: true,
+            autocorrect: false,
+            enableSuggestions: false,
+            onChanged: _clearConnectionTest,
             validator: (String? v) =>
                 (v == null || v.trim().isEmpty) ? 'Required' : null,
           ),
@@ -431,8 +615,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
   }
 
   Widget _buildServiceIcon(ServiceKind kind, {double size = 24}) {
-    if (kind.name == 'sabnzbd') {
-      return Icon(Icons.cloud_download_outlined, size: size);
+    if (kind == ServiceKind.sabnzbd || kind == ServiceKind.speedtestTracker) {
+      return Icon(ServiceVisuals.icon(kind), size: size);
     }
     return Image.asset(
       'assets/service_icons/${kind.name}.png',
