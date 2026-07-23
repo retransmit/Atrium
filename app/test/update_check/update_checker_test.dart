@@ -66,7 +66,7 @@ void main() {
     final ProviderContainer c = _container(
       box,
       _dio((RequestOptions o) =>
-          (status: 200, data: <String, dynamic>{'tag_name': 'v1.1.0'})),
+          (status: 200, data: <String, dynamic>{'tag_name': 'v1.1.1'})),
     );
     await c.read(updateCheckProvider.notifier).check();
     expect(c.read(updateCheckProvider).status, UpdateStatus.upToDate);

@@ -8,7 +8,7 @@ whether you're on the home Wi-Fi or out in the world.
 
 **[Website][site]** - screenshots and a tour, no install needed.
 
-> **Status:** v1.1.0. Signed APKs are on the [releases page][releases];
+> **Status:** v1.1.1. Signed APKs are on the [releases page][releases];
 > the F-Droid submission is in review.
 
 ## Why

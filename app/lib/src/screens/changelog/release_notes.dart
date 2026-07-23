@@ -27,6 +27,19 @@ class ReleaseNote {
 /// Newest first. Update alongside appVersion and the pubspec at each release.
 const List<ReleaseNote> releaseNotes = <ReleaseNote>[
   ReleaseNote(
+    version: '1.1.1',
+    date: '2026-07-24',
+    groups: <ChangeGroup>[
+      ChangeGroup(ChangeCategory.added, <String>[
+        'Check for updates from Settings, About. See whether a newer version is out and open its release page. Atrium never installs updates itself.',
+        'When an update is available, the Change log shows it at the top with the release notes read inline.',
+      ]),
+      ChangeGroup(ChangeCategory.improved, <String>[
+        'The Change log is now per-version cards with New, Improved and Fixed labels in your accent colors, dates, and an Installed marker.',
+      ]),
+    ],
+  ),
+  ReleaseNote(
     version: '1.1.0',
     date: '2026-07-23',
     groups: <ChangeGroup>[

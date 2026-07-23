@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('release notes are newest first and well formed', () {
-    expect(releaseNotes.first.version, '1.1.0');
+    expect(releaseNotes.first.version, '1.1.1');
     for (final ReleaseNote note in releaseNotes) {
       expect(note.date, isNotEmpty);
       expect(note.groups, isNotEmpty);
