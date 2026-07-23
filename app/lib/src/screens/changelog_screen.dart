@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../external_links.dart';
 import '../update_check/app_version.dart';
-import '../update_check/update_available_banner.dart';
+import 'changelog/available_release_card.dart';
 import 'changelog/release_card.dart';
 import 'changelog/release_notes.dart';
 
@@ -31,7 +31,7 @@ class ChangelogScreen extends StatelessWidget {
       body: ListView(
         padding: Insets.page,
         children: <Widget>[
-          const UpdateAvailableBanner(),
+          const AvailableReleaseCard(),
           for (final ReleaseNote note in releaseNotes)
             ReleaseCard(
               note: note,

@@ -1,4 +1,3 @@
-import 'package:atrium/src/update_check/update_available_banner.dart';
 import 'package:atrium/src/update_check/update_check_state.dart';
 import 'package:atrium/src/update_check/update_check_tile.dart';
 import 'package:atrium/src/update_check/update_checker.dart';
@@ -47,29 +46,5 @@ void main() {
     );
     expect(find.text('Version 1.2.0 is available'), findsOneWidget);
     expect(find.byIcon(Icons.open_in_new), findsOneWidget);
-  });
-
-  testWidgets('banner appears when a newer version is known',
-      (WidgetTester tester) async {
-    await _pump(
-      tester,
-      const UpdateCheckState(
-        status: UpdateStatus.updateAvailable,
-        latestVersion: '1.2.0',
-        releaseUrl: 'https://example/tag',
-      ),
-      const UpdateAvailableBanner(),
-    );
-    expect(find.text('Version 1.2.0 is available'), findsOneWidget);
-    expect(find.text('View release'), findsOneWidget);
-  });
-
-  testWidgets('banner is hidden when up to date', (WidgetTester tester) async {
-    await _pump(
-      tester,
-      const UpdateCheckState(status: UpdateStatus.upToDate, latestVersion: '1.1.0'),
-      const UpdateAvailableBanner(),
-    );
-    expect(find.text('View release'), findsNothing);
   });
 }
