@@ -9,8 +9,11 @@ this](#why-it-is-like-this) before changing any of it.
 
 ## Cutting a release
 
-1. **Bump the version.** `app/pubspec.yaml` (`version: X.Y.Z+N`), the version
-   string in `app/lib/src/screens/settings_screen.dart`, a new entry in
+1. **Bump the version.** `app/pubspec.yaml` (`version: X.Y.Z+N`), the
+   `appVersion` constant in `app/lib/src/update_check/app_version.dart` (keep it
+   equal to the pubspec `version:`; it is the baseline the update check compares
+   against, and the settings screen shows `$appVersion`, so bumping the constant
+   also updates the displayed version), a new entry in
    `app/lib/src/screens/changelog_screen.dart`, and a new
    `fastlane/metadata/android/en-US/changelogs/<N>.txt` named for the build
    number, not the version.
