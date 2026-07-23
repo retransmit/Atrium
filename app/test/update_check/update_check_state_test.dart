@@ -1,4 +1,3 @@
-// app/test/update_check/update_check_state_test.dart
 import 'package:atrium/src/update_check/update_check_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 

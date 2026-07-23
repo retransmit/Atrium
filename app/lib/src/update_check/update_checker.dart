@@ -1,4 +1,3 @@
-// app/lib/src/update_check/update_checker.dart
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_ce/hive.dart';

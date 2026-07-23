@@ -1,4 +1,3 @@
-// app/test/update_check/update_check_widgets_test.dart
 import 'package:atrium/src/update_check/update_available_banner.dart';
 import 'package:atrium/src/update_check/update_check_state.dart';
 import 'package:atrium/src/update_check/update_check_tile.dart';

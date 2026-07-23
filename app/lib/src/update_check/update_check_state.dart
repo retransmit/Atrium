@@ -1,4 +1,3 @@
-// app/lib/src/update_check/update_check_state.dart
 import 'package:flutter/foundation.dart';
 
 import 'app_version.dart';

@@ -1,4 +1,3 @@
-// app/test/update_check/update_checker_test.dart
 import 'dart:io';
 
 import 'package:atrium/src/preferences.dart';

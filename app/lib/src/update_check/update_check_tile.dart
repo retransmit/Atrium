@@ -1,4 +1,3 @@
-// app/lib/src/update_check/update_check_tile.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
