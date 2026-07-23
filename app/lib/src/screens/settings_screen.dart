@@ -187,7 +187,7 @@ class SettingsScreen extends ConsumerWidget {
           const ListTile(
             leading: Icon(Icons.info_outline),
             title: Text('Atrium'),
-            subtitle: Text('Version 1.0.7 • GPL-3.0-or-later'),
+            subtitle: Text('Version 1.1.0 • GPL-3.0-or-later'),
           ),
           ListTile(
             leading: const Icon(Icons.code),
