@@ -70,5 +70,6 @@ void main() {
     );
     expect(find.text('v1.2.0'), findsOneWidget);
     expect(find.text('See full release'), findsOneWidget);
+    expect(find.textContaining('Nice thing.'), findsNothing);
   });
 }
