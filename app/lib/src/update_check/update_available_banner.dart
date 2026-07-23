@@ -19,9 +19,9 @@ class UpdateAvailableBanner extends ConsumerWidget {
       padding: const EdgeInsets.only(bottom: Insets.md),
       child: Material(
         color: cs.primaryContainer,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           onTap: () => openExternal(
             ScaffoldMessenger.of(context),
             state.releaseUrl ?? AtriumLinks.releases,
