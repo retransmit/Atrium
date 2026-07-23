@@ -9,9 +9,10 @@ enum UpdateStatus { idle, checking, upToDate, updateAvailable, error }
 /// The outcome of the last check, plus the last known latest release.
 ///
 /// [status] is the live/transient state driving the Settings tile. The durable
-/// fields ([latestVersion], [releaseUrl], [checkedAt]) survive across launches
-/// and drive the Change log banner via [hasNewer], so a failed check does not
-/// erase a known "available".
+/// fields survive across launches and drive the Change log via [hasNewer], so a
+/// failed check does not erase a known "available". [latestNotes] is the
+/// extracted "What's new" of the available release, [latestDate] its publish
+/// date.
 @immutable
 class UpdateCheckState {
   const UpdateCheckState({
@@ -19,12 +20,16 @@ class UpdateCheckState {
     this.latestVersion,
     this.releaseUrl,
     this.checkedAt,
+    this.latestNotes,
+    this.latestDate,
   });
 
   final UpdateStatus status;
   final String? latestVersion;
   final String? releaseUrl;
   final DateTime? checkedAt;
+  final String? latestNotes;
+  final String? latestDate;
 
   /// True when the last known latest release is newer than the running app.
   bool get hasNewer =>
@@ -35,5 +40,7 @@ class UpdateCheckState {
         latestVersion: latestVersion,
         releaseUrl: releaseUrl,
         checkedAt: checkedAt,
+        latestNotes: latestNotes,
+        latestDate: latestDate,
       );
 }

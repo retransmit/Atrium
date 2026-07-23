@@ -97,4 +97,48 @@ void main() {
     expect(s.status, UpdateStatus.updateAvailable);
     expect(s.latestVersion, '1.5.0');
   });
+
+  test('extractWhatsNew returns the section between the markers', () {
+    const String body =
+        'Intro line.\n\n## What\'s new\n\n**Feature.** Did a thing.\n\n## Which APK\n\nMost phones want arm64.';
+    expect(extractWhatsNew(body), '**Feature.** Did a thing.');
+  });
+
+  test('extractWhatsNew returns null without the marker', () {
+    expect(extractWhatsNew('No headings here, just text.'), isNull);
+  });
+
+  test('a newer release persists and exposes its notes and date', () async {
+    final ProviderContainer c = _container(
+      box,
+      _dio((RequestOptions o) => (
+            status: 200,
+            data: <String, dynamic>{
+              'tag_name': 'v1.2.0',
+              'html_url': 'https://github.com/retransmit/Atrium/releases/tag/v1.2.0',
+              'published_at': '2026-08-01T10:00:00Z',
+              'body': 'Intro.\n\n## What\'s new\n\n**Nice thing.** Details.\n\n## Which APK\n\narm64.',
+            },
+          )),
+    );
+    await c.read(updateCheckProvider.notifier).check();
+    final UpdateCheckState s = c.read(updateCheckProvider);
+    expect(s.latestNotes, '**Nice thing.** Details.');
+    expect(s.latestDate, '2026-08-01');
+    expect(box.get('update.latestNotes'), '**Nice thing.** Details.');
+    expect(box.get('update.latestDate'), '2026-08-01');
+  });
+
+  test('build re-derives notes and date from cache with no network', () async {
+    await box.put('update.latestVersion', '1.5.0');
+    await box.put('update.latestNotes', '**Cached.** From disk.');
+    await box.put('update.latestDate', '2026-09-09');
+    final ProviderContainer c = _container(
+      box,
+      _dio((RequestOptions o) => throw StateError('must not be called')),
+    );
+    final UpdateCheckState s = c.read(updateCheckProvider);
+    expect(s.latestNotes, '**Cached.** From disk.');
+    expect(s.latestDate, '2026-09-09');
+  });
 }
