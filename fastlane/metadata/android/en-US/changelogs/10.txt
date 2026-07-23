@@ -1,0 +1,8 @@
+Check for updates from Settings, About. See whether a newer version is out and
+open its release page. Atrium never installs updates itself.
+
+When an update is available, the Change log now shows it at the top with the
+release notes read inline.
+
+The Change log is redesigned as per-version cards with New, Improved and Fixed
+labels in your accent colors, dates, and an Installed marker.

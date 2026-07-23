@@ -2,6 +2,8 @@ import 'package:atrium/src/preferences.dart';
 import 'package:atrium/src/screens/custom_headers_screen.dart';
 import 'package:atrium/src/screens/settings_screen.dart';
 import 'package:atrium/src/screens/wake_on_lan_screen.dart';
+import 'package:atrium/src/update_check/update_check_state.dart';
+import 'package:atrium/src/update_check/update_checker.dart';
 import 'package:core_models/core_models.dart';
 import 'package:core_profile/core_profile.dart';
 import 'package:core_ui/core_ui.dart';
@@ -40,6 +42,14 @@ Profile _profile() => const Profile(
 class _FakePreferencesController extends PreferencesController {
   @override
   Preferences build() => const Preferences();
+}
+
+/// Idle update checker: keeps the tile from touching the settings box.
+class _IdleUpdateChecker extends UpdateChecker {
+  @override
+  UpdateCheckState build() => const UpdateCheckState();
+  @override
+  Future<void> check() async {}
 }
 
 Future<void> _pump(
@@ -100,6 +110,7 @@ void main() {
       <Override>[
         activeProfileProvider.overrideWithValue(_profile()),
         preferencesProvider.overrideWith(_FakePreferencesController.new),
+        updateCheckProvider.overrideWith(_IdleUpdateChecker.new),
       ],
       const SettingsScreen(),
     );

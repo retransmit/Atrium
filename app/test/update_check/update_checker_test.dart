@@ -1,0 +1,144 @@
+import 'dart:io';
+
+import 'package:atrium/src/preferences.dart';
+import 'package:atrium/src/update_check/update_check_state.dart';
+import 'package:atrium/src/update_check/update_checker.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
+import 'package:hive_ce/hive.dart';
+
+import '../support/fake_http_client_adapter.dart';
+
+Dio _dio(({int status, Object? data}) Function(RequestOptions) factory) {
+  final Dio dio = Dio(BaseOptions(baseUrl: 'https://api.github.com/'));
+  dio.httpClientAdapter = FakeHttpClientAdapter(factory);
+  return dio;
+}
+
+ProviderContainer _container(Box<String> box, Dio dio) {
+  final ProviderContainer container = ProviderContainer(
+    overrides: <Override>[
+      settingsBoxProvider.overrideWithValue(box),
+      githubDioProvider.overrideWithValue(dio),
+    ],
+  );
+  addTearDown(container.dispose);
+  return container;
+}
+
+void main() {
+  late Directory tempDir;
+  late Box<String> box;
+
+  setUp(() async {
+    tempDir = Directory.systemTemp.createTempSync('atrium_update');
+    Hive.init(tempDir.path);
+    box = await Hive.openBox<String>('settings');
+  });
+
+  tearDown(() async {
+    await box.close();
+    await Hive.deleteBoxFromDisk('settings');
+    tempDir.deleteSync(recursive: true);
+  });
+
+  test('a newer release marks updateAvailable and is persisted', () async {
+    final ProviderContainer c = _container(
+      box,
+      _dio((RequestOptions o) => (
+            status: 200,
+            data: <String, dynamic>{
+              'tag_name': 'v1.2.0',
+              'html_url': 'https://github.com/retransmit/Atrium/releases/tag/v1.2.0',
+            },
+          )),
+    );
+    await c.read(updateCheckProvider.notifier).check();
+    final UpdateCheckState s = c.read(updateCheckProvider);
+    expect(s.status, UpdateStatus.updateAvailable);
+    expect(s.latestVersion, '1.2.0');
+    expect(box.get('update.latestVersion'), '1.2.0');
+  });
+
+  test('the same release marks upToDate', () async {
+    final ProviderContainer c = _container(
+      box,
+      _dio((RequestOptions o) =>
+          (status: 200, data: <String, dynamic>{'tag_name': 'v1.1.1'})),
+    );
+    await c.read(updateCheckProvider.notifier).check();
+    expect(c.read(updateCheckProvider).status, UpdateStatus.upToDate);
+    expect(c.read(updateCheckProvider).hasNewer, isFalse);
+  });
+
+  test('a server error sets error but keeps a known available banner', () async {
+    await box.put('update.latestVersion', '1.3.0');
+    final ProviderContainer c = _container(
+      box,
+      _dio((RequestOptions o) => (status: 500, data: <String, dynamic>{})),
+    );
+    // build() re-derived updateAvailable from the cached 1.3.0.
+    expect(c.read(updateCheckProvider).status, UpdateStatus.updateAvailable);
+    await c.read(updateCheckProvider.notifier).check();
+    final UpdateCheckState s = c.read(updateCheckProvider);
+    expect(s.status, UpdateStatus.error);
+    expect(s.hasNewer, isTrue);
+  });
+
+  test('build re-derives from cache with no network', () async {
+    await box.put('update.latestVersion', '1.5.0');
+    final ProviderContainer c = _container(
+      box,
+      _dio((RequestOptions o) => throw StateError('must not be called')),
+    );
+    final UpdateCheckState s = c.read(updateCheckProvider);
+    expect(s.status, UpdateStatus.updateAvailable);
+    expect(s.latestVersion, '1.5.0');
+  });
+
+  test('extractWhatsNew returns the section between the markers', () {
+    const String body =
+        'Intro line.\n\n## What\'s new\n\n**Feature.** Did a thing.\n\n## Which APK\n\nMost phones want arm64.';
+    expect(extractWhatsNew(body), '**Feature.** Did a thing.');
+  });
+
+  test('extractWhatsNew returns null without the marker', () {
+    expect(extractWhatsNew('No headings here, just text.'), isNull);
+  });
+
+  test('a newer release persists and exposes its notes and date', () async {
+    final ProviderContainer c = _container(
+      box,
+      _dio((RequestOptions o) => (
+            status: 200,
+            data: <String, dynamic>{
+              'tag_name': 'v1.2.0',
+              'html_url': 'https://github.com/retransmit/Atrium/releases/tag/v1.2.0',
+              'published_at': '2026-08-01T10:00:00Z',
+              'body': 'Intro.\n\n## What\'s new\n\n**Nice thing.** Details.\n\n## Which APK\n\narm64.',
+            },
+          )),
+    );
+    await c.read(updateCheckProvider.notifier).check();
+    final UpdateCheckState s = c.read(updateCheckProvider);
+    expect(s.latestNotes, '**Nice thing.** Details.');
+    expect(s.latestDate, '2026-08-01');
+    expect(box.get('update.latestNotes'), '**Nice thing.** Details.');
+    expect(box.get('update.latestDate'), '2026-08-01');
+  });
+
+  test('build re-derives notes and date from cache with no network', () async {
+    await box.put('update.latestVersion', '1.5.0');
+    await box.put('update.latestNotes', '**Cached.** From disk.');
+    await box.put('update.latestDate', '2026-09-09');
+    final ProviderContainer c = _container(
+      box,
+      _dio((RequestOptions o) => throw StateError('must not be called')),
+    );
+    final UpdateCheckState s = c.read(updateCheckProvider);
+    expect(s.latestNotes, '**Cached.** From disk.');
+    expect(s.latestDate, '2026-09-09');
+  });
+}
