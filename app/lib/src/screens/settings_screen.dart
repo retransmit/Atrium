@@ -14,6 +14,8 @@ import '../custom_theme_providers.dart';
 import '../external_links.dart';
 import '../preferences.dart';
 import '../profile_io.dart';
+import '../update_check/app_version.dart';
+import '../update_check/update_check_tile.dart';
 import 'changelog_screen.dart';
 import 'custom_headers_screen.dart';
 import 'reorder_sidebar_screen.dart';
@@ -187,8 +189,9 @@ class SettingsScreen extends ConsumerWidget {
           const ListTile(
             leading: Icon(Icons.info_outline),
             title: Text('Atrium'),
-            subtitle: Text('Version 1.1.0 • GPL-3.0-or-later'),
+            subtitle: Text('Version $appVersion • GPL-3.0-or-later'),
           ),
+          const UpdateCheckTile(),
           ListTile(
             leading: const Icon(Icons.code),
             title: const Text('GitHub'),

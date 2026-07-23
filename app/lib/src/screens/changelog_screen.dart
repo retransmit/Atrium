@@ -2,6 +2,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 
 import '../external_links.dart';
+import '../update_check/update_available_banner.dart';
 
 /// One version and what changed in it.
 class _Release {
@@ -154,6 +155,7 @@ class ChangelogScreen extends StatelessWidget {
       body: ListView(
         padding: Insets.page,
         children: <Widget>[
+          const UpdateAvailableBanner(),
           for (final _Release release in _releases) ...<Widget>[
             Text(
               release.version,
