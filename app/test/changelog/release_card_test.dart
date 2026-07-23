@@ -53,4 +53,11 @@ void main() {
     final Text fixedLabel = tester.widget<Text>(find.text('Fixed'));
     expect(fixedLabel.style?.color, scheme.primary);
   });
+
+  test('categoryColor and categoryLabel cover the improved arm', () {
+    final ColorScheme scheme =
+        ColorScheme.fromSeed(seedColor: const Color(0xFF6750A4));
+    expect(categoryColor(ChangeCategory.improved, scheme), scheme.secondary);
+    expect(categoryLabel(ChangeCategory.improved), 'Improved');
+  });
 }

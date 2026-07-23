@@ -1,4 +1,5 @@
 import 'package:atrium/src/screens/changelog_screen.dart';
+import 'package:atrium/src/update_check/update_available_banner.dart';
 import 'package:atrium/src/update_check/update_check_state.dart';
 import 'package:atrium/src/update_check/update_checker.dart';
 import 'package:flutter/material.dart';
@@ -31,6 +32,8 @@ void main() {
     );
     await tester.pump();
 
+    expect(find.byType(UpdateAvailableBanner, skipOffstage: false),
+        findsOneWidget);
     expect(find.text('v1.1.0'), findsOneWidget);
     // appVersion is 1.1.0, so exactly one card is Installed.
     expect(find.text('Installed'), findsOneWidget);
