@@ -25,7 +25,7 @@ class EasyRefresh extends material.StatelessWidget {
 
   @override
   material.Widget build(material.BuildContext context) {
-    final isTest = kDebugMode && Platform.environment.containsKey('FLUTTER_TEST');
+    final isTest = kDebugMode && !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
     if (isTest) {
       if (onRefresh == null) return child;
       return material.RefreshIndicator(
@@ -56,9 +56,8 @@ class EasyRefresh extends material.StatelessWidget {
 
 class ClampingERScrollPhysics extends material.ScrollPhysics {
   final material.ScrollPhysics _delegate;
-  final Set<material.ScrollMetrics> _activeDrags = <material.ScrollMetrics>{};
 
-  ClampingERScrollPhysics(this._delegate, {super.parent});
+  const ClampingERScrollPhysics(this._delegate, {super.parent});
 
   @override
   ClampingERScrollPhysics applyTo(material.ScrollPhysics? ancestor) {
@@ -70,14 +69,20 @@ class ClampingERScrollPhysics extends material.ScrollPhysics {
 
   @override
   double applyPhysicsToUserOffset(material.ScrollMetrics position, double offset) {
-    _activeDrags.add(position);
     return _delegate.applyPhysicsToUserOffset(position, offset);
   }
 
   @override
   double applyBoundaryConditions(material.ScrollMetrics position, double value) {
+    if (!position.hasContentDimensions) {
+      return 0.0;
+    }
+
+    final isDragging = position is material.ScrollPosition &&
+        position.activity is material.DragScrollActivity;
+
     // If dragging or already out of range, let the delegate handle it.
-    if (_activeDrags.contains(position) || position.outOfRange) {
+    if (isDragging || position.outOfRange) {
       return _delegate.applyBoundaryConditions(position, value);
     }
 
@@ -90,7 +95,9 @@ class ClampingERScrollPhysics extends material.ScrollPhysics {
     material.ScrollMetrics position,
     double velocity,
   ) {
-    _activeDrags.remove(position);
+    if (!position.hasContentDimensions) {
+      return null;
+    }
 
     if (position.outOfRange) {
       return _delegate.createBallisticSimulation(position, velocity);
