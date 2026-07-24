@@ -17,6 +17,7 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:service_jellyfin/service_jellyfin.dart' as jf;
 import 'package:service_glances/service_glances.dart';
+import 'package:service_nzbget/service_nzbget.dart';
 import 'package:service_qbittorrent/service_qbittorrent.dart';
 import 'package:service_radarr/service_radarr.dart';
 import 'package:service_seerr/service_seerr.dart';
@@ -82,6 +83,7 @@ void main() {
       (WidgetTester tester) async {
     final Instance qbit = makeInstance(ServiceKind.qbittorrent);
     final Instance sab = makeInstance(ServiceKind.sabnzbd);
+    final Instance nzbget = makeInstance(ServiceKind.nzbget);
     await pumpBody(
       tester,
       <Override>[
@@ -113,14 +115,32 @@ void main() {
             ],
           ),
         ),
+        nzbgetQueueProvider(nzbget).overrideWith(
+          (Ref ref) => Future<List<NzbgetGroup>>.value(<NzbgetGroup>[
+            const NzbgetGroup(
+              nzbId: 1,
+              name: 'Distro.Refresh.nzb',
+              status: 'DOWNLOADING',
+              fileSizeMb: 100,
+              downloadedSizeMb: 50,
+            ),
+          ]),
+        ),
+        nzbgetStatusProvider(nzbget).overrideWith(
+          (Ref ref) => Future<NzbgetStatus>.value(
+            const NzbgetStatus(downloadRate: 1024),
+          ),
+        ),
       ],
       DashboardDownloadsWidget(
         qbitInstances: <Instance>[qbit],
         sabInstances: <Instance>[sab],
+        nzbgetInstances: <Instance>[nzbget],
       ),
     );
     expect(find.text('Ubuntu ISO'), findsOneWidget);
     expect(find.text('Show.S01E01.mkv'), findsOneWidget);
+    expect(find.text('Distro.Refresh.nzb'), findsOneWidget);
     expect(find.text('Active downloads'), findsOneWidget);
   });
 

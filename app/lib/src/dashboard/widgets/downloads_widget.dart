@@ -5,6 +5,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:service_nzbget/service_nzbget.dart';
 import 'package:service_qbittorrent/service_qbittorrent.dart';
 import 'package:service_sabnzbd/service_sabnzbd.dart';
 
@@ -23,9 +24,10 @@ const Set<String> _activeDlStates = <String>{
   'allocating',
 };
 
-/// Live count of active downloads across every qBittorrent + SABnzbd instance.
-/// Instances still loading or in error contribute 0, so the dashboard only
-/// surfaces the downloads widget once real activity is confirmed.
+/// Live count of active downloads across every qBittorrent + SABnzbd + NZBGet
+/// instance. Instances still loading or in error contribute 0, so the
+/// dashboard only surfaces the downloads widget once real activity is
+/// confirmed.
 final activeDownloadCountProvider = Provider.autoDispose<int>((Ref ref) {
   final List<Instance> instances = ref.watch(activeInstancesProvider);
   int count = 0;
@@ -40,6 +42,8 @@ final activeDownloadCountProvider = Provider.autoDispose<int>((Ref ref) {
       }
     } else if (i.kind == ServiceKind.sabnzbd) {
       count += ref.watch(sabQueueProvider(i)).value?.slots.length ?? 0;
+    } else if (i.kind == ServiceKind.nzbget) {
+      count += ref.watch(nzbgetQueueProvider(i)).value?.length ?? 0;
     }
   }
   return count;
@@ -75,16 +79,19 @@ class _DownloadRow {
   final Instance instance;
 }
 
-/// Combined qBittorrent + SABnzbd activity: total speed, count, top items.
+/// Combined qBittorrent + SABnzbd + NZBGet activity: total speed, count,
+/// top items.
 class DashboardDownloadsWidget extends ConsumerWidget {
   const DashboardDownloadsWidget({
     required this.qbitInstances,
     required this.sabInstances,
+    required this.nzbgetInstances,
     super.key,
   });
 
   final List<Instance> qbitInstances;
   final List<Instance> sabInstances;
+  final List<Instance> nzbgetInstances;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -129,6 +136,16 @@ class DashboardDownloadsWidget extends ConsumerWidget {
           ));
         }
       }
+    }
+    for (final Instance i in nzbgetInstances) {
+      final AsyncValue<List<NzbgetGroup>> groups =
+          ref.watch(nzbgetQueueProvider(i));
+      anyLoading |= groups.isLoading && !groups.hasValue;
+      anyError |= groups.hasError;
+      for (final NzbgetGroup g in groups.value ?? const <NzbgetGroup>[]) {
+        rows.add(_DownloadRow(name: g.name, progress: g.progress, instance: i));
+      }
+      totalSpeed += ref.watch(nzbgetStatusProvider(i)).value?.downloadRate ?? 0;
     }
 
     rows.sort(
@@ -183,6 +200,10 @@ class DashboardDownloadsWidget extends ConsumerWidget {
     }
     for (final Instance i in sabInstances) {
       ref.invalidate(sabQueueProvider(i));
+    }
+    for (final Instance i in nzbgetInstances) {
+      ref.invalidate(nzbgetQueueProvider(i));
+      ref.invalidate(nzbgetStatusProvider(i));
     }
   }
 }

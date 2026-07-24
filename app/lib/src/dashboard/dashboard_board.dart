@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:service_emby/service_emby.dart' as emby;
 import 'package:service_glances/service_glances.dart';
 import 'package:service_jellyfin/service_jellyfin.dart' as jf;
+import 'package:service_nzbget/service_nzbget.dart';
 import 'package:service_qbittorrent/service_qbittorrent.dart';
 import 'package:service_radarr/service_radarr.dart';
 import 'package:service_sabnzbd/service_sabnzbd.dart';
@@ -115,6 +116,7 @@ class DashboardBoard extends ConsumerWidget {
         return DashboardDownloadsWidget(
           qbitInstances: _byKind(instances, ServiceKind.qbittorrent),
           sabInstances: _byKind(instances, ServiceKind.sabnzbd),
+          nzbgetInstances: _byKind(instances, ServiceKind.nzbget),
         );
       case DashboardWidgetKind.streams:
         return DashboardStreamsWidget(
@@ -164,6 +166,9 @@ class DashboardBoard extends ConsumerWidget {
           ref.invalidate(qbitTransferProvider(i));
         case ServiceKind.sabnzbd:
           ref.invalidate(sabQueueProvider(i));
+        case ServiceKind.nzbget:
+          ref.invalidate(nzbgetQueueProvider(i));
+          ref.invalidate(nzbgetStatusProvider(i));
         case ServiceKind.tautulli:
           ref.invalidate(tautulliActivityProvider(i));
         case ServiceKind.jellyfin:

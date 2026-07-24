@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:service_emby/service_emby.dart' as emby;
 import 'package:service_jellyfin/service_jellyfin.dart' as jf;
+import 'package:service_nzbget/service_nzbget.dart';
 import 'package:service_plex/service_plex.dart';
 import 'package:service_qbittorrent/service_qbittorrent.dart';
 import 'package:service_radarr/service_radarr.dart';
@@ -215,6 +216,12 @@ final activityDownloadsProvider =
           ref.watch(sabQueueProvider(instance)),
           (SabQueue queue) => _sabDownloads(instance, queue),
         );
+      case ServiceKind.nzbget:
+        collect(
+          instance,
+          ref.watch(nzbgetQueueProvider(instance)),
+          (List<NzbgetGroup> groups) => _nzbgetDownloads(instance, groups),
+        );
       case ServiceKind.sonarr:
         collect(
           instance,
@@ -274,6 +281,8 @@ void refreshActivity(WidgetRef ref) {
         ref.invalidate(qbitRawTorrentsProvider(instance));
       case ServiceKind.sabnzbd:
         ref.invalidate(sabQueueProvider(instance));
+      case ServiceKind.nzbget:
+        ref.invalidate(nzbgetQueueProvider(instance));
       case ServiceKind.sonarr:
         ref.invalidate(sonarrQueueProvider(instance));
       case ServiceKind.radarr:
@@ -500,6 +509,23 @@ List<ActivityDownload> _sabDownloads(Instance instance, SabQueue queue) {
         progress: ((int.tryParse(slot.percentage) ?? 0) / 100).clamp(0.0, 1.0),
         eta: slot.timeleft.isEmpty ? null : slot.timeleft,
         status: slot.status.isEmpty ? 'Queued' : _capitalized(slot.status),
+      ),
+  ];
+}
+
+List<ActivityDownload> _nzbgetDownloads(
+  Instance instance,
+  List<NzbgetGroup> groups,
+) {
+  return <ActivityDownload>[
+    for (final NzbgetGroup g in groups)
+      ActivityDownload(
+        key: '${instance.id}:${g.nzbId}',
+        instance: instance,
+        sourceKind: instance.kind,
+        title: g.name,
+        progress: g.progress,
+        status: nzbgetStatusLabel(g.status),
       ),
   ];
 }
