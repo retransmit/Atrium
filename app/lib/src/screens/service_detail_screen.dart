@@ -8,6 +8,7 @@ import 'package:core_router/core_router.dart';
 import 'package:service_bazarr/service_bazarr.dart';
 import 'package:service_emby/service_emby.dart';
 import 'package:service_jellyfin/service_jellyfin.dart';
+import 'package:service_nzbget/service_nzbget.dart';
 import 'package:service_seerr/service_seerr.dart';
 import 'package:service_plex/service_plex.dart';
 import 'package:service_prowlarr/service_prowlarr.dart';
@@ -243,6 +244,7 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
       ServiceKind.plex => PlexHome(instance: instance),
       ServiceKind.qbittorrent => QbittorrentHome(instance: instance),
       ServiceKind.sabnzbd => SabnzbdHome(instance: instance),
+      ServiceKind.nzbget => NzbgetHome(instance: instance),
       ServiceKind.glances => GlancesHome(instance: instance),
       ServiceKind.speedtestTracker => SpeedtestTrackerHome(instance: instance),
     };

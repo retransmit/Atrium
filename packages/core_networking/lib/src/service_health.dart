@@ -58,6 +58,10 @@ enum _HealthMode {
       return (path: 'api/4/core', mode: _HealthMode.authed);
     case ServiceKind.speedtestTracker:
       return (path: 'api/v1/results?page[size]=1', mode: _HealthMode.authed);
+    case ServiceKind.nzbget:
+      // JSON-RPC accepts GET for parameterless methods; Basic auth is
+      // attached by the interceptor, so 401 means bad credentials.
+      return (path: 'jsonrpc/version', mode: _HealthMode.authed);
   }
 }
 

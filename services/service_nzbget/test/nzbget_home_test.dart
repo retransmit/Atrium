@@ -8,8 +8,7 @@ import 'package:service_nzbget/service_nzbget.dart';
 Instance _instance() => const Instance(
       id: 'n1',
       name: 'NZBGet',
-      // swapped to ServiceKind.nzbget in the core-wiring task
-      kind: ServiceKind.sabnzbd,
+      kind: ServiceKind.nzbget,
       localUrl: 'http://localhost:6789',
       externalUrl: '',
       urlMode: UrlMode.auto,

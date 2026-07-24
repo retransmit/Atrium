@@ -17,6 +17,7 @@ enum ServiceKind {
   sabnzbd,
   glances,
   speedtestTracker,
+  nzbget,
 }
 
 /// Static metadata about a [ServiceKind] - display name, default port, the
@@ -39,6 +40,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.sabnzbd => 'SABnzbd',
         ServiceKind.glances => 'Glances',
         ServiceKind.speedtestTracker => 'Speedtest Tracker',
+        ServiceKind.nzbget => 'NZBGet',
       };
 
   /// One-line role description.
@@ -56,6 +58,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.sabnzbd => 'Usenet client',
         ServiceKind.glances => 'System monitor',
         ServiceKind.speedtestTracker => 'Internet performance',
+        ServiceKind.nzbget => 'Usenet client',
       };
 
   /// Vendor-default port. Used as a hint when the user is entering a URL
@@ -74,6 +77,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.sabnzbd => 8080,
         ServiceKind.glances => 61208,
         ServiceKind.speedtestTracker => null,
+        ServiceKind.nzbget => 6789,
       };
 
   /// What auth flow the service uses by default. Some services (Jellyfin) can
@@ -87,7 +91,10 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.tautulli ||
         ServiceKind.sabnzbd =>
           AuthStyle.apiKey,
-        ServiceKind.jellyfin || ServiceKind.emby => AuthStyle.userPass,
+        ServiceKind.jellyfin ||
+        ServiceKind.emby ||
+        ServiceKind.nzbget =>
+          AuthStyle.userPass,
         ServiceKind.plex => AuthStyle.plexToken,
         ServiceKind.qbittorrent => AuthStyle.cookieLogin,
         ServiceKind.glances => AuthStyle.none,
@@ -109,7 +116,8 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.plex =>
           ServiceRole.mediaServer,
         ServiceKind.qbittorrent ||
-        ServiceKind.sabnzbd =>
+        ServiceKind.sabnzbd ||
+        ServiceKind.nzbget =>
           ServiceRole.downloader,
         ServiceKind.glances => ServiceRole.analytics,
         ServiceKind.speedtestTracker => ServiceRole.analytics,

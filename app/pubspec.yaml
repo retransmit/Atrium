@@ -37,6 +37,7 @@ dependencies:
   service_bazarr:
   service_emby:
   service_jellyfin:
+  service_nzbget:
   service_seerr:
   service_plex:
   service_prowlarr:
