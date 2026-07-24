@@ -65,7 +65,9 @@ class NzbgetQueueTab extends ConsumerWidget {
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Action failed: $e')));
     } finally {
-      _refresh(ref);
+      if (context.mounted) {
+        _refresh(ref);
+      }
     }
   }
 
@@ -90,7 +92,7 @@ class NzbgetQueueTab extends ConsumerWidget {
               await _run(context, ref, (NzbgetApi api) => api.setSpeedLimit(kb));
             }
           },
-          onAdd: () => showNzbgetAddSheet(context, ref, instance),
+          onAdd: () => showNzbgetAddSheet(context, instance),
         );
         if (groups.isEmpty) {
           return EasyRefresh(

@@ -11,11 +11,7 @@ import 'nzbget_api.dart';
 import 'nzbget_providers.dart';
 
 /// Bottom sheet for adding an NZB by URL or by picking an .nzb file.
-void showNzbgetAddSheet(
-  BuildContext context,
-  WidgetRef ref,
-  Instance instance,
-) {
+void showNzbgetAddSheet(BuildContext context, Instance instance) {
   showModalBottomSheet<void>(
     context: context,
     useRootNavigator: true,
@@ -25,22 +21,21 @@ void showNzbgetAddSheet(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
       ),
-      child: _AddNzbForm(instance: instance, parentRef: ref),
+      child: _AddNzbForm(instance: instance),
     ),
   );
 }
 
-class _AddNzbForm extends StatefulWidget {
-  const _AddNzbForm({required this.instance, required this.parentRef});
+class _AddNzbForm extends ConsumerStatefulWidget {
+  const _AddNzbForm({required this.instance});
 
   final Instance instance;
-  final WidgetRef parentRef;
 
   @override
-  State<_AddNzbForm> createState() => _AddNzbFormState();
+  ConsumerState<_AddNzbForm> createState() => _AddNzbFormState();
 }
 
-class _AddNzbFormState extends State<_AddNzbForm> {
+class _AddNzbFormState extends ConsumerState<_AddNzbForm> {
   final TextEditingController _url = TextEditingController();
   String? _fileName;
   String? _fileBase64;
@@ -82,8 +77,8 @@ class _AddNzbFormState extends State<_AddNzbForm> {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     final NavigatorState navigator = Navigator.of(context);
     try {
-      final NzbgetApi api = await widget.parentRef
-          .read(nzbgetApiProvider(widget.instance).future);
+      final NzbgetApi api =
+          await ref.read(nzbgetApiProvider(widget.instance).future);
       await api.append(
         name: byFile ? _fileName! : url.split('/').last,
         content: byFile ? _fileBase64! : url,
@@ -91,10 +86,16 @@ class _AddNzbFormState extends State<_AddNzbForm> {
         priority: _priority,
         addPaused: _addPaused,
       );
-      widget.parentRef.invalidate(nzbgetQueueProvider(widget.instance));
+      if (!mounted) {
+        return;
+      }
+      ref.invalidate(nzbgetQueueProvider(widget.instance));
       navigator.pop();
       messenger.showSnackBar(const SnackBar(content: Text('NZB added')));
     } catch (e) {
+      if (!mounted) {
+        return;
+      }
       setState(() => _busy = false);
       messenger.showSnackBar(SnackBar(content: Text('Add failed: $e')));
     }
@@ -102,8 +103,8 @@ class _AddNzbFormState extends State<_AddNzbForm> {
 
   @override
   Widget build(BuildContext context) {
-    final AsyncValue<List<String>> categories = widget.parentRef
-        .watch(nzbgetCategoriesProvider(widget.instance));
+    final AsyncValue<List<String>> categories =
+        ref.watch(nzbgetCategoriesProvider(widget.instance));
     const List<(String, int)> priorities = <(String, int)>[
       ('Very low', -100),
       ('Low', -50),

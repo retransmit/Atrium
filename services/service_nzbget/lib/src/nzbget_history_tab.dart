@@ -25,7 +25,9 @@ class NzbgetHistoryTab extends ConsumerWidget {
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Action failed: $e')));
     } finally {
-      ref.invalidate(nzbgetHistoryProvider(instance));
+      if (context.mounted) {
+        ref.invalidate(nzbgetHistoryProvider(instance));
+      }
     }
   }
 

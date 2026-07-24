@@ -94,4 +94,52 @@ void main() {
     expect(find.text('Broken.Download'), findsOneWidget);
     expect(find.byTooltip('Retry'), findsOneWidget);
   });
+
+  testWidgets('add sheet loads server categories into its dropdown',
+      (WidgetTester tester) async {
+    final Instance instance = _instance();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: <Override>[
+          nzbgetQueueProvider(instance).overrideWith(
+            (Ref ref) => Future<List<NzbgetGroup>>.value(<NzbgetGroup>[
+              const NzbgetGroup(
+                nzbId: 1,
+                name: 'Linux.ISO',
+                status: 'DOWNLOADING',
+                fileSizeMb: 1000,
+                remainingSizeMb: 400,
+                downloadedSizeMb: 600,
+              ),
+            ]),
+          ),
+          nzbgetStatusProvider(instance).overrideWith(
+            (Ref ref) => Future<NzbgetStatus>.value(const NzbgetStatus()),
+          ),
+          nzbgetHistoryProvider(instance).overrideWith(
+            (Ref ref) =>
+                Future<List<NzbgetHistoryEntry>>.value(<NzbgetHistoryEntry>[]),
+          ),
+          nzbgetCategoriesProvider(instance).overrideWith(
+            (Ref ref) => Future<List<String>>.value(<String>['movies', 'tv']),
+          ),
+        ],
+        child: MaterialApp(
+          home: Scaffold(body: NzbgetHome(instance: instance)),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('Add NZB'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add NZB'), findsOneWidget);
+
+    await tester.tap(find.text('Category (optional)'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('movies'), findsWidgets);
+  });
 }

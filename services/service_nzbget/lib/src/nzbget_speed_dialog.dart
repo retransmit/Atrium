@@ -17,10 +17,31 @@ String speedLimitLabel(int kbPerSec) {
 /// Picks a global download limit. Returns the KB/s value (0 = unlimited) or
 /// null when dismissed.
 Future<int?> showNzbgetSpeedDialog(BuildContext context) {
-  final TextEditingController custom = TextEditingController();
   return showDialog<int>(
     context: context,
-    builder: (BuildContext context) => AlertDialog(
+    builder: (BuildContext context) => const _SpeedDialogContent(),
+  );
+}
+
+class _SpeedDialogContent extends StatefulWidget {
+  const _SpeedDialogContent();
+
+  @override
+  State<_SpeedDialogContent> createState() => _SpeedDialogContentState();
+}
+
+class _SpeedDialogContentState extends State<_SpeedDialogContent> {
+  final TextEditingController _custom = TextEditingController();
+
+  @override
+  void dispose() {
+    _custom.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
       title: const Text('Speed limit'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -32,7 +53,7 @@ Future<int?> showNzbgetSpeedDialog(BuildContext context) {
               onTap: () => Navigator.of(context).pop(kb),
             ),
           TextField(
-            controller: custom,
+            controller: _custom,
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(labelText: 'Custom (KB/s)'),
             onSubmitted: (String value) {
@@ -51,7 +72,7 @@ Future<int?> showNzbgetSpeedDialog(BuildContext context) {
         ),
         FilledButton(
           onPressed: () {
-            final int? kb = int.tryParse(custom.text.trim());
+            final int? kb = int.tryParse(_custom.text.trim());
             if (kb != null && kb >= 0) {
               Navigator.of(context).pop(kb);
             }
@@ -59,6 +80,6 @@ Future<int?> showNzbgetSpeedDialog(BuildContext context) {
           child: const Text('Set'),
         ),
       ],
-    ),
-  );
+    );
+  }
 }
