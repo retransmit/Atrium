@@ -20,7 +20,8 @@ import 'package:dio/dio.dart';
 /// `Jellyfin/Emby` and `qBittorrent` both use the user/password auth flow:
 /// the session token / cookie is acquired out of band and stored in the
 /// service's own session manager, then attached at request time. This
-/// interceptor only wires the *static* secret cases (api key + plex token).
+/// interceptor only wires the *static* secret cases: api key, plex token,
+/// and NZBGet's HTTP Basic credentials.
 class AuthInterceptor extends Interceptor {
   const AuthInterceptor({required this.kind, required this.auth});
 

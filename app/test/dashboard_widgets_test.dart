@@ -79,7 +79,8 @@ void main() {
     expect(find.byIcon(Icons.download_rounded), findsOneWidget);
   });
 
-  testWidgets('DashboardDownloadsWidget shows combined qBit + SAB items',
+  testWidgets(
+      'DashboardDownloadsWidget shows combined qBit + SAB + NZBGet items',
       (WidgetTester tester) async {
     final Instance qbit = makeInstance(ServiceKind.qbittorrent);
     final Instance sab = makeInstance(ServiceKind.sabnzbd);

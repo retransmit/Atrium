@@ -88,8 +88,16 @@ class NzbgetApi {
   Future<void> resumeAll() => _command('resumedownload');
 
   /// The queue/history swiss army knife. `ids` are NZBIDs.
-  Future<void> editQueue(String command, String param, List<int> ids) =>
-      _command('editqueue', <dynamic>[command, param, ids]);
+  ///
+  /// Failures name the subcommand: 'editqueue failed' alone would leave
+  /// no clue whether a pause, delete or move went wrong.
+  Future<void> editQueue(String command, String param, List<int> ids) async {
+    final dynamic result =
+        await _call('editqueue', <dynamic>[command, param, ids]);
+    if (result != true) {
+      throw NzbgetRpcException('editqueue $command failed');
+    }
+  }
 
   Future<void> pauseItems(List<int> ids) => editQueue('GroupPause', '', ids);
   Future<void> resumeItems(List<int> ids) => editQueue('GroupResume', '', ids);

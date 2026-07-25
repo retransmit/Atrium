@@ -42,14 +42,29 @@ String nzbgetStatusLabel(String status) => switch (status) {
       _ => status[0] + status.substring(1).toLowerCase(),
     };
 
-class NzbgetQueueTab extends ConsumerWidget {
+class NzbgetQueueTab extends ConsumerStatefulWidget {
   const NzbgetQueueTab({required this.instance, super.key});
 
   final Instance instance;
 
+  @override
+  ConsumerState<NzbgetQueueTab> createState() => _NzbgetQueueTabState();
+}
+
+class _NzbgetQueueTabState extends ConsumerState<NzbgetQueueTab> {
+  /// Working copy of the queue that the list renders from. It is synced
+  /// from the provider between drags, frozen while a drag is in flight so
+  /// the 3s poll cannot permute rows under the finger, and reordered
+  /// optimistically on drop so the item does not snap back while the
+  /// server catches up.
+  List<NzbgetGroup> _working = <NzbgetGroup>[];
+
+  /// NZBID of the row being dragged, or null when no drag is active.
+  int? _draggingNzbId;
+
   void _refresh(WidgetRef ref) {
-    ref.invalidate(nzbgetQueueProvider(instance));
-    ref.invalidate(nzbgetStatusProvider(instance));
+    ref.invalidate(nzbgetQueueProvider(widget.instance));
+    ref.invalidate(nzbgetStatusProvider(widget.instance));
   }
 
   Future<void> _run(
@@ -60,7 +75,7 @@ class NzbgetQueueTab extends ConsumerWidget {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     try {
       final NzbgetApi api =
-          await ref.read(nzbgetApiProvider(instance).future);
+          await ref.read(nzbgetApiProvider(widget.instance).future);
       await action(api);
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text('Action failed: $e')));
@@ -72,15 +87,20 @@ class NzbgetQueueTab extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final AsyncValue<List<NzbgetGroup>> queue =
-        ref.watch(nzbgetQueueProvider(instance));
+        ref.watch(nzbgetQueueProvider(widget.instance));
     return AsyncValueView<List<NzbgetGroup>>(
       value: queue,
       onRetry: () => _refresh(ref),
       data: (List<NzbgetGroup> groups) {
+        // Sync the working copy from the latest poll, but never mid-drag:
+        // the frozen copy keeps row indices stable under the finger.
+        if (_draggingNzbId == null) {
+          _working = List<NzbgetGroup>.of(groups);
+        }
         final Widget summary = _QueueSummary(
-          instance: instance,
+          instance: widget.instance,
           onPauseResume: (bool paused) => _run(
             context,
             ref,
@@ -92,9 +112,9 @@ class NzbgetQueueTab extends ConsumerWidget {
               await _run(context, ref, (NzbgetApi api) => api.setSpeedLimit(kb));
             }
           },
-          onAdd: () => showNzbgetAddSheet(context, instance),
+          onAdd: () => showNzbgetAddSheet(context, widget.instance),
         );
-        if (groups.isEmpty) {
+        if (_working.isEmpty) {
           return EasyRefresh(
             header: const ClassicHeader(),
             onRefresh: () async => _refresh(ref),
@@ -121,16 +141,35 @@ class NzbgetQueueTab extends ConsumerWidget {
             padding: const EdgeInsets.only(bottom: Insets.md),
             child: summary,
           ),
-          itemCount: groups.length,
+          itemCount: _working.length,
+          onReorderStart: (int index) =>
+              setState(() => _draggingNzbId = _working[index].nzbId),
           onReorder: (int oldIndex, int newIndex) {
             if (newIndex > oldIndex) {
               newIndex -= 1;
             }
-            final int offset = newIndex - oldIndex;
-            if (offset == 0) {
+            // Resolve the dragged group by id rather than trusting the
+            // callback's oldIndex against a list a poll may have replaced.
+            final int trueOldIndex = _working.indexWhere(
+              (NzbgetGroup g) => g.nzbId == _draggingNzbId,
+            );
+            if (trueOldIndex == -1) {
+              setState(() => _draggingNzbId = null);
               return;
             }
-            final NzbgetGroup moved = groups[oldIndex];
+            final int offset = newIndex - trueOldIndex;
+            if (offset == 0) {
+              setState(() => _draggingNzbId = null);
+              return;
+            }
+            final NzbgetGroup moved = _working[trueOldIndex];
+            // Optimistic local reorder; _run's finally-invalidate re-syncs
+            // the copy from the server on the next build.
+            setState(() {
+              _working.removeAt(trueOldIndex);
+              _working.insert(newIndex, moved);
+              _draggingNzbId = null;
+            });
             _run(
               context,
               ref,
@@ -138,7 +177,7 @@ class NzbgetQueueTab extends ConsumerWidget {
             );
           },
           itemBuilder: (BuildContext context, int index) {
-            final NzbgetGroup group = groups[index];
+            final NzbgetGroup group = _working[index];
             return Padding(
               key: ValueKey<int>(group.nzbId),
               padding: const EdgeInsets.only(bottom: Insets.sm),
@@ -321,7 +360,7 @@ class NzbgetQueueTab extends ConsumerWidget {
         child: Consumer(
           builder: (BuildContext context, WidgetRef sheetRef, Widget? _) {
             final AsyncValue<List<String>> categories =
-                sheetRef.watch(nzbgetCategoriesProvider(instance));
+                sheetRef.watch(nzbgetCategoriesProvider(widget.instance));
             return categories.when(
               loading: () => const Padding(
                 padding: EdgeInsets.all(Insets.xl),

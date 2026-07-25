@@ -10,6 +10,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'nzbget_api.dart';
 import 'nzbget_providers.dart';
 
+/// Display name for an NZB added by URL: the last path segment only, so
+/// query strings (typically `?apikey=...` on indexer links) never end up
+/// in NZBGet's visible item name.
+String _nameFromUrl(String url) {
+  final Uri? parsed = Uri.tryParse(url);
+  final String? last = (parsed != null && parsed.pathSegments.isNotEmpty)
+      ? parsed.pathSegments.last
+      : null;
+  return (last == null || last.isEmpty) ? 'download.nzb' : last;
+}
+
 /// Bottom sheet for adding an NZB by URL or by picking an .nzb file.
 void showNzbgetAddSheet(BuildContext context, Instance instance) {
   showModalBottomSheet<void>(
@@ -80,7 +91,7 @@ class _AddNzbFormState extends ConsumerState<_AddNzbForm> {
       final NzbgetApi api =
           await ref.read(nzbgetApiProvider(widget.instance).future);
       await api.append(
-        name: byFile ? _fileName! : url.split('/').last,
+        name: byFile ? _fileName! : _nameFromUrl(url),
         content: byFile ? _fileBase64! : url,
         category: _category,
         priority: _priority,
