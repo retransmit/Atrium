@@ -40,7 +40,8 @@ extension DashboardWidgetKindX on DashboardWidgetKind {
   List<ServiceKind> get serviceKinds => switch (this) {
         DashboardWidgetKind.downloads => const <ServiceKind>[
             ServiceKind.qbittorrent,
-            ServiceKind.sabnzbd
+            ServiceKind.sabnzbd,
+            ServiceKind.nzbget,
           ],
         DashboardWidgetKind.streams => const <ServiceKind>[
             ServiceKind.tautulli,
