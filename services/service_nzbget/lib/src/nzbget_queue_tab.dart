@@ -144,10 +144,20 @@ class _NzbgetQueueTabState extends ConsumerState<NzbgetQueueTab> {
           itemCount: _working.length,
           onReorderStart: (int index) =>
               setState(() => _draggingNzbId = _working[index].nzbId),
-          onReorder: (int oldIndex, int newIndex) {
-            if (newIndex > oldIndex) {
-              newIndex -= 1;
+          onReorderEnd: (int index) {
+            final int current = _working.indexWhere(
+              (NzbgetGroup g) => g.nzbId == _draggingNzbId,
+            );
+            // onReorder only fires when the drop lands on a DIFFERENT slot;
+            // for a same-position drop (or a vanished id) it never comes, so
+            // clear the drag freeze here. A pure pointer-cancel fires neither
+            // callback; that rare residual (an OS gesture steal) resolves on
+            // the next drag.
+            if (current == -1 || index == current) {
+              setState(() => _draggingNzbId = null);
             }
+          },
+          onReorder: (int oldIndex, int newIndex) {
             // Resolve the dragged group by id rather than trusting the
             // callback's oldIndex against a list a poll may have replaced.
             final int trueOldIndex = _working.indexWhere(
@@ -156,6 +166,9 @@ class _NzbgetQueueTabState extends ConsumerState<NzbgetQueueTab> {
             if (trueOldIndex == -1) {
               setState(() => _draggingNzbId = null);
               return;
+            }
+            if (newIndex > trueOldIndex) {
+              newIndex -= 1;
             }
             final int offset = newIndex - trueOldIndex;
             if (offset == 0) {
