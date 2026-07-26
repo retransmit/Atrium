@@ -13,10 +13,11 @@ Supported services:
 * Bazarr - subtitle status, search and download
 * Seerr (Overseerr and Jellyseerr) - discover, request and manage requests
 * Tautulli - active streams, history, statistics and users
-* qBittorrent and SABnzbd - transfers and queue control
+* qBittorrent, SABnzbd and NZBGet - transfers and queue control
 * Jellyfin, Emby and Plex - library browsing, item detail, resume rows and
   now-playing sessions
 * Glances - CPU, memory, GPU and disk usage of the host
+* Speedtest Tracker - internet speed results and history
 
 Features:
 

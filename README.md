@@ -3,7 +3,7 @@
 The central courtyard for your self-hosted media stack.
 One Android app that fronts Sonarr, Radarr, Prowlarr, Bazarr,
 Seerr, Tautulli, Jellyfin, Emby, Plex, qBittorrent,
-SABnzbd, Glances and Speedtest Tracker - and routes every request through the right URL
+SABnzbd, NZBGet, Glances and Speedtest Tracker - and routes every request through the right URL
 whether you're on the home Wi-Fi or out in the world.
 
 **[Website][site]** - screenshots and a tour, no install needed.
@@ -29,7 +29,7 @@ external URLs.
 - **Activity feed.** One tab aggregates live activity across every
   instance: active streams from Plex / Jellyfin / Emby / Tautulli and
   transfers (downloads and active uploads) from qBittorrent, SABnzbd,
-  and the *arr queues.
+  NZBGet, and the *arr queues.
 - **Controller, not a player.** Media servers are browse/manage/remote-
   control surfaces; playback stays with the official apps (deep links
   provided).
@@ -63,7 +63,8 @@ each one covers:
 | Emby                   | same depth as Jellyfin                                                |
 | Plex                   | libraries, detail, seasons, music, genres, now-playing controller     |
 | qBittorrent            | realtime list, add/manage, torrent detail                             |
-| SABnzbd                | queue control (history / categories / limits still to come)           |
+| SABnzbd                | queue, history with retry, speed limit, server stats                  |
+| NZBGet                 | queue with reorder/priority/category, add NZB, speed limit, history   |
 | Glances                | CPU/memory/network/disk monitoring                                    |
 | Speedtest Tracker      | latest result, history chart, dashboard, confirmed remote test runs   |
 

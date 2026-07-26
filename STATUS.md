@@ -1,6 +1,6 @@
 # Atrium - Status
 
-> Snapshot of what genuinely works and what is left, as of 2026-07-21.
+> Snapshot of what genuinely works and what is left, as of 2026-07-26.
 > Atrium is in early development and every module is still work in
 > progress; nothing here is a release promise.
 
@@ -18,7 +18,7 @@ Atrium is a **controller** app. Video playback was removed by design
   Streaming (backdrop session cards from Plex / Jellyfin / Emby /
   Tautulli, tap-through to each module's now-playing screen) and
   Transfers (qBittorrent downloads *and active uploads*, SABnzbd slots,
-  Sonarr/Radarr queues). Per-instance resilience: an unreachable server
+  NZBGet groups, Sonarr/Radarr queues). Per-instance resilience: an unreachable server
   degrades to a chip, never blocks the feed
 - **Calendar tab**: month grid aggregating upcoming Sonarr + Radarr
   airings/releases with status dots
@@ -78,11 +78,16 @@ Atrium is a **controller** app. Video playback was removed by design
   latest metrics, combined download / upload chart, multi-instance dashboard
   widget, and confirmed 1.6+ remote runs with queued/running/terminal-state
   polling and automatic result refresh
+- **NZBGet** (live-verified): Basic-auth JSON-RPC client, queue with drag
+  reorder / per-item pause / priority / category, whole-queue pause and a
+  speed-limit control, add NZB by URL or file, history with retry on
+  failures, dashboard widget and Activity feed integration
 
 ## Partially done
 
-- **SABnzbd**: queue control only; missing history, categories, speed
-  limits (also the one module never tested against a live server)
+- **SABnzbd**: queue, history with retry, speed limit and server stats;
+  missing categories (also the one module never tested against a live
+  server)
 
 ## App-wide TODO
 
