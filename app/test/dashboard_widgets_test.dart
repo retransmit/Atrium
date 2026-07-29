@@ -201,6 +201,7 @@ void main() {
         tautulliInstances: <Instance>[tau],
         jellyfinInstances: <Instance>[jelly],
         embyInstances: const <Instance>[],
+        tracearrInstances: const <Instance>[],
       ),
     );
     expect(find.text('Now streaming'), findsOneWidget);

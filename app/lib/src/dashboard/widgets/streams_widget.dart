@@ -9,16 +9,13 @@ import 'package:go_router/go_router.dart';
 import 'package:service_emby/service_emby.dart' as emby;
 import 'package:service_jellyfin/service_jellyfin.dart' as jf;
 import 'package:service_tautulli/service_tautulli.dart';
+import 'package:service_tracearr/service_tracearr.dart';
 
 import '../dashboard_widget_card.dart';
 import '../dashboard_widget_kind.dart';
 import 'package:palette_generator_plus/palette_generator_plus.dart';
 import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
-/// Live count of active sessions across every Tautulli, Jellyfin and Emby
-/// instance. Instances still loading or in error contribute 0, so the
-/// dashboard only surfaces the streams widget while someone is actually
-/// watching.
 final activeStreamCountProvider = Provider.autoDispose<int>((Ref ref) {
   final List<Instance> instances = ref.watch(activeInstancesProvider);
   int count = 0;
@@ -31,6 +28,8 @@ final activeStreamCountProvider = Provider.autoDispose<int>((Ref ref) {
         count += ref.watch(jf.jellyfinSessionsProvider(i)).value?.length ?? 0;
       case ServiceKind.emby:
         count += ref.watch(emby.embySessionsProvider(i)).value?.length ?? 0;
+      case ServiceKind.tracearr:
+        count += ref.watch(tracearrSessionsProvider(i)).value?.sessions.length ?? 0;
       default:
         break;
     }
@@ -51,6 +50,7 @@ class _StreamRow {
     this.quality,
     this.transcoding = false,
     this.timeLabel,
+    this.location,
   });
 
   final String user;
@@ -58,23 +58,15 @@ class _StreamRow {
   final double progress;
   final bool paused;
   final Instance instance;
-
-  /// Player / client the session is on (e.g. "Chrome", "Apple TV").
   final String device;
   final String? posterUrl;
   final String? backdropUrl;
-
-  /// Stream resolution (e.g. "1080p"), when the backend reports it.
   final String? quality;
-
-  /// Whether the server is transcoding the stream (vs direct play).
   final bool transcoding;
-
-  /// Elapsed / total time (e.g. "12:04 / 45:00"), when available.
   final String? timeLabel;
+  final String? location;
 }
 
-/// "elapsed / total", or null when either side is missing.
 String? _timeLabel(String position, String duration) {
   if (position.isEmpty || duration.isEmpty) {
     return null;
@@ -82,24 +74,29 @@ String? _timeLabel(String position, String duration) {
   return '$position / $duration';
 }
 
-/// Active sessions across Tautulli, Jellyfin and Emby, each with its poster.
 class DashboardStreamsWidget extends ConsumerWidget {
   const DashboardStreamsWidget({
     required this.tautulliInstances,
     required this.jellyfinInstances,
     required this.embyInstances,
+    required this.tracearrInstances,
     super.key,
   });
 
   final List<Instance> tautulliInstances;
   final List<Instance> jellyfinInstances;
   final List<Instance> embyInstances;
+  final List<Instance> tracearrInstances;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ColorScheme cs = Theme.of(context).colorScheme;
+    final ThemeData theme = Theme.of(context);
 
-    final List<_StreamRow> rows = <_StreamRow>[];
+    final List<_StreamRow> embyRows = <_StreamRow>[];
+    final List<_StreamRow> plexRows = <_StreamRow>[];
+    final List<_StreamRow> jellyfinRows = <_StreamRow>[];
+
     bool anyLoading = false;
     bool anyError = false;
 
@@ -111,7 +108,7 @@ class DashboardStreamsWidget extends ConsumerWidget {
       final TautulliApi? api = ref.watch(tautulliApiProvider(i)).value;
       for (final TautulliSession s
           in activity.value?.sessions ?? const <TautulliSession>[]) {
-        rows.add(_StreamRow(
+        plexRows.add(_StreamRow(
           user: s.friendlyName,
           title: s.fullTitle,
           progress: (s.progressPercent / 100).clamp(0, 1).toDouble(),
@@ -132,7 +129,7 @@ class DashboardStreamsWidget extends ConsumerWidget {
       anyError |= sessions.hasError;
       for (final jf.ActiveSession s
           in sessions.value ?? const <jf.ActiveSession>[]) {
-        rows.add(_StreamRow(
+        jellyfinRows.add(_StreamRow(
           user: s.user,
           title: s.episodeName == null
               ? s.showTitle
@@ -154,7 +151,7 @@ class DashboardStreamsWidget extends ConsumerWidget {
       anyError |= sessions.hasError;
       for (final emby.ActiveSession s
           in sessions.value ?? const <emby.ActiveSession>[]) {
-        rows.add(_StreamRow(
+        embyRows.add(_StreamRow(
           user: s.user,
           title: s.episodeName == null
               ? s.showTitle
@@ -169,11 +166,77 @@ class DashboardStreamsWidget extends ConsumerWidget {
         ));
       }
     }
+    
+    for (final Instance i in tracearrInstances) {
+      final AsyncValue<TracearrActiveSessions> sessions =
+          ref.watch(tracearrSessionsProvider(i));
+      anyLoading |= sessions.isLoading && !sessions.hasValue;
+      anyError |= sessions.hasError;
+      for (final TracearrSession s
+          in sessions.value?.sessions ?? const <TracearrSession>[]) {
+        String formatMs(int ms) {
+          final Duration d = Duration(milliseconds: ms);
+          final int h = d.inHours;
+          final int m = d.inMinutes.remainder(60);
+          final int sec = d.inSeconds.remainder(60);
+          return h > 0
+              ? '$h:${m.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}'
+              : '$m:${sec.toString().padLeft(2, '0')}';
+        }
 
-    final List<_StreamRow> top = rows.take(3).toList();
+        final _StreamRow row = _StreamRow(
+          user: s.playerName,
+          title: s.displayTitle,
+          progress: (s.progressPercent / 100).clamp(0, 1).toDouble(),
+          paused: s.state.toLowerCase() == 'paused',
+          posterUrl: s.thumbPath,
+          backdropUrl: null,
+          device: s.device,
+          quality: s.quality,
+          transcoding: s.isTranscode,
+          timeLabel: '${formatMs(s.progressMs)} / ${formatMs(s.totalDurationMs)}',
+          location: s.location,
+          instance: i,
+        );
+        final String type = s.serverType.toLowerCase();
+        if (type.contains('plex')) {
+          plexRows.add(row);
+        } else if (type.contains('emby')) {
+          embyRows.add(row);
+        } else {
+          jellyfinRows.add(row);
+        }
+      }
+    }
+
+    final int totalCount = embyRows.length + plexRows.length + jellyfinRows.length;
+
+    Widget buildGroup(String title, List<_StreamRow> groupRows) {
+      if (groupRows.isEmpty) return const SizedBox.shrink();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.only(top: Insets.sm, bottom: Insets.sm),
+            child: Text(
+              title,
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: cs.onSurfaceVariant,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          for (int j = 0; j < groupRows.length; j++) ...<Widget>[
+            if (j > 0) const SizedBox(height: Insets.sm),
+            _StreamBanner(row: groupRows[j]),
+          ],
+        ],
+      );
+    }
 
     Widget body;
-    if (rows.isEmpty && anyLoading) {
+    if (totalCount == 0 && anyLoading) {
       body = const Center(
         child: Padding(
           padding: EdgeInsets.all(Insets.sm),
@@ -184,24 +247,21 @@ class DashboardStreamsWidget extends ConsumerWidget {
           ),
         ),
       );
-    } else if (rows.isEmpty && anyError) {
+    } else if (totalCount == 0 && anyError) {
       body = DashboardErrorRow(onRetry: () => _refresh(ref));
-    } else if (rows.isEmpty) {
+    } else if (totalCount == 0) {
       body = const DashboardIdleRow(text: 'No one is streaming');
     } else {
       body = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          for (int j = 0; j < top.length; j++) ...<Widget>[
-            if (j > 0) const SizedBox(height: Insets.sm),
-            _StreamBanner(row: top[j]),
-          ],
-          if (rows.length > top.length)
-            Padding(
-              padding: const EdgeInsets.only(top: Insets.sm),
-              child:
-                  DashboardIdleRow(text: '+${rows.length - top.length} more'),
-            ),
+          buildGroup('Emby Servers', embyRows),
+          if (embyRows.isNotEmpty && (plexRows.isNotEmpty || jellyfinRows.isNotEmpty))
+             const SizedBox(height: Insets.md),
+          buildGroup('Plex Servers', plexRows),
+          if (plexRows.isNotEmpty && jellyfinRows.isNotEmpty)
+             const SizedBox(height: Insets.md),
+          buildGroup('JellyFin Servers', jellyfinRows),
         ],
       );
     }
@@ -209,10 +269,10 @@ class DashboardStreamsWidget extends ConsumerWidget {
     return DashboardWidgetCard(
       kind: DashboardWidgetKind.streams,
       accent: cs.tertiary,
-      trailing: rows.isNotEmpty
+      trailing: totalCount > 0
           ? DashboardPill(
               icon: Icons.play_arrow_rounded,
-              label: '${rows.length} streaming',
+              label: '$totalCount streaming',
               color: cs.tertiary,
             )
           : null,
@@ -229,6 +289,9 @@ class DashboardStreamsWidget extends ConsumerWidget {
     }
     for (final Instance i in embyInstances) {
       ref.invalidate(emby.embySessionsProvider(i));
+    }
+    for (final Instance i in tracearrInstances) {
+      ref.invalidate(tracearrSessionsProvider(i));
     }
   }
 }
@@ -440,6 +503,18 @@ class _StreamBannerState extends State<_StreamBanner> {
                                         ?.copyWith(color: subColor),
                                   ),
                                 ),
+                                if (row.location != null && row.location!.isNotEmpty) ...<Widget>[
+                                  const SizedBox(width: Insets.sm),
+                                  Icon(Icons.location_on, size: 14, color: subColor),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    row.location!,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: subColor,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ]
                               ],
                             ),
                             const SizedBox(height: 6),
@@ -495,8 +570,6 @@ class _StreamBannerState extends State<_StreamBanner> {
       );
 }
 
-/// Stream resolution chip; a transcode marker and warmer colour when the
-/// server is re-encoding, a calm tertiary tone for direct play.
 class _QualityChip extends StatelessWidget {
   const _QualityChip({required this.label, required this.transcoding});
 

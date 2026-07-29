@@ -47,6 +47,7 @@ extension DashboardWidgetKindX on DashboardWidgetKind {
             ServiceKind.tautulli,
             ServiceKind.jellyfin,
             ServiceKind.emby,
+            ServiceKind.tracearr,
           ],
         DashboardWidgetKind.upcoming => const <ServiceKind>[
             ServiceKind.sonarr,

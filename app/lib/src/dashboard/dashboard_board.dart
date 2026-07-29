@@ -15,6 +15,7 @@ import 'package:service_seerr/service_seerr.dart';
 import 'package:service_sonarr/service_sonarr.dart';
 import 'package:service_speedtest_tracker/service_speedtest_tracker.dart';
 import 'package:service_tautulli/service_tautulli.dart';
+import 'package:service_tracearr/service_tracearr.dart';
 
 import '../health_providers.dart';
 import '../screens/calendar_screen.dart';
@@ -123,6 +124,7 @@ class DashboardBoard extends ConsumerWidget {
           tautulliInstances: _byKind(instances, ServiceKind.tautulli),
           jellyfinInstances: _byKind(instances, ServiceKind.jellyfin),
           embyInstances: _byKind(instances, ServiceKind.emby),
+          tracearrInstances: _byKind(instances, ServiceKind.tracearr),
         );
       case DashboardWidgetKind.upcoming:
         return const DashboardUpcomingWidget();
@@ -182,6 +184,8 @@ class DashboardBoard extends ConsumerWidget {
           ref.invalidate(glancesStatsProvider(i));
         case ServiceKind.speedtestTracker:
           ref.invalidate(speedtestOverviewProvider(i));
+        case ServiceKind.tracearr:
+          ref.invalidate(tracearrSessionsProvider(i));
         default:
           break;
       }
