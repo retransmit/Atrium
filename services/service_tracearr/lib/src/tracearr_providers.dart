@@ -43,7 +43,31 @@ final tracearrApiProvider = FutureProvider.family<TracearrApi, Instance>((
     ),
   );
 
-  return TracearrApi(dio);
+  final String token = await manager.ensureToken();
+  return TracearrApi(dio, token: token);
+});
+
+final tracearrServersProvider = FutureProvider.family
+    .autoDispose<Map<String, String>, Instance>((Ref ref, Instance instance) async {
+  final Dio dio = await ref.watch(dioFactoryProvider).create(instance);
+  final TracearrAuthManager manager = await ref.watch(tracearrAuthManagerProvider(instance).future);
+  dio.interceptors.add(TracearrAuthInterceptor(manager: manager, dio: dio));
+  
+  final Response<dynamic> res = await dio.get<dynamic>('api/v1/servers');
+  final Map<String, String> serverMap = <String, String>{};
+  
+  if (res.data is Map<String, dynamic> && res.data['data'] is List) {
+    for (final dynamic server in res.data['data'] as List<dynamic>) {
+      if (server is Map<String, dynamic>) {
+        final String? id = server['id'] as String?;
+        final String? url = server['url'] as String?;
+        if (id != null && url != null) {
+          serverMap[id] = url.replaceAll(RegExp(r'/+$'), '');
+        }
+      }
+    }
+  }
+  return serverMap;
 });
 
 final tracearrSessionsProvider = FutureProvider.family

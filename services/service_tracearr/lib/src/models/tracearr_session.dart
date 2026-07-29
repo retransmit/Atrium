@@ -9,6 +9,7 @@ abstract class TracearrSession with _$TracearrSession {
 
   const factory TracearrSession({
     @JsonKey(name: 'id', defaultValue: '') required String id,
+    @JsonKey(name: 'serverId', defaultValue: '') required String serverId,
     @JsonKey(name: 'state', defaultValue: '') required String state,
     @JsonKey(name: 'mediaType', defaultValue: '') required String mediaType,
     @JsonKey(name: 'mediaTitle', defaultValue: '') required String mediaTitle,

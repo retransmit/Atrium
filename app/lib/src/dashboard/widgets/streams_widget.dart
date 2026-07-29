@@ -9,7 +9,6 @@ import 'package:go_router/go_router.dart';
 import 'package:service_emby/service_emby.dart' as emby;
 import 'package:service_jellyfin/service_jellyfin.dart' as jf;
 import 'package:service_tautulli/service_tautulli.dart';
-import 'package:service_tracearr/service_tracearr.dart';
 
 import '../dashboard_widget_card.dart';
 import '../dashboard_widget_kind.dart';
@@ -28,8 +27,6 @@ final activeStreamCountProvider = Provider.autoDispose<int>((Ref ref) {
         count += ref.watch(jf.jellyfinSessionsProvider(i)).value?.length ?? 0;
       case ServiceKind.emby:
         count += ref.watch(emby.embySessionsProvider(i)).value?.length ?? 0;
-      case ServiceKind.tracearr:
-        count += ref.watch(tracearrSessionsProvider(i)).value?.sessions.length ?? 0;
       default:
         break;
     }
@@ -50,7 +47,6 @@ class _StreamRow {
     this.quality,
     this.transcoding = false,
     this.timeLabel,
-    this.location,
   });
 
   final String user;
@@ -64,7 +60,6 @@ class _StreamRow {
   final String? quality;
   final bool transcoding;
   final String? timeLabel;
-  final String? location;
 }
 
 String? _timeLabel(String position, String duration) {
@@ -79,14 +74,12 @@ class DashboardStreamsWidget extends ConsumerWidget {
     required this.tautulliInstances,
     required this.jellyfinInstances,
     required this.embyInstances,
-    required this.tracearrInstances,
     super.key,
   });
 
   final List<Instance> tautulliInstances;
   final List<Instance> jellyfinInstances;
   final List<Instance> embyInstances;
-  final List<Instance> tracearrInstances;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -100,6 +93,15 @@ class DashboardStreamsWidget extends ConsumerWidget {
     bool anyLoading = false;
     bool anyError = false;
 
+    final Set<String> seenStreams = <String>{};
+
+    bool tryAdd(String user, String title, String device) {
+      final String key = '$user|$title|$device';
+      if (seenStreams.contains(key)) return false;
+      seenStreams.add(key);
+      return true;
+    }
+
     for (final Instance i in tautulliInstances) {
       final AsyncValue<TautulliActivity> activity =
           ref.watch(tautulliActivityProvider(i));
@@ -108,6 +110,7 @@ class DashboardStreamsWidget extends ConsumerWidget {
       final TautulliApi? api = ref.watch(tautulliApiProvider(i)).value;
       for (final TautulliSession s
           in activity.value?.sessions ?? const <TautulliSession>[]) {
+        if (!tryAdd(s.friendlyName, s.fullTitle, s.player)) continue;
         plexRows.add(_StreamRow(
           user: s.friendlyName,
           title: s.fullTitle,
@@ -129,11 +132,11 @@ class DashboardStreamsWidget extends ConsumerWidget {
       anyError |= sessions.hasError;
       for (final jf.ActiveSession s
           in sessions.value ?? const <jf.ActiveSession>[]) {
+        final String t = s.episodeName == null ? s.showTitle : '${s.showTitle} - ${s.episodeName}';
+        if (!tryAdd(s.user, t, s.device)) continue;
         jellyfinRows.add(_StreamRow(
           user: s.user,
-          title: s.episodeName == null
-              ? s.showTitle
-              : '${s.showTitle} - ${s.episodeName}',
+          title: t,
           progress: (s.progressPercent / 100).clamp(0, 1).toDouble(),
           paused: s.status.toLowerCase() == 'paused',
           posterUrl: s.posterUrl,
@@ -151,11 +154,11 @@ class DashboardStreamsWidget extends ConsumerWidget {
       anyError |= sessions.hasError;
       for (final emby.ActiveSession s
           in sessions.value ?? const <emby.ActiveSession>[]) {
+        final String t = s.episodeName == null ? s.showTitle : '${s.showTitle} - ${s.episodeName}';
+        if (!tryAdd(s.user, t, s.device)) continue;
         embyRows.add(_StreamRow(
           user: s.user,
-          title: s.episodeName == null
-              ? s.showTitle
-              : '${s.showTitle} - ${s.episodeName}',
+          title: t,
           progress: (s.progressPercent / 100).clamp(0, 1).toDouble(),
           paused: s.status.toLowerCase() == 'paused',
           posterUrl: s.posterUrl,
@@ -167,48 +170,6 @@ class DashboardStreamsWidget extends ConsumerWidget {
       }
     }
     
-    for (final Instance i in tracearrInstances) {
-      final AsyncValue<TracearrActiveSessions> sessions =
-          ref.watch(tracearrSessionsProvider(i));
-      anyLoading |= sessions.isLoading && !sessions.hasValue;
-      anyError |= sessions.hasError;
-      for (final TracearrSession s
-          in sessions.value?.sessions ?? const <TracearrSession>[]) {
-        String formatMs(int ms) {
-          final Duration d = Duration(milliseconds: ms);
-          final int h = d.inHours;
-          final int m = d.inMinutes.remainder(60);
-          final int sec = d.inSeconds.remainder(60);
-          return h > 0
-              ? '$h:${m.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}'
-              : '$m:${sec.toString().padLeft(2, '0')}';
-        }
-
-        final _StreamRow row = _StreamRow(
-          user: s.playerName,
-          title: s.displayTitle,
-          progress: (s.progressPercent / 100).clamp(0, 1).toDouble(),
-          paused: s.state.toLowerCase() == 'paused',
-          posterUrl: s.thumbPath,
-          backdropUrl: null,
-          device: s.device,
-          quality: s.quality,
-          transcoding: s.isTranscode,
-          timeLabel: '${formatMs(s.progressMs)} / ${formatMs(s.totalDurationMs)}',
-          location: s.location,
-          instance: i,
-        );
-        final String type = s.serverType.toLowerCase();
-        if (type.contains('plex')) {
-          plexRows.add(row);
-        } else if (type.contains('emby')) {
-          embyRows.add(row);
-        } else {
-          jellyfinRows.add(row);
-        }
-      }
-    }
-
     final int totalCount = embyRows.length + plexRows.length + jellyfinRows.length;
 
     Widget buildGroup(String title, List<_StreamRow> groupRows) {
@@ -289,9 +250,6 @@ class DashboardStreamsWidget extends ConsumerWidget {
     }
     for (final Instance i in embyInstances) {
       ref.invalidate(emby.embySessionsProvider(i));
-    }
-    for (final Instance i in tracearrInstances) {
-      ref.invalidate(tracearrSessionsProvider(i));
     }
   }
 }
@@ -503,18 +461,6 @@ class _StreamBannerState extends State<_StreamBanner> {
                                         ?.copyWith(color: subColor),
                                   ),
                                 ),
-                                if (row.location != null && row.location!.isNotEmpty) ...<Widget>[
-                                  const SizedBox(width: Insets.sm),
-                                  Icon(Icons.location_on, size: 14, color: subColor),
-                                  const SizedBox(width: 2),
-                                  Text(
-                                    row.location!,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: subColor,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ]
                               ],
                             ),
                             const SizedBox(height: 6),

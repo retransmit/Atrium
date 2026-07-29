@@ -6,9 +6,20 @@ import 'models/tracearr_session.dart';
 
 /// Thin typed client over the Tracearr API.
 class TracearrApi {
-  TracearrApi(this._dio);
+  TracearrApi(this._dio, {this.token});
 
   final Dio _dio;
+  final String? token;
+
+  String? imageUrl(String? path) {
+    if (path == null || path.isEmpty) return null;
+    if (path.startsWith('http')) return path;
+    final String base = _dio.options.baseUrl.replaceAll(RegExp(r'/+$'), '');
+    final String cleanPath = path.startsWith('/') ? path : '/$path';
+    if (token == null || token!.isEmpty) return '$base$cleanPath';
+    final String sep = cleanPath.contains('?') ? '&' : '?';
+    return '$base$cleanPath${sep}token=$token';
+  }
 
   /// Retrieves the active sessions from the internal Tracearr API.
   Future<TracearrActiveSessions> getActiveSessions() async {

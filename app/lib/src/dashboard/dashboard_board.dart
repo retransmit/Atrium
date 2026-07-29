@@ -124,7 +124,6 @@ class DashboardBoard extends ConsumerWidget {
           tautulliInstances: _byKind(instances, ServiceKind.tautulli),
           jellyfinInstances: _byKind(instances, ServiceKind.jellyfin),
           embyInstances: _byKind(instances, ServiceKind.emby),
-          tracearrInstances: _byKind(instances, ServiceKind.tracearr),
         );
       case DashboardWidgetKind.upcoming:
         return const DashboardUpcomingWidget();
