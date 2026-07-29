@@ -50,23 +50,23 @@ void main() {
       _dio((RequestOptions o) => (
             status: 200,
             data: <String, dynamic>{
-              'tag_name': 'v1.2.0',
-              'html_url': 'https://github.com/retransmit/Atrium/releases/tag/v1.2.0',
+              'tag_name': 'v9.9.9',
+              'html_url': 'https://github.com/retransmit/Atrium/releases/tag/v9.9.9',
             },
           )),
     );
     await c.read(updateCheckProvider.notifier).check();
     final UpdateCheckState s = c.read(updateCheckProvider);
     expect(s.status, UpdateStatus.updateAvailable);
-    expect(s.latestVersion, '1.2.0');
-    expect(box.get('update.latestVersion'), '1.2.0');
+    expect(s.latestVersion, '9.9.9');
+    expect(box.get('update.latestVersion'), '9.9.9');
   });
 
   test('the same release marks upToDate', () async {
     final ProviderContainer c = _container(
       box,
       _dio((RequestOptions o) =>
-          (status: 200, data: <String, dynamic>{'tag_name': 'v1.1.1'})),
+          (status: 200, data: <String, dynamic>{'tag_name': 'v1.2.0'})),
     );
     await c.read(updateCheckProvider.notifier).check();
     expect(c.read(updateCheckProvider).status, UpdateStatus.upToDate);
@@ -74,12 +74,12 @@ void main() {
   });
 
   test('a server error sets error but keeps a known available banner', () async {
-    await box.put('update.latestVersion', '1.3.0');
+    await box.put('update.latestVersion', '9.9.9');
     final ProviderContainer c = _container(
       box,
       _dio((RequestOptions o) => (status: 500, data: <String, dynamic>{})),
     );
-    // build() re-derived updateAvailable from the cached 1.3.0.
+    // build() re-derived updateAvailable from the cached 9.9.9.
     expect(c.read(updateCheckProvider).status, UpdateStatus.updateAvailable);
     await c.read(updateCheckProvider.notifier).check();
     final UpdateCheckState s = c.read(updateCheckProvider);
@@ -88,14 +88,14 @@ void main() {
   });
 
   test('build re-derives from cache with no network', () async {
-    await box.put('update.latestVersion', '1.5.0');
+    await box.put('update.latestVersion', '9.9.9');
     final ProviderContainer c = _container(
       box,
       _dio((RequestOptions o) => throw StateError('must not be called')),
     );
     final UpdateCheckState s = c.read(updateCheckProvider);
     expect(s.status, UpdateStatus.updateAvailable);
-    expect(s.latestVersion, '1.5.0');
+    expect(s.latestVersion, '9.9.9');
   });
 
   test('extractWhatsNew returns the section between the markers', () {
@@ -114,8 +114,8 @@ void main() {
       _dio((RequestOptions o) => (
             status: 200,
             data: <String, dynamic>{
-              'tag_name': 'v1.2.0',
-              'html_url': 'https://github.com/retransmit/Atrium/releases/tag/v1.2.0',
+              'tag_name': 'v9.9.9',
+              'html_url': 'https://github.com/retransmit/Atrium/releases/tag/v9.9.9',
               'published_at': '2026-08-01T10:00:00Z',
               'body': 'Intro.\n\n## What\'s new\n\n**Nice thing.** Details.\n\n## Which APK\n\narm64.',
             },
@@ -130,7 +130,7 @@ void main() {
   });
 
   test('build re-derives notes and date from cache with no network', () async {
-    await box.put('update.latestVersion', '1.5.0');
+    await box.put('update.latestVersion', '9.9.9');
     await box.put('update.latestNotes', '**Cached.** From disk.');
     await box.put('update.latestDate', '2026-09-09');
     final ProviderContainer c = _container(
