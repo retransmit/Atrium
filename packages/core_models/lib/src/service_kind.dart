@@ -18,6 +18,7 @@ enum ServiceKind {
   glances,
   speedtestTracker,
   nzbget,
+  tracearr,
 }
 
 /// Static metadata about a [ServiceKind] - display name, default port, the
@@ -41,6 +42,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.glances => 'Glances',
         ServiceKind.speedtestTracker => 'Speedtest Tracker',
         ServiceKind.nzbget => 'NZBGet',
+        ServiceKind.tracearr => 'Tracearr',
       };
 
   /// One-line role description.
@@ -59,6 +61,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.glances => 'System monitor',
         ServiceKind.speedtestTracker => 'Internet performance',
         ServiceKind.nzbget => 'Usenet client',
+        ServiceKind.tracearr => 'Tracker',
       };
 
   /// Vendor-default port. Used as a hint when the user is entering a URL
@@ -78,6 +81,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.glances => 61208,
         ServiceKind.speedtestTracker => null,
         ServiceKind.nzbget => 6789,
+        ServiceKind.tracearr => 3030,
       };
 
   /// What auth flow the service uses by default. Some services (Jellyfin) can
@@ -93,7 +97,8 @@ extension ServiceKindX on ServiceKind {
           AuthStyle.apiKey,
         ServiceKind.jellyfin ||
         ServiceKind.emby ||
-        ServiceKind.nzbget =>
+        ServiceKind.nzbget ||
+        ServiceKind.tracearr =>
           AuthStyle.userPass,
         ServiceKind.plex => AuthStyle.plexToken,
         ServiceKind.qbittorrent => AuthStyle.cookieLogin,
@@ -107,7 +112,8 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.sonarr ||
         ServiceKind.radarr ||
         ServiceKind.prowlarr ||
-        ServiceKind.bazarr =>
+        ServiceKind.bazarr ||
+        ServiceKind.tracearr =>
           ServiceRole.automation,
         ServiceKind.seerr => ServiceRole.requests,
         ServiceKind.tautulli => ServiceRole.analytics,

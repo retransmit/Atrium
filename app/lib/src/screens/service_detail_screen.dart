@@ -247,6 +247,7 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
       ServiceKind.nzbget => NzbgetHome(instance: instance),
       ServiceKind.glances => GlancesHome(instance: instance),
       ServiceKind.speedtestTracker => SpeedtestTrackerHome(instance: instance),
+      ServiceKind.tracearr => const SizedBox.shrink(),
     };
   }
 }

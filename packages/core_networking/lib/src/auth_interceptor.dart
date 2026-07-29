@@ -50,9 +50,11 @@ class AuthInterceptor extends Interceptor {
             options.headers['X-Api-Key'] = apiKey;
         }
       case InstanceAuthPlex(:final String token):
-        options.headers['X-Plex-Token'] = token;
-        // Plex returns XML by default; ask for JSON where supported.
-        options.headers['Accept'] = 'application/json';
+        if (kind != ServiceKind.tracearr) {
+          options.headers['X-Plex-Token'] = token;
+          // Plex returns XML by default; ask for JSON where supported.
+          options.headers['Accept'] = 'application/json';
+        }
       case InstanceAuthUserPass(
           :final String username,
           :final String password,

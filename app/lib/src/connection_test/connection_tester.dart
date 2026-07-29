@@ -5,6 +5,7 @@ import 'package:service_emby/service_emby.dart';
 import 'package:service_jellyfin/service_jellyfin.dart';
 import 'package:service_plex/service_plex.dart';
 import 'package:service_qbittorrent/service_qbittorrent.dart';
+import 'package:service_tracearr/service_tracearr.dart';
 
 import 'connection_test_result.dart';
 
@@ -54,6 +55,11 @@ class ConnectionTester {
         return _verify(() async {
           final PlexApi api = await _ref.read(plexApiProvider(forced).future);
           await api.getLibraries();
+        });
+      case ServiceKind.tracearr:
+        return _verify(() async {
+          final TracearrApi api = await _ref.read(tracearrApiProvider(forced).future);
+          await api.getActiveSessions();
         });
       default:
         final HealthProbe probe =
