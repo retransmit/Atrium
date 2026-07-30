@@ -17,7 +17,8 @@ Atrium is a **controller** app. Video playback was removed by design
 - **Activity tab**: cross-instance live feed - summary bar, Now
   Streaming (backdrop session cards from Plex / Jellyfin / Emby /
   Tautulli, tap-through to each module's now-playing screen) and
-  Transfers (qBittorrent downloads *and active uploads*, SABnzbd slots,
+  Transfers (qBittorrent downloads *and active uploads*, Deluge transfers,
+  SABnzbd slots,
   NZBGet groups, Sonarr/Radarr queues). Per-instance resilience: an unreachable server
   degrades to a chip, never blocks the feed
 - **Calendar tab**: month grid aggregating upcoming Sonarr + Radarr
@@ -82,6 +83,13 @@ Atrium is a **controller** app. Video playback was removed by design
   reorder / per-item pause / priority / category, whole-queue pause and a
   speed-limit control, add NZB by URL or file, history with retry on
   failures, dashboard widget and Activity feed integration
+- **Deluge** (live-verified against 2.2.0): JSON-RPC client over a session
+  cookie, torrent list with per-item pause / resume / remove (optionally with
+  data), force recheck, reannounce and queue moves, state and tracker filter
+  chips read from the daemon's own filter tree, nine sort fields, whole-session
+  pause and global bandwidth caps, add by magnet / .torrent URL / file, a
+  detail screen with files, trackers and peers, plus dashboard widget and
+  Activity feed integration
 
 ## Partially done
 

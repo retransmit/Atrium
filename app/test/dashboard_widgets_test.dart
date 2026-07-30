@@ -137,6 +137,7 @@ void main() {
         qbitInstances: <Instance>[qbit],
         sabInstances: <Instance>[sab],
         nzbgetInstances: <Instance>[nzbget],
+        delugeInstances: <Instance>[],
       ),
     );
     expect(find.text('Ubuntu ISO'), findsOneWidget);

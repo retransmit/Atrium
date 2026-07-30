@@ -18,6 +18,7 @@ enum ServiceKind {
   glances,
   speedtestTracker,
   nzbget,
+  deluge,
 }
 
 /// Static metadata about a [ServiceKind] - display name, default port, the
@@ -41,6 +42,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.glances => 'Glances',
         ServiceKind.speedtestTracker => 'Speedtest Tracker',
         ServiceKind.nzbget => 'NZBGet',
+        ServiceKind.deluge => 'Deluge',
       };
 
   /// One-line role description.
@@ -59,6 +61,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.glances => 'System monitor',
         ServiceKind.speedtestTracker => 'Internet performance',
         ServiceKind.nzbget => 'Usenet client',
+        ServiceKind.deluge => 'Torrent client',
       };
 
   /// Vendor-default port. Used as a hint when the user is entering a URL
@@ -78,6 +81,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.glances => 61208,
         ServiceKind.speedtestTracker => null,
         ServiceKind.nzbget => 6789,
+        ServiceKind.deluge => 8112,
       };
 
   /// What auth flow the service uses by default. Some services (Jellyfin) can
@@ -96,7 +100,9 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.nzbget =>
           AuthStyle.userPass,
         ServiceKind.plex => AuthStyle.plexToken,
-        ServiceKind.qbittorrent => AuthStyle.cookieLogin,
+        // Deluge's Web UI takes a password with no username; it is still a
+        // login that hands back a session cookie.
+        ServiceKind.qbittorrent || ServiceKind.deluge => AuthStyle.cookieLogin,
         ServiceKind.glances => AuthStyle.none,
         ServiceKind.speedtestTracker => AuthStyle.bearerToken,
       };
@@ -117,7 +123,8 @@ extension ServiceKindX on ServiceKind {
           ServiceRole.mediaServer,
         ServiceKind.qbittorrent ||
         ServiceKind.sabnzbd ||
-        ServiceKind.nzbget =>
+        ServiceKind.nzbget ||
+        ServiceKind.deluge =>
           ServiceRole.downloader,
         ServiceKind.glances => ServiceRole.analytics,
         ServiceKind.speedtestTracker => ServiceRole.analytics,

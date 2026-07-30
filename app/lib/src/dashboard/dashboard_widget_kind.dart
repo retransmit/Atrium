@@ -42,6 +42,7 @@ extension DashboardWidgetKindX on DashboardWidgetKind {
             ServiceKind.qbittorrent,
             ServiceKind.sabnzbd,
             ServiceKind.nzbget,
+            ServiceKind.deluge,
           ],
         DashboardWidgetKind.streams => const <ServiceKind>[
             ServiceKind.tautulli,

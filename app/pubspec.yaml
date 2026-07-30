@@ -35,6 +35,7 @@ dependencies:
   m3e_design: 0.2.1
   progress_indicator_m3e: ^0.1.1
   service_bazarr:
+  service_deluge:
   service_emby:
   service_jellyfin:
   service_nzbget:

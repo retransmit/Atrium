@@ -5,6 +5,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:service_deluge/service_deluge.dart';
 import 'package:service_nzbget/service_nzbget.dart';
 import 'package:service_qbittorrent/service_qbittorrent.dart';
 import 'package:service_sabnzbd/service_sabnzbd.dart';
@@ -25,7 +26,7 @@ const Set<String> _activeDlStates = <String>{
 };
 
 /// Live count of active downloads across every qBittorrent + SABnzbd + NZBGet
-/// instance. Instances still loading or in error contribute 0, so the
+/// + Deluge instance. Instances still loading or in error contribute 0, so the
 /// dashboard only surfaces the downloads widget once real activity is
 /// confirmed.
 final activeDownloadCountProvider = Provider.autoDispose<int>((Ref ref) {
@@ -44,6 +45,13 @@ final activeDownloadCountProvider = Provider.autoDispose<int>((Ref ref) {
       count += ref.watch(sabQueueProvider(i)).value?.slots.length ?? 0;
     } else if (i.kind == ServiceKind.nzbget) {
       count += ref.watch(nzbgetQueueProvider(i)).value?.length ?? 0;
+    } else if (i.kind == ServiceKind.deluge) {
+      // A Deluge list keeps finished torrents around as `Seeding`, so only the
+      // ones actually pulling data count as active downloads.
+      final List<DelugeTorrent> torrents =
+          ref.watch(delugeRawTorrentsProvider(i)).value ??
+              const <DelugeTorrent>[];
+      count += torrents.where((DelugeTorrent t) => t.isDownloading).length;
     }
   }
   return count;
@@ -79,19 +87,21 @@ class _DownloadRow {
   final Instance instance;
 }
 
-/// Combined qBittorrent + SABnzbd + NZBGet activity: total speed, count,
-/// top items.
+/// Combined qBittorrent + SABnzbd + NZBGet + Deluge activity: total speed,
+/// count, top items.
 class DashboardDownloadsWidget extends ConsumerWidget {
   const DashboardDownloadsWidget({
     required this.qbitInstances,
     required this.sabInstances,
     required this.nzbgetInstances,
+    required this.delugeInstances,
     super.key,
   });
 
   final List<Instance> qbitInstances;
   final List<Instance> sabInstances;
   final List<Instance> nzbgetInstances;
+  final List<Instance> delugeInstances;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -146,6 +156,30 @@ class DashboardDownloadsWidget extends ConsumerWidget {
         rows.add(_DownloadRow(name: g.name, progress: g.progress, instance: i));
       }
       totalSpeed += ref.watch(nzbgetStatusProvider(i)).value?.downloadRate ?? 0;
+    }
+    for (final Instance i in delugeInstances) {
+      final AsyncValue<List<DelugeTorrent>> torrents =
+          ref.watch(delugeRawTorrentsProvider(i));
+      anyLoading |= torrents.isLoading && !torrents.hasValue;
+      anyError |= torrents.hasError;
+      for (final DelugeTorrent t
+          in torrents.value ?? const <DelugeTorrent>[]) {
+        // Seeding torrents are not downloads; listing them here would make a
+        // finished library look like live activity.
+        if (t.isDownloading) {
+          rows.add(_DownloadRow(
+            name: t.name,
+            progress: t.progressFraction,
+            instance: i,
+          ));
+        }
+      }
+      totalSpeed += ref
+              .watch(delugeSessionStatusProvider(i))
+              .value
+              ?.downloadRate
+              .round() ??
+          0;
     }
 
     rows.sort(
@@ -204,6 +238,10 @@ class DashboardDownloadsWidget extends ConsumerWidget {
     for (final Instance i in nzbgetInstances) {
       ref.invalidate(nzbgetQueueProvider(i));
       ref.invalidate(nzbgetStatusProvider(i));
+    }
+    for (final Instance i in delugeInstances) {
+      ref.invalidate(delugeRawTorrentsProvider(i));
+      ref.invalidate(delugeSessionStatusProvider(i));
     }
   }
 }

@@ -62,6 +62,12 @@ enum _HealthMode {
       // JSON-RPC accepts GET for parameterless methods; Basic auth is
       // attached by the interceptor, so 401 means bad credentials.
       return (path: 'jsonrpc/version', mode: _HealthMode.authed);
+    case ServiceKind.deluge:
+      // Deluge's login is a POST, so a probe cannot authenticate cheaply.
+      // `/json` answers GET with 405, which is a better liveness signal than
+      // the root path: any web server returns 200 for `/`, but only Deluge's
+      // RPC endpoint is there to refuse the method.
+      return (path: 'json', mode: _HealthMode.reachable);
   }
 }
 

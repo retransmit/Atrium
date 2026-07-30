@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:core_router/core_router.dart';
 import 'package:service_bazarr/service_bazarr.dart';
+import 'package:service_deluge/service_deluge.dart';
 import 'package:service_emby/service_emby.dart';
 import 'package:service_jellyfin/service_jellyfin.dart';
 import 'package:service_nzbget/service_nzbget.dart';
@@ -245,6 +246,7 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
       ServiceKind.qbittorrent => QbittorrentHome(instance: instance),
       ServiceKind.sabnzbd => SabnzbdHome(instance: instance),
       ServiceKind.nzbget => NzbgetHome(instance: instance),
+      ServiceKind.deluge => DelugeHome(instance: instance),
       ServiceKind.glances => GlancesHome(instance: instance),
       ServiceKind.speedtestTracker => SpeedtestTrackerHome(instance: instance),
     };

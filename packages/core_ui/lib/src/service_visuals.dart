@@ -22,6 +22,7 @@ abstract final class ServiceVisuals {
         ServiceKind.glances => Icons.memory_outlined,
         ServiceKind.speedtestTracker => Icons.speed_outlined,
         ServiceKind.nzbget => Icons.archive_outlined,
+        ServiceKind.deluge => Icons.water_drop_outlined,
       };
 
   static Color accent(ServiceKind kind) => switch (kind) {
@@ -39,6 +40,7 @@ abstract final class ServiceVisuals {
         ServiceKind.glances => const Color(0xFF10B981),
         ServiceKind.speedtestTracker => const Color(0xFF2563EB),
         ServiceKind.nzbget => const Color(0xFF60BB46),
+        ServiceKind.deluge => const Color(0xFF3D5AFE),
       };
 
   /// Human label for a [ServiceRole] section header.
