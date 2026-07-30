@@ -9,6 +9,7 @@ import 'package:service_deluge/service_deluge.dart';
 import 'package:service_nzbget/service_nzbget.dart';
 import 'package:service_qbittorrent/service_qbittorrent.dart';
 import 'package:service_sabnzbd/service_sabnzbd.dart';
+import 'package:service_transmission/service_transmission.dart';
 
 import '../dashboard_widget_card.dart';
 import '../dashboard_widget_kind.dart';
@@ -52,6 +53,14 @@ final activeDownloadCountProvider = Provider.autoDispose<int>((Ref ref) {
           ref.watch(delugeRawTorrentsProvider(i)).value ??
               const <DelugeTorrent>[];
       count += torrents.where((DelugeTorrent t) => t.isDownloading).length;
+    } else if (i.kind == ServiceKind.transmission) {
+      // Same reasoning: a Transmission list is mostly finished seeds.
+      final List<TransmissionTorrent> torrents =
+          ref.watch(transmissionRawTorrentsProvider(i)).value ??
+              const <TransmissionTorrent>[];
+      count += torrents
+          .where((TransmissionTorrent t) => t.status.isDownloading)
+          .length;
     }
   }
   return count;
@@ -95,6 +104,7 @@ class DashboardDownloadsWidget extends ConsumerWidget {
     required this.sabInstances,
     required this.nzbgetInstances,
     required this.delugeInstances,
+    required this.transmissionInstances,
     super.key,
   });
 
@@ -102,6 +112,7 @@ class DashboardDownloadsWidget extends ConsumerWidget {
   final List<Instance> sabInstances;
   final List<Instance> nzbgetInstances;
   final List<Instance> delugeInstances;
+  final List<Instance> transmissionInstances;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -181,6 +192,26 @@ class DashboardDownloadsWidget extends ConsumerWidget {
               .round() ??
           0;
     }
+    for (final Instance i in transmissionInstances) {
+      final AsyncValue<List<TransmissionTorrent>> torrents =
+          ref.watch(transmissionRawTorrentsProvider(i));
+      anyLoading |= torrents.isLoading && !torrents.hasValue;
+      anyError |= torrents.hasError;
+      for (final TransmissionTorrent t
+          in torrents.value ?? const <TransmissionTorrent>[]) {
+        // Finished seeds are not downloads.
+        if (t.status.isDownloading) {
+          rows.add(_DownloadRow(
+            name: t.name,
+            progress: t.percentDone.clamp(0, 1).toDouble(),
+            instance: i,
+          ));
+        }
+      }
+      totalSpeed +=
+          ref.watch(transmissionSessionStatsProvider(i)).value?.downloadSpeed ??
+              0;
+    }
 
     rows.sort(
         (_DownloadRow a, _DownloadRow b) => b.progress.compareTo(a.progress));
@@ -242,6 +273,10 @@ class DashboardDownloadsWidget extends ConsumerWidget {
     for (final Instance i in delugeInstances) {
       ref.invalidate(delugeRawTorrentsProvider(i));
       ref.invalidate(delugeSessionStatusProvider(i));
+    }
+    for (final Instance i in transmissionInstances) {
+      ref.invalidate(transmissionRawTorrentsProvider(i));
+      ref.invalidate(transmissionSessionStatsProvider(i));
     }
   }
 }

@@ -16,6 +16,7 @@ import 'package:service_seerr/service_seerr.dart';
 import 'package:service_sonarr/service_sonarr.dart';
 import 'package:service_speedtest_tracker/service_speedtest_tracker.dart';
 import 'package:service_tautulli/service_tautulli.dart';
+import 'package:service_transmission/service_transmission.dart';
 
 import '../health_providers.dart';
 import '../screens/calendar_screen.dart';
@@ -119,6 +120,8 @@ class DashboardBoard extends ConsumerWidget {
           sabInstances: _byKind(instances, ServiceKind.sabnzbd),
           nzbgetInstances: _byKind(instances, ServiceKind.nzbget),
           delugeInstances: _byKind(instances, ServiceKind.deluge),
+          transmissionInstances:
+              _byKind(instances, ServiceKind.transmission),
         );
       case DashboardWidgetKind.streams:
         return DashboardStreamsWidget(
@@ -174,6 +177,9 @@ class DashboardBoard extends ConsumerWidget {
         case ServiceKind.deluge:
           ref.invalidate(delugeRawTorrentsProvider(i));
           ref.invalidate(delugeSessionStatusProvider(i));
+        case ServiceKind.transmission:
+          ref.invalidate(transmissionRawTorrentsProvider(i));
+          ref.invalidate(transmissionSessionStatsProvider(i));
         case ServiceKind.tautulli:
           ref.invalidate(tautulliActivityProvider(i));
         case ServiceKind.jellyfin:

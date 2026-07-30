@@ -19,6 +19,7 @@ enum ServiceKind {
   speedtestTracker,
   nzbget,
   deluge,
+  transmission,
 }
 
 /// Static metadata about a [ServiceKind] - display name, default port, the
@@ -43,6 +44,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.speedtestTracker => 'Speedtest Tracker',
         ServiceKind.nzbget => 'NZBGet',
         ServiceKind.deluge => 'Deluge',
+        ServiceKind.transmission => 'Transmission',
       };
 
   /// One-line role description.
@@ -62,6 +64,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.speedtestTracker => 'Internet performance',
         ServiceKind.nzbget => 'Usenet client',
         ServiceKind.deluge => 'Torrent client',
+        ServiceKind.transmission => 'Torrent client',
       };
 
   /// Vendor-default port. Used as a hint when the user is entering a URL
@@ -82,6 +85,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.speedtestTracker => null,
         ServiceKind.nzbget => 6789,
         ServiceKind.deluge => 8112,
+        ServiceKind.transmission => 9091,
       };
 
   /// What auth flow the service uses by default. Some services (Jellyfin) can
@@ -95,9 +99,12 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.tautulli ||
         ServiceKind.sabnzbd =>
           AuthStyle.apiKey,
+        // Transmission's RPC auth is HTTP Basic and is *optional* - a default
+        // install has it off - so the form must not demand credentials.
         ServiceKind.jellyfin ||
         ServiceKind.emby ||
-        ServiceKind.nzbget =>
+        ServiceKind.nzbget ||
+        ServiceKind.transmission =>
           AuthStyle.userPass,
         ServiceKind.plex => AuthStyle.plexToken,
         // Deluge's Web UI takes a password with no username; it is still a
@@ -124,7 +131,8 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.qbittorrent ||
         ServiceKind.sabnzbd ||
         ServiceKind.nzbget ||
-        ServiceKind.deluge =>
+        ServiceKind.deluge ||
+        ServiceKind.transmission =>
           ServiceRole.downloader,
         ServiceKind.glances => ServiceRole.analytics,
         ServiceKind.speedtestTracker => ServiceRole.analytics,

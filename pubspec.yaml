@@ -38,5 +38,6 @@ workspace:
   - services/service_sabnzbd
   - services/service_nzbget
   - services/service_deluge
+  - services/service_transmission
   - services/service_glances
   - services/service_speedtest_tracker

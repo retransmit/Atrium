@@ -138,6 +138,7 @@ void main() {
         sabInstances: <Instance>[sab],
         nzbgetInstances: <Instance>[nzbget],
         delugeInstances: <Instance>[],
+        transmissionInstances: <Instance>[],
       ),
     );
     expect(find.text('Ubuntu ISO'), findsOneWidget);

@@ -43,6 +43,7 @@ extension DashboardWidgetKindX on DashboardWidgetKind {
             ServiceKind.sabnzbd,
             ServiceKind.nzbget,
             ServiceKind.deluge,
+            ServiceKind.transmission,
           ],
         DashboardWidgetKind.streams => const <ServiceKind>[
             ServiceKind.tautulli,

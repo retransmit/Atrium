@@ -16,6 +16,8 @@ import 'package:dio/dio.dart';
 /// | Jellyfin / Emby          | `X-Emby-Authorization` (token only after login) |
 /// | qBittorrent              | `Cookie: SID=...` after `/api/v2/auth/login`    |
 /// | NZBGet                   | HTTP Basic Authorization header             |
+/// | Transmission             | HTTP Basic, and only when configured        |
+/// | Deluge                   | `Cookie: _session_id=…` after `auth.login`  |
 ///
 /// `Jellyfin/Emby` and `qBittorrent` both use the user/password auth flow:
 /// the session token / cookie is acquired out of band and stored in the
@@ -57,11 +59,18 @@ class AuthInterceptor extends Interceptor {
           :final String username,
           :final String password,
         )
-          when kind == ServiceKind.nzbget:
-        // NZBGet uses plain HTTP Basic on every request; there is no login
-        // flow. Never log this header.
-        options.headers['Authorization'] =
-            'Basic ${base64Encode(utf8.encode('$username:$password'))}';
+          when kind == ServiceKind.nzbget ||
+              kind == ServiceKind.transmission:
+        // Both use plain HTTP Basic on every request; there is no login flow.
+        // Never log this header.
+        //
+        // Transmission's RPC auth is optional and off by default, so send
+        // nothing at all when no credentials were entered - an empty `Basic :`
+        // is worse than no header.
+        if (username.isNotEmpty || password.isNotEmpty) {
+          options.headers['Authorization'] =
+              'Basic ${base64Encode(utf8.encode('$username:$password'))}';
+        }
       case InstanceAuthUserPass() || InstanceAuthCookie():
         // Token / cookie auth is handled by the service's session manager,
         // not here.

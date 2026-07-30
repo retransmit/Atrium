@@ -17,7 +17,8 @@ Atrium is a **controller** app. Video playback was removed by design
 - **Activity tab**: cross-instance live feed - summary bar, Now
   Streaming (backdrop session cards from Plex / Jellyfin / Emby /
   Tautulli, tap-through to each module's now-playing screen) and
-  Transfers (qBittorrent downloads *and active uploads*, Deluge transfers,
+  Transfers (qBittorrent downloads *and active uploads*, Deluge and
+  Transmission transfers,
   SABnzbd slots,
   NZBGet groups, Sonarr/Radarr queues). Per-instance resilience: an unreachable server
   degrades to a chip, never blocks the feed
@@ -90,6 +91,16 @@ Atrium is a **controller** app. Video playback was removed by design
   pause and global bandwidth caps, add by magnet / .torrent URL / file, a
   detail screen with files, trackers and peers, plus dashboard widget and
   Activity feed integration
+- **Transmission** (live-verified against 4.1.3, RPC 19): RPC client that rides
+  the shared Dio and handles the CSRF-token handshake (409 plus a rotating
+  session id) transparently, with optional HTTP Basic. Torrent list with
+  start / stop / start-now / remove (optionally with data), verify, reannounce
+  and queue moves; status and label filter chips built from the list itself;
+  nine sort fields; global limits with their separate enabled flags plus turtle
+  mode; add by magnet / .torrent URL / file, reporting duplicates as such; a
+  detail screen with files (wanted toggling), peers and trackers; dashboard
+  widget and Activity feed integration. The add, reannounce and remove paths
+  were exercised against the live daemon
 
 ## Partially done
 

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:service_emby/service_emby.dart' as emby;
 import 'package:service_jellyfin/service_jellyfin.dart' as jf;
 import 'package:service_deluge/service_deluge.dart';
+import 'package:service_transmission/service_transmission.dart';
 import 'package:service_nzbget/service_nzbget.dart';
 import 'package:service_plex/service_plex.dart';
 import 'package:service_qbittorrent/service_qbittorrent.dart';
@@ -230,6 +231,13 @@ final activityDownloadsProvider =
           (List<DelugeTorrent> torrents) =>
               _delugeDownloads(instance, torrents),
         );
+      case ServiceKind.transmission:
+        collect(
+          instance,
+          ref.watch(transmissionRawTorrentsProvider(instance)),
+          (List<TransmissionTorrent> torrents) =>
+              _transmissionDownloads(instance, torrents),
+        );
       case ServiceKind.sonarr:
         collect(
           instance,
@@ -293,6 +301,8 @@ void refreshActivity(WidgetRef ref) {
         ref.invalidate(nzbgetQueueProvider(instance));
       case ServiceKind.deluge:
         ref.invalidate(delugeRawTorrentsProvider(instance));
+      case ServiceKind.transmission:
+        ref.invalidate(transmissionRawTorrentsProvider(instance));
       case ServiceKind.sonarr:
         ref.invalidate(sonarrQueueProvider(instance));
       case ServiceKind.radarr:
@@ -561,6 +571,30 @@ List<ActivityDownload> _delugeDownloads(
           eta: t.eta > 0 ? _fmtEtaSeconds(t.eta) : null,
           // Deluge's state strings are already display-ready.
           status: t.state,
+        ),
+  ];
+}
+
+List<ActivityDownload> _transmissionDownloads(
+  Instance instance,
+  List<TransmissionTorrent> torrents,
+) {
+  return <ActivityDownload>[
+    // Same rule as the other torrent clients: incomplete torrents, plus
+    // anything actively moving bytes. Idle seeds are not activity.
+    for (final TransmissionTorrent t in torrents)
+      if (t.percentDone < 1.0 || t.downloadRate > 0 || t.uploadRate > 0)
+        ActivityDownload(
+          key: '${instance.id}:${t.hashString}',
+          instance: instance,
+          sourceKind: instance.kind,
+          title: t.name,
+          progress: t.percentDone.clamp(0.0, 1.0),
+          speedBps: t.downloadRate > 0 ? t.downloadRate : null,
+          upSpeedBps: t.uploadRate > 0 ? t.uploadRate : null,
+          // eta is a negative sentinel when unavailable, never a duration.
+          eta: t.hasEta ? _fmtEtaSeconds(t.eta) : null,
+          status: t.statusLabel,
         ),
   ];
 }

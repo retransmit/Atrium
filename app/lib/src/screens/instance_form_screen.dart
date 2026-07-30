@@ -520,11 +520,16 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
         ];
       case AuthStyle.userPass:
       case AuthStyle.cookieLogin:
+        // Transmission's RPC auth is optional and off in a default install, so
+        // *neither* field may be required there - demanding credentials would
+        // lock users out of a perfectly reachable server.
+        final bool authOptional = _kind == ServiceKind.transmission;
         // Emby/Jellyfin accounts may legitimately have no password; every other
         // username/password service (e.g. qBittorrent) requires one, where an
         // empty submission guarantees a failed login.
-        final bool passwordOptional =
-            _kind == ServiceKind.emby || _kind == ServiceKind.jellyfin;
+        final bool passwordOptional = authOptional ||
+            _kind == ServiceKind.emby ||
+            _kind == ServiceKind.jellyfin;
         final Widget passwordField = TextFormField(
           controller: _password,
           decoration: InputDecoration(
@@ -540,14 +545,16 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
         final List<Widget> userPass = <Widget>[
           TextFormField(
             controller: _username,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              labelText: 'Username',
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              labelText: authOptional ? 'Username (Optional)' : 'Username',
             ),
             autocorrect: false,
             textInputAction: TextInputAction.next,
-            validator: (String? v) =>
-                (v == null || v.trim().isEmpty) ? 'Required' : null,
+            validator: authOptional
+                ? (String? v) => null
+                : (String? v) =>
+                    (v == null || v.trim().isEmpty) ? 'Required' : null,
           ),
           const SizedBox(height: Insets.md),
           passwordField,
@@ -625,7 +632,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     if (kind == ServiceKind.sabnzbd ||
         kind == ServiceKind.speedtestTracker ||
         kind == ServiceKind.nzbget ||
-        kind == ServiceKind.deluge) {
+        kind == ServiceKind.deluge ||
+        kind == ServiceKind.transmission) {
       return Icon(ServiceVisuals.icon(kind), size: size);
     }
     return Image.asset(

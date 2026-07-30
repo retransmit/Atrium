@@ -62,6 +62,13 @@ enum _HealthMode {
       // JSON-RPC accepts GET for parameterless methods; Basic auth is
       // attached by the interceptor, so 401 means bad credentials.
       return (path: 'jsonrpc/version', mode: _HealthMode.authed);
+    case ServiceKind.transmission:
+      // The RPC endpoint answers an unprimed GET with 409 (its CSRF
+      // rejection), which is a distinctive Transmission signature - better
+      // evidence than the 200 a bare web root would give. A probe cannot do
+      // the token handshake, and RPC auth is optional, so any response counts
+      // as up.
+      return (path: 'transmission/rpc', mode: _HealthMode.reachable);
     case ServiceKind.deluge:
       // Deluge's login is a POST, so a probe cannot authenticate cheaply.
       // `/json` answers GET with 405, which is a better liveness signal than

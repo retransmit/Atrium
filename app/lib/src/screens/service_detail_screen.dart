@@ -20,6 +20,7 @@ import 'package:service_glances/service_glances.dart';
 import 'package:service_sonarr/service_sonarr.dart';
 import 'package:service_speedtest_tracker/service_speedtest_tracker.dart';
 import 'package:service_tautulli/service_tautulli.dart';
+import 'package:service_transmission/service_transmission.dart';
 
 import 'dashboard_screen.dart';
 
@@ -247,6 +248,7 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
       ServiceKind.sabnzbd => SabnzbdHome(instance: instance),
       ServiceKind.nzbget => NzbgetHome(instance: instance),
       ServiceKind.deluge => DelugeHome(instance: instance),
+      ServiceKind.transmission => TransmissionHome(instance: instance),
       ServiceKind.glances => GlancesHome(instance: instance),
       ServiceKind.speedtestTracker => SpeedtestTrackerHome(instance: instance),
     };
