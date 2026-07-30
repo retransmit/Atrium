@@ -3,6 +3,26 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'tracearr_session.freezed.dart';
 part 'tracearr_session.g.dart';
 
+int? _parseInt(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value);
+  return null;
+}
+
+int _parseIntDefault(dynamic value) {
+  return _parseInt(value) ?? 0;
+}
+
+double? _parseDouble(dynamic value) {
+  if (value == null) return null;
+  if (value is double) return value;
+  if (value is int) return value.toDouble();
+  if (value is String) return double.tryParse(value);
+  return null;
+}
+
 @freezed
 abstract class TracearrSession with _$TracearrSession {
   const TracearrSession._();
@@ -14,15 +34,21 @@ abstract class TracearrSession with _$TracearrSession {
     @JsonKey(name: 'mediaType', defaultValue: '') required String mediaType,
     @JsonKey(name: 'mediaTitle', defaultValue: '') required String mediaTitle,
     @JsonKey(name: 'grandparentTitle') String? grandparentTitle,
-    @JsonKey(name: 'seasonNumber') int? seasonNumber,
-    @JsonKey(name: 'episodeNumber') int? episodeNumber,
+    @JsonKey(name: 'parentTitle') String? parentTitle,
+    @JsonKey(name: 'originalTitle') String? originalTitle,
+    @JsonKey(name: 'artist') String? artist,
+    @JsonKey(name: 'artistName') String? artistName,
+    @JsonKey(name: 'seasonNumber', fromJson: _parseInt) int? seasonNumber,
+    @JsonKey(name: 'episodeNumber', fromJson: _parseInt) int? episodeNumber,
     @JsonKey(name: 'thumbPath') String? thumbPath,
-    @JsonKey(name: 'progressMs', defaultValue: 0) required int progressMs,
-    @JsonKey(name: 'totalDurationMs', defaultValue: 0) required int totalDurationMs,
+    @JsonKey(name: 'progressMs', defaultValue: 0, fromJson: _parseIntDefault) required int progressMs,
+    @JsonKey(name: 'totalDurationMs', defaultValue: 0, fromJson: _parseIntDefault) required int totalDurationMs,
     @JsonKey(name: 'ipAddress', defaultValue: '') required String ipAddress,
     @JsonKey(name: 'geoCity') String? geoCity,
     @JsonKey(name: 'geoRegion') String? geoRegion,
     @JsonKey(name: 'geoCountry') String? geoCountry,
+    @JsonKey(name: 'geoLat', fromJson: _parseDouble) double? geoLat,
+    @JsonKey(name: 'geoLon', fromJson: _parseDouble) double? geoLon,
     @JsonKey(name: 'playerName', defaultValue: '') required String playerName,
     @JsonKey(name: 'product', defaultValue: '') required String product,
     @JsonKey(name: 'device', defaultValue: '') required String device,
@@ -31,6 +57,8 @@ abstract class TracearrSession with _$TracearrSession {
     @JsonKey(name: 'isTranscode', defaultValue: false) required bool isTranscode,
     @JsonKey(name: 'videoDecision') String? videoDecision,
     @JsonKey(name: 'audioDecision') String? audioDecision,
+    @JsonKey(name: 'startedAt') DateTime? startedAt,
+    @JsonKey(name: 'stoppedAt') DateTime? stoppedAt,
   }) = _TracearrSession;
 
   String get displayTitle {
