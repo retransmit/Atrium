@@ -2,7 +2,9 @@ import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:palette_generator_plus/palette_generator_plus.dart';
 import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
@@ -162,9 +164,9 @@ class _TracearrSessionDetailScreenState
                     end: Alignment.bottomCenter,
                     stops: const <double>[0.0, 0.4, 1.0],
                     colors: <Color>[
-                      Colors.black.withValues(alpha: 0.6),
-                      theme.colorScheme.surface.withValues(alpha: 0.85),
-                      theme.colorScheme.surface,
+                      Colors.black.withValues(alpha: 0.3),
+                      theme.colorScheme.surface.withValues(alpha: 0.2),
+                      theme.colorScheme.surface.withValues(alpha: 1.0),
                     ],
                   ),
                 ),
@@ -258,12 +260,63 @@ class _TracearrSessionDetailScreenState
                   ],
                   _buildDetailRow('IP Address', session.ipAddress, theme),
                   _buildDetailRow('Location', session.location, theme),
-                  if (session.geoLat != null && session.geoLon != null)
+                  if (session.geoAsnOrganization != null && session.geoAsnOrganization!.isNotEmpty)
+                    _buildDetailRow('ISP', session.geoAsnOrganization!, theme),
+                  if (session.geoLat != null && session.geoLon != null) ...<Widget>[
                     _buildDetailRow(
                       'Coordinates',
                       '${session.geoLat!.toStringAsFixed(4)}, ${session.geoLon!.toStringAsFixed(4)}',
                       theme,
                     ),
+                    const SizedBox(height: 16),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: SizedBox(
+                        height: 200,
+                        child: FlutterMap(
+                          options: MapOptions(
+                            initialCenter: LatLng(session.geoLat!, session.geoLon!),
+                            initialZoom: 11.0,
+                          ),
+                          children: <Widget>[
+                            TileLayer(
+                              urlTemplate: theme.brightness == Brightness.dark
+                                  ? 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+                                  : 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                              userAgentPackageName: 'com.atrium.app',
+                            ),
+                            MarkerLayer(
+                              markers: <Marker>[
+                                Marker(
+                                  point: LatLng(session.geoLat!, session.geoLon!),
+                                  width: 40,
+                                  height: 40,
+                                  child: Center(
+                                    child: Container(
+                                      width: 24,
+                                      height: 24,
+                                      decoration: BoxDecoration(
+                                        color: theme.colorScheme.primary,
+                                        shape: BoxShape.circle,
+                                        boxShadow: <BoxShadow>[
+                                          BoxShadow(
+                                            color: theme.colorScheme.primary.withValues(alpha: 0.6),
+                                            blurRadius: 10,
+                                            spreadRadius: 3,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                  ],
                 ],
               ),
             ),

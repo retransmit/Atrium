@@ -5,7 +5,9 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:palette_generator_plus/palette_generator_plus.dart';
 import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
@@ -18,6 +20,8 @@ import 'models/tracearr_activity_play_dow.dart';
 import 'models/tracearr_activity_play_hod.dart';
 import 'models/tracearr_activity_quality.dart';
 import 'models/tracearr_activity_stats.dart';
+import 'models/tracearr_activity_locations.dart';
+import 'models/tracearr_dashboard_stats.dart';
 import 'models/tracearr_session.dart';
 import 'models/tracearr_stats.dart';
 import 'tracearr_providers.dart';
@@ -77,61 +81,249 @@ class _HistoryTab extends ConsumerWidget {
           value: historyVal,
           onRetry: () => ref.invalidate(tracearrHistoryProvider(instance)),
           data: (List<TracearrSession> data) {
-            if (data.isEmpty) {
-              return EasyRefresh(
-                onRefresh: () async => ref.invalidate(tracearrHistoryProvider(instance)),
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: const <Widget>[
-                    SizedBox(height: 100),
-                    EmptyView(
-                      icon: Icons.history,
-                      title: 'No history',
-                      message: 'There are no historical sessions available.',
+            return DefaultTabController(
+              length: 2,
+              child: Column(
+                children: <Widget>[
+                  const TabBar(
+                    tabs: <Widget>[
+                      Tab(text: 'List'),
+                      Tab(text: 'Map'),
+                    ],
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: <Widget>[
+                        _HistoryListView(
+                          instance: instance,
+                          notifier: notifier,
+                          data: data,
+                          servers: servers,
+                        ),
+                        _HistoryMapView(instance: instance),
+                      ],
                     ),
-                  ],
-                ),
-              );
-            }
-
-            return EasyRefresh(
-              header: const ClassicHeader(
-                dragText: 'Pull to refresh',
-                armedText: 'Release ready',
-                readyText: 'Refreshing...',
-                processingText: 'Refreshing...',
-                processedText: 'Succeeded',
-                failedText: 'Failed',
-                messageText: 'Last updated at %T',
-              ),
-              footer: const ClassicFooter(
-                dragText: 'Pull to load',
-                armedText: 'Release ready',
-                readyText: 'Loading...',
-                processingText: 'Loading...',
-                processedText: 'Succeeded',
-                failedText: 'Failed',
-                noMoreText: 'No more',
-                messageText: 'Last updated at %T',
-              ),
-              onRefresh: () async => ref.invalidate(tracearrHistoryProvider(instance)),
-              onLoad: notifier.hasMore ? () async => notifier.loadMore() : null,
-              child: ListView.builder(
-                padding: const EdgeInsets.all(Insets.lg),
-                itemCount: data.length,
-                itemBuilder: (BuildContext context, int index) {
-                  final TracearrSession session = data[index];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: Insets.lg),
-                    child: _SessionCard(
-                      serverUrl: servers[session.serverId],
-                      session: session,
-                    ),
-                  );
-                },
+                  ),
+                ],
               ),
             );
           },
+        );
+      },
+    );
+  }
+}
+
+class _HistoryListView extends ConsumerWidget {
+  const _HistoryListView({
+    required this.instance,
+    required this.notifier,
+    required this.data,
+    required this.servers,
+  });
+
+  final Instance instance;
+  final TracearrHistoryNotifier notifier;
+  final List<TracearrSession> data;
+  final Map<String, String> servers;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (data.isEmpty) {
+      return EasyRefresh(
+        onRefresh: () async => ref.invalidate(tracearrHistoryProvider(instance)),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const <Widget>[
+            SizedBox(height: 100),
+            EmptyView(
+              icon: Icons.history,
+              title: 'No history',
+              message: 'There are no historical sessions available.',
+            ),
+          ],
+        ),
+      );
+    }
+
+    return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
+      footer: const ClassicFooter(
+        dragText: 'Pull to load',
+        armedText: 'Release ready',
+        readyText: 'Loading...',
+        processingText: 'Loading...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        noMoreText: 'No more',
+        messageText: 'Last updated at %T',
+      ),
+      onRefresh: () async => ref.invalidate(tracearrHistoryProvider(instance)),
+      onLoad: notifier.hasMore ? () async => notifier.loadMore() : null,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(Insets.lg),
+        itemCount: data.length,
+        itemBuilder: (BuildContext context, int index) {
+          final TracearrSession session = data[index];
+          return Padding(
+            padding: const EdgeInsets.only(bottom: Insets.lg),
+            child: _SessionCard(
+              serverUrl: servers[session.serverId],
+              session: session,
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _HistoryMapView extends ConsumerWidget {
+  const _HistoryMapView({required this.instance});
+
+  final Instance instance;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final Map<String, String> servers = ref.watch(tracearrServersProvider(instance)).value ?? <String, String>{};
+    final AsyncValue<TracearrActivityLocationsResponse> locsVal = ref.watch(tracearrActivityLocationsProvider(instance));
+    
+    return AsyncValueView<TracearrActivityLocationsResponse>(
+      value: locsVal,
+      onRetry: () => ref.invalidate(tracearrActivityLocationsProvider(instance)),
+      data: (TracearrActivityLocationsResponse res) {
+        final List<Marker> markers = <Marker>[];
+        TracearrActivityLocation? maxLoc;
+
+        for (final TracearrActivityLocation loc in res.data) {
+          if (loc.lat != null && loc.lon != null) {
+            if (maxLoc == null || loc.count > maxLoc.count) {
+              maxLoc = loc;
+            }
+
+            final List<String> parts = <String>[loc.city, loc.region, loc.country];
+            final String locationName = parts.where((String p) => p.isNotEmpty).join(', ');
+
+            final List<InlineSpan> spans = <InlineSpan>[
+              TextSpan(
+                text: locationName,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ];
+
+            if (loc.users.isNotEmpty) {
+              for (final TracearrActivityLocationUser user in loc.users) {
+                spans.add(const TextSpan(text: '\n'));
+                String? imageUrl;
+                if (user.thumbUrl != null && servers.isNotEmpty) {
+                  final String serverUrl = servers.values.first;
+                  final String cleanPath = user.thumbUrl!.startsWith('/') ? user.thumbUrl! : '/${user.thumbUrl!}';
+                  imageUrl = '$serverUrl$cleanPath';
+                }
+
+                spans.add(
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 4.0, right: 6.0),
+                      child: imageUrl != null
+                          ? CachedNetworkImage(
+                              imageUrl: imageUrl,
+                              width: 16,
+                              height: 16,
+                              imageBuilder: (BuildContext context, ImageProvider<Object> provider) => CircleAvatar(
+                                backgroundImage: provider,
+                                radius: 8,
+                              ),
+                              errorWidget: (BuildContext context, String url, Object error) => const Icon(Icons.person, size: 16),
+                            )
+                          : const Icon(Icons.person, size: 16),
+                    ),
+                  ),
+                );
+                spans.add(TextSpan(text: user.username));
+              }
+            }
+
+            markers.add(
+              Marker(
+                point: LatLng(loc.lat!, loc.lon!),
+                width: 60,
+                height: 60,
+                child: Center(
+                  child: Tooltip(
+                    richMessage: TextSpan(children: spans),
+                    triggerMode: TooltipTriggerMode.tap,
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                        shape: BoxShape.circle,
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: Theme.of(context).colorScheme.primary.withOpacity(0.6),
+                            blurRadius: 12,
+                            spreadRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${loc.count}',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onPrimary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }
+        }
+
+        if (markers.isEmpty) {
+          return const EmptyView(
+            icon: Icons.map,
+            title: 'No Map Data',
+            message: 'None of the history sessions have geographic coordinates.',
+          );
+        }
+
+        final bool isDark = Theme.of(context).brightness == Brightness.dark;
+        final String tileUrl = isDark
+            ? 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+            : 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
+
+        final LatLng initialCenter = maxLoc != null && maxLoc.lat != null && maxLoc.lon != null
+            ? LatLng(maxLoc.lat!, maxLoc.lon!)
+            : markers.first.point;
+
+        return FlutterMap(
+          options: MapOptions(
+            initialCenter: initialCenter,
+            initialZoom: 11.0,
+          ),
+          children: <Widget>[
+            TileLayer(
+              urlTemplate: tileUrl,
+              userAgentPackageName: 'com.atrium.app',
+            ),
+            MarkerLayer(markers: markers),
+          ],
         );
       },
     );
@@ -609,14 +801,12 @@ class _PlaysHodBarChartState extends State<_PlaysHodBarChart> {
             maxY: maxVal * 1.2,
             minY: 0,
             barGroups: List<BarChartGroupData>.generate(24, (int index) {
-              // The API returns 'hour' in UTC. We need to map it to local time.
+              // The API returns 'hour' in the requested local timezone.
               // 'index' represents the local hour (0-23).
-              final int offset = DateTime.now().timeZoneOffset.inHours;
-              final int utcHour = (index - offset) % 24;
-              final int searchUtc = utcHour < 0 ? utcHour + 24 : utcHour;
+              final int searchHour = index;
 
-              // Find if we have a play count for this UTC hour
-              final int count = playsMap[searchUtc] ?? 0;
+              // Find if we have a play count for this local hour
+              final int count = playsMap[searchHour] ?? 0;
               final bool isTouched = index == touchedIndex;
               
               return BarChartGroupData(
@@ -1306,6 +1496,7 @@ class _TopPerformersView extends StatelessWidget {
                 children: <Widget>[
                   // Top Shows Tab
                   ListView.builder(
+                    physics: const ClampingScrollPhysics(),
                     itemCount: topShows.length,
                     itemBuilder: (BuildContext context, int index) {
                       final TracearrTopShow show = topShows[index];
@@ -1329,6 +1520,7 @@ class _TopPerformersView extends StatelessWidget {
                   ),
                   // Top Content Tab
                   ListView.builder(
+                    physics: const ClampingScrollPhysics(),
                     itemCount: topContent.length,
                     itemBuilder: (BuildContext context, int index) {
                       final TracearrTopContent content = topContent[index];
@@ -1780,6 +1972,96 @@ class _StorageStatsView extends ConsumerWidget {
   }
 }
 
+class _DashboardStatCard extends StatelessWidget {
+  const _DashboardStatCard({required this.title, required this.value});
+  final String title;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: Insets.lg, horizontal: Insets.sm),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: Insets.sm),
+          Text(
+            value,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardStatsHeader extends ConsumerWidget {
+  const _DashboardStatsHeader({required this.instance});
+  final Instance instance;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<TracearrDashboardStats> stats = ref.watch(tracearrDashboardStatsProvider(instance));
+
+    return stats.when(
+      data: (TracearrDashboardStats data) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(Insets.lg, 0, Insets.lg, Insets.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text('Today\'s Overview', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+              const SizedBox(height: Insets.md),
+              Row(
+                children: <Widget>[
+                  Expanded(child: _DashboardStatCard(title: 'Active Streams', value: '${data.activeStreams}')),
+                  const SizedBox(width: Insets.md),
+                  Expanded(child: _DashboardStatCard(title: 'Watch Hours', value: data.watchTimeHours.toStringAsFixed(1))),
+                ],
+              ),
+              const SizedBox(height: Insets.md),
+              Row(
+                children: <Widget>[
+                  Expanded(child: _DashboardStatCard(title: 'Plays Today', value: '${data.todayPlays}')),
+                  const SizedBox(width: Insets.md),
+                  Expanded(child: _DashboardStatCard(title: 'Sessions Today', value: '${data.todaySessions}')),
+                ],
+              ),
+              const SizedBox(height: Insets.md),
+              Row(
+                children: <Widget>[
+                  Expanded(child: _DashboardStatCard(title: 'Active Users', value: '${data.activeUsersToday}')),
+                  const SizedBox(width: Insets.md),
+                  Expanded(child: _DashboardStatCard(title: 'Recent Alerts', value: '${data.alertsLast24h}')),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+      loading: () => const Padding(padding: EdgeInsets.all(Insets.lg), child: Center(child: CircularProgressIndicator())),
+      error: (Object e, StackTrace st) => Padding(padding: const EdgeInsets.all(Insets.lg), child: Text('Failed to load stats: $e')),
+    );
+  }
+}
+
 class _HomeTab extends ConsumerWidget {
   const _HomeTab({required this.instance});
 
@@ -1808,17 +2090,22 @@ class _HomeTab extends ConsumerWidget {
               failedText: 'Failed',
               messageText: 'Last updated at %T',
             ),
-            onRefresh: () async =>
-                ref.invalidate(tracearrSessionsProvider(instance)),
+            onRefresh: () async {
+              ref.invalidate(tracearrSessionsProvider(instance));
+              ref.invalidate(tracearrDashboardStatsProvider(instance));
+            },
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              children: const <Widget>[
-                SizedBox(height: 100),
-                EmptyView(
+              padding: const EdgeInsets.only(top: Insets.lg),
+              children: <Widget>[
+                const SizedBox(height: 48),
+                const EmptyView(
                   icon: Icons.podcasts_outlined,
                   title: 'Nothing playing',
                   message: 'No active streams right now.',
                 ),
+                const SizedBox(height: 48),
+                _DashboardStatsHeader(instance: instance),
               ],
             ),
           );
@@ -1855,8 +2142,10 @@ class _HomeTab extends ConsumerWidget {
             failedText: 'Failed',
             messageText: 'Last updated at %T',
           ),
-          onRefresh: () async =>
-              ref.invalidate(tracearrSessionsProvider(instance)),
+          onRefresh: () async {
+            ref.invalidate(tracearrSessionsProvider(instance));
+            ref.invalidate(tracearrDashboardStatsProvider(instance));
+          },
           child: ListView(
             padding: const EdgeInsets.symmetric(vertical: Insets.lg),
             children: <Widget>[
@@ -1929,6 +2218,7 @@ class _HomeTab extends ConsumerWidget {
                 ),
                 const SizedBox(height: Insets.lg),
               ],
+              _DashboardStatsHeader(instance: instance),
             ],
           ),
         );

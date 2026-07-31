@@ -9,7 +9,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'auth/tracearr_auth_interceptor.dart';
 import 'auth/tracearr_auth_manager.dart';
 import 'models/tracearr_active_sessions.dart';
+import 'models/tracearr_activity_locations.dart';
 import 'models/tracearr_activity_stats.dart';
+import 'models/tracearr_dashboard_stats.dart';
 import 'models/tracearr_session.dart';
 import 'models/tracearr_stats.dart';
 import 'tracearr_api.dart';
@@ -104,7 +106,7 @@ final tracearrStatsProvider = FutureProvider.family
   final List<String> serverIds = servers.keys.toList();
 
   final TracearrApi api = await ref.watch(tracearrApiProvider(instance).future);
-  return api.getStats(serverIds, 'UTC');
+  return api.getStats(serverIds, DateTime.now().timeZoneName);
 });
 
 final tracearrActivityStatsProvider = FutureProvider.family
@@ -114,7 +116,27 @@ final tracearrActivityStatsProvider = FutureProvider.family
   final List<String> serverIds = servers.keys.toList();
 
   final TracearrApi api = await ref.watch(tracearrApiProvider(instance).future);
-  return api.getActivityStats(serverIds, 'UTC');
+  return api.getActivityStats(serverIds, DateTime.now().timeZoneName);
+});
+
+final tracearrActivityLocationsProvider = FutureProvider.family
+    .autoDispose<TracearrActivityLocationsResponse, Instance>((Ref ref, Instance instance) async {
+  final Map<String, String> servers =
+      await ref.watch(tracearrServersProvider(instance).future);
+  final List<String> serverIds = servers.keys.toList();
+
+  final TracearrApi api = await ref.watch(tracearrApiProvider(instance).future);
+  return api.getLocations(serverIds, DateTime.now().timeZoneName);
+});
+
+final tracearrDashboardStatsProvider = FutureProvider.family
+    .autoDispose<TracearrDashboardStats, Instance>((Ref ref, Instance instance) async {
+  final Map<String, String> servers =
+      await ref.watch(tracearrServersProvider(instance).future);
+  final List<String> serverIds = servers.keys.toList();
+
+  final TracearrApi api = await ref.watch(tracearrApiProvider(instance).future);
+  return api.getDashboardStats(serverIds, DateTime.now().timeZoneName);
 });
 
 class TracearrHistoryNotifier extends ChangeNotifier {

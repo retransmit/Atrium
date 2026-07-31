@@ -5,6 +5,7 @@ import 'package:core_networking/core_networking.dart';
 import 'package:dio/dio.dart';
 
 import 'models/tracearr_active_sessions.dart';
+import 'models/tracearr_activity_locations.dart';
 import 'models/tracearr_activity_platform.dart';
 import 'models/tracearr_activity_play.dart';
 import 'models/tracearr_activity_play_dow.dart';
@@ -13,6 +14,7 @@ import 'models/tracearr_activity_stats.dart';
 import 'models/tracearr_activity_quality.dart';
 import 'models/tracearr_activity_concurrent.dart';
 import 'models/tracearr_activity_engagement.dart';
+import 'models/tracearr_dashboard_stats.dart';
 import 'models/tracearr_session.dart';
 import 'models/tracearr_stats.dart';
 
@@ -168,6 +170,97 @@ class TracearrApi {
       return <TracearrSession>[];
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<TracearrActivityLocationsResponse> getLocations(List<String> serverIds, String timezone) async {
+    try {
+      final Map<String, dynamic> query = <String, dynamic>{
+        'serverIds': serverIds,
+        'timezone': timezone,
+        'period': 'month',
+      };
+      final Response<dynamic> res = await _dio.get<dynamic>('api/v1/stats/locations', queryParameters: query);
+      return TracearrActivityLocationsResponse.fromJson(res.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    } catch (e) {
+      throw Exception('Failed to fetch locations: $e');
+    }
+  }
+
+  Future<TracearrDashboardStats> getDashboardStats(List<String> serverIds, String timezone) async {
+    try {
+      final String queryStr = serverIds.map((String id) => 'serverIds=$id').join('&');
+      final Response<dynamic> res = await _dio.get<dynamic>('api/v1/stats/dashboard?$queryStr&timezone=$timezone');
+      
+      dynamic rawData = res.data;
+      if (rawData is String) {
+        try {
+          rawData = jsonDecode(rawData);
+        } catch (_) {}
+      }
+
+      Map<String, dynamic> data = <String, dynamic>{};
+      if (rawData is Map) {
+        data = Map<String, dynamic>.from(rawData);
+      } else if (rawData is List && rawData.isNotEmpty) {
+        final dynamic first = rawData.first;
+        if (first is Map) {
+          data = Map<String, dynamic>.from(first);
+        }
+      }
+      
+      if (data.containsKey('data')) {
+        if (data['data'] is Map) {
+          data = Map<String, dynamic>.from(data['data'] as Map);
+        } else if (data['data'] is List && (data['data'] as List).isNotEmpty) {
+          final dynamic first = (data['data'] as List).first;
+          if (first is Map) {
+            data = Map<String, dynamic>.from(first);
+          }
+        }
+      }
+
+      double parseDouble(dynamic value) {
+        if (value == null) return 0.0;
+        if (value is num) return value.toDouble();
+        if (value is String) return double.tryParse(value) ?? 0.0;
+        return 0.0;
+      }
+      
+      int parseInt(dynamic value) {
+        if (value == null) return 0;
+        if (value is num) return value.toInt();
+        if (value is String) return int.tryParse(value) ?? 0;
+        return 0;
+      }
+
+      int activeStreams = parseInt(data['activeStreams'] ?? data['active_streams']);
+      int todayPlays = parseInt(data['todayPlays'] ?? data['today_plays']);
+      int todaySessions = parseInt(data['todaySessions'] ?? data['today_sessions']);
+      double watchTimeHours = parseDouble(data['watchTimeHours'] ?? data['watch_time_hours']);
+      int alertsLast24h = parseInt(data['alertsLast24h'] ?? data['alerts_last_24h']);
+      int activeUsersToday = parseInt(data['activeUsersToday'] ?? data['active_users_today']);
+
+      final TracearrDashboardStats stats = TracearrDashboardStats(
+        activeStreams: activeStreams,
+        todayPlays: todayPlays,
+        todaySessions: todaySessions,
+        watchTimeHours: watchTimeHours,
+        alertsLast24h: alertsLast24h,
+        activeUsersToday: activeUsersToday,
+      );
+      
+      if (stats.activeStreams == 0 && stats.todayPlays == 0 && stats.todaySessions == 0) {
+        throw Exception('DEBUG EXCEPTION: Raw data = ${jsonEncode(res.data)}');
+      }
+      
+      return stats;
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    } catch (e) {
+      throw Exception('Failed to fetch dashboard stats: $e');
     }
   }
 }

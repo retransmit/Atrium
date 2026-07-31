@@ -49,6 +49,7 @@ abstract class TracearrSession with _$TracearrSession {
     @JsonKey(name: 'geoCountry') String? geoCountry,
     @JsonKey(name: 'geoLat', fromJson: _parseDouble) double? geoLat,
     @JsonKey(name: 'geoLon', fromJson: _parseDouble) double? geoLon,
+    @JsonKey(name: 'geoAsnOrganization') String? geoAsnOrganization,
     @JsonKey(name: 'playerName', defaultValue: '') required String playerName,
     @JsonKey(name: 'product', defaultValue: '') required String product,
     @JsonKey(name: 'device', defaultValue: '') required String device,

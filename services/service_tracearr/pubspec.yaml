@@ -18,10 +18,12 @@ dependencies:
   fl_chart: ^1.2.0
   flutter:
     sdk: flutter
+  flutter_map: ^8.3.1
   flutter_riverpod: ^3.3.2
   freezed_annotation: ^3.1.0
   intl: ^0.20.1
   json_annotation: ^4.9.0
+  latlong2: ^0.10.1
   meta: ^1.16.0
   palette_generator_plus: ^1.0.0
   progress_indicator_m3e:
