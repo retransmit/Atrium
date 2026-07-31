@@ -100,6 +100,21 @@ final tracearrSessionsProvider = FutureProvider.family
   return api.getActiveSessions();
 });
 
+Future<String>? _tzFuture;
+Future<String> _getTimezone() {
+  if (_tzFuture != null) return _tzFuture!;
+  _tzFuture = _fetchTz();
+  return _tzFuture!;
+}
+
+Future<String> _fetchTz() async {
+  try {
+    return (await FlutterTimezone.getLocalTimezone()).identifier;
+  } catch (e) {
+    return DateTime.now().timeZoneName;
+  }
+}
+
 final tracearrStatsProvider = FutureProvider.family
     .autoDispose<TracearrStats, Instance>((Ref ref, Instance instance) async {
   final Map<String, String> servers =
@@ -107,7 +122,7 @@ final tracearrStatsProvider = FutureProvider.family
   final List<String> serverIds = servers.keys.toList();
 
   final TracearrApi api = await ref.watch(tracearrApiProvider(instance).future);
-  final String timezone = (await FlutterTimezone.getLocalTimezone()).identifier;
+  final String timezone = await _getTimezone();
   return api.getStats(serverIds, timezone);
 });
 
@@ -118,7 +133,7 @@ final tracearrActivityStatsProvider = FutureProvider.family
   final List<String> serverIds = servers.keys.toList();
 
   final TracearrApi api = await ref.watch(tracearrApiProvider(instance).future);
-  final String timezone = (await FlutterTimezone.getLocalTimezone()).identifier;
+  final String timezone = await _getTimezone();
   return api.getActivityStats(serverIds, timezone);
 });
 
@@ -129,7 +144,7 @@ final tracearrActivityLocationsProvider = FutureProvider.family
   final List<String> serverIds = servers.keys.toList();
 
   final TracearrApi api = await ref.watch(tracearrApiProvider(instance).future);
-  final String timezone = (await FlutterTimezone.getLocalTimezone()).identifier;
+  final String timezone = await _getTimezone();
   return api.getLocations(serverIds, timezone);
 });
 
@@ -140,7 +155,7 @@ final tracearrDashboardStatsProvider = FutureProvider.family
   final List<String> serverIds = servers.keys.toList();
 
   final TracearrApi api = await ref.watch(tracearrApiProvider(instance).future);
-  final String timezone = (await FlutterTimezone.getLocalTimezone()).identifier;
+  final String timezone = await _getTimezone();
   return api.getDashboardStats(serverIds, timezone);
 });
 

@@ -192,7 +192,8 @@ class TracearrApi {
   Future<TracearrDashboardStats> getDashboardStats(List<String> serverIds, String timezone) async {
     try {
       final String queryStr = serverIds.map((String id) => 'serverIds=$id').join('&');
-      final Response<dynamic> res = await _dio.get<dynamic>('api/v1/stats/dashboard?$queryStr&timezone=$timezone');
+      final String encodedTz = Uri.encodeQueryComponent(timezone);
+      final Response<dynamic> res = await _dio.get<dynamic>('api/v1/stats/dashboard?$queryStr&timezone=$encodedTz');
       
       dynamic rawData = res.data;
       if (rawData is String) {
