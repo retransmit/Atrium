@@ -1647,6 +1647,112 @@ class _WatchStatsView extends StatelessWidget {
   }
 }
 
+class _LibraryCompositionPieChart extends StatefulWidget {
+  const _LibraryCompositionPieChart({
+    required this.movieCount,
+    required this.showCount,
+    required this.episodeCount,
+  });
+
+  final int movieCount;
+  final int showCount;
+  final int episodeCount;
+
+  @override
+  State<_LibraryCompositionPieChart> createState() => _LibraryCompositionPieChartState();
+}
+
+class _LibraryCompositionPieChartState extends State<_LibraryCompositionPieChart> {
+  int touchedIndex = -1;
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.movieCount == 0 && widget.showCount == 0 && widget.episodeCount == 0) {
+      return const SizedBox.shrink();
+    }
+
+    final List<Color> colors = <Color>[Colors.pink.shade400, Colors.teal.shade400, Colors.amber.shade400];
+    final List<String> labels = <String>['Movies', 'Shows', 'Episodes'];
+    final List<int> counts = <int>[widget.movieCount, widget.showCount, widget.episodeCount];
+
+    final List<Color> validColors = <Color>[];
+    final List<String> validLabels = <String>[];
+    final List<int> validCounts = <int>[];
+
+    for (int i = 0; i < 3; i++) {
+      if (counts[i] > 0) {
+        validColors.add(colors[i]);
+        validLabels.add(labels[i]);
+        validCounts.add(counts[i]);
+      }
+    }
+
+    return AspectRatio(
+      aspectRatio: 1.3,
+      child: Column(
+        children: <Widget>[
+          const SizedBox(height: 28),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
+            children: List.generate(validCounts.length, (int i) {
+              final bool isTouched = touchedIndex == i;
+              return _ActivityChartIndicator(
+                color: validColors[i],
+                text: '${validCounts[i]} ${validLabels[i]}',
+                isSquare: false,
+                size: isTouched ? 18 : 16,
+                textColor: isTouched
+                    ? Theme.of(context).colorScheme.onSurface
+                    : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              );
+            }),
+          ),
+          const SizedBox(height: 18),
+          Expanded(
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: PieChart(
+                PieChartData(
+                  pieTouchData: PieTouchData(
+                    touchCallback: (FlTouchEvent event, PieTouchResponse? pieTouchResponse) {
+                      setState(() {
+                        if (!event.isInterestedForInteractions || pieTouchResponse == null || pieTouchResponse.touchedSection == null) {
+                          touchedIndex = -1;
+                          return;
+                        }
+                        touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                      });
+                    },
+                  ),
+                  startDegreeOffset: 180,
+                  borderData: FlBorderData(show: false),
+                  sectionsSpace: 1,
+                  centerSpaceRadius: 0,
+                  sections: List.generate(validCounts.length, (int i) {
+                    final bool isTouched = i == touchedIndex;
+                    final double radius = isTouched ? 80.0 : 70.0;
+                    return PieChartSectionData(
+                      color: validColors[i],
+                      value: validCounts[i].toDouble(),
+                      title: '',
+                      radius: radius,
+                      borderSide: isTouched
+                          ? BorderSide(color: Theme.of(context).colorScheme.surface, width: 6)
+                          : BorderSide(color: Theme.of(context).colorScheme.surface.withValues(alpha: 0)),
+                    );
+                  }),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _StorageStatsView extends ConsumerWidget {
   const _StorageStatsView({required this.instance});
 
@@ -1760,86 +1866,12 @@ class _StorageStatsView extends ConsumerWidget {
             const SizedBox(height: Insets.lg),
 
             // Library Composition (PieChart)
-            Card(
-              elevation: 0,
-              margin: EdgeInsets.zero,
-              color: Theme.of(context).colorScheme.surfaceContainerLow,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(Insets.lg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    Text(
-                      'Library Composition',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: Insets.lg),
-                    SizedBox(
-                      height: 200,
-                      child: Builder(
-                        builder: (BuildContext context) {
-                          final double total = (data.movieCount + data.showCount + data.episodeCount).toDouble();
-                          if (total == 0) return const SizedBox.shrink();
-
-                          final BorderSide border = BorderSide(
-                            color: Theme.of(context).colorScheme.surfaceContainerLow,
-                            width: 1.5,
-                          );
-
-                          return PieChart(
-                            PieChartData(
-                              sectionsSpace: 0,
-                              centerSpaceRadius: 50,
-                              sections: <PieChartSectionData>[
-                                if (data.movieCount > 0)
-                                  PieChartSectionData(
-                                    color: Colors.pink.shade400,
-                                    value: data.movieCount.toDouble(),
-                                    showTitle: false,
-                                    radius: 50,
-                                    borderSide: border,
-                                  ),
-                                if (data.showCount > 0)
-                                  PieChartSectionData(
-                                    color: Colors.teal.shade400,
-                                    value: data.showCount.toDouble(),
-                                    showTitle: false,
-                                    radius: 50,
-                                    borderSide: border,
-                                  ),
-                                if (data.episodeCount > 0)
-                                  PieChartSectionData(
-                                    color: Colors.amber.shade400,
-                                    value: data.episodeCount.toDouble(),
-                                    showTitle: false,
-                                    radius: 50,
-                                    borderSide: border,
-                                  ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: Insets.lg),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: Insets.md,
-                      runSpacing: Insets.sm,
-                      children: <Widget>[
-                        if (data.movieCount > 0) _Indicator(color: Colors.pink.shade400, text: '${data.movieCount} Movies'),
-                        if (data.showCount > 0) _Indicator(color: Colors.teal.shade400, text: '${data.showCount} Shows'),
-                        if (data.episodeCount > 0) _Indicator(color: Colors.amber.shade400, text: '${data.episodeCount} Episodes'),
-                      ],
-                    ),
-                  ],
-                ),
+            _ChartCard(
+              title: 'Library Composition',
+              child: _LibraryCompositionPieChart(
+                movieCount: data.movieCount,
+                showCount: data.showCount,
+                episodeCount: data.episodeCount,
               ),
             ),
             const SizedBox(height: Insets.lg),
