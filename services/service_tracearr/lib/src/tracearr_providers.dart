@@ -5,6 +5,7 @@ import 'package:core_networking/core_networking.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 
 import 'auth/tracearr_auth_interceptor.dart';
 import 'auth/tracearr_auth_manager.dart';
@@ -106,7 +107,8 @@ final tracearrStatsProvider = FutureProvider.family
   final List<String> serverIds = servers.keys.toList();
 
   final TracearrApi api = await ref.watch(tracearrApiProvider(instance).future);
-  return api.getStats(serverIds, DateTime.now().timeZoneName);
+  final String timezone = (await FlutterTimezone.getLocalTimezone()).identifier;
+  return api.getStats(serverIds, timezone);
 });
 
 final tracearrActivityStatsProvider = FutureProvider.family
@@ -116,7 +118,8 @@ final tracearrActivityStatsProvider = FutureProvider.family
   final List<String> serverIds = servers.keys.toList();
 
   final TracearrApi api = await ref.watch(tracearrApiProvider(instance).future);
-  return api.getActivityStats(serverIds, DateTime.now().timeZoneName);
+  final String timezone = (await FlutterTimezone.getLocalTimezone()).identifier;
+  return api.getActivityStats(serverIds, timezone);
 });
 
 final tracearrActivityLocationsProvider = FutureProvider.family
@@ -126,7 +129,8 @@ final tracearrActivityLocationsProvider = FutureProvider.family
   final List<String> serverIds = servers.keys.toList();
 
   final TracearrApi api = await ref.watch(tracearrApiProvider(instance).future);
-  return api.getLocations(serverIds, DateTime.now().timeZoneName);
+  final String timezone = (await FlutterTimezone.getLocalTimezone()).identifier;
+  return api.getLocations(serverIds, timezone);
 });
 
 final tracearrDashboardStatsProvider = FutureProvider.family
@@ -136,7 +140,8 @@ final tracearrDashboardStatsProvider = FutureProvider.family
   final List<String> serverIds = servers.keys.toList();
 
   final TracearrApi api = await ref.watch(tracearrApiProvider(instance).future);
-  return api.getDashboardStats(serverIds, DateTime.now().timeZoneName);
+  final String timezone = (await FlutterTimezone.getLocalTimezone()).identifier;
+  return api.getDashboardStats(serverIds, timezone);
 });
 
 class TracearrHistoryNotifier extends ChangeNotifier {
