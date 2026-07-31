@@ -10,6 +10,14 @@ import 'package:palette_generator_plus/palette_generator_plus.dart';
 import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'models/tracearr_active_sessions.dart';
+import 'models/tracearr_activity_concurrent.dart';
+import 'models/tracearr_activity_engagement.dart';
+import 'models/tracearr_activity_platform.dart';
+import 'models/tracearr_activity_play.dart';
+import 'models/tracearr_activity_play_dow.dart';
+import 'models/tracearr_activity_play_hod.dart';
+import 'models/tracearr_activity_quality.dart';
+import 'models/tracearr_activity_stats.dart';
 import 'models/tracearr_session.dart';
 import 'models/tracearr_stats.dart';
 import 'tracearr_providers.dart';
@@ -70,20 +78,44 @@ class _HistoryTab extends ConsumerWidget {
           onRetry: () => ref.invalidate(tracearrHistoryProvider(instance)),
           data: (List<TracearrSession> data) {
             if (data.isEmpty) {
-              return const EmptyView(
-                icon: Icons.history,
-                title: 'No history',
-                message: 'There are no historical sessions available.',
+              return EasyRefresh(
+                onRefresh: () async => ref.invalidate(tracearrHistoryProvider(instance)),
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: const <Widget>[
+                    SizedBox(height: 100),
+                    EmptyView(
+                      icon: Icons.history,
+                      title: 'No history',
+                      message: 'There are no historical sessions available.',
+                    ),
+                  ],
+                ),
               );
             }
 
-            return NotificationListener<ScrollNotification>(
-              onNotification: (ScrollNotification scrollInfo) {
-                if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
-                  notifier.loadMore();
-                }
-                return false;
-              },
+            return EasyRefresh(
+              header: const ClassicHeader(
+                dragText: 'Pull to refresh',
+                armedText: 'Release ready',
+                readyText: 'Refreshing...',
+                processingText: 'Refreshing...',
+                processedText: 'Succeeded',
+                failedText: 'Failed',
+                messageText: 'Last updated at %T',
+              ),
+              footer: const ClassicFooter(
+                dragText: 'Pull to load',
+                armedText: 'Release ready',
+                readyText: 'Loading...',
+                processingText: 'Loading...',
+                processedText: 'Succeeded',
+                failedText: 'Failed',
+                noMoreText: 'No more',
+                messageText: 'Last updated at %T',
+              ),
+              onRefresh: () async => ref.invalidate(tracearrHistoryProvider(instance)),
+              onLoad: notifier.hasMore ? () async => notifier.loadMore() : null,
               child: ListView.builder(
                 padding: const EdgeInsets.all(Insets.lg),
                 itemCount: data.length,
@@ -106,8 +138,1325 @@ class _HistoryTab extends ConsumerWidget {
   }
 }
 
-class _StatsTab extends ConsumerWidget {
+class _StatsTab extends StatelessWidget {
   const _StatsTab({required this.instance});
+
+  final Instance instance;
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 3,
+      child: Column(
+        children: <Widget>[
+          const TabBar(
+            tabs: <Widget>[
+              Tab(text: 'Activity'),
+              Tab(text: 'Storage'),
+              Tab(text: 'Watch'),
+            ],
+          ),
+          Expanded(
+            child: TabBarView(
+              children: <Widget>[
+                _ActivityStatsView(instance: instance),
+                _StorageStatsView(instance: instance),
+                _WatchStatsView(instance: instance),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChartCard extends StatelessWidget {
+  const _ChartCard({required this.title, required this.child});
+
+  final String title;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(Insets.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: Insets.lg),
+            child,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PlaysLineChart extends StatefulWidget {
+  const _PlaysLineChart({required this.plays, required this.servers});
+  final List<TracearrActivityPlay> plays;
+  final Map<String, String> servers;
+
+  @override
+  State<_PlaysLineChart> createState() => _PlaysLineChartState();
+}
+
+class _PlaysLineChartState extends State<_PlaysLineChart> {
+  @override
+  Widget build(BuildContext context) {
+    if (widget.plays.isEmpty) return const SizedBox.shrink();
+
+    // 1. Extract unique servers
+    final List<String> serverIds = widget.plays.map((TracearrActivityPlay e) => e.serverId).toSet().toList();
+    final Map<String, Color> serverColors = <String, Color>{};
+    final List<Color> availableColors = <Color>[
+      Colors.blue,
+      Colors.purple,
+      Colors.orange,
+      Colors.green,
+      Colors.red,
+      Colors.teal,
+      Colors.pink,
+      Colors.amber,
+      Colors.indigo,
+      Colors.lime,
+    ];
+    for (int i = 0; i < serverIds.length; i++) {
+      serverColors[serverIds[i]] = availableColors[i % availableColors.length];
+    }
+
+    // 2. Group by Date
+    final Map<String, Map<String, int>> groupedData = <String, Map<String, int>>{};
+    for (final TracearrActivityPlay item in widget.plays) {
+      final String date = item.date;
+      final String server = item.serverId;
+      final int count = item.count;
+
+      groupedData.putIfAbsent(date, () => <String, int>{});
+      groupedData[date]![server] = count;
+    }
+
+    final List<String> dates = groupedData.keys.toList();
+    
+    double maxVal = 0;
+    for (final Map<String, int> counts in groupedData.values) {
+      for (final int count in counts.values) {
+        if (count > maxVal) maxVal = count.toDouble();
+      }
+    }
+    if (maxVal == 0) maxVal = 1;
+
+    Widget legendItem(Color color, String text) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+          ),
+          const SizedBox(width: 4),
+          Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        ],
+      );
+    }
+
+    return Column(
+      children: <Widget>[
+        AspectRatio(
+          aspectRatio: 1.70,
+          child: Padding(
+            padding: const EdgeInsets.only(right: 18, left: 12, top: 24, bottom: 12),
+            child: LineChart(
+              LineChartData(
+                lineTouchData: LineTouchData(
+                  handleBuiltInTouches: true,
+                  touchTooltipData: LineTouchTooltipData(
+                    fitInsideHorizontally: true,
+                    fitInsideVertically: true,
+                    getTooltipColor: (LineBarSpot spot) => Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
+                    getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
+                      return touchedBarSpots.map((LineBarSpot barSpot) {
+                        final int index = barSpot.x.toInt();
+                        if (index < 0 || index >= dates.length) return null;
+                        
+                        final String dateStr = dates[index].split(' ').first;
+                        final String serverId = serverIds[barSpot.barIndex];
+                        final String serverName = widget.servers[serverId] ?? (serverId.length > 8 ? serverId.substring(0, 8) : serverId);
+
+                        return LineTooltipItem(
+                          '${barSpot.y.toInt()} plays\n',
+                          TextStyle(color: serverColors[serverId], fontWeight: FontWeight.bold),
+                          children: <TextSpan>[
+                            TextSpan(
+                              text: '$serverName\n$dateStr',
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7), fontSize: 10, fontWeight: FontWeight.normal),
+                            ),
+                          ],
+                        );
+                      }).toList();
+                    },
+                  ),
+                ),
+                gridData: FlGridData(
+                  horizontalInterval: max(1, maxVal ~/ 5).toDouble(),
+                  verticalInterval: 1,
+                  getDrawingHorizontalLine: (double value) {
+                    return FlLine(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2), strokeWidth: 1);
+                  },
+                  getDrawingVerticalLine: (double value) {
+                    return FlLine(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2), strokeWidth: 1);
+                  },
+                ),
+                titlesData: FlTitlesData(
+                  rightTitles: const AxisTitles(),
+                  topTitles: const AxisTitles(),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 30,
+                      interval: 1,
+                      getTitlesWidget: (double value, TitleMeta meta) {
+                        final int index = value.toInt();
+                        if (index < 0 || index >= dates.length) return const SizedBox.shrink();
+                        if (index % max(1, dates.length ~/ 5) != 0) return const SizedBox.shrink();
+                        final String text = dates[index].split(' ').first.substring(5); // MM-DD
+                        return SideTitleWidget(
+                          meta: meta,
+                          child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                        );
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: max(1, maxVal ~/ 5).toDouble(),
+                      reservedSize: 42,
+                      getTitlesWidget: (double value, TitleMeta meta) {
+                        if (value % 1 != 0) return const SizedBox.shrink();
+                        return Text(value.toInt().toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), textAlign: TextAlign.left);
+                      },
+                    ),
+                  ),
+                ),
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+                ),
+                minX: 0,
+                maxX: max(0, dates.length - 1).toDouble(),
+                minY: 0,
+                maxY: maxVal * 1.2,
+                lineBarsData: serverIds.map((String serverId) {
+                  int xIndex = 0;
+                  final List<FlSpot> spots = groupedData.entries.map((MapEntry<String, Map<String, int>> entry) {
+                    final int count = entry.value[serverId] ?? 0;
+                    final FlSpot spot = FlSpot(xIndex.toDouble(), count.toDouble());
+                    xIndex++;
+                    return spot;
+                  }).toList();
+
+                  return LineChartBarData(
+                    spots: spots,
+                    isCurved: true,
+                    color: serverColors[serverId],
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: const FlDotData(show: false),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: serverColors[serverId]!.withValues(alpha: 0.1),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ),
+        if (serverIds.length > 1) ...<Widget>[
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 16,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: serverIds.map((String serverId) {
+              final String serverName = widget.servers[serverId] ?? (serverId.length > 8 ? serverId.substring(0, 8) : serverId);
+              return legendItem(serverColors[serverId]!, serverName);
+            }).toList(),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _PlaysDowBarChart extends StatefulWidget {
+  const _PlaysDowBarChart({required this.plays});
+  final List<TracearrActivityPlayDow> plays;
+
+  @override
+  State<_PlaysDowBarChart> createState() => _PlaysDowBarChartState();
+}
+
+class _PlaysDowBarChartState extends State<_PlaysDowBarChart> {
+  int touchedIndex = -1;
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.plays.isEmpty) return const SizedBox.shrink();
+
+    double maxVal = 0;
+    for (final TracearrActivityPlayDow p in widget.plays) {
+      if (p.count > maxVal) maxVal = p.count.toDouble();
+    }
+    if (maxVal == 0) maxVal = 1;
+
+    final Color barBackgroundColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1);
+    final Color barColor = Theme.of(context).colorScheme.primary;
+    final Color touchedBarColor = Theme.of(context).colorScheme.secondary;
+
+    return AspectRatio(
+      aspectRatio: 1.5,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: BarChart(
+          BarChartData(
+            barTouchData: BarTouchData(
+              enabled: true,
+              touchTooltipData: BarTouchTooltipData(
+                fitInsideHorizontally: true,
+                fitInsideVertically: true,
+                getTooltipColor: (_) => Colors.blueGrey,
+                tooltipHorizontalAlignment: FLHorizontalAlignment.center,
+                tooltipMargin: 8,
+                getTooltipItem: (BarChartGroupData group, int groupIndex, BarChartRodData rod, int rodIndex) {
+                  return BarTooltipItem(
+                    '${widget.plays[groupIndex].name}\n',
+                    const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: widget.plays[groupIndex].count.toString(),
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              touchCallback: (FlTouchEvent event, BarTouchResponse? barTouchResponse) {
+                setState(() {
+                  if (!event.isInterestedForInteractions || barTouchResponse == null || barTouchResponse.spot == null) {
+                    touchedIndex = -1;
+                    return;
+                  }
+                  touchedIndex = barTouchResponse.spot!.touchedBarGroupIndex;
+                });
+              },
+            ),
+            titlesData: FlTitlesData(
+              rightTitles: const AxisTitles(),
+              topTitles: const AxisTitles(),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 38,
+                  getTitlesWidget: (double value, TitleMeta meta) {
+                    final int index = value.toInt();
+                    if (index < 0 || index >= widget.plays.length) return const SizedBox.shrink();
+                    return SideTitleWidget(
+                      meta: meta,
+                      space: 16,
+                      child: Text(widget.plays[index].name.substring(0, 3).toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    );
+                  },
+                ),
+              ),
+              leftTitles: const AxisTitles(),
+            ),
+            borderData: FlBorderData(show: false),
+            barGroups: widget.plays.asMap().entries.map((MapEntry<int, TracearrActivityPlayDow> e) {
+              final bool isTouched = e.key == touchedIndex;
+              return BarChartGroupData(
+                x: e.key,
+                barRods: <BarChartRodData>[
+                  BarChartRodData(
+                    toY: e.value.count.toDouble(),
+                    color: isTouched ? touchedBarColor : barColor,
+                    width: 22,
+                    borderSide: isTouched ? BorderSide(color: touchedBarColor.withValues(alpha: 0.8)) : const BorderSide(color: Colors.white, width: 0),
+                    backDrawRodData: BackgroundBarChartRodData(
+                      show: true,
+                      toY: maxVal * 1.2,
+                      color: barBackgroundColor,
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
+            gridData: const FlGridData(show: false),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlaysHodBarChart extends StatefulWidget {
+  const _PlaysHodBarChart({required this.plays});
+  final List<TracearrActivityPlayHod> plays;
+
+  @override
+  State<_PlaysHodBarChart> createState() => _PlaysHodBarChartState();
+}
+
+class _PlaysHodBarChartState extends State<_PlaysHodBarChart> {
+  int touchedIndex = -1;
+
+  String _formatHour(int hour) {
+    if (hour == 0) return '12am';
+    if (hour < 12) return '${hour}am';
+    if (hour == 12) return '12pm';
+    return '${hour - 12}pm';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.plays.isEmpty) return const SizedBox.shrink();
+    
+    double maxVal = 0;
+    for (final TracearrActivityPlayHod p in widget.plays) {
+      if (p.count > maxVal) maxVal = p.count.toDouble();
+    }
+    if (maxVal == 0) maxVal = 1;
+
+    final Color barBackgroundColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1);
+    final Color barColor = Theme.of(context).colorScheme.primary;
+    final Color touchedBarColor = Theme.of(context).colorScheme.secondary;
+
+    final Map<int, int> playsMap = <int, int>{
+      for (final TracearrActivityPlayHod p in widget.plays) p.hour: p.count
+    };
+
+    return AspectRatio(
+      aspectRatio: 1.5,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: BarChart(
+          BarChartData(
+            barTouchData: BarTouchData(
+              enabled: true,
+              touchTooltipData: BarTouchTooltipData(
+                fitInsideHorizontally: true,
+                fitInsideVertically: true,
+                getTooltipColor: (_) => Colors.blueGrey,
+                tooltipHorizontalAlignment: FLHorizontalAlignment.center,
+                tooltipMargin: 8,
+                getTooltipItem: (BarChartGroupData group, int groupIndex, BarChartRodData rod, int rodIndex) {
+                  return BarTooltipItem(
+                    '${_formatHour(group.x.toInt())}\n${rod.toY.toInt()} plays',
+                    const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  );
+                },
+              ),
+              touchCallback: (FlTouchEvent event, BarTouchResponse? barTouchResponse) {
+                setState(() {
+                  if (!event.isInterestedForInteractions || barTouchResponse == null || barTouchResponse.spot == null) {
+                    touchedIndex = -1;
+                    return;
+                  }
+                  touchedIndex = barTouchResponse.spot!.touchedBarGroupIndex;
+                });
+              },
+            ),
+            titlesData: FlTitlesData(
+              rightTitles: const AxisTitles(),
+              topTitles: const AxisTitles(),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 38,
+                  getTitlesWidget: (double value, TitleMeta meta) {
+                    final int hour = value.toInt();
+                    if (hour % 4 != 0) return const SizedBox.shrink();
+                    
+                    return SideTitleWidget(
+                      meta: meta,
+                      space: 8,
+                      fitInside: SideTitleFitInsideData.fromTitleMeta(meta, distanceFromEdge: 0),
+                      child: Text(_formatHour(hour), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                    );
+                  },
+                ),
+              ),
+              leftTitles: const AxisTitles(),
+            ),
+            borderData: FlBorderData(show: false),
+            maxY: maxVal * 1.2,
+            minY: 0,
+            barGroups: List<BarChartGroupData>.generate(24, (int index) {
+              // The API returns 'hour' in UTC. We need to map it to local time.
+              // 'index' represents the local hour (0-23).
+              final int offset = DateTime.now().timeZoneOffset.inHours;
+              final int utcHour = (index - offset) % 24;
+              final int searchUtc = utcHour < 0 ? utcHour + 24 : utcHour;
+
+              // Find if we have a play count for this UTC hour
+              final int count = playsMap[searchUtc] ?? 0;
+              final bool isTouched = index == touchedIndex;
+              
+              return BarChartGroupData(
+                x: index,
+                barRods: <BarChartRodData>[
+                  BarChartRodData(
+                    toY: count.toDouble(),
+                    color: isTouched ? touchedBarColor : barColor,
+                    width: 8,
+                    borderSide: isTouched ? BorderSide(color: touchedBarColor.withValues(alpha: 0.8)) : const BorderSide(color: Colors.white, width: 0),
+                    backDrawRodData: BackgroundBarChartRodData(
+                      show: true,
+                      toY: maxVal * 1.2,
+                      color: barBackgroundColor,
+                    ),
+                  ),
+                ],
+              );
+            }),
+            gridData: const FlGridData(show: false),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ActivityChartIndicator extends StatelessWidget {
+  const _ActivityChartIndicator({
+    required this.color,
+    required this.text,
+    required this.isSquare,
+    this.size = 16,
+    this.textColor,
+  });
+  final Color color;
+  final String text;
+  final bool isSquare;
+  final double size;
+  final Color? textColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            shape: isSquare ? BoxShape.rectangle : BoxShape.circle,
+            color: color,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: textColor ?? Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PlatformsPieChart extends StatefulWidget {
+  const _PlatformsPieChart({required this.platforms});
+  final List<TracearrActivityPlatform> platforms;
+
+  @override
+  State<_PlatformsPieChart> createState() => _PlatformsPieChartState();
+}
+
+class _PlatformsPieChartState extends State<_PlatformsPieChart> {
+  int touchedIndex = -1;
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.platforms.isEmpty) return const SizedBox.shrink();
+
+    final List<Color> colors = <Color>[
+      Colors.blue,
+      Colors.yellow.shade700,
+      Colors.pink,
+      Colors.green,
+      Colors.orange,
+      Colors.purple,
+    ];
+
+    return AspectRatio(
+      aspectRatio: 1.3,
+      child: Column(
+        children: <Widget>[
+          const SizedBox(height: 28),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
+            children: widget.platforms.asMap().entries.map((MapEntry<int, TracearrActivityPlatform> e) {
+              final bool isTouched = touchedIndex == e.key;
+              return _ActivityChartIndicator(
+                color: colors[e.key % colors.length],
+                text: '${e.value.platform} (${e.value.count})',
+                isSquare: false,
+                size: isTouched ? 18 : 16,
+                textColor: isTouched ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 18),
+          Expanded(
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: PieChart(
+                PieChartData(
+                  pieTouchData: PieTouchData(
+                    touchCallback: (FlTouchEvent event, PieTouchResponse? pieTouchResponse) {
+                      setState(() {
+                        if (!event.isInterestedForInteractions || pieTouchResponse == null || pieTouchResponse.touchedSection == null) {
+                          touchedIndex = -1;
+                          return;
+                        }
+                        touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                      });
+                    },
+                  ),
+                  startDegreeOffset: 180,
+                  borderData: FlBorderData(show: false),
+                  sectionsSpace: 1,
+                  centerSpaceRadius: 0,
+                  sections: widget.platforms.asMap().entries.map((MapEntry<int, TracearrActivityPlatform> e) {
+                    final bool isTouched = e.key == touchedIndex;
+                    final double radius = isTouched ? 80.0 : 70.0;
+                    return PieChartSectionData(
+                      color: colors[e.key % colors.length],
+                      value: e.value.count.toDouble(),
+                      title: '',
+                      radius: radius,
+                      borderSide: isTouched
+                          ? BorderSide(color: Theme.of(context).colorScheme.surface, width: 6)
+                          : BorderSide(color: Theme.of(context).colorScheme.surface.withValues(alpha: 0)),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QualityPieChart extends StatefulWidget {
+  const _QualityPieChart({required this.quality});
+  final TracearrActivityQuality quality;
+
+  @override
+  State<_QualityPieChart> createState() => _QualityPieChartState();
+}
+
+class _QualityPieChartState extends State<_QualityPieChart> {
+  int touchedIndex = -1;
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.quality.total == 0) return const SizedBox.shrink();
+
+    final List<Color> colors = <Color>[Colors.green, Colors.blue, Colors.orange];
+    final List<String> labels = <String>['Direct Play', 'Direct Stream', 'Transcode'];
+    final List<int> counts = <int>[widget.quality.directPlay, widget.quality.directStream, widget.quality.transcode];
+
+    return AspectRatio(
+      aspectRatio: 1.3,
+      child: Column(
+        children: <Widget>[
+          const SizedBox(height: 28),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
+            children: List.generate(3, (int i) {
+              final bool isTouched = touchedIndex == i;
+              return _ActivityChartIndicator(
+                color: colors[i],
+                text: '${labels[i]} (${counts[i]})',
+                isSquare: false,
+                size: isTouched ? 18 : 16,
+                textColor: isTouched ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              );
+            }),
+          ),
+          const SizedBox(height: 18),
+          Expanded(
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: PieChart(
+                PieChartData(
+                  pieTouchData: PieTouchData(
+                    touchCallback: (FlTouchEvent event, PieTouchResponse? pieTouchResponse) {
+                      setState(() {
+                        if (!event.isInterestedForInteractions || pieTouchResponse == null || pieTouchResponse.touchedSection == null) {
+                          touchedIndex = -1;
+                          return;
+                        }
+                        touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                      });
+                    },
+                  ),
+                  startDegreeOffset: 180,
+                  borderData: FlBorderData(show: false),
+                  sectionsSpace: 1,
+                  centerSpaceRadius: 0,
+                  sections: List.generate(3, (int i) {
+                    final bool isTouched = i == touchedIndex;
+                    final double radius = isTouched ? 80.0 : 70.0;
+                    return PieChartSectionData(
+                      color: colors[i],
+                      value: counts[i].toDouble(),
+                      title: '',
+                      radius: radius,
+                      borderSide: isTouched
+                          ? BorderSide(color: Theme.of(context).colorScheme.surface, width: 6)
+                          : BorderSide(color: Theme.of(context).colorScheme.surface.withValues(alpha: 0)),
+                    );
+                  }),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConcurrentBarChart extends StatefulWidget {
+  const _ConcurrentBarChart({required this.concurrentPlays});
+  final List<TracearrActivityConcurrent> concurrentPlays;
+
+  @override
+  State<_ConcurrentBarChart> createState() => _ConcurrentBarChartState();
+}
+
+class _ConcurrentBarChartState extends State<_ConcurrentBarChart> {
+  int touchedIndex = -1;
+  
+  @override
+  Widget build(BuildContext context) {
+    if (widget.concurrentPlays.isEmpty) return const SizedBox.shrink();
+
+    final Color colorDirect = Colors.greenAccent.shade400;
+    final Color colorDirectStream = Colors.orangeAccent.shade400;
+    final Color colorTranscode = Colors.redAccent.shade400;
+
+    double maxVal = 0;
+    for (final TracearrActivityConcurrent p in widget.concurrentPlays) {
+      if (p.total > maxVal) maxVal = p.total.toDouble();
+    }
+    if (maxVal == 0) maxVal = 1;
+
+    Widget legendItem(Color color, String text) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+          ),
+          const SizedBox(width: 4),
+          Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        ],
+      );
+    }
+
+    return Column(
+      children: <Widget>[
+        AspectRatio(
+          aspectRatio: 1.70,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: BarChart(
+              BarChartData(
+                barTouchData: BarTouchData(
+                  enabled: true,
+                  touchTooltipData: BarTouchTooltipData(
+                    fitInsideHorizontally: true,
+                    fitInsideVertically: true,
+                    getTooltipColor: (_) => Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
+                    tooltipHorizontalAlignment: FLHorizontalAlignment.center,
+                    tooltipMargin: 8,
+                    getTooltipItem: (BarChartGroupData group, int groupIndex, BarChartRodData rod, int rodIndex) {
+                      final TracearrActivityConcurrent p = widget.concurrentPlays[groupIndex];
+                      final String date = p.hour.split('+').first;
+                      return BarTooltipItem(
+                        'Total: ${p.total}\nDirect: ${p.direct}\nStream: ${p.directStream}\nTranscode: ${p.transcode}\n',
+                        TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 12),
+                        children: <TextSpan>[
+                          TextSpan(
+                            text: date,
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7), fontSize: 10, fontWeight: FontWeight.normal),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  touchCallback: (FlTouchEvent event, BarTouchResponse? barTouchResponse) {
+                    setState(() {
+                      if (!event.isInterestedForInteractions || barTouchResponse == null || barTouchResponse.spot == null) {
+                        touchedIndex = -1;
+                        return;
+                      }
+                      touchedIndex = barTouchResponse.spot!.touchedBarGroupIndex;
+                    });
+                  },
+                ),
+                titlesData: FlTitlesData(
+                  rightTitles: const AxisTitles(),
+                  topTitles: const AxisTitles(),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 30,
+                      interval: 1,
+                      getTitlesWidget: (double value, TitleMeta meta) {
+                        final int index = value.toInt();
+                        if (index < 0 || index >= widget.concurrentPlays.length) return const SizedBox.shrink();
+                        if (index % max(1, widget.concurrentPlays.length ~/ 5) != 0) return const SizedBox.shrink();
+                        final String text = widget.concurrentPlays[index].hour.split(' ').first.substring(5); // MM-DD
+                        return SideTitleWidget(
+                          meta: meta,
+                          child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                        );
+                      },
+                    ),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: max(1, maxVal ~/ 5).toDouble(), // Scale dynamically but lock to integers
+                      reservedSize: 42,
+                      getTitlesWidget: (double value, TitleMeta meta) {
+                        if (value % 1 != 0) return const SizedBox.shrink();
+                        return Text(value.toInt().toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), textAlign: TextAlign.left);
+                      },
+                    ),
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                maxY: maxVal * 1.2,
+                minY: 0,
+                barGroups: widget.concurrentPlays.asMap().entries.map((MapEntry<int, TracearrActivityConcurrent> e) {
+                  final TracearrActivityConcurrent p = e.value;
+                  final bool isTouched = e.key == touchedIndex;
+                  
+                  return BarChartGroupData(
+                    x: e.key,
+                    barRods: <BarChartRodData>[
+                      BarChartRodData(
+                        toY: p.total.toDouble(),
+                        width: 22,
+                        borderSide: isTouched ? BorderSide(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.8)) : const BorderSide(color: Colors.white, width: 0),
+                        rodStackItems: <BarChartRodStackItem>[
+                          BarChartRodStackItem(0, p.transcode.toDouble(), colorTranscode),
+                          BarChartRodStackItem(p.transcode.toDouble(), (p.transcode + p.directStream).toDouble(), colorDirectStream),
+                          BarChartRodStackItem((p.transcode + p.directStream).toDouble(), p.total.toDouble(), colorDirect),
+                        ],
+                      ),
+                    ],
+                  );
+                }).toList(),
+                gridData: const FlGridData(show: false),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            legendItem(colorDirect, 'Direct'),
+            const SizedBox(width: 16),
+            legendItem(colorDirectStream, 'Stream'),
+            const SizedBox(width: 16),
+            legendItem(colorTranscode, 'Transcode'),
+          ],
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+}
+
+class _EngagementSummary extends StatelessWidget {
+  const _EngagementSummary({required this.engagement, required this.servers});
+  final TracearrActivityEngagement engagement;
+  final Map<String, String> servers;
+
+  @override
+  Widget build(BuildContext context) {
+    if (engagement.summary.totalPlays == 0) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        // 1. High-Level KPI Summary
+        Wrap(
+          spacing: Insets.md,
+          runSpacing: Insets.md,
+          alignment: WrapAlignment.center,
+          children: <Widget>[
+            _StatCard(title: 'Total Plays', value: engagement.summary.totalPlays.toString()),
+            _StatCard(
+              title: 'Avg Completion', 
+              value: '${engagement.summary.avgCompletionRate}%',
+              trailing: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  value: engagement.summary.avgCompletionRate / 100,
+                  strokeWidth: 3,
+                  backgroundColor: Theme.of(context).colorScheme.outlineVariant,
+                ),
+              ),
+            ),
+            _StatCard(
+              title: 'Session Health', 
+              value: '${engagement.summary.totalValidSessions} / ${engagement.summary.totalAllSessions}',
+            ),
+          ],
+        ),
+        const SizedBox(height: Insets.xl),
+
+        // 2. Engagement Breakdown
+        if (engagement.engagementBreakdown.isNotEmpty) ...<Widget>[
+          Text('Engagement Breakdown', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: Insets.md),
+          _EngagementDonutChart(breakdown: engagement.engagementBreakdown),
+          const SizedBox(height: Insets.xl),
+        ],
+
+        // 3. Audience Personas
+        if (engagement.userProfiles.isNotEmpty) ...<Widget>[
+          Text('Audience Personas', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: Insets.md),
+          _AudiencePersonaTable(profiles: engagement.userProfiles, servers: servers),
+          const SizedBox(height: Insets.xl),
+        ],
+
+        // 4. Top Performers
+        if (engagement.topContent.isNotEmpty || engagement.topShows.isNotEmpty) ...<Widget>[
+          Text('Top Performers', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: Insets.md),
+          _TopPerformersView(
+            topShows: engagement.topShows,
+            topContent: engagement.topContent,
+            servers: servers,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({required this.title, required this.value, this.trailing});
+  final String title;
+  final String value;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(Insets.md),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Column(
+            children: <Widget>[
+              Text(title, style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Theme.of(context).colorScheme.onPrimaryContainer.withValues(alpha: 0.7))),
+              const SizedBox(height: 4),
+              Text(value, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onPrimaryContainer)),
+            ],
+          ),
+          if (trailing != null) ...<Widget>[
+            const SizedBox(width: Insets.md),
+            trailing!,
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _EngagementDonutChart extends StatefulWidget {
+  const _EngagementDonutChart({required this.breakdown});
+  final List<TracearrEngagementBreakdown> breakdown;
+
+  @override
+  State<_EngagementDonutChart> createState() => _EngagementDonutChartState();
+}
+
+class _EngagementDonutChartState extends State<_EngagementDonutChart> {
+  int touchedIndex = -1;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget legendItem(Color color, String text) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Container(width: 12, height: 12, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+          const SizedBox(width: 4),
+          Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        ],
+      );
+    }
+
+    return Column(
+      children: <Widget>[
+        SizedBox(
+          height: 200,
+          child: PieChart(
+            PieChartData(
+              pieTouchData: PieTouchData(
+                touchCallback: (FlTouchEvent event, PieTouchResponse? pieTouchResponse) {
+                  setState(() {
+                    if (!event.isInterestedForInteractions || pieTouchResponse == null || pieTouchResponse.touchedSection == null) {
+                      touchedIndex = -1;
+                      return;
+                    }
+                    touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                  });
+                },
+              ),
+              borderData: FlBorderData(show: false),
+              sectionsSpace: 2,
+              centerSpaceRadius: 40,
+              sections: widget.breakdown.asMap().entries.map((MapEntry<int, TracearrEngagementBreakdown> entry) {
+                final int index = entry.key;
+                final TracearrEngagementBreakdown data = entry.value;
+                final bool isTouched = index == touchedIndex;
+                final double radius = isTouched ? 60.0 : 50.0;
+                final double fontSize = isTouched ? 16.0 : 12.0;
+
+                Color color;
+                if (data.tier == 'watched') color = Colors.green;
+                else if (data.tier == 'abandoned') color = Colors.redAccent;
+                else color = Colors.amber;
+
+                return PieChartSectionData(
+                  color: color,
+                  value: data.percentage,
+                  title: '${data.percentage.toStringAsFixed(1)}%',
+                  radius: radius,
+                  titleStyle: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold, color: Colors.white),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 16,
+          runSpacing: 8,
+          alignment: WrapAlignment.center,
+          children: widget.breakdown.map((TracearrEngagementBreakdown data) {
+            Color color;
+            if (data.tier == 'watched') color = Colors.green;
+            else if (data.tier == 'abandoned') color = Colors.redAccent;
+            else color = Colors.amber;
+            return legendItem(color, '${data.tier.toUpperCase()} (${data.count})');
+          }).toList(),
+        ),
+      ],
+    );
+  }
+}
+
+class _AudiencePersonaTable extends StatelessWidget {
+  const _AudiencePersonaTable({required this.profiles, required this.servers});
+  final List<TracearrUserProfile> profiles;
+  final Map<String, String> servers;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        headingTextStyle: const TextStyle(fontWeight: FontWeight.bold),
+        columns: const <DataColumn>[
+          DataColumn(label: Text('User')),
+          DataColumn(label: Text('Profile Type')),
+          DataColumn(label: Text('Completion Rate')),
+          DataColumn(label: Text('Watch Hours')),
+          DataColumn(label: Text('Top Format')),
+        ],
+        rows: profiles.map((TracearrUserProfile profile) {
+          final bool isCompletionist = profile.behaviorType?.toLowerCase() == 'completionist';
+          
+          String? imageUrl;
+          if (profile.thumbUrl != null && servers.isNotEmpty) {
+            final String serverUrl = servers.values.first; // Fallback to first server since no serverId is provided
+            final String cleanPath = profile.thumbUrl!.startsWith('/') ? profile.thumbUrl! : '/${profile.thumbUrl!}';
+            imageUrl = '$serverUrl$cleanPath';
+          }
+          
+          return DataRow(
+            cells: <DataCell>[
+              DataCell(
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    CircleAvatar(
+                      radius: 14,
+                      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+                      backgroundImage: imageUrl != null ? NetworkImage(imageUrl) : null,
+                      child: imageUrl == null ? const Icon(Icons.person, size: 16) : null,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(profile.username),
+                  ],
+                ),
+              ),
+              DataCell(
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isCompletionist ? Colors.green.withValues(alpha: 0.2) : Colors.blue.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    profile.behaviorType ?? 'Unknown',
+                    style: TextStyle(
+                      color: isCompletionist ? Colors.green : Colors.blue,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
+              DataCell(Text('${profile.completionRate}%')),
+              DataCell(Text('${profile.totalWatchHours} hrs')),
+              DataCell(Text(profile.favoriteMediaType ?? 'N/A')),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _TopPerformersView extends StatelessWidget {
+  const _TopPerformersView({
+    required this.topShows,
+    required this.topContent,
+    required this.servers,
+  });
+  final List<TracearrTopShow> topShows;
+  final List<TracearrTopContent> topContent;
+  final Map<String, String> servers;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 400,
+      child: DefaultTabController(
+        length: 2,
+        child: Column(
+          children: <Widget>[
+            const TabBar(
+              tabs: <Widget>[
+                Tab(text: 'Top Shows'),
+                Tab(text: 'Top Content'),
+              ],
+            ),
+            Expanded(
+              child: TabBarView(
+                children: <Widget>[
+                  // Top Shows Tab
+                  ListView.builder(
+                    itemCount: topShows.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      final TracearrTopShow show = topShows[index];
+                      String? imageUrl;
+                      if (show.thumbPath != null && servers.containsKey(show.serverId)) {
+                        final String cleanPath = show.thumbPath!.startsWith('/') ? show.thumbPath! : '/${show.thumbPath!}';
+                        imageUrl = '${servers[show.serverId]}$cleanPath';
+                      }
+                      return ListTile(
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: imageUrl != null 
+                              ? Image.network(imageUrl, width: 40, height: 60, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.movie))
+                              : const Icon(Icons.movie),
+                        ),
+                        title: Text(show.showTitle),
+                        subtitle: Text('${show.totalEpisodeViews} views • ${show.totalWatchHours} hrs'),
+                        trailing: Text('Score: ${show.bingeScore.toStringAsFixed(1)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      );
+                    },
+                  ),
+                  // Top Content Tab
+                  ListView.builder(
+                    itemCount: topContent.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      final TracearrTopContent content = topContent[index];
+                      String? imageUrl;
+                      if (content.thumbPath != null && servers.containsKey(content.serverId)) {
+                        final String cleanPath = content.thumbPath!.startsWith('/') ? content.thumbPath! : '/${content.thumbPath!}';
+                        imageUrl = '${servers[content.serverId]}$cleanPath';
+                      }
+                      return ListTile(
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: imageUrl != null 
+                              ? Image.network(imageUrl, width: 40, height: 60, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.movie))
+                              : const Icon(Icons.movie),
+                        ),
+                        title: Text(content.title),
+                        subtitle: Text('${content.showTitle ?? 'Movie'} • ${content.totalWatchHours} hrs'),
+                        trailing: Text('${content.completionRate}% completed', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActivityStatsView extends ConsumerWidget {
+  const _ActivityStatsView({required this.instance});
+
+  final Instance instance;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<TracearrActivityStats> statsVal =
+        ref.watch(tracearrActivityStatsProvider(instance));
+    final Map<String, String> servers =
+        ref.watch(tracearrServersProvider(instance)).value ??
+            <String, String>{};
+
+    return AsyncValueView<TracearrActivityStats>(
+      value: statsVal,
+      onRetry: () => ref.invalidate(tracearrActivityStatsProvider(instance)),
+      data: (TracearrActivityStats data) {
+        return EasyRefresh(
+          header: const ClassicHeader(
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
+          onRefresh: () async {
+            ref.invalidate(tracearrActivityStatsProvider(instance));
+          },
+          child: ListView(
+            padding: const EdgeInsets.all(Insets.lg),
+          children: <Widget>[
+            if (data.plays.isNotEmpty)
+              _ChartCard(
+                title: 'Plays Over Time',
+                child: _PlaysLineChart(plays: data.plays, servers: servers),
+              ),
+            const SizedBox(height: Insets.lg),
+            if (data.concurrentPlays.isNotEmpty)
+              _ChartCard(
+                title: 'Concurrent Plays',
+                child: _ConcurrentBarChart(concurrentPlays: data.concurrentPlays),
+              ),
+            const SizedBox(height: Insets.lg),
+            if (data.playsByDayOfWeek.isNotEmpty)
+              _ChartCard(
+                title: 'Plays by Day of Week',
+                child: _PlaysDowBarChart(plays: data.playsByDayOfWeek),
+              ),
+            const SizedBox(height: Insets.lg),
+            if (data.playsByHourOfDay.isNotEmpty)
+              _ChartCard(
+                title: 'Plays by Hour of Day',
+                child: _PlaysHodBarChart(plays: data.playsByHourOfDay),
+              ),
+            const SizedBox(height: Insets.lg),
+            if (data.quality.total > 0)
+              _ChartCard(
+                title: 'Quality',
+                child: _QualityPieChart(quality: data.quality),
+              ),
+            const SizedBox(height: Insets.lg),
+            if (data.platforms.isNotEmpty)
+              _ChartCard(
+                title: 'Platforms',
+                child: _PlatformsPieChart(platforms: data.platforms),
+              ),
+            const SizedBox(height: Insets.lg),
+            if (data.engagement.summary.totalPlays > 0)
+              _ChartCard(
+                title: 'Engagement',
+                child: _EngagementSummary(engagement: data.engagement, servers: servers),
+              ),
+          ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _WatchStatsView extends StatelessWidget {
+  const _WatchStatsView({required this.instance});
+
+  final Instance instance;
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Text('Watch Stats (Coming Soon)'),
+    );
+  }
+}
+
+class _StorageStatsView extends ConsumerWidget {
+  const _StorageStatsView({required this.instance});
 
   final Instance instance;
 
@@ -357,9 +1706,8 @@ class _StatsTab extends ConsumerWidget {
                               BarChartData(
                                 alignment: BarChartAlignment.spaceAround,
                                 maxY: max(1, maxVal) * 1.2,
-                                barTouchData: BarTouchData(enabled: false),
+                                barTouchData: const BarTouchData(enabled: false),
                                 titlesData: FlTitlesData(
-                                  show: true,
                                   bottomTitles: AxisTitles(
                                     sideTitles: SideTitles(
                                       showTitles: true,
@@ -377,9 +1725,9 @@ class _StatsTab extends ConsumerWidget {
                                       },
                                     ),
                                   ),
-                                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                  leftTitles: const AxisTitles(),
+                                  topTitles: const AxisTitles(),
+                                  rightTitles: const AxisTitles(),
                                 ),
                                 gridData: const FlGridData(show: false),
                                 borderData: FlBorderData(show: false),
@@ -396,7 +1744,7 @@ class _StatsTab extends ConsumerWidget {
                                         color: validColors[index],
                                         width: 32,
                                         borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-                                      )
+                                      ),
                                     ],
                                   );
                                 }),
@@ -420,7 +1768,7 @@ class _StatsTab extends ConsumerWidget {
                           if (data.qualityBreakdown!.countSd > 0)
                             _Indicator(color: Colors.orange.shade400, text: 'SD (${data.qualityBreakdown!.countSd})'),
                         ],
-                      )
+                      ),
                     ],
                   ),
                 ),
@@ -790,22 +2138,24 @@ class _SessionCardState extends State<_SessionCard> {
                 ),
 
               // Content
-              Padding(
-                padding: const EdgeInsets.all(Insets.md),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    // Poster
-                    ConstrainedBox(
-                      constraints:
-                          const BoxConstraints(maxWidth: 80, maxHeight: 100),
-                      child: AspectRatio(
-                        aspectRatio: session.mediaType.toLowerCase() ==
-                                    'track' ||
-                                session.mediaType.toLowerCase() == 'album' ||
-                                session.mediaType.toLowerCase() == 'audio'
-                            ? 1.0
-                            : (2 / 3),
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(Insets.md),
+                child: IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      // Poster
+                      ConstrainedBox(
+                        constraints:
+                            const BoxConstraints(minHeight: 100),
+                        child: AspectRatio(
+                          aspectRatio: session.mediaType.toLowerCase() ==
+                                      'track' ||
+                                  session.mediaType.toLowerCase() == 'album' ||
+                                  session.mediaType.toLowerCase() == 'audio'
+                              ? 1.0
+                              : (2 / 3),
                         child: Container(
                           decoration: BoxDecoration(
                             color: theme.colorScheme.surfaceContainerHighest,
@@ -1026,6 +2376,8 @@ class _SessionCardState extends State<_SessionCard> {
                       ),
                   ],
                 ),
+                ),
+              ),
               ),
             ],
           ),

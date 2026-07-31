@@ -5,8 +5,16 @@ import 'package:core_networking/core_networking.dart';
 import 'package:dio/dio.dart';
 
 import 'models/tracearr_active_sessions.dart';
-import 'models/tracearr_stats.dart';
+import 'models/tracearr_activity_platform.dart';
+import 'models/tracearr_activity_play.dart';
+import 'models/tracearr_activity_play_dow.dart';
+import 'models/tracearr_activity_play_hod.dart';
+import 'models/tracearr_activity_stats.dart';
+import 'models/tracearr_activity_quality.dart';
+import 'models/tracearr_activity_concurrent.dart';
+import 'models/tracearr_activity_engagement.dart';
 import 'models/tracearr_session.dart';
+import 'models/tracearr_stats.dart';
 
 /// Thin typed client over the Tracearr API.
 class TracearrApi {
@@ -57,6 +65,83 @@ class TracearrApi {
         queryParameters: query,
       );
       return TracearrStats.fromJson(resp.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<TracearrActivityStats> getActivityStats(List<String> serverIds, String timezone) async {
+    try {
+      final Map<String, dynamic> query = <String, dynamic>{
+        'serverIds': serverIds,
+        'timezone': timezone,
+        'period': 'month', // fixed to month for now
+      };
+
+      final Future<Response<dynamic>> playsReq = _dio.get<dynamic>('api/v1/stats/plays', queryParameters: query);
+      final Future<Response<dynamic>> dowReq = _dio.get<dynamic>('api/v1/stats/plays-by-dayofweek', queryParameters: query);
+      final Future<Response<dynamic>> hodReq = _dio.get<dynamic>('api/v1/stats/plays-by-hourofday', queryParameters: query);
+      final Future<Response<dynamic>> platformsReq = _dio.get<dynamic>('api/v1/stats/platforms', queryParameters: query);
+      final Future<Response<dynamic>> qualityReq = _dio.get<dynamic>('api/v1/stats/quality', queryParameters: query);
+      final Future<Response<dynamic>> concurrentReq = _dio.get<dynamic>('api/v1/stats/concurrent', queryParameters: query);
+      final Future<Response<dynamic>> engagementReq = _dio.get<dynamic>('api/v1/stats/engagement', queryParameters: query);
+
+      final List<Response<dynamic>> resps = await Future.wait(<Future<Response<dynamic>>>[playsReq, dowReq, hodReq, platformsReq, qualityReq, concurrentReq, engagementReq]);
+
+      final List<TracearrActivityPlay> plays = <TracearrActivityPlay>[];
+      if (resps[0].data is Map<String, dynamic> && resps[0].data['data'] is List) {
+        for (final dynamic item in resps[0].data['data'] as List<dynamic>) {
+          plays.add(TracearrActivityPlay.fromJson(item as Map<String, dynamic>));
+        }
+      }
+
+      final List<TracearrActivityPlayDow> playsDow = <TracearrActivityPlayDow>[];
+      if (resps[1].data is Map<String, dynamic> && resps[1].data['data'] is List) {
+        for (final dynamic item in resps[1].data['data'] as List<dynamic>) {
+          playsDow.add(TracearrActivityPlayDow.fromJson(item as Map<String, dynamic>));
+        }
+      }
+
+      final List<TracearrActivityPlayHod> playsHod = <TracearrActivityPlayHod>[];
+      if (resps[2].data is Map<String, dynamic> && resps[2].data['data'] is List) {
+        for (final dynamic item in resps[2].data['data'] as List<dynamic>) {
+          playsHod.add(TracearrActivityPlayHod.fromJson(item as Map<String, dynamic>));
+        }
+      }
+
+      final List<TracearrActivityPlatform> platforms = <TracearrActivityPlatform>[];
+      if (resps[3].data is Map<String, dynamic> && resps[3].data['data'] is List) {
+        for (final dynamic item in resps[3].data['data'] as List<dynamic>) {
+          platforms.add(TracearrActivityPlatform.fromJson(item as Map<String, dynamic>));
+        }
+      }
+
+      TracearrActivityQuality quality = TracearrActivityQuality();
+      if (resps[4].data is Map<String, dynamic>) {
+        quality = TracearrActivityQuality.fromJson(resps[4].data as Map<String, dynamic>);
+      }
+
+      final List<TracearrActivityConcurrent> concurrent = <TracearrActivityConcurrent>[];
+      if (resps[5].data is Map<String, dynamic> && resps[5].data['data'] is List) {
+        for (final dynamic item in resps[5].data['data'] as List<dynamic>) {
+          concurrent.add(TracearrActivityConcurrent.fromJson(item as Map<String, dynamic>));
+        }
+      }
+
+      TracearrActivityEngagement engagement = TracearrActivityEngagement(summary: TracearrEngagementSummary());
+      if (resps[6].data is Map<String, dynamic>) {
+        engagement = TracearrActivityEngagement.fromJson(resps[6].data as Map<String, dynamic>);
+      }
+
+      return TracearrActivityStats(
+        plays: plays,
+        playsByDayOfWeek: playsDow,
+        playsByHourOfDay: playsHod,
+        platforms: platforms,
+        quality: quality,
+        concurrentPlays: concurrent,
+        engagement: engagement,
+      );
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }

@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'auth/tracearr_auth_interceptor.dart';
 import 'auth/tracearr_auth_manager.dart';
 import 'models/tracearr_active_sessions.dart';
+import 'models/tracearr_activity_stats.dart';
 import 'models/tracearr_session.dart';
 import 'models/tracearr_stats.dart';
 import 'tracearr_api.dart';
@@ -106,6 +107,16 @@ final tracearrStatsProvider = FutureProvider.family
   return api.getStats(serverIds, 'UTC');
 });
 
+final tracearrActivityStatsProvider = FutureProvider.family
+    .autoDispose<TracearrActivityStats, Instance>((Ref ref, Instance instance) async {
+  final Map<String, String> servers =
+      await ref.watch(tracearrServersProvider(instance).future);
+  final List<String> serverIds = servers.keys.toList();
+
+  final TracearrApi api = await ref.watch(tracearrApiProvider(instance).future);
+  return api.getActivityStats(serverIds, 'UTC');
+});
+
 class TracearrHistoryNotifier extends ChangeNotifier {
   TracearrHistoryNotifier(this.ref, this.instance) {
     _init();
@@ -116,6 +127,8 @@ class TracearrHistoryNotifier extends ChangeNotifier {
   int _page = 1;
   bool _hasMore = true;
   bool _isLoadingMore = false;
+
+  bool get hasMore => _hasMore;
 
   AsyncValue<List<TracearrSession>> state = const AsyncValue.loading();
 
@@ -170,5 +183,5 @@ class TracearrHistoryNotifier extends ChangeNotifier {
 
 final tracearrHistoryProvider = Provider.family.autoDispose<
     TracearrHistoryNotifier, Instance>(
-  (Ref ref, Instance instance) => TracearrHistoryNotifier(ref, instance),
+  TracearrHistoryNotifier.new,
 );
