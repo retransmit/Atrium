@@ -1707,9 +1707,7 @@ class _ActivityStatsViewState extends ConsumerState<_ActivityStatsView> {
         setState(() {
           _selectedRange = 'Custom';
           _customFrom = picked.start;
-          _customTo = picked.end.add(
-            const Duration(hours: 23, minutes: 59, seconds: 59),
-          );
+          _customTo = picked.end;
         });
       } else if (_selectedRange != 'Custom') {
         setState(() {
@@ -1744,29 +1742,31 @@ class _ActivityStatsViewState extends ConsumerState<_ActivityStatsView> {
         const SizedBox(height: Insets.sm),
         SizedBox(
           height: 44,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
-            children: <Widget>[
-              for (final String range in _ranges)
-                Padding(
-                  padding: const EdgeInsets.only(right: Insets.sm),
-                  child: Center(
-                    child: ChoiceChip(
+          child: Center(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  for (int i = 0; i < _ranges.length; i++) ...<Widget>[
+                    if (i > 0) const SizedBox(width: Insets.sm),
+                    ChoiceChip(
                       label: Text(
-                        range == 'Custom' &&
+                        _ranges[i] == 'Custom' &&
                                 _selectedRange == 'Custom' &&
                                 _customFrom != null &&
                                 _customTo != null
                             ? 'Custom (${_customFrom!.month}/${_customFrom!.day} - ${_customTo!.month}/${_customTo!.day})'
-                            : range,
+                            : _ranges[i],
                       ),
-                      selected: _selectedRange == range,
-                      onSelected: (_) => _handleSelect(range),
+                      selected: _selectedRange == _ranges[i],
+                      onSelected: (_) => _handleSelect(_ranges[i]),
                     ),
-                  ),
-                ),
-            ],
+                  ],
+                ],
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 4),
@@ -1973,6 +1973,131 @@ class _LibraryCompositionPieChartState extends State<_LibraryCompositionPieChart
   }
 }
 
+class _StorageQualityBarChart extends StatefulWidget {
+  const _StorageQualityBarChart({
+    required this.count4k,
+    required this.count1080p,
+    required this.count720p,
+    required this.countSd,
+  });
+
+  final int count4k;
+  final int count1080p;
+  final int count720p;
+  final int countSd;
+
+  @override
+  State<_StorageQualityBarChart> createState() => _StorageQualityBarChartState();
+}
+
+class _StorageQualityBarChartState extends State<_StorageQualityBarChart> {
+  int touchedIndex = -1;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<MapEntry<String, int>> items = <MapEntry<String, int>>[];
+    if (widget.count4k > 0) items.add(MapEntry<String, int>('4K', widget.count4k));
+    if (widget.count1080p > 0) items.add(MapEntry<String, int>('1080p', widget.count1080p));
+    if (widget.count720p > 0) items.add(MapEntry<String, int>('720p', widget.count720p));
+    if (widget.countSd > 0) items.add(MapEntry<String, int>('SD', widget.countSd));
+
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    double maxVal = 0;
+    for (final MapEntry<String, int> p in items) {
+      if (p.value > maxVal) maxVal = p.value.toDouble();
+    }
+    if (maxVal == 0) maxVal = 1;
+
+    final Color barBackgroundColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1);
+    final Color barColor = Theme.of(context).colorScheme.primary;
+    final Color touchedBarColor = Theme.of(context).colorScheme.secondary;
+
+    return AspectRatio(
+      aspectRatio: 1.5,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: BarChart(
+          BarChartData(
+            barTouchData: BarTouchData(
+              enabled: true,
+              touchTooltipData: BarTouchTooltipData(
+                fitInsideHorizontally: true,
+                fitInsideVertically: true,
+                getTooltipColor: (_) => Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
+                tooltipHorizontalAlignment: FLHorizontalAlignment.center,
+                tooltipMargin: 8,
+                getTooltipItem: (BarChartGroupData group, int groupIndex, BarChartRodData rod, int rodIndex) {
+                  return BarTooltipItem(
+                    '${items[groupIndex].key}\n',
+                    const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    children: <TextSpan>[
+                      TextSpan(
+                        text: items[groupIndex].value.toString(),
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              touchCallback: (FlTouchEvent event, BarTouchResponse? barTouchResponse) {
+                setState(() {
+                  if (!event.isInterestedForInteractions || barTouchResponse == null || barTouchResponse.spot == null) {
+                    touchedIndex = -1;
+                    return;
+                  }
+                  touchedIndex = barTouchResponse.spot!.touchedBarGroupIndex;
+                });
+              },
+            ),
+            titlesData: FlTitlesData(
+              rightTitles: const AxisTitles(),
+              topTitles: const AxisTitles(),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 38,
+                  getTitlesWidget: (double value, TitleMeta meta) {
+                    final int index = value.toInt();
+                    if (index < 0 || index >= items.length) return const SizedBox.shrink();
+                    return SideTitleWidget(
+                      meta: meta,
+                      space: 16,
+                      child: Text(items[index].key, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    );
+                  },
+                ),
+              ),
+              leftTitles: const AxisTitles(),
+            ),
+            borderData: FlBorderData(show: false),
+            barGroups: items.asMap().entries.map((MapEntry<int, MapEntry<String, int>> e) {
+              final bool isTouched = e.key == touchedIndex;
+              return BarChartGroupData(
+                x: e.key,
+                barRods: <BarChartRodData>[
+                  BarChartRodData(
+                    toY: e.value.value.toDouble(),
+                    color: isTouched ? touchedBarColor : barColor,
+                    width: 22,
+                    borderSide: isTouched ? BorderSide(color: touchedBarColor.withValues(alpha: 0.8)) : const BorderSide(color: Colors.white, width: 0),
+                    backDrawRodData: BackgroundBarChartRodData(
+                      show: true,
+                      toY: maxVal * 1.2,
+                      color: barBackgroundColor,
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
+            gridData: const FlGridData(show: false),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _StorageStatsView extends ConsumerStatefulWidget {
   const _StorageStatsView({required this.instance});
 
@@ -2025,9 +2150,7 @@ class _StorageStatsViewState extends ConsumerState<_StorageStatsView> {
         setState(() {
           _selectedRange = 'Custom';
           _customFrom = picked.start;
-          _customTo = picked.end.add(
-            const Duration(hours: 23, minutes: 59, seconds: 59),
-          );
+          _customTo = picked.end;
         });
       } else if (_selectedRange != 'Custom') {
         setState(() {
@@ -2072,29 +2195,31 @@ class _StorageStatsViewState extends ConsumerState<_StorageStatsView> {
         const SizedBox(height: Insets.sm),
         SizedBox(
           height: 44,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
-            children: <Widget>[
-              for (final String range in _ranges)
-                Padding(
-                  padding: const EdgeInsets.only(right: Insets.sm),
-                  child: Center(
-                    child: ChoiceChip(
+          child: Center(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  for (int i = 0; i < _ranges.length; i++) ...<Widget>[
+                    if (i > 0) const SizedBox(width: Insets.sm),
+                    ChoiceChip(
                       label: Text(
-                        range == 'Custom' &&
+                        _ranges[i] == 'Custom' &&
                                 _selectedRange == 'Custom' &&
                                 _customFrom != null &&
                                 _customTo != null
                             ? 'Custom (${_customFrom!.month}/${_customFrom!.day} - ${_customTo!.month}/${_customTo!.day})'
-                            : range,
+                            : _ranges[i],
                       ),
-                      selected: _selectedRange == range,
-                      onSelected: (_) => _handleSelect(range),
+                      selected: _selectedRange == _ranges[i],
+                      onSelected: (_) => _handleSelect(_ranges[i]),
                     ),
-                  ),
-                ),
-            ],
+                  ],
+                ],
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 4),
@@ -2199,126 +2324,15 @@ class _StorageStatsViewState extends ConsumerState<_StorageStatsView> {
             ),
             const SizedBox(height: Insets.lg),
 
-            // Quality Breakdown (PieChart)
+            // Quality Breakdown (BarChart)
             if (hasQualityData)
-              Card(
-                elevation: 0,
-                margin: EdgeInsets.zero,
-                color: Theme.of(context).colorScheme.surfaceContainerLow,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(Insets.lg),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: <Widget>[
-                      Text(
-                        'Quality Breakdown',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: Insets.lg),
-                      SizedBox(
-                        height: 200,
-                        child: Builder(
-                          builder: (BuildContext context) {
-                            final ColorScheme scheme = Theme.of(context).colorScheme;
-                            final List<MapEntry<String, int>> validQualities = <MapEntry<String, int>>[];
-                            final List<Color> validColors = <Color>[];
-                            
-                            if (data.qualityBreakdown!.count4k > 0) {
-                              validQualities.add(MapEntry<String, int>('4K', data.qualityBreakdown!.count4k));
-                              validColors.add(scheme.primary);
-                            }
-                            if (data.qualityBreakdown!.count1080p > 0) {
-                              validQualities.add(MapEntry<String, int>('1080p', data.qualityBreakdown!.count1080p));
-                              validColors.add(scheme.secondary);
-                            }
-                            if (data.qualityBreakdown!.count720p > 0) {
-                              validQualities.add(MapEntry<String, int>('720p', data.qualityBreakdown!.count720p));
-                              validColors.add(scheme.tertiary);
-                            }
-                            if (data.qualityBreakdown!.countSd > 0) {
-                              validQualities.add(MapEntry<String, int>('SD', data.qualityBreakdown!.countSd));
-                              validColors.add(scheme.error);
-                            }
-
-                            if (validQualities.isEmpty) return const SizedBox.shrink();
-
-                            final double maxVal = validQualities.map((MapEntry<String, int> e) => e.value).reduce(max).toDouble();
-
-                            return BarChart(
-                              BarChartData(
-                                alignment: BarChartAlignment.spaceAround,
-                                maxY: max(1, maxVal) * 1.2,
-                                barTouchData: const BarTouchData(enabled: false),
-                                titlesData: FlTitlesData(
-                                  bottomTitles: AxisTitles(
-                                    sideTitles: SideTitles(
-                                      showTitles: true,
-                                      getTitlesWidget: (double value, TitleMeta meta) {
-                                        final int index = value.toInt();
-                                        if (index < 0 || index >= validQualities.length) {
-                                          return const SizedBox.shrink();
-                                        }
-                                        final TextStyle style = Theme.of(context).textTheme.bodySmall!.copyWith(fontWeight: FontWeight.bold);
-                                        return SideTitleWidget(
-                                          meta: meta,
-                                          space: 4,
-                                          child: Text(validQualities[index].key, style: style),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                  leftTitles: const AxisTitles(),
-                                  topTitles: const AxisTitles(),
-                                  rightTitles: const AxisTitles(),
-                                ),
-                                gridData: const FlGridData(show: false),
-                                borderData: FlBorderData(show: false),
-                                barGroups: List<BarChartGroupData>.generate(validQualities.length, (int index) {
-                                  // Enforce a visual minimum toY so tiny values don't disappear completely
-                                  final double rawValue = validQualities[index].value.toDouble();
-                                  final double displayValue = max(rawValue, maxVal * 0.05);
-
-                                  return BarChartGroupData(
-                                    x: index,
-                                    barRods: <BarChartRodData>[
-                                      BarChartRodData(
-                                        toY: displayValue,
-                                        color: validColors[index],
-                                        width: 32,
-                                        borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
-                                      ),
-                                    ],
-                                  );
-                                }),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: Insets.lg),
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        spacing: Insets.md,
-                        runSpacing: Insets.sm,
-                        children: <Widget>[
-                          if (data.qualityBreakdown!.count4k > 0)
-                            _Indicator(color: Theme.of(context).colorScheme.primary, text: '4K (${data.qualityBreakdown!.count4k})'),
-                          if (data.qualityBreakdown!.count1080p > 0)
-                            _Indicator(color: Theme.of(context).colorScheme.secondary, text: '1080p (${data.qualityBreakdown!.count1080p})'),
-                          if (data.qualityBreakdown!.count720p > 0)
-                            _Indicator(color: Theme.of(context).colorScheme.tertiary, text: '720p (${data.qualityBreakdown!.count720p})'),
-                          if (data.qualityBreakdown!.countSd > 0)
-                            _Indicator(color: Theme.of(context).colorScheme.error, text: 'SD (${data.qualityBreakdown!.countSd})'),
-                        ],
-                      ),
-                    ],
-                  ),
+              _ChartCard(
+                title: 'Quality Breakdown',
+                child: _StorageQualityBarChart(
+                  count4k: data.qualityBreakdown!.count4k,
+                  count1080p: data.qualityBreakdown!.count1080p,
+                  count720p: data.qualityBreakdown!.count720p,
+                  countSd: data.qualityBreakdown!.countSd,
                 ),
               ),
             ],
@@ -3035,38 +3049,6 @@ class _SessionCardState extends State<_SessionCard> {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _Indicator extends StatelessWidget {
-  const _Indicator({
-    required this.color,
-    required this.text,
-  });
-
-  final Color color;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: color,
-          ),
-        ),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-        ),
-      ],
     );
   }
 }

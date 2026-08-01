@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:core_networking/core_networking.dart';
 import 'package:dio/dio.dart';
@@ -35,16 +34,17 @@ class TracearrApi {
     return '$base$cleanPath${sep}token=$token';
   }
 
+  String _formatIsoDate(DateTime dt) {
+    final String year = dt.year.toString().padLeft(4, '0');
+    final String month = dt.month.toString().padLeft(2, '0');
+    final String day = dt.day.toString().padLeft(2, '0');
+    return '$year-$month-${day}T00:00:00.000Z';
+  }
+
   /// Retrieves the active sessions from the internal Tracearr API.
   Future<TracearrActiveSessions> getActiveSessions() async {
     try {
-      try {
-        File('/data/user/0/app.atrium/app_flutter/tracearr_token.txt').writeAsStringSync(token ?? 'none');
-      } catch (_) {}
       final Response<dynamic> resp = await _dio.get<dynamic>('api/v1/sessions/active');
-      try {
-        File('/home/blazar/Projects/Atrium/tracearr_payload_dump.json').writeAsStringSync(jsonEncode(resp.data));
-      } catch (_) {}
       if (resp.data is List) {
         return TracearrActiveSessions(
           sessions: (resp.data as List).map((dynamic e) => TracearrSession.fromJson(e as Map<String, dynamic>)).toList(),
@@ -69,8 +69,8 @@ class TracearrApi {
         'timezone': timezone,
         'period': period,
       };
-      if (from != null) query['from'] = from.toUtc().toIso8601String();
-      if (to != null) query['to'] = to.toUtc().toIso8601String();
+      if (from != null) query['startDate'] = _formatIsoDate(from);
+      if (to != null) query['endDate'] = _formatIsoDate(to);
       final Response<dynamic> resp = await _dio.get<dynamic>(
         'api/v1/library/stats',
         queryParameters: query,
@@ -94,8 +94,8 @@ class TracearrApi {
         'timezone': timezone,
         'period': period,
       };
-      if (from != null) query['from'] = from.toUtc().toIso8601String();
-      if (to != null) query['to'] = to.toUtc().toIso8601String();
+      if (from != null) query['startDate'] = _formatIsoDate(from);
+      if (to != null) query['endDate'] = _formatIsoDate(to);
 
       final Future<Response<dynamic>> playsReq = _dio.get<dynamic>('api/v1/stats/plays', queryParameters: query);
       final Future<Response<dynamic>> dowReq = _dio.get<dynamic>('api/v1/stats/plays-by-dayofweek', queryParameters: query);
@@ -176,11 +176,6 @@ class TracearrApi {
         'api/v1/sessions/history',
         queryParameters: query,
       );
-      try {
-        File('/home/blazar/Projects/Atrium/tracearr_history_dump.json').writeAsStringSync(jsonEncode(resp.data));
-      } catch (e) {
-        print('Dump failed: $e');
-      }
       if (resp.data is Map<String, dynamic> && resp.data['data'] is List) {
         return (resp.data['data'] as List).map((dynamic e) => TracearrSession.fromJson(e as Map<String, dynamic>)).toList();
       }
@@ -269,10 +264,6 @@ class TracearrApi {
         alertsLast24h: alertsLast24h,
         activeUsersToday: activeUsersToday,
       );
-      
-      if (stats.activeStreams == 0 && stats.todayPlays == 0 && stats.todaySessions == 0) {
-        throw Exception('DEBUG EXCEPTION: Raw data = ${jsonEncode(res.data)}');
-      }
       
       return stats;
     } on DioException catch (e) {
