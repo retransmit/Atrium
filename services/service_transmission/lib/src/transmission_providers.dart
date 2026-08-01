@@ -119,12 +119,13 @@ final transmissionRawTorrentsProvider =
     FutureProvider.autoDispose.family<List<TransmissionTorrent>, Instance>((
   Ref ref,
   Instance instance,
-) async {
-  ref.pollEvery(transmissionListPollInterval);
-  final TransmissionApi api =
-      await ref.watch(transmissionApiProvider(instance).future);
-  return api.getTorrents();
-});
+) => ref.polled(transmissionListPollInterval, () async {
+    final TransmissionApi api =
+        await ref.watch(transmissionApiProvider(instance).future);
+    return api.getTorrents();
+    },
+  ),
+);
 
 /// The list as the Transmission screen shows it: filtered and sorted. Derives
 /// from [transmissionRawTorrentsProvider] and adds no traffic of its own.
@@ -219,24 +220,26 @@ final transmissionSessionProvider =
     FutureProvider.autoDispose.family<TransmissionSession, Instance>((
   Ref ref,
   Instance instance,
-) async {
-  ref.pollEvery(transmissionSlowPollInterval);
-  final TransmissionApi api =
-      await ref.watch(transmissionApiProvider(instance).future);
-  return api.getSession();
-});
+) => ref.polled(transmissionSlowPollInterval, () async {
+    final TransmissionApi api =
+        await ref.watch(transmissionApiProvider(instance).future);
+    return api.getSession();
+    },
+  ),
+);
 
 /// Live session speeds and counts.
 final transmissionSessionStatsProvider =
     FutureProvider.autoDispose.family<TransmissionSessionStats, Instance>((
   Ref ref,
   Instance instance,
-) async {
-  ref.pollEvery(transmissionListPollInterval);
-  final TransmissionApi api =
-      await ref.watch(transmissionApiProvider(instance).future);
-  return api.getSessionStats();
-});
+) => ref.polled(transmissionListPollInterval, () async {
+    final TransmissionApi api =
+        await ref.watch(transmissionApiProvider(instance).future);
+    return api.getSessionStats();
+    },
+  ),
+);
 
 /// Identifies one torrent on one instance, keyed by **infohash** rather than
 /// the numeric id, which Transmission reassigns when the daemon restarts.
@@ -247,9 +250,10 @@ final transmissionDetailProvider = FutureProvider.autoDispose
     .family<TransmissionDetail, TransmissionTorrentRef>((
   Ref ref,
   TransmissionTorrentRef key,
-) async {
-  ref.pollEvery(transmissionSlowPollInterval);
-  final TransmissionApi api =
-      await ref.watch(transmissionApiProvider(key.$1).future);
-  return api.getDetail(key.$2);
-});
+) => ref.polled(transmissionSlowPollInterval, () async {
+    final TransmissionApi api =
+        await ref.watch(transmissionApiProvider(key.$1).future);
+    return api.getDetail(key.$2);
+    },
+  ),
+);

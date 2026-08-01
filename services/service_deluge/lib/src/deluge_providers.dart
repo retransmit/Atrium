@@ -144,12 +144,13 @@ final delugeRawTorrentsProvider =
     FutureProvider.autoDispose.family<List<DelugeTorrent>, Instance>((
   Ref ref,
   Instance instance,
-) async {
-  ref.pollEvery(delugeListPollInterval);
-  final DelugeClient client =
-      await ref.watch(delugeClientProvider(instance).future);
-  return client.getTorrents();
-});
+) => ref.polled(delugeListPollInterval, () async {
+    final DelugeClient client =
+        await ref.watch(delugeClientProvider(instance).future);
+    return client.getTorrents();
+    },
+  ),
+);
 
 /// The torrent list as the Deluge screen shows it: filtered and sorted. Adds no
 /// network traffic of its own - it derives from [delugeRawTorrentsProvider].
@@ -228,12 +229,13 @@ final delugeSessionStatusProvider =
     FutureProvider.autoDispose.family<DelugeSessionStatus, Instance>((
   Ref ref,
   Instance instance,
-) async {
-  ref.pollEvery(delugeListPollInterval);
-  final DelugeClient client =
-      await ref.watch(delugeClientProvider(instance).future);
-  return client.getSessionStatus();
-});
+) => ref.polled(delugeListPollInterval, () async {
+    final DelugeClient client =
+        await ref.watch(delugeClientProvider(instance).future);
+    return client.getSessionStatus();
+    },
+  ),
+);
 
 /// The filter buckets the daemon currently offers. Polls slowly - the counts
 /// move, but the set of buckets rarely does.
@@ -241,12 +243,13 @@ final delugeFilterTreeProvider =
     FutureProvider.autoDispose.family<DelugeFilterTree, Instance>((
   Ref ref,
   Instance instance,
-) async {
-  ref.pollEvery(delugeDetailPollInterval);
-  final DelugeClient client =
-      await ref.watch(delugeClientProvider(instance).future);
-  return client.getFilterTree();
-});
+) => ref.polled(delugeDetailPollInterval, () async {
+    final DelugeClient client =
+        await ref.watch(delugeClientProvider(instance).future);
+    return client.getFilterTree();
+    },
+  ),
+);
 
 /// Whether the whole session is paused. Polls alongside the list so the
 /// pause/resume affordance cannot go stale.
@@ -254,12 +257,13 @@ final delugeSessionPausedProvider =
     FutureProvider.autoDispose.family<bool, Instance>((
   Ref ref,
   Instance instance,
-) async {
-  ref.pollEvery(delugeListPollInterval);
-  final DelugeClient client =
-      await ref.watch(delugeClientProvider(instance).future);
-  return client.isSessionPaused();
-});
+) => ref.polled(delugeListPollInterval, () async {
+    final DelugeClient client =
+        await ref.watch(delugeClientProvider(instance).future);
+    return client.isSessionPaused();
+    },
+  ),
+);
 
 /// Global bandwidth caps, in KiB/s.
 final delugeSpeedLimitsProvider =
@@ -292,9 +296,10 @@ final delugeTorrentDetailProvider = FutureProvider.autoDispose
     .family<DelugeTorrentDetail, DelugeTorrentRef>((
   Ref ref,
   DelugeTorrentRef key,
-) async {
-  ref.pollEvery(delugeDetailPollInterval);
-  final DelugeClient client =
-      await ref.watch(delugeClientProvider(key.$1).future);
-  return client.getTorrentDetail(key.$2);
-});
+) => ref.polled(delugeDetailPollInterval, () async {
+    final DelugeClient client =
+        await ref.watch(delugeClientProvider(key.$1).future);
+    return client.getTorrentDetail(key.$2);
+    },
+  ),
+);
