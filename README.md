@@ -8,8 +8,8 @@ whether you're on the home Wi-Fi or out in the world.
 
 **[Website][site]** - screenshots and a tour, no install needed.
 
-> **Status:** v1.2.0. Signed APKs are on the [releases page][releases];
-> the F-Droid submission is in review.
+> **Status:** v1.2.0. Install from [F-Droid][fdroid], or grab a signed APK
+> from the [releases page][releases].
 
 ## Why
 
@@ -72,15 +72,19 @@ each one covers:
 
 ## Install
 
-Grab the APK for your device from the [releases page][releases]. Most
-phones want `app-arm64-v8a-release.apk`; `armeabi-v7a` covers older
-32-bit devices. Android 7.0 (API 24) or newer.
+Atrium is on [F-Droid][fdroid], which is the easiest route: it picks the
+right build for your device and keeps it updated.
 
-The F-Droid submission is in review. Atrium is built reproducibly, so
-F-Droid rebuilds it from source, verifies the result matches the published
-APK byte for byte, and ships it carrying this project's own signature.
-The two sources are therefore interchangeable: you can move between the
-releases page and F-Droid without uninstalling.
+To install by hand instead, grab the APK for your device from the
+[releases page][releases]. Most phones want `app-arm64-v8a-release.apk`;
+`armeabi-v7a` covers older 32-bit devices. Android 7.0 (API 24) or newer.
+
+Atrium is built reproducibly, so F-Droid rebuilds it from source, verifies
+the result matches the published APK byte for byte, and ships it carrying
+this project's own signature. The two sources are therefore
+interchangeable: you can move between the releases page and F-Droid without
+uninstalling. F-Droid builds each tag only after it is published, so it can
+sit a version behind the releases page for a few days.
 
 ## Build
 
@@ -148,6 +152,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution guide and
 [GPL-3.0-or-later](LICENSE) - the same license as Sonarr, Radarr,
 Jellyfin, qBittorrent, and LunaSea.
 
+[fdroid]: https://f-droid.org/packages/app.atrium/
 [lunasea]: https://github.com/JagandeepBrar/LunaSea
 [releases]: https://github.com/retransmit/Atrium/releases
 [site]: https://retransmit.github.io/Atrium/

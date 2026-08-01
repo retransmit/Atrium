@@ -61,10 +61,19 @@ this](#why-it-is-like-this) before changing any of it.
    have to keep matching the `binary:` URLs in fdroiddata's
    `metadata/app.atrium.yml`, or F-Droid cannot find them.
 
-8. **Bump fdroiddata.** `versionName`, `versionCode`, `commit` (a full commit
-   hash, not a tag), `CurrentVersion` and `CurrentVersionCode` in each of the
-   three build blocks. Version codes are `build number * 10 + abi`, where abi is
-   1 armeabi-v7a, 2 arm64-v8a, 3 x86_64: see the override at the foot of
+8. **Let F-Droid pick it up.** There is nothing to edit by hand. The recipe at
+   `metadata/app.atrium.yml` in fdroiddata carries `UpdateCheckMode: Tags` and
+   `AutoUpdateMode: Version`, so their bot notices the new tag, appends the
+   three per-ABI build blocks itself, and moves `CurrentVersion` /
+   `CurrentVersionCode`. It then builds and publishes on F-Droid's own
+   schedule, which usually lands the new version a few days after the tag, so
+   f-droid.org trailing the releases page for a while is expected rather than a
+   fault. Edit the recipe by hand only when the recipe itself has to change (a
+   new build step, a changed dependency, different metadata) - never for a
+   routine version bump.
+
+   Version codes remain `build number * 10 + abi`, where abi is 1 armeabi-v7a,
+   2 arm64-v8a, 3 x86_64: see the override at the foot of
    `app/android/app/build.gradle.kts`, which must stay in step with the
    `VercodeOperation` in their metadata.
 

@@ -85,7 +85,7 @@ repo enforces - a whole-tree format adds hundreds of analyze issues and
 buries your actual change in noise. Format only the lines you touch, in
 the existing style of the file.
 
-**Dependencies need a check before they land.** Atrium targets F-Droid:
+**Dependencies need a check before they land.** Atrium ships on F-Droid:
 every dependency must be FOSS-licensed and must not fetch anything from
 the network at runtime. Mention any new dependency in the PR description
 so it can be vetted.
