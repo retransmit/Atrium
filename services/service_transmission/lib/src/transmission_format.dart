@@ -58,6 +58,15 @@ String trFmtLimit({required int kbps, required bool enabled}) {
   return '$kbps KB/s';
 }
 
+/// Splits a rate into number and unit so the two can be typeset at different
+/// sizes: `('1.2', 'MB/s')`.
+(String, String) trSplitRate(num bytesPerSec) {
+  final String joined = trFmtRate(bytesPerSec);
+  final int space = joined.indexOf(' ');
+  if (space < 0) return (joined, '');
+  return (joined.substring(0, space), joined.substring(space + 1));
+}
+
 /// A tracker's seeder/leecher count, which is -1 until an announce succeeds.
 String trFmtPeerCount(int count) => count < 0 ? '?' : '$count';
 

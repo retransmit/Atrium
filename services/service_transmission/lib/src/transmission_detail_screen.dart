@@ -2,6 +2,7 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'models/transmission_detail.dart';
 import 'models/transmission_torrent.dart';
@@ -93,9 +94,13 @@ class _OverviewTab extends StatelessWidget {
       padding: Insets.page,
       children: <Widget>[
         if (t != null) ...<Widget>[
-          LinearProgressIndicator(
-            value: t.percentDone.clamp(0, 1),
-            color: trStatusColor(scheme, t),
+          LinearProgressIndicatorM3E(
+            value: t.percentDone.clamp(0, 1).toDouble(),
+            shape: (t.downloadRate > 0 || t.uploadRate > 0)
+                ? ProgressM3EShape.wavy
+                : ProgressM3EShape.flat,
+            activeColor: trStatusColor(scheme, t),
+            trackColor: scheme.surfaceContainerHighest,
           ),
           const SizedBox(height: Insets.md),
           if (t.hasError)
@@ -217,7 +222,12 @@ class _FilesTabState extends ConsumerState<_FilesTab> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               const SizedBox(height: Insets.xxs),
-              LinearProgressIndicator(value: f.progress),
+              LinearProgressIndicatorM3E(
+                value: f.progress,
+                // A file's own progress never animates, so it stays flat.
+                shape: ProgressM3EShape.flat,
+                size: LinearProgressM3ESize.s,
+              ),
               const SizedBox(height: Insets.xxs),
               Text(
                 '${(f.progress * 100).toStringAsFixed(0)}% - '

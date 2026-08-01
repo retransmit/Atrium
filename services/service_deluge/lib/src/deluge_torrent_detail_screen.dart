@@ -2,6 +2,7 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'deluge_format.dart';
 import 'deluge_providers.dart';
@@ -86,9 +87,13 @@ class _OverviewTab extends StatelessWidget {
       padding: Insets.page,
       children: <Widget>[
         if (t != null) ...<Widget>[
-          LinearProgressIndicator(
+          LinearProgressIndicatorM3E(
             value: t.progressFraction,
-            color: delugeStateColor(scheme, t.state),
+            shape: (t.downloadRate > 0 || t.uploadRate > 0)
+                ? ProgressM3EShape.wavy
+                : ProgressM3EShape.flat,
+            activeColor: delugeStateColor(scheme, t.state),
+            trackColor: scheme.surfaceContainerHighest,
           ),
           const SizedBox(height: Insets.md),
         ],
@@ -161,7 +166,12 @@ class _FilesTab extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               const SizedBox(height: Insets.xxs),
-              LinearProgressIndicator(value: f.progress.clamp(0, 1)),
+              LinearProgressIndicatorM3E(
+                value: f.progress.clamp(0, 1).toDouble(),
+                // A file's own progress never animates, so it stays flat.
+                shape: ProgressM3EShape.flat,
+                size: LinearProgressM3ESize.s,
+              ),
               const SizedBox(height: Insets.xxs),
               Text(
                 '${(f.progress * 100).toStringAsFixed(0)}% - '

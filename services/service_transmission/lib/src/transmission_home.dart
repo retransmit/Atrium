@@ -2,6 +2,7 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'models/transmission_session.dart';
 import 'models/transmission_torrent.dart';
@@ -230,89 +231,95 @@ class _SessionSummary extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
+            // The two live rates are the point of this card, so they get the
+            // only large type on the screen. Everything else stays quiet.
             Row(
               children: <Widget>[
-                Icon(Icons.download_outlined, size: 18, color: scheme.primary),
-                const SizedBox(width: Insets.xs),
-                Text(trFmtRate(stats.downloadSpeed)),
-                const SizedBox(width: Insets.lg),
-                Icon(Icons.upload_outlined, size: 18, color: scheme.tertiary),
-                const SizedBox(width: Insets.xs),
-                Text(trFmtRate(stats.uploadSpeed)),
-                const Spacer(),
-                // Only shown when the daemon actually knows: a containerised
-                // Transmission commonly reports -1 here.
-                if (session.knowsFreeSpace)
-                  Text(
-                    '${trFmtBytes(session.downloadDirFreeSpace)} free',
-                    style: Theme.of(context).textTheme.bodySmall,
+                Expanded(
+                  child: _SpeedReadout(
+                    icon: Icons.south,
+                    bytesPerSec: stats.downloadSpeed,
+                    color: scheme.primary,
                   ),
+                ),
+                Expanded(
+                  child: _SpeedReadout(
+                    icon: Icons.north,
+                    bytesPerSec: stats.uploadSpeed,
+                    color: scheme.tertiary,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: Insets.xs),
             Text(
-              '${stats.activeTorrentCount} active, '
-              '${stats.pausedTorrentCount} paused '
-              'of ${stats.torrentCount}',
-              style: Theme.of(context).textTheme.bodySmall,
+              <String>[
+                '${stats.activeTorrentCount} active',
+                '${stats.pausedTorrentCount} paused of ${stats.torrentCount}',
+                // Only shown when the daemon actually knows: a containerised
+                // Transmission commonly reports -1 here.
+                if (session.knowsFreeSpace)
+                  '${trFmtBytes(session.downloadDirFreeSpace)} free',
+              ].join(' - '),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: scheme.onSurfaceVariant),
             ),
-            const SizedBox(height: Insets.sm),
-            Wrap(
-              spacing: Insets.sm,
-              runSpacing: Insets.xs,
+            const Divider(height: Insets.xl),
+            Row(
               children: <Widget>[
                 // Turtle mode overrides both limits while on, so it is a
                 // distinct control rather than another limit value.
-                FilledButton.tonalIcon(
+                IconButton.filledTonal(
+                  tooltip: session.altSpeedEnabled
+                      ? 'Turtle on: ${session.altSpeedDown}/'
+                          '${session.altSpeedUp} KB/s'
+                      : 'Turtle off',
+                  isSelected: session.altSpeedEnabled,
                   onPressed: () => onToggleTurtle(!session.altSpeedEnabled),
-                  icon: Icon(
-                    session.altSpeedEnabled
-                        ? Icons.speed
-                        : Icons.slow_motion_video,
-                  ),
-                  label: Text(
-                    session.altSpeedEnabled
-                        ? 'Turtle on (${session.altSpeedDown}/'
-                            '${session.altSpeedUp} KB/s)'
-                        : 'Turtle off',
-                  ),
+                  icon: const Icon(Icons.slow_motion_video),
                 ),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final int? kbps = await showTransmissionSpeedDialog(
-                      context,
-                      title: 'Download limit',
-                      currentKbps: session.speedLimitDown,
-                      currentEnabled: session.speedLimitDownEnabled,
-                    );
-                    if (kbps != null) onSetDown(kbps);
-                  },
-                  icon: const Icon(Icons.south, size: 18),
-                  label: Text(
-                    trFmtLimit(
+                const SizedBox(width: Insets.xs),
+                // Limits read as status first and controls second, so they are
+                // quiet text rather than buttons competing with Add.
+                Expanded(
+                  child: _LimitButton(
+                    icon: Icons.south,
+                    label: trFmtLimit(
                       kbps: session.speedLimitDown,
                       enabled: session.speedLimitDownEnabled,
                     ),
+                    onPressed: () async {
+                      final int? kbps = await showTransmissionSpeedDialog(
+                        context,
+                        title: 'Download limit',
+                        currentKbps: session.speedLimitDown,
+                        currentEnabled: session.speedLimitDownEnabled,
+                      );
+                      if (kbps != null) onSetDown(kbps);
+                    },
                   ),
                 ),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    final int? kbps = await showTransmissionSpeedDialog(
-                      context,
-                      title: 'Upload limit',
-                      currentKbps: session.speedLimitUp,
-                      currentEnabled: session.speedLimitUpEnabled,
-                    );
-                    if (kbps != null) onSetUp(kbps);
-                  },
-                  icon: const Icon(Icons.north, size: 18),
-                  label: Text(
-                    trFmtLimit(
+                Expanded(
+                  child: _LimitButton(
+                    icon: Icons.north,
+                    label: trFmtLimit(
                       kbps: session.speedLimitUp,
                       enabled: session.speedLimitUpEnabled,
                     ),
+                    onPressed: () async {
+                      final int? kbps = await showTransmissionSpeedDialog(
+                        context,
+                        title: 'Upload limit',
+                        currentKbps: session.speedLimitUp,
+                        currentEnabled: session.speedLimitUpEnabled,
+                      );
+                      if (kbps != null) onSetUp(kbps);
+                    },
                   ),
                 ),
+                const SizedBox(width: Insets.xs),
                 FilledButton.icon(
                   onPressed: onAdd,
                   icon: const Icon(Icons.add),
@@ -322,6 +329,75 @@ class _SessionSummary extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// One live rate, typeset as a big figure with a small unit beside it.
+class _SpeedReadout extends StatelessWidget {
+  const _SpeedReadout({
+    required this.icon,
+    required this.bytesPerSec,
+    required this.color,
+  });
+
+  final IconData icon;
+  final num bytesPerSec;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final TextTheme text = Theme.of(context).textTheme;
+    final (String value, String unit) = trSplitRate(bytesPerSec);
+    final bool idle = bytesPerSec <= 0;
+    return Row(
+      children: <Widget>[
+        Icon(icon, size: 18, color: idle ? scheme.outline : color),
+        const SizedBox(width: Insets.xs),
+        Text(
+          value,
+          style: text.headlineSmall?.copyWith(
+            color: idle ? scheme.onSurfaceVariant : scheme.onSurface,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(width: Insets.xxs),
+        Padding(
+          padding: const EdgeInsets.only(top: Insets.xs),
+          child: Text(
+            unit,
+            style: text.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A bandwidth cap shown as its current value; tapping changes it.
+class _LimitButton extends StatelessWidget {
+  const _LimitButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 16),
+      label: Text(label, overflow: TextOverflow.ellipsis),
+      style: TextButton.styleFrom(
+        foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
+        padding: const EdgeInsets.symmetric(horizontal: Insets.xs),
+        visualDensity: VisualDensity.compact,
       ),
     );
   }
@@ -510,6 +586,8 @@ class _TorrentRow extends StatelessWidget {
     final ColorScheme scheme = Theme.of(context).colorScheme;
     final TextTheme text = Theme.of(context).textTheme;
     final Color color = trStatusColor(scheme, torrent);
+    final bool done = torrent.percentDone >= 1.0;
+    final bool moving = torrent.downloadRate > 0 || torrent.uploadRate > 0;
 
     return Card(
       margin: const EdgeInsets.only(bottom: Insets.sm),
@@ -530,7 +608,9 @@ class _TorrentRow extends StatelessWidget {
                       torrent.name,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: text.bodyMedium,
+                      style: text.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                   _RowMenu(
@@ -548,30 +628,60 @@ class _TorrentRow extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: Insets.sm),
-              LinearProgressIndicator(
-                value: torrent.percentDone.clamp(0, 1),
-                color: color,
+              // Once a torrent is finished its progress bar is pinned at 100%
+              // and says nothing. Give the bar a second job: show share ratio
+              // toward 1.0, which is the one number still moving.
+              LinearProgressIndicatorM3E(
+                value: done
+                    ? torrent.ratio.clamp(0, 1).toDouble()
+                    : torrent.percentDone.clamp(0, 1).toDouble(),
+                // The expressive wave reads as "moving right now", so it is
+                // spent only on torrents actually shifting bytes. A torrent
+                // parked at 100% stays flat.
+                shape: moving ? ProgressM3EShape.wavy : ProgressM3EShape.flat,
+                size: LinearProgressM3ESize.s,
+                activeColor: color,
+                trackColor: scheme.surfaceContainerHighest,
               ),
-              const SizedBox(height: Insets.xs),
-              DefaultTextStyle.merge(
-                style: text.bodySmall,
-                child: Row(
-                  children: <Widget>[
-                    Text('${(torrent.percentDone * 100).toStringAsFixed(1)}%'),
-                    const SizedBox(width: Insets.sm),
-                    Expanded(
-                      child: Text(
-                        '${trFmtBytes(torrent.doneBytes)}'
-                        ' / ${trFmtBytes(torrent.sizeWhenDone)}',
-                        overflow: TextOverflow.ellipsis,
+              const SizedBox(height: Insets.sm),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: <Widget>[
+                  Expanded(
+                    child: Text.rich(
+                      TextSpan(
+                        children: <InlineSpan>[
+                          TextSpan(
+                            text: done
+                                ? 'Ratio ${torrent.ratio.toStringAsFixed(2)}'
+                                : '${(torrent.percentDone * 100)
+                                    .toStringAsFixed(0)}%',
+                            style: text.titleSmall
+                                ?.copyWith(color: scheme.onSurface),
+                          ),
+                          TextSpan(
+                            text: done
+                                ? '  ${trFmtBytes(torrent.uploadedEver)} '
+                                    'shared of '
+                                    '${trFmtBytes(torrent.sizeWhenDone)}'
+                                : '  ${trFmtBytes(torrent.doneBytes)} of '
+                                    '${trFmtBytes(torrent.sizeWhenDone)}',
+                            style: text.bodySmall
+                                ?.copyWith(color: scheme.onSurfaceVariant),
+                          ),
+                        ],
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    Text(
-                      torrent.statusLabel,
-                      style: text.bodySmall?.copyWith(color: color),
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: Insets.sm),
+                  Text(
+                    torrent.statusLabel,
+                    style: text.labelMedium?.copyWith(color: color),
+                  ),
+                ],
               ),
               if (torrent.hasError) ...<Widget>[
                 const SizedBox(height: Insets.xxs),
@@ -584,20 +694,19 @@ class _TorrentRow extends StatelessWidget {
               ],
               const SizedBox(height: Insets.xxs),
               DefaultTextStyle.merge(
-                style: text.bodySmall,
+                style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                 child: Row(
                   children: <Widget>[
-                    const Icon(Icons.south, size: 12),
+                    Icon(Icons.south, size: 12, color: scheme.onSurfaceVariant),
                     Text(trFmtRate(torrent.downloadRate)),
                     const SizedBox(width: Insets.sm),
-                    const Icon(Icons.north, size: 12),
+                    Icon(Icons.north, size: 12, color: scheme.onSurfaceVariant),
                     Text(trFmtRate(torrent.uploadRate)),
                     const SizedBox(width: Insets.sm),
                     Expanded(
                       child: Text(
-                        'P ${torrent.peersSendingToUs}'
-                        '/${torrent.peersConnected}'
-                        '  R ${torrent.ratio.toStringAsFixed(2)}',
+                        '${torrent.peersSendingToUs}/'
+                        '${torrent.peersConnected} peers',
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),

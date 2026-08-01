@@ -76,6 +76,15 @@ IconData delugeStateIcon(String state) => switch (state) {
       _ => Icons.help_outline,
     };
 
+/// Splits a rate into number and unit so the two can be typeset at different
+/// sizes: `('1.2', 'MB/s')`.
+(String, String) delugeSplitRate(num bytesPerSec) {
+  final String joined = delugeFmtRate(bytesPerSec);
+  final int space = joined.indexOf(' ');
+  if (space < 0) return (joined, '');
+  return (joined.substring(0, space), joined.substring(space + 1));
+}
+
 /// libtorrent file priority as a word. Deluge writes 4 for "normal" on a fresh
 /// add, but any value from 1 to 6 is a middling priority in libtorrent's scale.
 String delugeFilePriorityLabel(int priority) => switch (priority) {
