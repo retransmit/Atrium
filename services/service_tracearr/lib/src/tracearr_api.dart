@@ -56,12 +56,21 @@ class TracearrApi {
     }
   }
 
-  Future<TracearrStats> getStats(List<String> serverIds, String timezone) async {
+  Future<TracearrStats> getStats(
+    List<String> serverIds,
+    String timezone, {
+    String period = 'month',
+    DateTime? from,
+    DateTime? to,
+  }) async {
     try {
       final Map<String, dynamic> query = <String, dynamic>{
         'serverIds': serverIds,
         'timezone': timezone,
+        'period': period,
       };
+      if (from != null) query['from'] = from.toUtc().toIso8601String();
+      if (to != null) query['to'] = to.toUtc().toIso8601String();
       final Response<dynamic> resp = await _dio.get<dynamic>(
         'api/v1/library/stats',
         queryParameters: query,
@@ -72,13 +81,21 @@ class TracearrApi {
     }
   }
 
-  Future<TracearrActivityStats> getActivityStats(List<String> serverIds, String timezone) async {
+  Future<TracearrActivityStats> getActivityStats(
+    List<String> serverIds,
+    String timezone, {
+    String period = 'month',
+    DateTime? from,
+    DateTime? to,
+  }) async {
     try {
       final Map<String, dynamic> query = <String, dynamic>{
         'serverIds': serverIds,
         'timezone': timezone,
-        'period': 'month', // fixed to month for now
+        'period': period,
       };
+      if (from != null) query['from'] = from.toUtc().toIso8601String();
+      if (to != null) query['to'] = to.toUtc().toIso8601String();
 
       final Future<Response<dynamic>> playsReq = _dio.get<dynamic>('api/v1/stats/plays', queryParameters: query);
       final Future<Response<dynamic>> dowReq = _dio.get<dynamic>('api/v1/stats/plays-by-dayofweek', queryParameters: query);

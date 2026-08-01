@@ -14,11 +14,13 @@ class TracearrSessionDetailScreen extends ConsumerStatefulWidget {
   const TracearrSessionDetailScreen({
     required this.session,
     this.posterUrl,
+    this.isHistory = false,
     super.key,
   });
 
   final TracearrSession session;
   final String? posterUrl;
+  final bool isHistory;
 
   @override
   ConsumerState<TracearrSessionDetailScreen> createState() =>
@@ -126,14 +128,15 @@ class _TracearrSessionDetailScreenState
           ),
           title: Column(
             children: <Widget>[
-              Text(
-                'NOW STREAMING',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  letterSpacing: 1.2,
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurfaceVariant,
+              if (!widget.isHistory)
+                Text(
+                  'NOW STREAMING',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    letterSpacing: 1.2,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              ),
               Text(
                 session.device,
                 style: theme.textTheme.titleSmall?.copyWith(
@@ -156,16 +159,16 @@ class _TracearrSessionDetailScreenState
                     Container(color: theme.colorScheme.surface),
               ),
             BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
               child: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    stops: const <double>[0.0, 0.4, 1.0],
+                    stops: const <double>[0.0, 0.5, 1.0],
                     colors: <Color>[
-                      Colors.black.withValues(alpha: 0.3),
-                      theme.colorScheme.surface.withValues(alpha: 0.2),
+                      Colors.black.withValues(alpha: 0.5),
+                      Colors.black.withValues(alpha: 0.7),
                       theme.colorScheme.surface.withValues(alpha: 1.0),
                     ],
                   ),

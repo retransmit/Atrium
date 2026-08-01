@@ -115,26 +115,67 @@ Future<String> _fetchTz() async {
   }
 }
 
+class TracearrStatsFilterParams {
+  const TracearrStatsFilterParams({
+    required this.instance,
+    this.period = 'month',
+    this.from,
+    this.to,
+  });
+
+  final Instance instance;
+  final String period;
+  final DateTime? from;
+  final DateTime? to;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is TracearrStatsFilterParams &&
+        other.instance == instance &&
+        other.period == period &&
+        other.from == from &&
+        other.to == to;
+  }
+
+  @override
+  int get hashCode => Object.hash(instance, period, from, to);
+}
+
+typedef TracearrActivityStatsParams = TracearrStatsFilterParams;
+
 final tracearrStatsProvider = FutureProvider.family
-    .autoDispose<TracearrStats, Instance>((Ref ref, Instance instance) async {
+    .autoDispose<TracearrStats, TracearrStatsFilterParams>((Ref ref, TracearrStatsFilterParams params) async {
   final Map<String, String> servers =
-      await ref.watch(tracearrServersProvider(instance).future);
+      await ref.watch(tracearrServersProvider(params.instance).future);
   final List<String> serverIds = servers.keys.toList();
 
-  final TracearrApi api = await ref.watch(tracearrApiProvider(instance).future);
+  final TracearrApi api = await ref.watch(tracearrApiProvider(params.instance).future);
   final String timezone = await _getTimezone();
-  return api.getStats(serverIds, timezone);
+  return api.getStats(
+    serverIds,
+    timezone,
+    period: params.period,
+    from: params.from,
+    to: params.to,
+  );
 });
 
 final tracearrActivityStatsProvider = FutureProvider.family
-    .autoDispose<TracearrActivityStats, Instance>((Ref ref, Instance instance) async {
+    .autoDispose<TracearrActivityStats, TracearrActivityStatsParams>((Ref ref, TracearrActivityStatsParams params) async {
   final Map<String, String> servers =
-      await ref.watch(tracearrServersProvider(instance).future);
+      await ref.watch(tracearrServersProvider(params.instance).future);
   final List<String> serverIds = servers.keys.toList();
 
-  final TracearrApi api = await ref.watch(tracearrApiProvider(instance).future);
+  final TracearrApi api = await ref.watch(tracearrApiProvider(params.instance).future);
   final String timezone = await _getTimezone();
-  return api.getActivityStats(serverIds, timezone);
+  return api.getActivityStats(
+    serverIds,
+    timezone,
+    period: params.period,
+    from: params.from,
+    to: params.to,
+  );
 });
 
 final tracearrActivityLocationsProvider = FutureProvider.family

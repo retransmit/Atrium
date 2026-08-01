@@ -179,6 +179,7 @@ class _HistoryListView extends ConsumerWidget {
             child: _SessionCard(
               serverUrl: servers[session.serverId],
               session: session,
+              isHistory: true,
             ),
           );
         },
@@ -390,7 +391,9 @@ class _ChartCard extends StatelessWidget {
                   ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: Insets.lg),
+            const SizedBox(height: Insets.md),
+            const Divider(height: 1),
+            const SizedBox(height: Insets.md),
             child,
           ],
         ),
@@ -409,6 +412,8 @@ class _PlaysLineChart extends StatefulWidget {
 }
 
 class _PlaysLineChartState extends State<_PlaysLineChart> {
+  bool _showMore = false;
+
   @override
   Widget build(BuildContext context) {
     if (widget.plays.isEmpty) return const SizedBox.shrink();
@@ -416,17 +421,18 @@ class _PlaysLineChartState extends State<_PlaysLineChart> {
     // 1. Extract unique servers
     final List<String> serverIds = widget.plays.map((TracearrActivityPlay e) => e.serverId).toSet().toList();
     final Map<String, Color> serverColors = <String, Color>{};
+    final ColorScheme scheme = Theme.of(context).colorScheme;
     final List<Color> availableColors = <Color>[
-      Colors.blue,
-      Colors.purple,
-      Colors.orange,
-      Colors.green,
-      Colors.red,
-      Colors.teal,
-      Colors.pink,
-      Colors.amber,
-      Colors.indigo,
-      Colors.lime,
+      scheme.primary,
+      scheme.secondary,
+      scheme.tertiary,
+      scheme.error,
+      scheme.inversePrimary,
+      scheme.primaryContainer,
+      scheme.secondaryContainer,
+      scheme.tertiaryContainer,
+      scheme.surfaceTint,
+      scheme.outline,
     ];
     for (int i = 0; i < serverIds.length; i++) {
       serverColors[serverIds[i]] = availableColors[i % availableColors.length];
@@ -444,153 +450,173 @@ class _PlaysLineChartState extends State<_PlaysLineChart> {
     }
 
     final List<String> dates = groupedData.keys.toList();
-    
-    double maxVal = 0;
-    for (final Map<String, int> counts in groupedData.values) {
-      for (final int count in counts.values) {
-        if (count > maxVal) maxVal = count.toDouble();
-      }
-    }
-    if (maxVal == 0) maxVal = 1;
 
-    Widget legendItem(Color color, String text) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
+    Widget buildSingleServerChart(String serverId, Color color) {
+      final String serverName = widget.servers[serverId] ?? (serverId.length > 8 ? serverId.substring(0, 8) : serverId);
+
+      double maxVal = 0;
+      final List<FlSpot> spots = <FlSpot>[];
+      for (int i = 0; i < dates.length; i++) {
+        final int count = groupedData[dates[i]]![serverId] ?? 0;
+        if (count > maxVal) maxVal = count.toDouble();
+        spots.add(FlSpot(i.toDouble(), count.toDouble()));
+      }
+      if (maxVal == 0) maxVal = 1;
+
+      return Column(
         children: <Widget>[
-          Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+          if (serverIds.length > 1) ...<Widget>[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  serverName,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: Insets.sm),
+          ],
+          AspectRatio(
+            aspectRatio: 1.70,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 18, left: 12, top: 16, bottom: 12),
+              child: LineChart(
+                LineChartData(
+                  lineTouchData: LineTouchData(
+                    handleBuiltInTouches: true,
+                    touchTooltipData: LineTouchTooltipData(
+                      fitInsideHorizontally: true,
+                      fitInsideVertically: true,
+                      getTooltipColor: (_) => Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
+                      getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
+                        return touchedBarSpots.map((LineBarSpot barSpot) {
+                          final int index = barSpot.x.toInt();
+                          if (index < 0 || index >= dates.length) return null;
+
+                          final String dateStr = dates[index].split(' ').first;
+
+                          return LineTooltipItem(
+                            '${barSpot.y.toInt()} plays\n',
+                            TextStyle(color: color, fontWeight: FontWeight.bold),
+                            children: <TextSpan>[
+                              TextSpan(
+                                text: '$serverName\n$dateStr',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          );
+                        }).toList();
+                      },
+                    ),
+                  ),
+                  gridData: FlGridData(
+                    horizontalInterval: max(1, maxVal ~/ 5).toDouble(),
+                    verticalInterval: 1,
+                    getDrawingHorizontalLine: (double value) {
+                      return FlLine(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2), strokeWidth: 1);
+                    },
+                    getDrawingVerticalLine: (double value) {
+                      return FlLine(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2), strokeWidth: 1);
+                    },
+                  ),
+                  titlesData: FlTitlesData(
+                    rightTitles: const AxisTitles(),
+                    topTitles: const AxisTitles(),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 30,
+                        interval: 1,
+                        getTitlesWidget: (double value, TitleMeta meta) {
+                          final int index = value.toInt();
+                          if (index < 0 || index >= dates.length) return const SizedBox.shrink();
+                          if (index % max(1, dates.length ~/ 5) != 0) return const SizedBox.shrink();
+                          final String text = dates[index].split(' ').first.substring(5); // MM-DD
+                          return SideTitleWidget(
+                            meta: meta,
+                            child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                          );
+                        },
+                      ),
+                    ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        interval: max(1, maxVal ~/ 5).toDouble(),
+                        reservedSize: 42,
+                        getTitlesWidget: (double value, TitleMeta meta) {
+                          if (value % 1 != 0) return const SizedBox.shrink();
+                          return Text(value.toInt().toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), textAlign: TextAlign.left);
+                        },
+                      ),
+                    ),
+                  ),
+                  borderData: FlBorderData(
+                    show: true,
+                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+                  ),
+                  minX: 0,
+                  maxX: max(0, dates.length - 1).toDouble(),
+                  minY: 0,
+                  maxY: maxVal * 1.2,
+                  lineBarsData: <LineChartBarData>[
+                    LineChartBarData(
+                      spots: spots,
+                      isCurved: true,
+                      preventCurveOverShooting: true,
+                      color: color,
+                      barWidth: 3,
+                      isStrokeCapRound: true,
+                      dotData: const FlDotData(show: false),
+                      belowBarData: BarAreaData(
+                        show: true,
+                        color: color.withValues(alpha: 0.1),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-          const SizedBox(width: 4),
-          Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
         ],
       );
     }
 
+    final String firstServerId = serverIds.first;
+
     return Column(
       children: <Widget>[
-        AspectRatio(
-          aspectRatio: 1.70,
-          child: Padding(
-            padding: const EdgeInsets.only(right: 18, left: 12, top: 24, bottom: 12),
-            child: LineChart(
-              LineChartData(
-                lineTouchData: LineTouchData(
-                  handleBuiltInTouches: true,
-                  touchTooltipData: LineTouchTooltipData(
-                    fitInsideHorizontally: true,
-                    fitInsideVertically: true,
-                    getTooltipColor: (LineBarSpot spot) => Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
-                    getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
-                      return touchedBarSpots.map((LineBarSpot barSpot) {
-                        final int index = barSpot.x.toInt();
-                        if (index < 0 || index >= dates.length) return null;
-                        
-                        final String dateStr = dates[index].split(' ').first;
-                        final String serverId = serverIds[barSpot.barIndex];
-                        final String serverName = widget.servers[serverId] ?? (serverId.length > 8 ? serverId.substring(0, 8) : serverId);
-
-                        return LineTooltipItem(
-                          '${barSpot.y.toInt()} plays\n',
-                          TextStyle(color: serverColors[serverId], fontWeight: FontWeight.bold),
-                          children: <TextSpan>[
-                            TextSpan(
-                              text: '$serverName\n$dateStr',
-                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7), fontSize: 10, fontWeight: FontWeight.normal),
-                            ),
-                          ],
-                        );
-                      }).toList();
-                    },
-                  ),
-                ),
-                gridData: FlGridData(
-                  horizontalInterval: max(1, maxVal ~/ 5).toDouble(),
-                  verticalInterval: 1,
-                  getDrawingHorizontalLine: (double value) {
-                    return FlLine(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2), strokeWidth: 1);
-                  },
-                  getDrawingVerticalLine: (double value) {
-                    return FlLine(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2), strokeWidth: 1);
-                  },
-                ),
-                titlesData: FlTitlesData(
-                  rightTitles: const AxisTitles(),
-                  topTitles: const AxisTitles(),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 30,
-                      interval: 1,
-                      getTitlesWidget: (double value, TitleMeta meta) {
-                        final int index = value.toInt();
-                        if (index < 0 || index >= dates.length) return const SizedBox.shrink();
-                        if (index % max(1, dates.length ~/ 5) != 0) return const SizedBox.shrink();
-                        final String text = dates[index].split(' ').first.substring(5); // MM-DD
-                        return SideTitleWidget(
-                          meta: meta,
-                          child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
-                        );
-                      },
-                    ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: max(1, maxVal ~/ 5).toDouble(),
-                      reservedSize: 42,
-                      getTitlesWidget: (double value, TitleMeta meta) {
-                        if (value % 1 != 0) return const SizedBox.shrink();
-                        return Text(value.toInt().toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), textAlign: TextAlign.left);
-                      },
-                    ),
-                  ),
-                ),
-                borderData: FlBorderData(
-                  show: true,
-                  border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
-                ),
-                minX: 0,
-                maxX: max(0, dates.length - 1).toDouble(),
-                minY: 0,
-                maxY: maxVal * 1.2,
-                lineBarsData: serverIds.map((String serverId) {
-                  int xIndex = 0;
-                  final List<FlSpot> spots = groupedData.entries.map((MapEntry<String, Map<String, int>> entry) {
-                    final int count = entry.value[serverId] ?? 0;
-                    final FlSpot spot = FlSpot(xIndex.toDouble(), count.toDouble());
-                    xIndex++;
-                    return spot;
-                  }).toList();
-
-                  return LineChartBarData(
-                    spots: spots,
-                    isCurved: true,
-                    color: serverColors[serverId],
-                    barWidth: 3,
-                    isStrokeCapRound: true,
-                    dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: serverColors[serverId]!.withValues(alpha: 0.1),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-        ),
+        buildSingleServerChart(firstServerId, serverColors[firstServerId]!),
         if (serverIds.length > 1) ...<Widget>[
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 16,
-            runSpacing: 8,
-            alignment: WrapAlignment.center,
-            children: serverIds.map((String serverId) {
-              final String serverName = widget.servers[serverId] ?? (serverId.length > 8 ? serverId.substring(0, 8) : serverId);
-              return legendItem(serverColors[serverId]!, serverName);
-            }).toList(),
+          if (_showMore)
+            for (int i = 1; i < serverIds.length; i++) ...<Widget>[
+              const SizedBox(height: Insets.md),
+              const Divider(height: 1),
+              const SizedBox(height: Insets.md),
+              buildSingleServerChart(serverIds[i], serverColors[serverIds[i]]!),
+            ],
+          const SizedBox(height: Insets.sm),
+          Center(
+            child: TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  _showMore = !_showMore;
+                });
+              },
+              icon: Icon(_showMore ? Icons.expand_less : Icons.expand_more),
+              label: Text(_showMore ? 'Show Less' : 'Show More'),
+            ),
           ),
         ],
       ],
@@ -634,7 +660,7 @@ class _PlaysDowBarChartState extends State<_PlaysDowBarChart> {
               touchTooltipData: BarTouchTooltipData(
                 fitInsideHorizontally: true,
                 fitInsideVertically: true,
-                getTooltipColor: (_) => Colors.blueGrey,
+                getTooltipColor: (_) => Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
                 tooltipHorizontalAlignment: FLHorizontalAlignment.center,
                 tooltipMargin: 8,
                 getTooltipItem: (BarChartGroupData group, int groupIndex, BarChartRodData rod, int rodIndex) {
@@ -755,7 +781,7 @@ class _PlaysHodBarChartState extends State<_PlaysHodBarChart> {
               touchTooltipData: BarTouchTooltipData(
                 fitInsideHorizontally: true,
                 fitInsideVertically: true,
-                getTooltipColor: (_) => Colors.blueGrey,
+                getTooltipColor: (_) => Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
                 tooltipHorizontalAlignment: FLHorizontalAlignment.center,
                 tooltipMargin: 8,
                 getTooltipItem: (BarChartGroupData group, int groupIndex, BarChartRodData rod, int rodIndex) {
@@ -890,14 +916,16 @@ class _PlatformsPieChartState extends State<_PlatformsPieChart> {
   Widget build(BuildContext context) {
     if (widget.platforms.isEmpty) return const SizedBox.shrink();
 
+    final ColorScheme scheme = Theme.of(context).colorScheme;
     final List<Color> colors = <Color>[
-      Colors.blue,
-      Colors.yellow.shade700,
-      Colors.pink,
-      Colors.green,
-      Colors.orange,
-      Colors.purple,
+      scheme.primary,
+      scheme.secondary,
+      scheme.tertiary,
+      scheme.error,
+      scheme.inversePrimary,
+      scheme.primaryContainer,
     ];
+    final List<double> radiusValues = <double>[80, 65, 60, 70, 75, 85];
 
     return AspectRatio(
       aspectRatio: 1.3,
@@ -942,15 +970,15 @@ class _PlatformsPieChartState extends State<_PlatformsPieChart> {
                   centerSpaceRadius: 0,
                   sections: widget.platforms.asMap().entries.map((MapEntry<int, TracearrActivityPlatform> e) {
                     final bool isTouched = e.key == touchedIndex;
-                    final double radius = isTouched ? 80.0 : 70.0;
+                    final double radius = radiusValues[e.key % radiusValues.length];
                     return PieChartSectionData(
                       color: colors[e.key % colors.length],
                       value: e.value.count.toDouble(),
                       title: '',
                       radius: radius,
                       borderSide: isTouched
-                          ? BorderSide(color: Theme.of(context).colorScheme.surface, width: 6)
-                          : BorderSide(color: Theme.of(context).colorScheme.surface.withValues(alpha: 0)),
+                          ? const BorderSide(color: Colors.white, width: 6)
+                          : BorderSide(color: Colors.white.withValues(alpha: 0)),
                     );
                   }).toList(),
                 ),
@@ -978,9 +1006,11 @@ class _QualityPieChartState extends State<_QualityPieChart> {
   Widget build(BuildContext context) {
     if (widget.quality.total == 0) return const SizedBox.shrink();
 
-    final List<Color> colors = <Color>[Colors.green, Colors.blue, Colors.orange];
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final List<Color> colors = <Color>[scheme.primary, scheme.secondary, scheme.tertiary];
     final List<String> labels = <String>['Direct Play', 'Direct Stream', 'Transcode'];
     final List<int> counts = <int>[widget.quality.directPlay, widget.quality.directStream, widget.quality.transcode];
+    final List<double> radiusValues = <double>[80, 65, 60];
 
     return AspectRatio(
       aspectRatio: 1.3,
@@ -1025,15 +1055,15 @@ class _QualityPieChartState extends State<_QualityPieChart> {
                   centerSpaceRadius: 0,
                   sections: List.generate(3, (int i) {
                     final bool isTouched = i == touchedIndex;
-                    final double radius = isTouched ? 80.0 : 70.0;
+                    final double radius = radiusValues[i % radiusValues.length];
                     return PieChartSectionData(
                       color: colors[i],
                       value: counts[i].toDouble(),
                       title: '',
                       radius: radius,
                       borderSide: isTouched
-                          ? BorderSide(color: Theme.of(context).colorScheme.surface, width: 6)
-                          : BorderSide(color: Theme.of(context).colorScheme.surface.withValues(alpha: 0)),
+                          ? const BorderSide(color: Colors.white, width: 6)
+                          : BorderSide(color: Colors.white.withValues(alpha: 0)),
                     );
                   }),
                 ),
@@ -1046,28 +1076,28 @@ class _QualityPieChartState extends State<_QualityPieChart> {
   }
 }
 
-class _ConcurrentBarChart extends StatefulWidget {
-  const _ConcurrentBarChart({required this.concurrentPlays});
+class _ConcurrentLineChart extends StatefulWidget {
+  const _ConcurrentLineChart({required this.concurrentPlays});
   final List<TracearrActivityConcurrent> concurrentPlays;
 
   @override
-  State<_ConcurrentBarChart> createState() => _ConcurrentBarChartState();
+  State<_ConcurrentLineChart> createState() => _ConcurrentLineChartState();
 }
 
-class _ConcurrentBarChartState extends State<_ConcurrentBarChart> {
-  int touchedIndex = -1;
-  
+class _ConcurrentLineChartState extends State<_ConcurrentLineChart> {
   @override
   Widget build(BuildContext context) {
     if (widget.concurrentPlays.isEmpty) return const SizedBox.shrink();
 
-    final Color colorDirect = Colors.greenAccent.shade400;
-    final Color colorDirectStream = Colors.orangeAccent.shade400;
-    final Color colorTranscode = Colors.redAccent.shade400;
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final Color colorDirect = scheme.primary;
+    final Color colorDirectStream = scheme.secondary;
+    final Color colorTranscode = scheme.tertiary;
 
     double maxVal = 0;
     for (final TracearrActivityConcurrent p in widget.concurrentPlays) {
-      if (p.total > maxVal) maxVal = p.total.toDouble();
+      final int localMax = max(p.direct, max(p.directStream, p.transcode));
+      if (localMax > maxVal) maxVal = localMax.toDouble();
     }
     if (maxVal == 0) maxVal = 1;
 
@@ -1091,40 +1121,59 @@ class _ConcurrentBarChartState extends State<_ConcurrentBarChart> {
         AspectRatio(
           aspectRatio: 1.70,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: BarChart(
-              BarChartData(
-                barTouchData: BarTouchData(
-                  enabled: true,
-                  touchTooltipData: BarTouchTooltipData(
+            padding: const EdgeInsets.only(right: 18, left: 12, top: 24, bottom: 12),
+            child: LineChart(
+              LineChartData(
+                lineTouchData: LineTouchData(
+                  handleBuiltInTouches: true,
+                  touchTooltipData: LineTouchTooltipData(
                     fitInsideHorizontally: true,
                     fitInsideVertically: true,
                     getTooltipColor: (_) => Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
-                    tooltipHorizontalAlignment: FLHorizontalAlignment.center,
-                    tooltipMargin: 8,
-                    getTooltipItem: (BarChartGroupData group, int groupIndex, BarChartRodData rod, int rodIndex) {
-                      final TracearrActivityConcurrent p = widget.concurrentPlays[groupIndex];
-                      final String date = p.hour.split('+').first;
-                      return BarTooltipItem(
-                        'Total: ${p.total}\nDirect: ${p.direct}\nStream: ${p.directStream}\nTranscode: ${p.transcode}\n',
-                        TextStyle(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.bold, fontSize: 12),
-                        children: <TextSpan>[
-                          TextSpan(
-                            text: date,
-                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7), fontSize: 10, fontWeight: FontWeight.normal),
-                          ),
-                        ],
-                      );
+                    getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
+                      return touchedBarSpots.map((LineBarSpot barSpot) {
+                        final int index = barSpot.x.toInt();
+                        if (index < 0 || index >= widget.concurrentPlays.length) return null;
+                        final TracearrActivityConcurrent p = widget.concurrentPlays[index];
+                        final String dateStr = p.hour.split('+').first;
+
+                        String label;
+                        Color color;
+                        if (barSpot.barIndex == 0) {
+                          label = 'Direct';
+                          color = colorDirect;
+                        } else if (barSpot.barIndex == 1) {
+                          label = 'Stream';
+                          color = colorDirectStream;
+                        } else {
+                          label = 'Transcode';
+                          color = colorTranscode;
+                        }
+
+                        final bool isLast = barSpot == touchedBarSpots.last;
+
+                        return LineTooltipItem(
+                          '${barSpot.y.toInt()} $label${isLast ? '\n' : ''}',
+                          TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
+                          children: isLast ? <TextSpan>[
+                            TextSpan(
+                              text: dateStr,
+                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7), fontSize: 10, fontWeight: FontWeight.normal),
+                            ),
+                          ] : null,
+                        );
+                      }).toList();
                     },
                   ),
-                  touchCallback: (FlTouchEvent event, BarTouchResponse? barTouchResponse) {
-                    setState(() {
-                      if (!event.isInterestedForInteractions || barTouchResponse == null || barTouchResponse.spot == null) {
-                        touchedIndex = -1;
-                        return;
-                      }
-                      touchedIndex = barTouchResponse.spot!.touchedBarGroupIndex;
-                    });
+                ),
+                gridData: FlGridData(
+                  horizontalInterval: max(1, maxVal ~/ 5).toDouble(),
+                  verticalInterval: 1,
+                  getDrawingHorizontalLine: (double value) {
+                    return FlLine(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2), strokeWidth: 1);
+                  },
+                  getDrawingVerticalLine: (double value) {
+                    return FlLine(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2), strokeWidth: 1);
                   },
                 ),
                 titlesData: FlTitlesData(
@@ -1150,7 +1199,7 @@ class _ConcurrentBarChartState extends State<_ConcurrentBarChart> {
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      interval: max(1, maxVal ~/ 5).toDouble(), // Scale dynamically but lock to integers
+                      interval: max(1, maxVal ~/ 5).toDouble(),
                       reservedSize: 42,
                       getTitlesWidget: (double value, TitleMeta meta) {
                         if (value % 1 != 0) return const SizedBox.shrink();
@@ -1159,30 +1208,61 @@ class _ConcurrentBarChartState extends State<_ConcurrentBarChart> {
                     ),
                   ),
                 ),
-                borderData: FlBorderData(show: false),
-                maxY: maxVal * 1.2,
+                borderData: FlBorderData(
+                  show: true,
+                  border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+                ),
+                minX: 0,
+                maxX: max(0, widget.concurrentPlays.length - 1).toDouble(),
                 minY: 0,
-                barGroups: widget.concurrentPlays.asMap().entries.map((MapEntry<int, TracearrActivityConcurrent> e) {
-                  final TracearrActivityConcurrent p = e.value;
-                  final bool isTouched = e.key == touchedIndex;
-                  
-                  return BarChartGroupData(
-                    x: e.key,
-                    barRods: <BarChartRodData>[
-                      BarChartRodData(
-                        toY: p.total.toDouble(),
-                        width: 22,
-                        borderSide: isTouched ? BorderSide(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.8)) : const BorderSide(color: Colors.white, width: 0),
-                        rodStackItems: <BarChartRodStackItem>[
-                          BarChartRodStackItem(0, p.transcode.toDouble(), colorTranscode),
-                          BarChartRodStackItem(p.transcode.toDouble(), (p.transcode + p.directStream).toDouble(), colorDirectStream),
-                          BarChartRodStackItem((p.transcode + p.directStream).toDouble(), p.total.toDouble(), colorDirect),
-                        ],
-                      ),
-                    ],
-                  );
-                }).toList(),
-                gridData: const FlGridData(show: false),
+                maxY: maxVal * 1.2,
+                lineBarsData: <LineChartBarData>[
+                  LineChartBarData(
+                    spots: widget.concurrentPlays.asMap().entries.map((MapEntry<int, TracearrActivityConcurrent> e) {
+                      return FlSpot(e.key.toDouble(), e.value.direct.toDouble());
+                    }).toList(),
+                    isCurved: true,
+                    preventCurveOverShooting: true,
+                    color: colorDirect,
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: const FlDotData(show: false),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: colorDirect.withValues(alpha: 0.1),
+                    ),
+                  ),
+                  LineChartBarData(
+                    spots: widget.concurrentPlays.asMap().entries.map((MapEntry<int, TracearrActivityConcurrent> e) {
+                      return FlSpot(e.key.toDouble(), e.value.directStream.toDouble());
+                    }).toList(),
+                    isCurved: true,
+                    preventCurveOverShooting: true,
+                    color: colorDirectStream,
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: const FlDotData(show: false),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: colorDirectStream.withValues(alpha: 0.1),
+                    ),
+                  ),
+                  LineChartBarData(
+                    spots: widget.concurrentPlays.asMap().entries.map((MapEntry<int, TracearrActivityConcurrent> e) {
+                      return FlSpot(e.key.toDouble(), e.value.transcode.toDouble());
+                    }).toList(),
+                    isCurved: true,
+                    preventCurveOverShooting: true,
+                    color: colorTranscode,
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: const FlDotData(show: false),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: colorTranscode.withValues(alpha: 0.1),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -1248,7 +1328,7 @@ class _EngagementSummary extends StatelessWidget {
         if (engagement.engagementBreakdown.isNotEmpty) ...<Widget>[
           Text('Engagement Breakdown', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: Insets.md),
-          _EngagementDonutChart(breakdown: engagement.engagementBreakdown),
+          _EngagementPieChart(breakdown: engagement.engagementBreakdown),
           const SizedBox(height: Insets.xl),
         ],
 
@@ -1309,87 +1389,110 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _EngagementDonutChart extends StatefulWidget {
-  const _EngagementDonutChart({required this.breakdown});
+class _EngagementPieChart extends StatefulWidget {
+  const _EngagementPieChart({required this.breakdown});
   final List<TracearrEngagementBreakdown> breakdown;
 
   @override
-  State<_EngagementDonutChart> createState() => _EngagementDonutChartState();
+  State<_EngagementPieChart> createState() => _EngagementPieChartState();
 }
 
-class _EngagementDonutChartState extends State<_EngagementDonutChart> {
+class _EngagementPieChartState extends State<_EngagementPieChart> {
   int touchedIndex = -1;
 
   @override
   Widget build(BuildContext context) {
-    Widget legendItem(Color color, String text) {
-      return Row(
-        mainAxisSize: MainAxisSize.min,
+    if (widget.breakdown.isEmpty) return const SizedBox.shrink();
+
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final List<double> radiusValues = <double>[80, 65, 60];
+
+    return AspectRatio(
+      aspectRatio: 1.3,
+      child: Column(
         children: <Widget>[
-          Container(width: 12, height: 12, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
-          const SizedBox(width: 4),
-          Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-        ],
-      );
-    }
+          const SizedBox(height: 28),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
+            children: widget.breakdown.asMap().entries.map((MapEntry<int, TracearrEngagementBreakdown> entry) {
+              final int index = entry.key;
+              final TracearrEngagementBreakdown data = entry.value;
+              final bool isTouched = index == touchedIndex;
 
-    return Column(
-      children: <Widget>[
-        SizedBox(
-          height: 200,
-          child: PieChart(
-            PieChartData(
-              pieTouchData: PieTouchData(
-                touchCallback: (FlTouchEvent event, PieTouchResponse? pieTouchResponse) {
-                  setState(() {
-                    if (!event.isInterestedForInteractions || pieTouchResponse == null || pieTouchResponse.touchedSection == null) {
-                      touchedIndex = -1;
-                      return;
+              Color color;
+              if (data.tier == 'watched') {
+                color = scheme.primary;
+              } else if (data.tier == 'abandoned') {
+                color = scheme.error;
+              } else {
+                color = scheme.secondary;
+              }
+
+              return _ActivityChartIndicator(
+                color: color,
+                text: '${data.tier.toUpperCase()} (${data.count})',
+                isSquare: false,
+                size: isTouched ? 18 : 16,
+                textColor: isTouched
+                    ? Theme.of(context).colorScheme.onSurface
+                    : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 18),
+          Expanded(
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: PieChart(
+                PieChartData(
+                  pieTouchData: PieTouchData(
+                    touchCallback: (FlTouchEvent event, PieTouchResponse? pieTouchResponse) {
+                      setState(() {
+                        if (!event.isInterestedForInteractions || pieTouchResponse == null || pieTouchResponse.touchedSection == null) {
+                          touchedIndex = -1;
+                          return;
+                        }
+                        touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                      });
+                    },
+                  ),
+                  startDegreeOffset: 180,
+                  borderData: FlBorderData(show: false),
+                  sectionsSpace: 1,
+                  centerSpaceRadius: 0,
+                  sections: widget.breakdown.asMap().entries.map((MapEntry<int, TracearrEngagementBreakdown> entry) {
+                    final int index = entry.key;
+                    final TracearrEngagementBreakdown data = entry.value;
+                    final bool isTouched = index == touchedIndex;
+                    final double radius = radiusValues[index % radiusValues.length];
+
+                    Color color;
+                    if (data.tier == 'watched') {
+                      color = scheme.primary;
+                    } else if (data.tier == 'abandoned') {
+                      color = scheme.error;
+                    } else {
+                      color = scheme.secondary;
                     }
-                    touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
-                  });
-                },
+
+                    return PieChartSectionData(
+                      color: color,
+                      value: data.percentage,
+                      title: '',
+                      radius: radius,
+                      borderSide: isTouched
+                          ? const BorderSide(color: Colors.white, width: 6)
+                          : BorderSide(color: Colors.white.withValues(alpha: 0)),
+                    );
+                  }).toList(),
+                ),
               ),
-              borderData: FlBorderData(show: false),
-              sectionsSpace: 2,
-              centerSpaceRadius: 40,
-              sections: widget.breakdown.asMap().entries.map((MapEntry<int, TracearrEngagementBreakdown> entry) {
-                final int index = entry.key;
-                final TracearrEngagementBreakdown data = entry.value;
-                final bool isTouched = index == touchedIndex;
-                final double radius = isTouched ? 60.0 : 50.0;
-                final double fontSize = isTouched ? 16.0 : 12.0;
-
-                Color color;
-                if (data.tier == 'watched') color = Colors.green;
-                else if (data.tier == 'abandoned') color = Colors.redAccent;
-                else color = Colors.amber;
-
-                return PieChartSectionData(
-                  color: color,
-                  value: data.percentage,
-                  title: '${data.percentage.toStringAsFixed(1)}%',
-                  radius: radius,
-                  titleStyle: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold, color: Colors.white),
-                );
-              }).toList(),
             ),
           ),
-        ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 16,
-          runSpacing: 8,
-          alignment: WrapAlignment.center,
-          children: widget.breakdown.map((TracearrEngagementBreakdown data) {
-            Color color;
-            if (data.tier == 'watched') color = Colors.green;
-            else if (data.tier == 'abandoned') color = Colors.redAccent;
-            else color = Colors.amber;
-            return legendItem(color, '${data.tier.toUpperCase()} (${data.count})');
-          }).toList(),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -1552,84 +1655,199 @@ class _TopPerformersView extends StatelessWidget {
   }
 }
 
-class _ActivityStatsView extends ConsumerWidget {
+class _ActivityStatsView extends ConsumerStatefulWidget {
   const _ActivityStatsView({required this.instance});
 
   final Instance instance;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ActivityStatsView> createState() => _ActivityStatsViewState();
+}
+
+class _ActivityStatsViewState extends ConsumerState<_ActivityStatsView> {
+  String _selectedRange = '30d';
+  DateTime? _customFrom;
+  DateTime? _customTo;
+
+  final List<String> _ranges = const <String>[
+    '7d',
+    '30d',
+    '1yr',
+    'All',
+    'Custom',
+  ];
+
+  String _getPeriod(String range) {
+    switch (range) {
+      case '7d':
+        return 'week';
+      case '1yr':
+        return 'year';
+      case 'All':
+        return 'all';
+      case 'Custom':
+        return 'custom';
+      case '30d':
+      default:
+        return 'month';
+    }
+  }
+
+  Future<void> _handleSelect(String range) async {
+    if (range == 'Custom') {
+      final DateTimeRange? picked = await showDateRangePicker(
+        context: context,
+        firstDate: DateTime(2000),
+        lastDate: DateTime.now(),
+        initialDateRange: _customFrom != null && _customTo != null
+            ? DateTimeRange(start: _customFrom!, end: _customTo!)
+            : null,
+      );
+      if (picked != null) {
+        setState(() {
+          _selectedRange = 'Custom';
+          _customFrom = picked.start;
+          _customTo = picked.end.add(
+            const Duration(hours: 23, minutes: 59, seconds: 59),
+          );
+        });
+      } else if (_selectedRange != 'Custom') {
+        setState(() {
+          _selectedRange = 'Custom';
+        });
+      }
+    } else {
+      setState(() {
+        _selectedRange = range;
+        _customFrom = null;
+        _customTo = null;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final TracearrActivityStatsParams params = TracearrActivityStatsParams(
+      instance: widget.instance,
+      period: _getPeriod(_selectedRange),
+      from: _customFrom,
+      to: _customTo,
+    );
     final AsyncValue<TracearrActivityStats> statsVal =
-        ref.watch(tracearrActivityStatsProvider(instance));
+        ref.watch(tracearrActivityStatsProvider(params));
     final Map<String, String> servers =
-        ref.watch(tracearrServersProvider(instance)).value ??
+        ref.watch(tracearrServersProvider(widget.instance)).value ??
             <String, String>{};
 
-    return AsyncValueView<TracearrActivityStats>(
-      value: statsVal,
-      onRetry: () => ref.invalidate(tracearrActivityStatsProvider(instance)),
-      data: (TracearrActivityStats data) {
-        return EasyRefresh(
-          header: const ClassicHeader(
-            dragText: 'Pull to refresh',
-            armedText: 'Release ready',
-            readyText: 'Refreshing...',
-            processingText: 'Refreshing...',
-            processedText: 'Succeeded',
-            failedText: 'Failed',
-            messageText: 'Last updated at %T',
-          ),
-          onRefresh: () async {
-            ref.invalidate(tracearrActivityStatsProvider(instance));
-          },
+    return Column(
+      children: <Widget>[
+        const SizedBox(height: Insets.sm),
+        SizedBox(
+          height: 44,
           child: ListView(
-            padding: const EdgeInsets.all(Insets.lg),
-          children: <Widget>[
-            if (data.plays.isNotEmpty)
-              _ChartCard(
-                title: 'Plays Over Time',
-                child: _PlaysLineChart(plays: data.plays, servers: servers),
-              ),
-            const SizedBox(height: Insets.lg),
-            if (data.concurrentPlays.isNotEmpty)
-              _ChartCard(
-                title: 'Concurrent Plays',
-                child: _ConcurrentBarChart(concurrentPlays: data.concurrentPlays),
-              ),
-            const SizedBox(height: Insets.lg),
-            if (data.playsByDayOfWeek.isNotEmpty)
-              _ChartCard(
-                title: 'Plays by Day of Week',
-                child: _PlaysDowBarChart(plays: data.playsByDayOfWeek),
-              ),
-            const SizedBox(height: Insets.lg),
-            if (data.playsByHourOfDay.isNotEmpty)
-              _ChartCard(
-                title: 'Plays by Hour of Day',
-                child: _PlaysHodBarChart(plays: data.playsByHourOfDay),
-              ),
-            const SizedBox(height: Insets.lg),
-            if (data.quality.total > 0)
-              _ChartCard(
-                title: 'Quality',
-                child: _QualityPieChart(quality: data.quality),
-              ),
-            const SizedBox(height: Insets.lg),
-            if (data.platforms.isNotEmpty)
-              _ChartCard(
-                title: 'Platforms',
-                child: _PlatformsPieChart(platforms: data.platforms),
-              ),
-            const SizedBox(height: Insets.lg),
-            if (data.engagement.summary.totalPlays > 0)
-              _ChartCard(
-                title: 'Engagement',
-                child: _EngagementSummary(engagement: data.engagement, servers: servers),
-              ),
-          ],
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
+            children: <Widget>[
+              for (final String range in _ranges)
+                Padding(
+                  padding: const EdgeInsets.only(right: Insets.sm),
+                  child: Center(
+                    child: ChoiceChip(
+                      label: Text(
+                        range == 'Custom' &&
+                                _selectedRange == 'Custom' &&
+                                _customFrom != null &&
+                                _customTo != null
+                            ? 'Custom (${_customFrom!.month}/${_customFrom!.day} - ${_customTo!.month}/${_customTo!.day})'
+                            : range,
+                      ),
+                      selected: _selectedRange == range,
+                      onSelected: (_) => _handleSelect(range),
+                    ),
+                  ),
+                ),
+            ],
           ),
-        );
-      },
+        ),
+        const SizedBox(height: 4),
+        Expanded(
+          child: AsyncValueView<TracearrActivityStats>(
+            value: statsVal,
+            onRetry: () =>
+                ref.invalidate(tracearrActivityStatsProvider(params)),
+            data: (TracearrActivityStats data) {
+              return EasyRefresh(
+                header: const ClassicHeader(
+                  dragText: 'Pull to refresh',
+                  armedText: 'Release ready',
+                  readyText: 'Refreshing...',
+                  processingText: 'Refreshing...',
+                  processedText: 'Succeeded',
+                  failedText: 'Failed',
+                  messageText: 'Last updated at %T',
+                ),
+                onRefresh: () async {
+                  ref.invalidate(tracearrActivityStatsProvider(params));
+                },
+                child: ListView(
+                  padding: const EdgeInsets.all(Insets.lg),
+                  children: <Widget>[
+                    if (data.plays.isNotEmpty)
+                      _ChartCard(
+                        title: 'Plays Over Time',
+                        child: _PlaysLineChart(
+                          plays: data.plays,
+                          servers: servers,
+                        ),
+                      ),
+                    const SizedBox(height: Insets.lg),
+                    if (data.concurrentPlays.isNotEmpty)
+                      _ChartCard(
+                        title: 'Concurrent Streams',
+                        child: _ConcurrentLineChart(
+                          concurrentPlays: data.concurrentPlays,
+                        ),
+                      ),
+                    const SizedBox(height: Insets.lg),
+                    if (data.playsByDayOfWeek.isNotEmpty)
+                      _ChartCard(
+                        title: 'Plays by Day of Week',
+                        child: _PlaysDowBarChart(plays: data.playsByDayOfWeek),
+                      ),
+                    const SizedBox(height: Insets.lg),
+                    if (data.playsByHourOfDay.isNotEmpty)
+                      _ChartCard(
+                        title: 'Plays by Hour of Day',
+                        child: _PlaysHodBarChart(plays: data.playsByHourOfDay),
+                      ),
+                    const SizedBox(height: Insets.lg),
+                    if (data.quality.total > 0)
+                      _ChartCard(
+                        title: 'Quality',
+                        child: _QualityPieChart(quality: data.quality),
+                      ),
+                    const SizedBox(height: Insets.lg),
+                    if (data.platforms.isNotEmpty)
+                      _ChartCard(
+                        title: 'Platforms',
+                        child: _PlatformsPieChart(platforms: data.platforms),
+                      ),
+                    const SizedBox(height: Insets.lg),
+                    if (data.engagement.summary.totalPlays > 0)
+                      _ChartCard(
+                        title: 'Engagement',
+                        child: _EngagementSummary(
+                          engagement: data.engagement,
+                          servers: servers,
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1671,9 +1889,11 @@ class _LibraryCompositionPieChartState extends State<_LibraryCompositionPieChart
       return const SizedBox.shrink();
     }
 
-    final List<Color> colors = <Color>[Colors.pink.shade400, Colors.teal.shade400, Colors.amber.shade400];
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final List<Color> colors = <Color>[scheme.primary, scheme.secondary, scheme.tertiary];
     final List<String> labels = <String>['Movies', 'Shows', 'Episodes'];
     final List<int> counts = <int>[widget.movieCount, widget.showCount, widget.episodeCount];
+    final List<double> radiusValues = <double>[80, 65, 60];
 
     final List<Color> validColors = <Color>[];
     final List<String> validLabels = <String>[];
@@ -1732,15 +1952,15 @@ class _LibraryCompositionPieChartState extends State<_LibraryCompositionPieChart
                   centerSpaceRadius: 0,
                   sections: List.generate(validCounts.length, (int i) {
                     final bool isTouched = i == touchedIndex;
-                    final double radius = isTouched ? 80.0 : 70.0;
+                    final double radius = radiusValues[i % radiusValues.length];
                     return PieChartSectionData(
                       color: validColors[i],
                       value: validCounts[i].toDouble(),
                       title: '',
                       radius: radius,
                       borderSide: isTouched
-                          ? BorderSide(color: Theme.of(context).colorScheme.surface, width: 6)
-                          : BorderSide(color: Theme.of(context).colorScheme.surface.withValues(alpha: 0)),
+                          ? const BorderSide(color: Colors.white, width: 6)
+                          : BorderSide(color: Colors.white.withValues(alpha: 0)),
                     );
                   }),
                 ),
@@ -1753,10 +1973,75 @@ class _LibraryCompositionPieChartState extends State<_LibraryCompositionPieChart
   }
 }
 
-class _StorageStatsView extends ConsumerWidget {
+class _StorageStatsView extends ConsumerStatefulWidget {
   const _StorageStatsView({required this.instance});
 
   final Instance instance;
+
+  @override
+  ConsumerState<_StorageStatsView> createState() => _StorageStatsViewState();
+}
+
+class _StorageStatsViewState extends ConsumerState<_StorageStatsView> {
+  String _selectedRange = '30d';
+  DateTime? _customFrom;
+  DateTime? _customTo;
+
+  final List<String> _ranges = const <String>[
+    '7d',
+    '30d',
+    '1yr',
+    'All',
+    'Custom',
+  ];
+
+  String _getPeriod(String range) {
+    switch (range) {
+      case '7d':
+        return 'week';
+      case '1yr':
+        return 'year';
+      case 'All':
+        return 'all';
+      case 'Custom':
+        return 'custom';
+      case '30d':
+      default:
+        return 'month';
+    }
+  }
+
+  Future<void> _handleSelect(String range) async {
+    if (range == 'Custom') {
+      final DateTimeRange? picked = await showDateRangePicker(
+        context: context,
+        firstDate: DateTime(2000),
+        lastDate: DateTime.now(),
+        initialDateRange: _customFrom != null && _customTo != null
+            ? DateTimeRange(start: _customFrom!, end: _customTo!)
+            : null,
+      );
+      if (picked != null) {
+        setState(() {
+          _selectedRange = 'Custom';
+          _customFrom = picked.start;
+          _customTo = picked.end.add(
+            const Duration(hours: 23, minutes: 59, seconds: 59),
+          );
+        });
+      } else if (_selectedRange != 'Custom') {
+        setState(() {
+          _selectedRange = 'Custom';
+        });
+      }
+    } else {
+      setState(() {
+        _selectedRange = range;
+        _customFrom = null;
+        _customTo = null;
+      });
+    }
+  }
 
   String _formatBytes(String bytesStr) {
     final int bytes = int.tryParse(bytesStr) ?? 0;
@@ -1772,23 +2057,61 @@ class _StorageStatsView extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    final TracearrStatsFilterParams params = TracearrStatsFilterParams(
+      instance: widget.instance,
+      period: _getPeriod(_selectedRange),
+      from: _customFrom,
+      to: _customTo,
+    );
     final AsyncValue<TracearrStats> statsVal =
-        ref.watch(tracearrStatsProvider(instance));
+        ref.watch(tracearrStatsProvider(params));
 
-    return AsyncValueView<TracearrStats>(
-      value: statsVal,
-      onRetry: () => ref.invalidate(tracearrStatsProvider(instance)),
-      data: (TracearrStats data) {
-        final bool hasQualityData = data.qualityBreakdown != null &&
-            (data.qualityBreakdown!.count4k +
-                    data.qualityBreakdown!.count1080p +
-                    data.qualityBreakdown!.count720p +
-                    data.qualityBreakdown!.countSd) >
-                0;
+    return Column(
+      children: <Widget>[
+        const SizedBox(height: Insets.sm),
+        SizedBox(
+          height: 44,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: Insets.lg),
+            children: <Widget>[
+              for (final String range in _ranges)
+                Padding(
+                  padding: const EdgeInsets.only(right: Insets.sm),
+                  child: Center(
+                    child: ChoiceChip(
+                      label: Text(
+                        range == 'Custom' &&
+                                _selectedRange == 'Custom' &&
+                                _customFrom != null &&
+                                _customTo != null
+                            ? 'Custom (${_customFrom!.month}/${_customFrom!.day} - ${_customTo!.month}/${_customTo!.day})'
+                            : range,
+                      ),
+                      selected: _selectedRange == range,
+                      onSelected: (_) => _handleSelect(range),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 4),
+        Expanded(
+          child: AsyncValueView<TracearrStats>(
+            value: statsVal,
+            onRetry: () => ref.invalidate(tracearrStatsProvider(params)),
+            data: (TracearrStats data) {
+              final bool hasQualityData = data.qualityBreakdown != null &&
+                  (data.qualityBreakdown!.count4k +
+                          data.qualityBreakdown!.count1080p +
+                          data.qualityBreakdown!.count720p +
+                          data.qualityBreakdown!.countSd) >
+                      0;
 
-        return ListView(
-          padding: const EdgeInsets.all(Insets.lg),
+              return ListView(
+                padding: const EdgeInsets.all(Insets.lg),
           children: <Widget>[
             // Hero section: Totals
             Row(
@@ -1902,24 +2225,25 @@ class _StorageStatsView extends ConsumerWidget {
                         height: 200,
                         child: Builder(
                           builder: (BuildContext context) {
+                            final ColorScheme scheme = Theme.of(context).colorScheme;
                             final List<MapEntry<String, int>> validQualities = <MapEntry<String, int>>[];
                             final List<Color> validColors = <Color>[];
                             
                             if (data.qualityBreakdown!.count4k > 0) {
                               validQualities.add(MapEntry<String, int>('4K', data.qualityBreakdown!.count4k));
-                              validColors.add(Colors.purple.shade400);
+                              validColors.add(scheme.primary);
                             }
                             if (data.qualityBreakdown!.count1080p > 0) {
                               validQualities.add(MapEntry<String, int>('1080p', data.qualityBreakdown!.count1080p));
-                              validColors.add(Colors.blue.shade400);
+                              validColors.add(scheme.secondary);
                             }
                             if (data.qualityBreakdown!.count720p > 0) {
                               validQualities.add(MapEntry<String, int>('720p', data.qualityBreakdown!.count720p));
-                              validColors.add(Colors.green.shade400);
+                              validColors.add(scheme.tertiary);
                             }
                             if (data.qualityBreakdown!.countSd > 0) {
                               validQualities.add(MapEntry<String, int>('SD', data.qualityBreakdown!.countSd));
-                              validColors.add(Colors.orange.shade400);
+                              validColors.add(scheme.error);
                             }
 
                             if (validQualities.isEmpty) return const SizedBox.shrink();
@@ -1984,23 +2308,26 @@ class _StorageStatsView extends ConsumerWidget {
                         runSpacing: Insets.sm,
                         children: <Widget>[
                           if (data.qualityBreakdown!.count4k > 0)
-                            _Indicator(color: Colors.purple.shade400, text: '4K (${data.qualityBreakdown!.count4k})'),
+                            _Indicator(color: Theme.of(context).colorScheme.primary, text: '4K (${data.qualityBreakdown!.count4k})'),
                           if (data.qualityBreakdown!.count1080p > 0)
-                            _Indicator(color: Colors.blue.shade400, text: '1080p (${data.qualityBreakdown!.count1080p})'),
+                            _Indicator(color: Theme.of(context).colorScheme.secondary, text: '1080p (${data.qualityBreakdown!.count1080p})'),
                           if (data.qualityBreakdown!.count720p > 0)
-                            _Indicator(color: Colors.green.shade400, text: '720p (${data.qualityBreakdown!.count720p})'),
+                            _Indicator(color: Theme.of(context).colorScheme.tertiary, text: '720p (${data.qualityBreakdown!.count720p})'),
                           if (data.qualityBreakdown!.countSd > 0)
-                            _Indicator(color: Colors.orange.shade400, text: 'SD (${data.qualityBreakdown!.countSd})'),
+                            _Indicator(color: Theme.of(context).colorScheme.error, text: 'SD (${data.qualityBreakdown!.countSd})'),
                         ],
                       ),
                     ],
                   ),
                 ),
               ),
-          ],
-        );
-      },
-    );
+            ],
+          );
+        },
+      ),
+    ),
+  ],
+);
   }
 }
 
@@ -2286,10 +2613,12 @@ class _SessionCard extends StatefulWidget {
   const _SessionCard({
     required this.session,
     this.serverUrl,
+    this.isHistory = false,
   });
 
   final TracearrSession session;
   final String? serverUrl;
+  final bool isHistory;
 
   @override
   State<_SessionCard> createState() => _SessionCardState();
@@ -2425,6 +2754,7 @@ class _SessionCardState extends State<_SessionCard> {
             TracearrSessionDetailScreen(
               session: session,
               posterUrl: posterUrl,
+              isHistory: widget.isHistory,
             ),
           ),
           child: Stack(
