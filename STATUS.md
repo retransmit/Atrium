@@ -18,8 +18,8 @@ Atrium is a **controller** app. Video playback was removed by design
 - **Activity tab**: cross-instance live feed - summary bar, Now
   Streaming (backdrop session cards from Plex / Jellyfin / Emby /
   Tautulli, tap-through to each module's now-playing screen) and
-  Transfers (qBittorrent downloads *and active uploads*, Deluge and
-  Transmission transfers,
+  Transfers (qBittorrent downloads *and active uploads*, Deluge,
+  Transmission and rTorrent transfers,
   SABnzbd slots,
   NZBGet groups, Sonarr/Radarr queues). Per-instance resilience: an unreachable server
   degrades to a chip, never blocks the feed
@@ -102,6 +102,21 @@ Atrium is a **controller** app. Video playback was removed by design
   detail screen with files (wanted toggling), peers and trackers; dashboard
   widget and Activity feed integration. The add, reannounce and remove paths
   were exercised against the live daemon
+
+- **rTorrent** (live-verified against 0.16.17): the one client that speaks
+  **XML-RPC** rather than JSON - a hand-rolled codec builds the `methodCall`
+  documents and reads back the positional arrays `d.multicall2` returns, with
+  faults (which arrive inside an HTTP 200) mapped to real errors and a proxy's
+  HTML error page reported as "this is not the XML-RPC endpoint". Torrent list
+  with start / stop / close / remove, hash check, reannounce and priority;
+  status and label filter chips built from the list itself; eight sort fields;
+  global bandwidth caps; add by magnet / .torrent URL / file with an optional
+  destination; a detail screen with files (skip / normal / high priority),
+  peers and trackers; dashboard widget and Activity feed integration. Because
+  rTorrent publishes no status field, no ETA and no delete-with-data, all three
+  are derived or plainly disclaimed rather than faked. The read paths and the
+  limit / priority writes were exercised against the live daemon; add and
+  remove are code-verified only
 
 ## Partially done
 

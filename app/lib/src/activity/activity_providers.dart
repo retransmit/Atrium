@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:service_emby/service_emby.dart' as emby;
 import 'package:service_jellyfin/service_jellyfin.dart' as jf;
 import 'package:service_deluge/service_deluge.dart';
+import 'package:service_rtorrent/service_rtorrent.dart';
 import 'package:service_transmission/service_transmission.dart';
 import 'package:service_nzbget/service_nzbget.dart';
 import 'package:service_plex/service_plex.dart';
@@ -238,6 +239,13 @@ final activityDownloadsProvider =
           (List<TransmissionTorrent> torrents) =>
               _transmissionDownloads(instance, torrents),
         );
+      case ServiceKind.rtorrent:
+        collect(
+          instance,
+          ref.watch(rtorrentRawTorrentsProvider(instance)),
+          (List<RtorrentTorrent> torrents) =>
+              _rtorrentDownloads(instance, torrents),
+        );
       case ServiceKind.sonarr:
         collect(
           instance,
@@ -303,6 +311,8 @@ void refreshActivity(WidgetRef ref) {
         ref.invalidate(delugeRawTorrentsProvider(instance));
       case ServiceKind.transmission:
         ref.invalidate(transmissionRawTorrentsProvider(instance));
+      case ServiceKind.rtorrent:
+        ref.invalidate(rtorrentRawTorrentsProvider(instance));
       case ServiceKind.sonarr:
         ref.invalidate(sonarrQueueProvider(instance));
       case ServiceKind.radarr:
@@ -595,6 +605,33 @@ List<ActivityDownload> _transmissionDownloads(
           // eta is a negative sentinel when unavailable, never a duration.
           eta: t.hasEta ? _fmtEtaSeconds(t.eta) : null,
           status: t.statusLabel,
+        ),
+  ];
+}
+
+List<ActivityDownload> _rtorrentDownloads(
+  Instance instance,
+  List<RtorrentTorrent> torrents,
+) {
+  return <ActivityDownload>[
+    // Same rule as the other torrent clients: incomplete torrents, plus
+    // anything actively moving bytes. Idle seeds are not activity.
+    for (final RtorrentTorrent t in torrents)
+      if (!t.isComplete || t.downRate > 0 || t.upRate > 0)
+        ActivityDownload(
+          key: '${instance.id}:${t.hash}',
+          instance: instance,
+          sourceKind: instance.kind,
+          title: t.name,
+          progress: t.progress,
+          speedBps: t.downRate > 0 ? t.downRate : null,
+          upSpeedBps: t.upRate > 0 ? t.upRate : null,
+          // rTorrent publishes no ETA, so it is derived from what is left and
+          // the current rate - which means a stalled torrent simply has none.
+          eta: (!t.isComplete && t.downRate > 0)
+              ? _fmtEtaSeconds(t.leftBytes ~/ t.downRate)
+              : null,
+          status: t.status.label,
         ),
   ];
 }

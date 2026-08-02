@@ -39,5 +39,6 @@ workspace:
   - services/service_nzbget
   - services/service_deluge
   - services/service_transmission
+  - services/service_rtorrent
   - services/service_glances
   - services/service_speedtest_tracker

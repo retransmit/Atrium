@@ -139,6 +139,7 @@ void main() {
         nzbgetInstances: <Instance>[nzbget],
         delugeInstances: <Instance>[],
         transmissionInstances: <Instance>[],
+        rtorrentInstances: <Instance>[],
       ),
     );
     expect(find.text('Ubuntu ISO'), findsOneWidget);

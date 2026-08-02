@@ -60,13 +60,15 @@ class AuthInterceptor extends Interceptor {
           :final String password,
         )
           when kind == ServiceKind.nzbget ||
-              kind == ServiceKind.transmission:
-        // Both use plain HTTP Basic on every request; there is no login flow.
-        // Never log this header.
+              kind == ServiceKind.transmission ||
+              kind == ServiceKind.rtorrent:
+        // All three use plain HTTP Basic on every request; there is no login
+        // flow. Never log this header.
         //
-        // Transmission's RPC auth is optional and off by default, so send
-        // nothing at all when no credentials were entered - an empty `Basic :`
-        // is worse than no header.
+        // Transmission's RPC auth is optional and off by default, and rTorrent
+        // has no auth of its own at all (only whatever proxy fronts it), so
+        // send nothing when no credentials were entered - an empty `Basic :` is
+        // worse than no header.
         if (username.isNotEmpty || password.isNotEmpty) {
           options.headers['Authorization'] =
               'Basic ${base64Encode(utf8.encode('$username:$password'))}';

@@ -75,8 +75,25 @@ enum _HealthMode {
       // the root path: any web server returns 200 for `/`, but only Deluge's
       // RPC endpoint is there to refuse the method.
       return (path: 'json', mode: _HealthMode.reachable);
+    case ServiceKind.rtorrent:
+      // XML-RPC only answers POST - a GET makes the proxy in front return 502
+      // whether the daemon is alive or dead, which is no signal at all. So this
+      // is the one kind the probe POSTs (see [_probeBody]), and a real
+      // `methodResponse` is required for ok.
+      return (path: '', mode: _HealthMode.authed);
   }
 }
+
+/// The request body to POST for [kind], or null to probe with a plain GET.
+///
+/// Only rTorrent needs this: it has no GET-able status endpoint, so the probe
+/// sends the cheapest XML-RPC call there is.
+String? _probeBody(ServiceKind kind) => switch (kind) {
+      ServiceKind.rtorrent => '<?xml version="1.0"?><methodCall>'
+          '<methodName>system.client_version</methodName>'
+          '<params></params></methodCall>',
+      _ => null,
+    };
 
 /// Probes the real health of a configured [Instance].
 ///
@@ -98,13 +115,16 @@ class HealthProbe {
     Dio? dio;
     try {
       dio = await _dioFactory.create(instance);
-      final Response<dynamic> resp = await dio.get<dynamic>(
-        cfg.path,
-        options: Options(
-          validateStatus: (_) => true,
-          receiveTimeout: const Duration(seconds: 8),
-        ),
+      final String? body = _probeBody(instance.kind);
+      final Options options = Options(
+        validateStatus: (_) => true,
+        receiveTimeout: const Duration(seconds: 8),
+        contentType: body == null ? null : 'text/xml',
+        responseType: body == null ? null : ResponseType.plain,
       );
+      final Response<dynamic> resp = body == null
+          ? await dio.get<dynamic>(cfg.path, options: options)
+          : await dio.post<dynamic>(cfg.path, data: body, options: options);
       final int status = resp.statusCode ?? 0;
       return interpretServiceHealthResponse(
         instance.kind,
@@ -139,6 +159,12 @@ Health interpretServiceHealthResponse(
         if (kind == ServiceKind.speedtestTracker &&
             !_isSpeedtestResultsEnvelope(data)) {
           // The host answered, but not with the authenticated API contract.
+          return Health.warning;
+        }
+        if (kind == ServiceKind.rtorrent &&
+            !'$data'.contains('methodResponse')) {
+          // A 200 from the web UI or a proxy landing page is not the XML-RPC
+          // endpoint, so the URL is pointed at the wrong place.
           return Health.warning;
         }
         return Health.ok;

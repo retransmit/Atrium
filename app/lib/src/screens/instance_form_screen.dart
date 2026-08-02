@@ -523,7 +523,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
         // Transmission's RPC auth is optional and off in a default install, so
         // *neither* field may be required there - demanding credentials would
         // lock users out of a perfectly reachable server.
-        final bool authOptional = _kind == ServiceKind.transmission;
+        final bool authOptional = _kind == ServiceKind.transmission ||
+            _kind == ServiceKind.rtorrent;
         // Emby/Jellyfin accounts may legitimately have no password; every other
         // username/password service (e.g. qBittorrent) requires one, where an
         // empty submission guarantees a failed login.
@@ -633,7 +634,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
         kind == ServiceKind.speedtestTracker ||
         kind == ServiceKind.nzbget ||
         kind == ServiceKind.deluge ||
-        kind == ServiceKind.transmission) {
+        kind == ServiceKind.transmission ||
+        kind == ServiceKind.rtorrent) {
       return Icon(ServiceVisuals.icon(kind), size: size);
     }
     return Image.asset(

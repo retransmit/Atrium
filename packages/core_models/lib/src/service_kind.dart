@@ -20,6 +20,7 @@ enum ServiceKind {
   nzbget,
   deluge,
   transmission,
+  rtorrent,
 }
 
 /// Static metadata about a [ServiceKind] - display name, default port, the
@@ -45,6 +46,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.nzbget => 'NZBGet',
         ServiceKind.deluge => 'Deluge',
         ServiceKind.transmission => 'Transmission',
+        ServiceKind.rtorrent => 'rTorrent',
       };
 
   /// One-line role description.
@@ -65,6 +67,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.nzbget => 'Usenet client',
         ServiceKind.deluge => 'Torrent client',
         ServiceKind.transmission => 'Torrent client',
+        ServiceKind.rtorrent => 'Torrent client',
       };
 
   /// Vendor-default port. Used as a hint when the user is entering a URL
@@ -86,6 +89,10 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.nzbget => 6789,
         ServiceKind.deluge => 8112,
         ServiceKind.transmission => 9091,
+        // rTorrent's XML-RPC port. Setups fronted by ruTorrent often expose it
+        // on the web port under /RPC2 instead, so the URL is what really
+        // decides; this is only the hint.
+        ServiceKind.rtorrent => 8000,
       };
 
   /// What auth flow the service uses by default. Some services (Jellyfin) can
@@ -99,12 +106,15 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.tautulli ||
         ServiceKind.sabnzbd =>
           AuthStyle.apiKey,
-        // Transmission's RPC auth is HTTP Basic and is *optional* - a default
-        // install has it off - so the form must not demand credentials.
+        // Transmission and rTorrent both use HTTP Basic, and for both it is
+        // *optional* - rTorrent's XML-RPC has no auth of its own and is only
+        // protected when someone puts a proxy in front - so the form must not
+        // demand credentials for them.
         ServiceKind.jellyfin ||
         ServiceKind.emby ||
         ServiceKind.nzbget ||
-        ServiceKind.transmission =>
+        ServiceKind.transmission ||
+        ServiceKind.rtorrent =>
           AuthStyle.userPass,
         ServiceKind.plex => AuthStyle.plexToken,
         // Deluge's Web UI takes a password with no username; it is still a
@@ -132,7 +142,8 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.sabnzbd ||
         ServiceKind.nzbget ||
         ServiceKind.deluge ||
-        ServiceKind.transmission =>
+        ServiceKind.transmission ||
+        ServiceKind.rtorrent =>
           ServiceRole.downloader,
         ServiceKind.glances => ServiceRole.analytics,
         ServiceKind.speedtestTracker => ServiceRole.analytics,

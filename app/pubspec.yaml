@@ -49,6 +49,7 @@ dependencies:
   service_glances:
   service_speedtest_tracker:
   service_tautulli:
+  service_rtorrent:
   service_transmission:
   url_launcher: ^6.3.2
 dev_dependencies:

@@ -16,6 +16,7 @@ import 'package:service_seerr/service_seerr.dart';
 import 'package:service_sonarr/service_sonarr.dart';
 import 'package:service_speedtest_tracker/service_speedtest_tracker.dart';
 import 'package:service_tautulli/service_tautulli.dart';
+import 'package:service_rtorrent/service_rtorrent.dart';
 import 'package:service_transmission/service_transmission.dart';
 
 import '../health_providers.dart';
@@ -122,6 +123,7 @@ class DashboardBoard extends ConsumerWidget {
           delugeInstances: _byKind(instances, ServiceKind.deluge),
           transmissionInstances:
               _byKind(instances, ServiceKind.transmission),
+          rtorrentInstances: _byKind(instances, ServiceKind.rtorrent),
         );
       case DashboardWidgetKind.streams:
         return DashboardStreamsWidget(
@@ -180,6 +182,9 @@ class DashboardBoard extends ConsumerWidget {
         case ServiceKind.transmission:
           ref.invalidate(transmissionRawTorrentsProvider(i));
           ref.invalidate(transmissionSessionStatsProvider(i));
+        case ServiceKind.rtorrent:
+          ref.invalidate(rtorrentRawTorrentsProvider(i));
+          ref.invalidate(rtorrentGlobalProvider(i));
         case ServiceKind.tautulli:
           ref.invalidate(tautulliActivityProvider(i));
         case ServiceKind.jellyfin:

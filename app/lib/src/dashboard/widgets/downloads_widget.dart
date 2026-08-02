@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:service_deluge/service_deluge.dart';
 import 'package:service_nzbget/service_nzbget.dart';
 import 'package:service_qbittorrent/service_qbittorrent.dart';
+import 'package:service_rtorrent/service_rtorrent.dart';
 import 'package:service_sabnzbd/service_sabnzbd.dart';
 import 'package:service_transmission/service_transmission.dart';
 
@@ -61,6 +62,14 @@ final activeDownloadCountProvider = Provider.autoDispose<int>((Ref ref) {
       count += torrents
           .where((TransmissionTorrent t) => t.status.isDownloading)
           .length;
+    } else if (i.kind == ServiceKind.rtorrent) {
+      // Same reasoning: an rTorrent view is mostly finished seeds.
+      final List<RtorrentTorrent> torrents =
+          ref.watch(rtorrentRawTorrentsProvider(i)).value ??
+              const <RtorrentTorrent>[];
+      count += torrents
+          .where((RtorrentTorrent t) => t.status.isDownloading)
+          .length;
     }
   }
   return count;
@@ -105,6 +114,7 @@ class DashboardDownloadsWidget extends ConsumerWidget {
     required this.nzbgetInstances,
     required this.delugeInstances,
     required this.transmissionInstances,
+    required this.rtorrentInstances,
     super.key,
   });
 
@@ -113,6 +123,7 @@ class DashboardDownloadsWidget extends ConsumerWidget {
   final List<Instance> nzbgetInstances;
   final List<Instance> delugeInstances;
   final List<Instance> transmissionInstances;
+  final List<Instance> rtorrentInstances;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -212,6 +223,24 @@ class DashboardDownloadsWidget extends ConsumerWidget {
           ref.watch(transmissionSessionStatsProvider(i)).value?.downloadSpeed ??
               0;
     }
+    for (final Instance i in rtorrentInstances) {
+      final AsyncValue<List<RtorrentTorrent>> torrents =
+          ref.watch(rtorrentRawTorrentsProvider(i));
+      anyLoading |= torrents.isLoading && !torrents.hasValue;
+      anyError |= torrents.hasError;
+      for (final RtorrentTorrent t
+          in torrents.value ?? const <RtorrentTorrent>[]) {
+        // Finished seeds are not downloads.
+        if (t.status.isDownloading) {
+          rows.add(_DownloadRow(
+            name: t.name,
+            progress: t.progress,
+            instance: i,
+          ));
+        }
+      }
+      totalSpeed += ref.watch(rtorrentGlobalProvider(i)).value?.downRate ?? 0;
+    }
 
     rows.sort(
         (_DownloadRow a, _DownloadRow b) => b.progress.compareTo(a.progress));
@@ -277,6 +306,10 @@ class DashboardDownloadsWidget extends ConsumerWidget {
     for (final Instance i in transmissionInstances) {
       ref.invalidate(transmissionRawTorrentsProvider(i));
       ref.invalidate(transmissionSessionStatsProvider(i));
+    }
+    for (final Instance i in rtorrentInstances) {
+      ref.invalidate(rtorrentRawTorrentsProvider(i));
+      ref.invalidate(rtorrentGlobalProvider(i));
     }
   }
 }
