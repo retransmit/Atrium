@@ -111,15 +111,15 @@ class _RtorrentHomeState extends ConsumerState<RtorrentHome> {
   }
 
   void _openDetail(RtorrentTorrent t) {
-    // The nearest Navigator, not the root one: the detail screen belongs
-    // inside the instance's shell.
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (BuildContext context) => RtorrentDetailScreen(
-          instance: widget.instance,
-          hash: t.hash,
-          initialName: t.name,
-        ),
+    // pushScreen, not Navigator.push: a page pushed onto the branch navigator
+    // is absent from GoRouter's route table and is dropped on the next shell
+    // rebuild, which polling triggers constantly.
+    pushScreen<void>(
+      context,
+      RtorrentDetailScreen(
+        instance: widget.instance,
+        hash: t.hash,
+        initialName: t.name,
       ),
     );
   }

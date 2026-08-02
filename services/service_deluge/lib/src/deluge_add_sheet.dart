@@ -13,6 +13,9 @@ import 'deluge_providers.dart';
 Future<void> showDelugeAddSheet(BuildContext context, Instance instance) {
   return showModalBottomSheet<void>(
     context: context,
+    // The sheet is a route too, so it needs the root navigator for the
+    // same reason a pushed page does.
+    useRootNavigator: true,
     isScrollControlled: true,
     builder: (BuildContext context) => _DelugeAddSheet(instance: instance),
   );

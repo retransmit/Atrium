@@ -92,15 +92,15 @@ class _TransmissionHomeState extends ConsumerState<TransmissionHome> {
   }
 
   void _openDetail(TransmissionTorrent t) {
-    // The nearest Navigator, not the root one: the detail screen belongs
-    // inside the instance's shell.
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (BuildContext context) => TransmissionDetailScreen(
-          instance: widget.instance,
-          hashString: t.hashString,
-          initialName: t.name,
-        ),
+    // pushScreen, not Navigator.push: a page pushed onto the branch navigator
+    // is absent from GoRouter's route table and is dropped on the next shell
+    // rebuild, which polling triggers constantly.
+    pushScreen<void>(
+      context,
+      TransmissionDetailScreen(
+        instance: widget.instance,
+        hashString: t.hashString,
+        initialName: t.name,
       ),
     );
   }
