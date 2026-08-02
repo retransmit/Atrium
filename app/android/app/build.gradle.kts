@@ -47,13 +47,6 @@ android {
         includeInBundle = false
     }
 
-    // Dynamic app label based on project property appName (defaults to "Atrium")
-    val appNameProp = if (project.hasProperty("appName")) {
-        project.property("appName") as String
-    } else {
-        "Atrium"
-    }
-
     defaultConfig {
         applicationId = "app.atrium"
         // local_auth + flutter_secure_storage need API 23+ (BiometricPrompt,
@@ -64,6 +57,12 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
+        // Dynamic app label based on project property appName (defaults to "Atrium")
+        val appNameProp = if (project.hasProperty("appName")) {
+            project.property("appName") as String
+        } else {
+            "Atrium"
+        }
         manifestPlaceholders["appName"] = appNameProp
     }
 
@@ -82,19 +81,6 @@ android {
     }
 
     buildTypes {
-        debug {
-            // A debug build gets its own application id so it installs beside
-            // an installed release instead of colliding with it. Without this,
-            // Android refuses the install (different signing key, and a lower
-            // version code), and the only way through is an uninstall that
-            // takes the release build's profiles and credentials with it.
-            //
-            // Its own id also means its own storage, so testing against a real
-            // server cannot disturb the profiles you actually use.
-            applicationIdSuffix = ".debug"
-            versionNameSuffix = "-debug"
-            manifestPlaceholders["appName"] = "$appNameProp debug"
-        }
         release {
             // No signing config at all leaves the APK unsigned. A config
             // carrying a null storeFile is rejected outright by the Android
