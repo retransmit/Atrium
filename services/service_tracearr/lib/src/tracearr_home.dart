@@ -1990,13 +1990,10 @@ class _ActivityStatsViewState extends ConsumerState<_ActivityStatsView> {
 
   Future<void> _handleSelect(String range) async {
     if (range == 'Custom') {
-      final DateTimeRange? picked = await showDateRangePicker(
+      final DateTimeRange? picked = await _showCustomDateRangeDialog(
         context: context,
-        firstDate: DateTime(2000),
-        lastDate: DateTime.now(),
-        initialDateRange: _customFrom != null && _customTo != null
-            ? DateTimeRange(start: _customFrom!, end: _customTo!)
-            : null,
+        initialStart: _customFrom,
+        initialEnd: _customTo,
       );
       if (picked != null) {
         setState(() {
@@ -3405,13 +3402,10 @@ class _StorageStatsViewState extends ConsumerState<_StorageStatsView> {
 
   Future<void> _handleSelect(String range) async {
     if (range == 'Custom') {
-      final DateTimeRange? picked = await showDateRangePicker(
+      final DateTimeRange? picked = await _showCustomDateRangeDialog(
         context: context,
-        firstDate: DateTime(2000),
-        lastDate: DateTime.now(),
-        initialDateRange: _customFrom != null && _customTo != null
-            ? DateTimeRange(start: _customFrom!, end: _customTo!)
-            : null,
+        initialStart: _customFrom,
+        initialEnd: _customTo,
       );
       if (picked != null) {
         setState(() {
@@ -5568,3 +5562,300 @@ class _SessionCardState extends State<_SessionCard> {
     );
   }
 }
+
+Future<DateTimeRange?> _showCustomDateRangeDialog({
+  required BuildContext context,
+  DateTime? initialStart,
+  DateTime? initialEnd,
+}) async {
+  return showDialog<DateTimeRange>(
+    context: context,
+    builder: (BuildContext context) => _CustomDateRangeDialog(
+      initialStart: initialStart,
+      initialEnd: initialEnd,
+    ),
+  );
+}
+
+class _CustomDateRangeDialog extends StatefulWidget {
+  const _CustomDateRangeDialog({this.initialStart, this.initialEnd});
+
+  final DateTime? initialStart;
+  final DateTime? initialEnd;
+
+  @override
+  State<_CustomDateRangeDialog> createState() => _CustomDateRangeDialogState();
+}
+
+class _CustomDateRangeDialogState extends State<_CustomDateRangeDialog> {
+  late DateTime _startDate;
+  late DateTime _endDate;
+  String _activePreset = '';
+
+  @override
+  void initState() {
+    super.initState();
+    final DateTime now = DateTime.now();
+    _startDate = widget.initialStart ?? DateTime(now.year - 1, now.month, now.day);
+    _endDate = widget.initialEnd ?? now;
+  }
+
+  String _formatDate(DateTime d) {
+    const List<String> months = <String>[
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${months[d.month - 1]} ${d.day}, ${d.year}';
+  }
+
+  void _applyPreset(String preset) {
+    final DateTime now = DateTime.now();
+    setState(() {
+      _activePreset = preset;
+      switch (preset) {
+        case 'This Year':
+          _startDate = DateTime(now.year, 1, 1);
+          _endDate = now;
+          break;
+        case 'Last Year':
+          _startDate = DateTime(now.year - 1, 1, 1);
+          _endDate = DateTime(now.year - 1, 12, 31, 23, 59, 59);
+          break;
+        case 'Last 2 Years':
+          _startDate = DateTime(now.year - 2, now.month, now.day);
+          _endDate = now;
+          break;
+        case 'Last 3 Years':
+          _startDate = DateTime(now.year - 3, now.month, now.day);
+          _endDate = now;
+          break;
+        case 'All Time':
+          _startDate = DateTime(2000, 1, 1);
+          _endDate = now;
+          break;
+      }
+    });
+  }
+
+  Future<void> _pickStartDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _startDate,
+      firstDate: DateTime(2000),
+      lastDate: _endDate,
+    );
+    if (picked != null) {
+      setState(() {
+        _startDate = picked;
+        _activePreset = '';
+      });
+    }
+  }
+
+  Future<void> _pickEndDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _endDate,
+      firstDate: _startDate,
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() {
+        _endDate = DateTime(picked.year, picked.month, picked.day, 23, 59, 59);
+        _activePreset = '';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    return AlertDialog(
+      title: const Text('Select Date Range'),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'Quick Presets',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: Insets.sm),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: <String>[
+                'This Year',
+                'Last Year',
+                'Last 2 Years',
+                'Last 3 Years',
+                'All Time',
+              ].map((String preset) {
+                final bool isSelected = _activePreset == preset;
+                return ChoiceChip(
+                  label: Text(preset),
+                  selected: isSelected,
+                  onSelected: (bool selected) {
+                    if (selected) _applyPreset(preset);
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: Insets.xl),
+            Text(
+              'Custom Range',
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: Insets.sm),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: InkWell(
+                    onTap: _pickStartDate,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            'Start Date',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.outline,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: <Widget>[
+                              Icon(
+                                Icons.calendar_today_outlined,
+                                size: 16,
+                                color: theme.colorScheme.primary,
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    _formatDate(_startDate),
+                                    maxLines: 1,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6),
+                  child: Icon(Icons.arrow_forward, size: 16),
+                ),
+                Expanded(
+                  child: InkWell(
+                    onTap: _pickEndDate,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            'End Date',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.outline,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: <Widget>[
+                              Icon(
+                                Icons.calendar_today_outlined,
+                                size: 16,
+                                color: theme.colorScheme.primary,
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    _formatDate(_endDate),
+                                    maxLines: 1,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(
+            DateTimeRange(start: _startDate, end: _endDate),
+          ),
+          child: const Text('Apply'),
+        ),
+      ],
+    );
+  }
+}
+
