@@ -34,6 +34,7 @@ abstract class TracearrActivityLocationUser with _$TracearrActivityLocationUser 
   const factory TracearrActivityLocationUser({
     required String id,
     String? thumbUrl,
+    String? serverId,
     required String username,
   }) = _TracearrActivityLocationUser;
 

@@ -92,6 +92,7 @@ abstract class TracearrUserProfile with _$TracearrUserProfile {
     required String serverUserId,
     required String username,
     String? thumbUrl,
+    String? serverId,
     String? identityName,
     @Default(0) int contentStarted,
     @Default(0) int totalPlays,

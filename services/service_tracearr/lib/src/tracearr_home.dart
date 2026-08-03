@@ -206,6 +206,8 @@ class _HistoryMapView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final TracearrApi? api = ref.watch(tracearrApiProvider(instance)).value;
+    final Map<String, String>? servers =
+        ref.watch(tracearrServersProvider(instance)).value;
     final AsyncValue<TracearrActivityLocationsResponse> locsVal =
         ref.watch(tracearrActivityLocationsProvider(instance));
 
@@ -244,6 +246,10 @@ class _HistoryMapView extends ConsumerWidget {
                 String? imageUrl;
                 if (user.thumbUrl != null && api != null) {
                   imageUrl = api.proxyImageUrl(
+                    serverId: user.serverId ??
+                        (servers != null && servers.isNotEmpty
+                            ? servers.keys.first
+                            : null),
                     path: user.thumbUrl,
                     width: 32,
                     height: 32,
@@ -1769,6 +1775,8 @@ class _AudiencePersonaTable extends StatelessWidget {
           String? imageUrl;
           if (profile.thumbUrl != null && api != null) {
             imageUrl = api!.proxyImageUrl(
+                serverId: profile.serverId ??
+                    (servers.isNotEmpty ? servers.keys.first : null),
                 path: profile.thumbUrl,
                 width: 32,
                 height: 32,
@@ -2470,10 +2478,18 @@ class _CompletionPieChartState extends State<_CompletionPieChart> {
     }
 
     final ColorScheme scheme = Theme.of(context).colorScheme;
-    final List<Color> colors = <Color>[scheme.primary, scheme.secondary, scheme.outline.withValues(alpha: 0.5)];
-    final List<String> labels = <String>['Completed', 'In Progress', 'Not Started'];
+    final List<Color> colors = <Color>[
+      scheme.primary,
+      scheme.secondary,
+      scheme.tertiary,
+    ];
+    final List<String> labels = <String>[
+      'Completed',
+      'In Progress',
+      'Not Started',
+    ];
     final List<int> counts = <int>[completed, inProgress, notStarted];
-    final List<double> radiusValues = <double>[75, 65, 55];
+    final List<double> radiusValues = <double>[80, 65, 60];
 
     final List<Color> validColors = <Color>[];
     final List<String> validLabels = <String>[];
@@ -2491,7 +2507,7 @@ class _CompletionPieChartState extends State<_CompletionPieChart> {
       aspectRatio: 1.3,
       child: Column(
         children: <Widget>[
-          const SizedBox(height: 20),
+          const SizedBox(height: 28),
           Wrap(
             alignment: WrapAlignment.center,
             spacing: 12,
@@ -2500,49 +2516,69 @@ class _CompletionPieChartState extends State<_CompletionPieChart> {
               final bool isTouched = touchedIndex == i;
               return _ActivityChartIndicator(
                 color: validColors[i],
-                text: '${validCounts[i]} ${validLabels[i]}',
+                text: '${validLabels[i]} (${validCounts[i]})',
                 isSquare: false,
                 size: isTouched ? 18 : 16,
                 textColor: isTouched
                     ? Theme.of(context).colorScheme.onSurface
-                    : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                    : Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.6),
               );
             }),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Expanded(
-            child: PieChart(
-              PieChartData(
-                pieTouchData: PieTouchData(
-                  touchCallback: (FlTouchEvent event, PieTouchResponse? response) {
-                    setState(() {
-                      if (!event.isInterestedForInteractions || response == null || response.touchedSection == null) {
-                        touchedIndex = -1;
-                        return;
-                      }
-                      touchedIndex = response.touchedSection!.touchedSectionIndex;
-                    });
-                  },
+            child: AspectRatio(
+              aspectRatio: 1,
+              child: PieChart(
+                PieChartData(
+                  pieTouchData: PieTouchData(
+                    touchCallback: (
+                      FlTouchEvent event,
+                      PieTouchResponse? pieTouchResponse,
+                    ) {
+                      setState(() {
+                        if (!event.isInterestedForInteractions ||
+                            pieTouchResponse == null ||
+                            pieTouchResponse.touchedSection == null) {
+                          touchedIndex = -1;
+                          return;
+                        }
+                        touchedIndex = pieTouchResponse
+                            .touchedSection!
+                            .touchedSectionIndex;
+                      });
+                    },
+                  ),
+                  startDegreeOffset: 180,
+                  borderData: FlBorderData(show: false),
+                  sectionsSpace: 1,
+                  centerSpaceRadius: 0,
+                  sections: List<PieChartSectionData>.generate(
+                    validCounts.length,
+                    (int i) {
+                      final bool isTouched = i == touchedIndex;
+                      final double radius =
+                          radiusValues[i % radiusValues.length];
+                      return PieChartSectionData(
+                        color: validColors[i],
+                        value: validCounts[i].toDouble(),
+                        title: '',
+                        radius: radius,
+                        borderSide: isTouched
+                            ? const BorderSide(color: Colors.white, width: 6)
+                            : BorderSide(
+                                color: Colors.white.withValues(alpha: 0),
+                              ),
+                      );
+                    },
+                  ),
                 ),
-                startDegreeOffset: 180,
-                borderData: FlBorderData(show: false),
-                sectionsSpace: 2,
-                centerSpaceRadius: 30,
-                sections: List<PieChartSectionData>.generate(validCounts.length, (int i) {
-                  final bool isTouched = i == touchedIndex;
-                  return PieChartSectionData(
-                    color: validColors[i],
-                    value: validCounts[i].toDouble(),
-                    title: isTouched ? '${validLabels[i]}\n(${validCounts[i]})' : '',
-                    titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
-                    radius: isTouched ? (radiusValues[i % radiusValues.length] + 6) : radiusValues[i % radiusValues.length],
-                    borderSide: isTouched ? const BorderSide(color: Colors.white, width: 3) : const BorderSide(color: Colors.transparent, width: 0),
-                  );
-                }),
               ),
             ),
           ),
-          const SizedBox(height: 16),
         ],
       ),
     );
