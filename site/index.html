@@ -22,11 +22,11 @@
         <i>forum</i>
         <span>Discord</span>
       </a>
-      <a class="button primary round hide-on-mobile" href="https://github.com/retransmit/Atrium/releases" target="_blank">
-        <span>Download</span>
+      <a class="button primary round hide-on-mobile" href="https://f-droid.org/packages/app.atrium/" target="_blank">
+        <span>Get it on F-Droid</span>
         <i>download</i>
       </a>
-      <a class="button circle primary show-on-mobile" href="https://github.com/retransmit/Atrium/releases" target="_blank">
+      <a class="button circle primary show-on-mobile" href="https://f-droid.org/packages/app.atrium/" target="_blank">
         <i>download</i>
       </a>
     </nav>
@@ -36,13 +36,17 @@
       <section class="hero-section">
         <div class="grid middle-align">
           <div class="s12 m6 hero-text-col center-align-mobile">
-            <div class="chip border round">v1.1.1 Release</div>
+            <div class="chip border round">v1.2.0 Release</div>
             <h1 class="hero-title">Your self-hosted media, unified.</h1>
             <p class="hero-subtitle">One premium Android app that fronts Sonarr, Radarr, Plex, Jellyfin, qBittorrent, and more. Material 3 Expressive, multi-instance, and fully secure.</p>
             <div class="row hero-actions">
-              <a class="button extra round primary elevate" href="https://github.com/retransmit/Atrium/releases" target="_blank">
+              <a class="button extra round primary elevate" href="https://f-droid.org/packages/app.atrium/" target="_blank">
                 <i>download</i>
-                <span>Get the APK</span>
+                <span>Get it on F-Droid</span>
+              </a>
+              <a class="button extra round border" href="https://github.com/retransmit/Atrium/releases" target="_blank">
+                <i>android</i>
+                <span>Download APK</span>
               </a>
               <a class="button extra round border" href="https://github.com/retransmit/Atrium" target="_blank">
                 <i>code</i>
@@ -63,7 +67,7 @@
       <section class="padding-top padding-bottom" style="overflow: hidden;">
         <div class="center-align margin-bottom">
           <h2 class="section-title">One App for Everything</h2>
-          <p class="section-subtitle">Fully supporting 12+ self-hosted essentials today.</p>
+          <p class="section-subtitle">Fully supporting 16 self-hosted essentials today.</p>
         </div>
         <div class="services-marquee">
           <div class="marquee-track">
@@ -78,8 +82,12 @@
             <div class="chip large"><img src="/assets/service_icons/emby.png" class="service-icon" alt="Emby">Emby</div>
             <div class="chip large"><img src="/assets/service_icons/plex.png" class="service-icon" alt="Plex">Plex</div>
             <div class="chip large"><img src="/assets/service_icons/qbittorrent.png" class="service-icon" alt="qBittorrent">qBittorrent</div>
+            <div class="chip large">Deluge</div>
+            <div class="chip large">Transmission</div>
             <div class="chip large">SABnzbd</div>
+            <div class="chip large">NZBGet</div>
             <div class="chip large"><img src="/assets/service_icons/glances.png" class="service-icon" alt="Glances">Glances</div>
+            <div class="chip large">Speedtest Tracker</div>
             <!-- Set 2 -->
             <div class="chip large"><img src="/assets/service_icons/sonarr.png" class="service-icon" alt="Sonarr">Sonarr</div>
             <div class="chip large"><img src="/assets/service_icons/radarr.png" class="service-icon" alt="Radarr">Radarr</div>
@@ -91,8 +99,12 @@
             <div class="chip large"><img src="/assets/service_icons/emby.png" class="service-icon" alt="Emby">Emby</div>
             <div class="chip large"><img src="/assets/service_icons/plex.png" class="service-icon" alt="Plex">Plex</div>
             <div class="chip large"><img src="/assets/service_icons/qbittorrent.png" class="service-icon" alt="qBittorrent">qBittorrent</div>
+            <div class="chip large">Deluge</div>
+            <div class="chip large">Transmission</div>
             <div class="chip large">SABnzbd</div>
+            <div class="chip large">NZBGet</div>
             <div class="chip large"><img src="/assets/service_icons/glances.png" class="service-icon" alt="Glances">Glances</div>
+            <div class="chip large">Speedtest Tracker</div>
           </div>
         </div>
       </section>
@@ -102,10 +114,19 @@
       <!-- F-Droid / Open Source Section -->
       <section class="padding-top padding-bottom center-align">
         <div class="chip tertiary-container round margin-bottom">Privacy First</div>
-        <h2 class="section-title">F-Droid First & Open Source</h2>
+        <h2 class="section-title">Now on F-Droid</h2>
         <p style="margin: 0 auto; font-size: 1.2rem; opacity: 0.9; max-width: 800px; line-height: 1.6;">
-          Atrium was built to fill the niche left by LunaSea. It ensures <strong>reproducible builds</strong> with <strong>no proprietary blobs</strong> and <strong>no telemetry</strong>. Licensed under GPL-3.0-or-later, it’s a modern Flutter codebase that fully respects your privacy.
+          Atrium was built to fill the niche left by LunaSea. It ships with <strong>reproducible builds</strong>, <strong>no proprietary blobs</strong> and <strong>no telemetry</strong>. Licensed under GPL-3.0-or-later, it’s a modern Flutter codebase that fully respects your privacy.
         </p>
+        <p style="margin: 1rem auto 0; opacity: 0.75; max-width: 800px; line-height: 1.6;">
+          Because that build is reproducible, F-Droid rebuilds Atrium from source, checks the result matches the published APK byte for byte, and ships it under this project’s own signature. The two sources are interchangeable, so you can move between F-Droid and the releases page without uninstalling.
+        </p>
+        <div class="row center-align margin-top" style="gap: 0.5rem;">
+          <a class="button round primary elevate" href="https://f-droid.org/packages/app.atrium/" target="_blank">
+            <i>download</i>
+            <span>Get it on F-Droid</span>
+          </a>
+        </div>
       </section>
 
       <div class="wavy-divider"></div>
@@ -190,9 +211,11 @@
               <h5 class="margin-bottom">Downloads & Utilities</h5>
               <ul style="list-style-type: none; padding-left: 0; line-height: 1.8;">
                 <li><strong>qBittorrent:</strong> Real-time torrent list, add/manage, per-file priority, and tracker details.</li>
+                <li><strong>Deluge &amp; Transmission:</strong> Live lists, queue moves, speed limits, and per-torrent files, peers and trackers.</li>
+                <li><strong>SABnzbd &amp; NZBGet:</strong> Queue control with reorder, priority and categories, plus history with retry.</li>
                 <li><strong>Seerr:</strong> Discover new media, search, and manage requests (approve/decline/retry).</li>
-                <li><strong>SABnzbd:</strong> Powerful queue control.</li>
                 <li><strong>Glances:</strong> Live CPU, memory, network, and disk monitoring gauges.</li>
+                <li><strong>Speedtest Tracker:</strong> Latest result, history chart, and remote test runs.</li>
               </ul>
             </article>
           </div>
@@ -232,7 +255,7 @@
                 <i class="error-text">bolt</i>
               </div>
               <h5>Unified Activity Feed</h5>
-              <p>One tab aggregates active streams and live transfers (qBit downloads, SAB slots, *arr queues) across all instances.</p>
+              <p>One tab aggregates active streams and live transfers from every download client and the *arr queues, across all instances.</p>
             </div>
           </article>
           <article class="s12 m4">
@@ -277,6 +300,10 @@
         <a class="button transparent round" href="https://github.com/retransmit/Atrium" target="_blank">
           <i>code</i>
           <span>GitHub</span>
+        </a>
+        <a class="button transparent round" href="https://f-droid.org/packages/app.atrium/" target="_blank">
+          <i>download</i>
+          <span>F-Droid</span>
         </a>
       </div>
       <p class="opacity-50">Atrium is licensed under GPL-3.0-or-later.</p>

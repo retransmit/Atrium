@@ -35,13 +35,13 @@ void main() {
       tester,
       const UpdateCheckState(
         status: UpdateStatus.updateAvailable,
-        latestVersion: '1.2.0',
+        latestVersion: '9.9.9',
         latestDate: '2026-08-01',
         latestNotes: '**Nice thing.** Details.',
         releaseUrl: 'https://example/tag',
       ),
     );
-    expect(find.text('v1.2.0'), findsOneWidget);
+    expect(find.text('v9.9.9'), findsOneWidget);
     expect(find.text('Available'), findsOneWidget);
     expect(find.text('2026-08-01'), findsOneWidget);
     expect(find.textContaining('Nice thing.'), findsOneWidget);
@@ -52,7 +52,7 @@ void main() {
       (WidgetTester tester) async {
     await _pump(
       tester,
-      const UpdateCheckState(status: UpdateStatus.upToDate, latestVersion: '1.1.1'),
+      const UpdateCheckState(status: UpdateStatus.upToDate, latestVersion: '1.2.0'),
     );
     expect(find.text('Available'), findsNothing);
     expect(find.text('See full release'), findsNothing);
@@ -64,11 +64,11 @@ void main() {
       tester,
       const UpdateCheckState(
         status: UpdateStatus.updateAvailable,
-        latestVersion: '1.2.0',
+        latestVersion: '9.9.9',
         releaseUrl: 'https://example/tag',
       ),
     );
-    expect(find.text('v1.2.0'), findsOneWidget);
+    expect(find.text('v9.9.9'), findsOneWidget);
     expect(find.text('See full release'), findsOneWidget);
     expect(find.textContaining('Nice thing.'), findsNothing);
   });

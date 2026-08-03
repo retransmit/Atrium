@@ -569,38 +569,52 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
         ];
       case AuthStyle.userPass:
       case AuthStyle.cookieLogin:
+        // Transmission's RPC auth is optional and off in a default install, so
+        // *neither* field may be required there - demanding credentials would
+        // lock users out of a perfectly reachable server.
+        final bool authOptional =
+            _kind == ServiceKind.transmission || _kind == ServiceKind.rtorrent;
         // Emby/Jellyfin accounts may legitimately have no password; every other
         // username/password service (e.g. qBittorrent) requires one, where an
         // empty submission guarantees a failed login.
-        final bool passwordOptional =
-            _kind == ServiceKind.emby || _kind == ServiceKind.jellyfin;
+        final bool passwordOptional = authOptional ||
+            _kind == ServiceKind.emby ||
+            _kind == ServiceKind.jellyfin;
+        final Widget passwordField = TextFormField(
+          controller: _password,
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            labelText: passwordOptional ? 'Password (Optional)' : 'Password',
+          ),
+          obscureText: true,
+          validator: passwordOptional
+              ? (String? v) => null
+              : (String? v) =>
+                  (v == null || v.trim().isEmpty) ? 'Required' : null,
+        );
         final List<Widget> userPass = <Widget>[
           TextFormField(
             controller: _username,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              labelText: 'Username',
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              labelText: authOptional ? 'Username (Optional)' : 'Username',
             ),
             autocorrect: false,
             textInputAction: TextInputAction.next,
-            validator: (String? v) =>
-                (v == null || v.trim().isEmpty) ? 'Required' : null,
-          ),
-          const SizedBox(height: Insets.md),
-          TextFormField(
-            controller: _password,
-            decoration: InputDecoration(
-              border: const OutlineInputBorder(),
-              labelText: passwordOptional ? 'Password (Optional)' : 'Password',
-            ),
-            obscureText: true,
-            validator: passwordOptional
+            validator: authOptional
                 ? (String? v) => null
                 : (String? v) =>
                     (v == null || v.trim().isEmpty) ? 'Required' : null,
           ),
+          const SizedBox(height: Insets.md),
+          passwordField,
         ];
 
+        // Deluge's Web UI has no username at all - only a password - so a
+        // username field here would be a dead input that fails validation.
+        if (_kind == ServiceKind.deluge) {
+          return <Widget>[passwordField];
+        }
         if (_kind != ServiceKind.qbittorrent) {
           return userPass;
         }
@@ -665,8 +679,12 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
   }
 
   Widget _buildServiceIcon(ServiceKind kind, {double size = 24}) {
+    // Kinds with no bundled PNG fall back to the Material icon.
     if (kind == ServiceKind.sabnzbd ||
-        kind == ServiceKind.speedtestTracker) {
+        kind == ServiceKind.speedtestTracker ||
+        kind == ServiceKind.deluge ||
+        kind == ServiceKind.transmission ||
+        kind == ServiceKind.rtorrent) {
       return Icon(ServiceVisuals.icon(kind), size: size);
     }
     return Image.asset(

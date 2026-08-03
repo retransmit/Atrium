@@ -2,14 +2,14 @@
 
 The central courtyard for your self-hosted media stack.
 One Android app that fronts Sonarr, Radarr, Prowlarr, Bazarr,
-Seerr, Tautulli, Jellyfin, Emby, Plex, qBittorrent,
-SABnzbd, NZBGet, Glances and Speedtest Tracker - and routes every request through the right URL
+Seerr, Tautulli, Jellyfin, Emby, Plex, qBittorrent, Deluge, Transmission,
+rTorrent, SABnzbd, NZBGet, Glances and Speedtest Tracker - and routes every request through the right URL
 whether you're on the home Wi-Fi or out in the world.
 
 **[Website][site]** - screenshots and a tour, no install needed.
 
-> **Status:** v1.1.1. Signed APKs are on the [releases page][releases];
-> the F-Droid submission is in review.
+> **Status:** v1.2.0. Install from [F-Droid][fdroid], or grab a signed APK
+> from the [releases page][releases].
 
 ## Why
 
@@ -28,8 +28,8 @@ external URLs.
   Force-External per instance.
 - **Activity feed.** One tab aggregates live activity across every
   instance: active streams from Plex / Jellyfin / Emby / Tautulli and
-  transfers (downloads and active uploads) from qBittorrent, SABnzbd,
-  NZBGet, and the *arr queues.
+  transfers (downloads and active uploads) from qBittorrent, Deluge,
+  Transmission, rTorrent, SABnzbd, NZBGet, and the *arr queues.
 - **Controller, not a player.** Media servers are browse/manage/remote-
   control surfaces; playback stays with the official apps (deep links
   provided).
@@ -63,6 +63,9 @@ each one covers:
 | Emby                   | same depth as Jellyfin                                                |
 | Plex                   | libraries, detail, seasons, music, genres, now-playing controller     |
 | qBittorrent            | realtime list, add/manage, torrent detail                             |
+| Deluge                 | torrent list, add/manage, queue moves, speed limits, torrent detail   |
+| Transmission           | torrent list, add/manage, queue moves, turtle mode, torrent detail    |
+| rTorrent               | torrent list, add/manage, priorities, speed limits, torrent detail    |
 | SABnzbd                | queue, history with retry, speed limit, server stats                  |
 | NZBGet                 | queue with reorder/priority/category, add NZB, speed limit, history   |
 | Glances                | CPU/memory/network/disk monitoring                                    |
@@ -70,15 +73,34 @@ each one covers:
 
 ## Install
 
-Grab the APK for your device from the [releases page][releases]. Most
-phones want `app-arm64-v8a-release.apk`; `armeabi-v7a` covers older
-32-bit devices. Android 7.0 (API 24) or newer.
+Atrium is on [F-Droid][fdroid], which is the easiest route: it picks the
+right build for your device and keeps it updated.
 
-The F-Droid submission is in review. Atrium is built reproducibly, so
-F-Droid rebuilds it from source, verifies the result matches the published
-APK byte for byte, and ships it carrying this project's own signature.
-The two sources are therefore interchangeable: you can move between the
-releases page and F-Droid without uninstalling.
+To install by hand instead, grab the APK for your device from the
+[releases page][releases]. Most phones want `app-arm64-v8a-release.apk`;
+`armeabi-v7a` covers older 32-bit devices. Android 7.0 (API 24) or newer.
+
+Atrium is built reproducibly, so F-Droid rebuilds it from source, verifies
+the result matches the published APK byte for byte, and ships it carrying
+this project's own signature. The two sources are therefore
+interchangeable: you can move between the releases page and F-Droid without
+uninstalling. F-Droid builds each tag only after it is published, so it can
+sit a version behind the releases page for a few days.
+
+### iOS
+
+There is an iOS target and CI builds it on every change, but there is no
+download and there will not be one. Atrium is GPL-3.0-or-later, which is
+incompatible with the App Store's terms, and relicensing would need the
+agreement of everyone who has contributed. So iOS means building it
+yourself and sideloading, with Xcode or a tool like AltStore. iOS 14 or
+newer.
+
+Be aware this has never run on a real device - it is verified to compile,
+nothing more. The first person to try it will find rough edges; issues and
+fixes are welcome. On iOS the theme uses Atrium's own palette rather than
+the system one, since there is no wallpaper colour to read, and iOS will
+ask permission the first time the app reaches a device on your network.
 
 ## Build
 
@@ -146,6 +168,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution guide and
 [GPL-3.0-or-later](LICENSE) - the same license as Sonarr, Radarr,
 Jellyfin, qBittorrent, and LunaSea.
 
+[fdroid]: https://f-droid.org/packages/app.atrium/
 [lunasea]: https://github.com/JagandeepBrar/LunaSea
 [releases]: https://github.com/retransmit/Atrium/releases
 [site]: https://retransmit.github.io/Atrium/

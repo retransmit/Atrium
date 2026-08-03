@@ -4,6 +4,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:service_emby/service_emby.dart' as emby;
 import 'package:service_jellyfin/service_jellyfin.dart' as jf;
+import 'package:service_deluge/service_deluge.dart';
+import 'package:service_rtorrent/service_rtorrent.dart';
+import 'package:service_transmission/service_transmission.dart';
 import 'package:service_nzbget/service_nzbget.dart';
 import 'package:service_plex/service_plex.dart';
 import 'package:service_qbittorrent/service_qbittorrent.dart';
@@ -222,6 +225,27 @@ final activityDownloadsProvider =
           ref.watch(nzbgetQueueProvider(instance)),
           (List<NzbgetGroup> groups) => _nzbgetDownloads(instance, groups),
         );
+      case ServiceKind.deluge:
+        collect(
+          instance,
+          ref.watch(delugeRawTorrentsProvider(instance)),
+          (List<DelugeTorrent> torrents) =>
+              _delugeDownloads(instance, torrents),
+        );
+      case ServiceKind.transmission:
+        collect(
+          instance,
+          ref.watch(transmissionRawTorrentsProvider(instance)),
+          (List<TransmissionTorrent> torrents) =>
+              _transmissionDownloads(instance, torrents),
+        );
+      case ServiceKind.rtorrent:
+        collect(
+          instance,
+          ref.watch(rtorrentRawTorrentsProvider(instance)),
+          (List<RtorrentTorrent> torrents) =>
+              _rtorrentDownloads(instance, torrents),
+        );
       case ServiceKind.sonarr:
         collect(
           instance,
@@ -283,6 +307,12 @@ void refreshActivity(WidgetRef ref) {
         ref.invalidate(sabQueueProvider(instance));
       case ServiceKind.nzbget:
         ref.invalidate(nzbgetQueueProvider(instance));
+      case ServiceKind.deluge:
+        ref.invalidate(delugeRawTorrentsProvider(instance));
+      case ServiceKind.transmission:
+        ref.invalidate(transmissionRawTorrentsProvider(instance));
+      case ServiceKind.rtorrent:
+        ref.invalidate(rtorrentRawTorrentsProvider(instance));
       case ServiceKind.sonarr:
         ref.invalidate(sonarrQueueProvider(instance));
       case ServiceKind.radarr:
@@ -527,6 +557,82 @@ List<ActivityDownload> _nzbgetDownloads(
         progress: g.progress,
         status: nzbgetStatusLabel(g.status),
       ),
+  ];
+}
+
+List<ActivityDownload> _delugeDownloads(
+  Instance instance,
+  List<DelugeTorrent> torrents,
+) {
+  return <ActivityDownload>[
+    // Same rule as qBittorrent: incomplete torrents, plus anything actively
+    // moving bytes. A finished library sitting there seeding is not activity.
+    for (final DelugeTorrent t in torrents)
+      if (t.progressFraction < 1.0 || t.downloadRate > 0 || t.uploadRate > 0)
+        ActivityDownload(
+          key: '${instance.id}:${t.id}',
+          instance: instance,
+          sourceKind: instance.kind,
+          title: t.name,
+          progress: t.progressFraction,
+          speedBps: t.downloadRate > 0 ? t.downloadRate : null,
+          upSpeedBps: t.uploadRate > 0 ? t.uploadRate : null,
+          // Deluge reports 0 rather than a sentinel when there is no ETA.
+          eta: t.eta > 0 ? _fmtEtaSeconds(t.eta) : null,
+          // Deluge's state strings are already display-ready.
+          status: t.state,
+        ),
+  ];
+}
+
+List<ActivityDownload> _transmissionDownloads(
+  Instance instance,
+  List<TransmissionTorrent> torrents,
+) {
+  return <ActivityDownload>[
+    // Same rule as the other torrent clients: incomplete torrents, plus
+    // anything actively moving bytes. Idle seeds are not activity.
+    for (final TransmissionTorrent t in torrents)
+      if (t.percentDone < 1.0 || t.downloadRate > 0 || t.uploadRate > 0)
+        ActivityDownload(
+          key: '${instance.id}:${t.hashString}',
+          instance: instance,
+          sourceKind: instance.kind,
+          title: t.name,
+          progress: t.percentDone.clamp(0.0, 1.0),
+          speedBps: t.downloadRate > 0 ? t.downloadRate : null,
+          upSpeedBps: t.uploadRate > 0 ? t.uploadRate : null,
+          // eta is a negative sentinel when unavailable, never a duration.
+          eta: t.hasEta ? _fmtEtaSeconds(t.eta) : null,
+          status: t.statusLabel,
+        ),
+  ];
+}
+
+List<ActivityDownload> _rtorrentDownloads(
+  Instance instance,
+  List<RtorrentTorrent> torrents,
+) {
+  return <ActivityDownload>[
+    // Same rule as the other torrent clients: incomplete torrents, plus
+    // anything actively moving bytes. Idle seeds are not activity.
+    for (final RtorrentTorrent t in torrents)
+      if (!t.isComplete || t.downRate > 0 || t.upRate > 0)
+        ActivityDownload(
+          key: '${instance.id}:${t.hash}',
+          instance: instance,
+          sourceKind: instance.kind,
+          title: t.name,
+          progress: t.progress,
+          speedBps: t.downRate > 0 ? t.downRate : null,
+          upSpeedBps: t.upRate > 0 ? t.upRate : null,
+          // rTorrent publishes no ETA, so it is derived from what is left and
+          // the current rate - which means a stalled torrent simply has none.
+          eta: (!t.isComplete && t.downRate > 0)
+              ? _fmtEtaSeconds(t.leftBytes ~/ t.downRate)
+              : null,
+          status: t.status.label,
+        ),
   ];
 }
 

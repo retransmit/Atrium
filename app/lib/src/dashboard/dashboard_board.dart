@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:service_emby/service_emby.dart' as emby;
 import 'package:service_glances/service_glances.dart';
 import 'package:service_jellyfin/service_jellyfin.dart' as jf;
+import 'package:service_deluge/service_deluge.dart';
 import 'package:service_nzbget/service_nzbget.dart';
 import 'package:service_qbittorrent/service_qbittorrent.dart';
 import 'package:service_radarr/service_radarr.dart';
@@ -16,6 +17,8 @@ import 'package:service_sonarr/service_sonarr.dart';
 import 'package:service_speedtest_tracker/service_speedtest_tracker.dart';
 import 'package:service_tautulli/service_tautulli.dart';
 import 'package:service_tracearr/service_tracearr.dart';
+import 'package:service_rtorrent/service_rtorrent.dart';
+import 'package:service_transmission/service_transmission.dart';
 
 import '../health_providers.dart';
 import '../screens/calendar_screen.dart';
@@ -68,22 +71,22 @@ class DashboardBoard extends ConsumerWidget {
     }
 
     return EasyRefresh(
-          header: const ClassicHeader(
-            dragText: 'Pull to refresh',
-            armedText: 'Release ready',
-            readyText: 'Refreshing...',
-            processingText: 'Refreshing...',
-            processedText: 'Succeeded',
-            failedText: 'Failed',
-            messageText: 'Last updated at %T',
-          ),
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+        messageText: 'Last updated at %T',
+      ),
       onRefresh: () async => _refreshAll(ref, instances),
       child: ListView.separated(
         padding: Insets.page,
         itemCount: visible.length,
         separatorBuilder: (_, __) => const SizedBox(height: Insets.md),
-        itemBuilder: (BuildContext context, int index) =>
-            _KeepAliveWrapper(child: _buildWidget(visible[index].kind, instances)),
+        itemBuilder: (BuildContext context, int index) => _KeepAliveWrapper(
+            child: _buildWidget(visible[index].kind, instances)),
       ),
     );
   }
@@ -118,6 +121,9 @@ class DashboardBoard extends ConsumerWidget {
           qbitInstances: _byKind(instances, ServiceKind.qbittorrent),
           sabInstances: _byKind(instances, ServiceKind.sabnzbd),
           nzbgetInstances: _byKind(instances, ServiceKind.nzbget),
+          delugeInstances: _byKind(instances, ServiceKind.deluge),
+          transmissionInstances: _byKind(instances, ServiceKind.transmission),
+          rtorrentInstances: _byKind(instances, ServiceKind.rtorrent),
         );
       case DashboardWidgetKind.streams:
         return DashboardStreamsWidget(
@@ -170,6 +176,15 @@ class DashboardBoard extends ConsumerWidget {
         case ServiceKind.nzbget:
           ref.invalidate(nzbgetQueueProvider(i));
           ref.invalidate(nzbgetStatusProvider(i));
+        case ServiceKind.deluge:
+          ref.invalidate(delugeRawTorrentsProvider(i));
+          ref.invalidate(delugeSessionStatusProvider(i));
+        case ServiceKind.transmission:
+          ref.invalidate(transmissionRawTorrentsProvider(i));
+          ref.invalidate(transmissionSessionStatsProvider(i));
+        case ServiceKind.rtorrent:
+          ref.invalidate(rtorrentRawTorrentsProvider(i));
+          ref.invalidate(rtorrentGlobalProvider(i));
         case ServiceKind.tautulli:
           ref.invalidate(tautulliActivityProvider(i));
         case ServiceKind.jellyfin:

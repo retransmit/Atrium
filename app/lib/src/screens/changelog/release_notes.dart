@@ -27,6 +27,21 @@ class ReleaseNote {
 /// Newest first. Update alongside appVersion and the pubspec at each release.
 const List<ReleaseNote> releaseNotes = <ReleaseNote>[
   ReleaseNote(
+    version: '1.2.0',
+    date: '2026-07-29',
+    groups: <ChangeGroup>[
+      ChangeGroup(ChangeCategory.added, <String>[
+        'NZBGet is now a service you can add, with a live queue you can drag to reorder, pause and resume item by item, and delete from.',
+        'Add an NZB from the app by pasting a URL or picking an .nzb file, and change an item\'s priority or category once it is queued.',
+        'Set a download speed limit, or lift it, without leaving the queue.',
+        'NZBGet history lists completed and failed downloads, with retry on the ones that failed.',
+      ]),
+      ChangeGroup(ChangeCategory.improved, <String>[
+        'NZBGet downloads show up in the Active downloads widget and the Activity tab alongside your other download clients.',
+      ]),
+    ],
+  ),
+  ReleaseNote(
     version: '1.1.1',
     date: '2026-07-24',
     groups: <ChangeGroup>[

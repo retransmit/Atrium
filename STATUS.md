@@ -1,8 +1,9 @@
 # Atrium - Status
 
-> Snapshot of what genuinely works and what is left, as of 2026-07-26.
-> Atrium is in early development and every module is still work in
-> progress; nothing here is a release promise.
+> Snapshot of what genuinely works and what is left, as of 2026-07-31.
+> Atrium is published on F-Droid and on the GitHub releases page. It is
+> still in early development and every module is work in progress; nothing
+> here is a release promise.
 
 ## Scope note
 
@@ -17,7 +18,9 @@ Atrium is a **controller** app. Video playback was removed by design
 - **Activity tab**: cross-instance live feed - summary bar, Now
   Streaming (backdrop session cards from Plex / Jellyfin / Emby /
   Tautulli, tap-through to each module's now-playing screen) and
-  Transfers (qBittorrent downloads *and active uploads*, SABnzbd slots,
+  Transfers (qBittorrent downloads *and active uploads*, Deluge,
+  Transmission and rTorrent transfers,
+  SABnzbd slots,
   NZBGet groups, Sonarr/Radarr queues). Per-instance resilience: an unreachable server
   degrades to a chip, never blocks the feed
 - **Calendar tab**: month grid aggregating upcoming Sonarr + Radarr
@@ -82,6 +85,54 @@ Atrium is a **controller** app. Video playback was removed by design
   reorder / per-item pause / priority / category, whole-queue pause and a
   speed-limit control, add NZB by URL or file, history with retry on
   failures, dashboard widget and Activity feed integration
+- **Deluge** (live-verified against 2.2.0): JSON-RPC client over a session
+  cookie, torrent list with per-item pause / resume / remove (optionally with
+  data), force recheck, reannounce and queue moves, state and tracker filter
+  chips read from the daemon's own filter tree, nine sort fields, whole-session
+  pause and global bandwidth caps, add by magnet / .torrent URL / file, a
+  detail screen with files, trackers and peers, plus dashboard widget and
+  Activity feed integration
+- **Transmission** (live-verified against 4.1.3, RPC 19): RPC client that rides
+  the shared Dio and handles the CSRF-token handshake (409 plus a rotating
+  session id) transparently, with optional HTTP Basic. Torrent list with
+  start / stop / start-now / remove (optionally with data), verify, reannounce
+  and queue moves; status and label filter chips built from the list itself;
+  nine sort fields; global limits with their separate enabled flags plus turtle
+  mode; add by magnet / .torrent URL / file, reporting duplicates as such; a
+  detail screen with files (wanted toggling), peers and trackers; dashboard
+  widget and Activity feed integration. The add, reannounce and remove paths
+  were exercised against the live daemon
+
+- **rTorrent** (live-verified against 0.16.17): the one client that speaks
+  **XML-RPC** rather than JSON - a hand-rolled codec builds the `methodCall`
+  documents and reads back the positional arrays `d.multicall2` returns, with
+  faults (which arrive inside an HTTP 200) mapped to real errors and a proxy's
+  HTML error page reported as "this is not the XML-RPC endpoint". Torrent list
+  with start / stop / close / remove, hash check, reannounce and priority;
+  status and label filter chips built from the list itself; eight sort fields;
+  global bandwidth caps; add by magnet / .torrent URL / file with an optional
+  destination; a detail screen with files (skip / normal / high priority),
+  peers and trackers; dashboard widget and Activity feed integration. Because
+  rTorrent publishes no status field, no ETA and no delete-with-data, all three
+  are derived or plainly disclaimed rather than faked. Read paths, limits,
+  priority, add and remove were all exercised against the live daemon. One
+  quirk found doing so: rTorrent answers 0 and then silently does nothing when
+  asked to load an http(s) `.torrent` by URL, over both http and https, so the
+  app downloads the file itself and sends the bytes, which does work. That
+  fetch deliberately uses a bare Dio rather than the instance one, so an
+  instance's credentials are never sent to whatever host a pasted link names
+
+- **iOS**: the target exists and CI builds it unsigned on macOS on every
+  change, so it cannot rot unnoticed. Deep links already no-op off Android and
+  dynamic colour falls back to Atrium's own seed, since iOS has no system
+  palette. NEVER RUN on a device or simulator: verified to compile, nothing
+  more. No App Store build is planned - GPL-3.0-or-later is incompatible with
+  Apple's distribution terms - so iOS users build and sideload. iOS 14+, which
+  is the floor file_picker imposes and costs no devices (iOS 14 runs on the
+  same hardware as 13). Still open: Keychain Sharing may be needed by
+  flutter_secure_storage, the app icon and launch screen are Flutter
+  placeholders, and a denied local-network permission currently looks like a
+  timeout to ConnectionResolver, which would pin Auto to the external URL
 
 ## Partially done
 

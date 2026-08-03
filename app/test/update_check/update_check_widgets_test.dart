@@ -39,12 +39,12 @@ void main() {
       tester,
       const UpdateCheckState(
         status: UpdateStatus.updateAvailable,
-        latestVersion: '1.2.0',
+        latestVersion: '9.9.9',
         releaseUrl: 'https://example/tag',
       ),
       const UpdateCheckTile(),
     );
-    expect(find.text('Version 1.2.0 is available'), findsOneWidget);
+    expect(find.text('Version 9.9.9 is available'), findsOneWidget);
     expect(find.byIcon(Icons.open_in_new), findsOneWidget);
   });
 }

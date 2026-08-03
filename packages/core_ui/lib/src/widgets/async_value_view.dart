@@ -32,8 +32,12 @@ class AsyncValueView<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return value.when(
-      skipLoadingOnReload: !value.hasError,
-      skipLoadingOnRefresh: !value.hasError,
+      // Keep whatever we last had on screen while a refresh runs - data *or*
+      // an error. Flashing a spinner over a lasting error (which is what
+      // `!value.hasError` did here) makes a polled screen that is genuinely
+      // failing look like it is merely loading, forever.
+      skipLoadingOnReload: true,
+      skipLoadingOnRefresh: true,
       data: data,
       loading: () =>
           loading ?? const Center(child: ExpressiveProgressIndicator()),
