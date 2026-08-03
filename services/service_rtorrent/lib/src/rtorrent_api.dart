@@ -28,9 +28,15 @@ import 'xmlrpc.dart';
 /// XML-RPC port, or something like `host/RPC2` when ruTorrent's nginx fronts
 /// it. Both are just "POST to the base URL" as far as this client cares.
 class RtorrentApi {
-  RtorrentApi(this._dio);
+  RtorrentApi(this._dio, {Dio? fetchDio}) : _fetchDio = fetchDio ?? Dio();
 
   final Dio _dio;
+
+  /// Used only to fetch a `.torrent` from a third-party URL, never to talk to
+  /// rTorrent. Deliberately NOT the instance Dio: that one carries the
+  /// instance's base URL and its Basic credentials, which must not be sent to
+  /// whatever host a pasted link happens to point at.
+  final Dio _fetchDio;
 
   /// Views rTorrent keeps by default; `main` is everything.
   static const String defaultView = 'main';
@@ -140,16 +146,50 @@ class RtorrentApi {
   /// rTorrent has no "download directory" parameter. Anything after the URI is
   /// run as a command against the new download, so a destination is set by
   /// passing `d.directory.set=` - the same trick ruTorrent uses.
+  ///
+  /// A magnet is handed straight over, since there is nothing to pre-fetch. An
+  /// http(s) `.torrent` is downloaded **here** and sent as bytes instead:
+  /// rTorrent's own URL loading answers 0 and then silently does nothing on a
+  /// common setup (verified against 0.16.17 behind ruTorrent, over both http
+  /// and https), which would leave the user staring at a list that never
+  /// changes. Fetching it ourselves also gives a real error to show when the
+  /// link is wrong.
   Future<void> addUrl(
     String urlOrMagnet, {
     bool start = true,
     String? directory,
-  }) =>
-      _call(start ? 'load.start_verbose' : 'load.verbose', <Object?>[
+  }) async {
+    final String value = urlOrMagnet.trim();
+    if (!value.startsWith('http://') && !value.startsWith('https://')) {
+      await _call(start ? 'load.start_verbose' : 'load.verbose', <Object?>[
         '',
-        urlOrMagnet,
+        value,
         ..._directoryCommands(directory),
       ]);
+      return;
+    }
+
+    final Uint8List bytes;
+    try {
+      final Response<List<int>> resp = await _fetchDio.get<List<int>>(
+        value,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      bytes = Uint8List.fromList(resp.data ?? const <int>[]);
+    } on DioException catch (e) {
+      throw NetworkBadResponseException(
+        'Could not download that .torrent (${e.message ?? e.type.name}).',
+        status: e.response?.statusCode ?? 0,
+      );
+    }
+    if (bytes.isEmpty) {
+      throw const NetworkBadResponseException(
+        'That URL returned nothing to add.',
+        status: 0,
+      );
+    }
+    await addFile(bytes, start: start, directory: directory);
+  }
 
   /// Adds a torrent from raw `.torrent` bytes, sent as XML-RPC base64.
   Future<void> addFile(

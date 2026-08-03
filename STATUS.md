@@ -114,9 +114,13 @@ Atrium is a **controller** app. Video playback was removed by design
   destination; a detail screen with files (skip / normal / high priority),
   peers and trackers; dashboard widget and Activity feed integration. Because
   rTorrent publishes no status field, no ETA and no delete-with-data, all three
-  are derived or plainly disclaimed rather than faked. The read paths and the
-  limit / priority writes were exercised against the live daemon; add and
-  remove are code-verified only
+  are derived or plainly disclaimed rather than faked. Read paths, limits,
+  priority, add and remove were all exercised against the live daemon. One
+  quirk found doing so: rTorrent answers 0 and then silently does nothing when
+  asked to load an http(s) `.torrent` by URL, over both http and https, so the
+  app downloads the file itself and sends the bytes, which does work. That
+  fetch deliberately uses a bare Dio rather than the instance one, so an
+  instance's credentials are never sent to whatever host a pasted link names
 
 ## Partially done
 
