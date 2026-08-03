@@ -244,11 +244,11 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
       ServiceKind.emby => EmbyHome(instance: instance),
       ServiceKind.plex => PlexHome(instance: instance),
       ServiceKind.qbittorrent => QbittorrentHome(instance: instance),
+      ServiceKind.tracearr => TracearrHome(instance: instance),
       ServiceKind.sabnzbd => SabnzbdHome(instance: instance),
       ServiceKind.nzbget => NzbgetHome(instance: instance),
       ServiceKind.glances => GlancesHome(instance: instance),
       ServiceKind.speedtestTracker => SpeedtestTrackerHome(instance: instance),
-      ServiceKind.tracearr => TracearrHome(instance: instance),
     };
   }
 }

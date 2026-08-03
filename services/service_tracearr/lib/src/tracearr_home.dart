@@ -2810,7 +2810,13 @@ class _BingeHighlightsSection extends ConsumerWidget {
               color: Theme.of(context).colorScheme.tertiaryContainer,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text('🔥 ${show.bingeScore.toStringAsFixed(0)}', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onTertiaryContainer)),
+            child: Text(
+              show.bingeScore.toStringAsFixed(0),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onTertiaryContainer,
+              ),
+            ),
           ),
         );
       },

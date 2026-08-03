@@ -77,9 +77,12 @@ class _TracearrSessionDetailScreenState
       final Color muted = _palette!.mutedColor?.color ??
           theme.colorScheme.surfaceContainerHighest;
       final Color darkMuted = _palette!.darkMutedColor?.color ?? dominant;
-      final Color titleText = _palette!.dominantColor?.titleTextColor ??
+      final Color titleText = _palette!.lightVibrantColor?.color ??
+          _palette!.vibrantColor?.color ??
+          _palette!.lightMutedColor?.color ??
           theme.colorScheme.onSurface;
-      final Color bodyText = _palette!.dominantColor?.bodyTextColor ??
+      final Color bodyText = _palette!.lightMutedColor?.color ??
+          _palette!.mutedColor?.color ??
           theme.colorScheme.onSurfaceVariant;
 
       theme = theme.copyWith(

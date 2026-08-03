@@ -617,9 +617,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
 
   Widget _buildServiceIcon(ServiceKind kind, {double size = 24}) {
     if (kind == ServiceKind.sabnzbd ||
-        kind == ServiceKind.speedtestTracker ||
-        kind == ServiceKind.nzbget ||
-        kind == ServiceKind.tracearr) {
+        kind == ServiceKind.speedtestTracker) {
       return Icon(ServiceVisuals.icon(kind), size: size);
     }
     return Image.asset(
