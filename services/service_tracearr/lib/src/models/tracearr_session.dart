@@ -23,6 +23,38 @@ double? _parseDouble(dynamic value) {
   return null;
 }
 
+Map<String, dynamic>? _parseMap(dynamic value) {
+  if (value == null) return null;
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) return Map<String, dynamic>.from(value);
+  if (value is String) return <String, dynamic>{'username': value};
+  return null;
+}
+
+String? _parseString(dynamic value) {
+  if (value == null) return null;
+  if (value is String) return value;
+  if (value is num || value is bool) return value.toString();
+  if (value is Map) {
+    for (final String key in <String>[
+      'username',
+      'userName',
+      'name',
+      'title',
+      'thumbUrl',
+      'thumbPath',
+      'thumb',
+      'avatarUrl',
+      'url',
+      'id',
+    ]) {
+      if (value[key] != null) return value[key].toString();
+    }
+    return null;
+  }
+  return value.toString();
+}
+
 @freezed
 abstract class TracearrSession with _$TracearrSession {
   const TracearrSession._();
@@ -60,7 +92,43 @@ abstract class TracearrSession with _$TracearrSession {
     @JsonKey(name: 'audioDecision') String? audioDecision,
     @JsonKey(name: 'startedAt') DateTime? startedAt,
     @JsonKey(name: 'stoppedAt') DateTime? stoppedAt,
+    @JsonKey(name: 'username', fromJson: _parseString) String? username,
+    @JsonKey(name: 'user', fromJson: _parseMap) Map<String, dynamic>? user,
+    @JsonKey(name: 'userName', fromJson: _parseString) String? userName,
+    @JsonKey(name: 'userThumb', fromJson: _parseString) String? userThumb,
+    @JsonKey(name: 'userThumbUrl', fromJson: _parseString) String? userThumbUrl,
+    @JsonKey(name: 'userThumbPath', fromJson: _parseString) String? userThumbPath,
+    @JsonKey(name: 'avatarUrl', fromJson: _parseString) String? avatarUrl,
+    @JsonKey(name: 'userId', fromJson: _parseString) String? userId,
+    @JsonKey(name: 'serverUserId', fromJson: _parseString) String? serverUserId,
   }) = _TracearrSession;
+
+  String get displayUser {
+    if (user != null) {
+      final String? name = (user!['username'] ??
+              user!['userName'] ??
+              user!['name'] ??
+              user!['title'])
+          ?.toString();
+      if (name != null && name.isNotEmpty) return name;
+    }
+    final String? name = username ?? userName;
+    if (name != null && name.isNotEmpty) return name;
+    return playerName;
+  }
+
+  String? get displayUserThumb {
+    if (user != null) {
+      final String? thumb = (user!['thumbUrl'] ??
+              user!['thumbPath'] ??
+              user!['thumb'] ??
+              user!['avatarUrl'] ??
+              user!['avatar'])
+          ?.toString();
+      if (thumb != null && thumb.isNotEmpty) return thumb;
+    }
+    return userThumb ?? userThumbUrl ?? userThumbPath ?? avatarUrl;
+  }
 
   String get displayTitle {
     if (mediaType == 'episode' && grandparentTitle != null) {

@@ -32,6 +32,7 @@ import 'models/tracearr_stats.dart';
 import 'models/tracearr_top_movies.dart';
 import 'models/tracearr_top_shows.dart';
 import 'tracearr_api.dart';
+import 'tracearr_framed_map.dart';
 import 'tracearr_providers.dart';
 import 'tracearr_session_detail_screen.dart';
 
@@ -228,100 +229,57 @@ class _HistoryMapView extends ConsumerWidget {
             final List<String> parts = <String>[
               loc.city,
               loc.region,
-              loc.country
+              loc.country,
             ];
             final String locationName =
                 parts.where((String p) => p.isNotEmpty).join(', ');
 
-            final List<InlineSpan> spans = <InlineSpan>[
-              TextSpan(
-                text: locationName,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ];
-
-            if (loc.users.isNotEmpty) {
-              for (final TracearrActivityLocationUser user in loc.users) {
-                spans.add(const TextSpan(text: '\n'));
-                String? imageUrl;
-                if (user.thumbUrl != null && api != null) {
-                  imageUrl = api.proxyImageUrl(
-                    serverId: user.serverId ??
-                        (servers != null && servers.isNotEmpty
-                            ? servers.keys.first
-                            : null),
-                    path: user.thumbUrl,
-                    width: 32,
-                    height: 32,
-                    fallback: 'avatar',
-                  );
-                }
-
-                spans.add(
-                  WidgetSpan(
-                    alignment: PlaceholderAlignment.middle,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 4.0, right: 6.0),
-                      child: imageUrl != null
-                          ? CachedNetworkImage(
-                              imageUrl: imageUrl,
-                              width: 16,
-                              height: 16,
-                              imageBuilder: (BuildContext context,
-                                      ImageProvider<Object> provider) =>
-                                  CircleAvatar(
-                                backgroundImage: provider,
-                                radius: 8,
-                              ),
-                              errorWidget: (BuildContext context, String url,
-                                      Object error) =>
-                                  const Icon(Icons.person, size: 16),
-                            )
-                          : const Icon(Icons.person, size: 16),
-                    ),
-                  ),
+            final List<TracearrMarkerUser> markerUsers = <TracearrMarkerUser>[];
+            for (final TracearrActivityLocationUser user in loc.users) {
+              String? imageUrl;
+              if (user.thumbUrl != null && api != null) {
+                imageUrl = api.proxyImageUrl(
+                  serverId: user.serverId ??
+                      (servers != null && servers.isNotEmpty
+                          ? servers.keys.first
+                          : null),
+                  path: user.thumbUrl,
+                  width: 64,
+                  height: 64,
+                  fallback: 'avatar',
                 );
-                spans.add(TextSpan(text: user.username));
               }
+              markerUsers.add(
+                TracearrMarkerUser(
+                  username: user.username,
+                  avatarUrl: imageUrl,
+                  sessionCount: loc.users.length == 1 ? loc.count : 1,
+                ),
+              );
+            }
+            if (markerUsers.isEmpty && loc.count > 0) {
+              markerUsers.add(
+                TracearrMarkerUser(
+                  username: loc.city.isNotEmpty ? loc.city : 'Unknown',
+                  sessionCount: loc.count,
+                ),
+              );
             }
 
             markers.add(
               Marker(
                 point: LatLng(loc.lat!, loc.lon!),
-                width: 60,
-                height: 60,
+                width: 180,
+                height: 54,
                 child: Center(
-                  child: Tooltip(
-                    richMessage: TextSpan(children: spans),
-                    triggerMode: TooltipTriggerMode.tap,
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
-                        shape: BoxShape.circle,
-                        boxShadow: <BoxShadow>[
-                          BoxShadow(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .primary
-                                .withValues(alpha: 0.6),
-                            blurRadius: 12,
-                            spreadRadius: 4,
-                          ),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          '${loc.count}',
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.onPrimary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
+                  child: TracearrMapMarkerBadge(
+                    users: markerUsers,
+                    locationTitle: locationName.isNotEmpty
+                        ? locationName
+                        : 'Location Activity',
+                    coordinates: loc.lat != null && loc.lon != null
+                        ? '${loc.lat!.toStringAsFixed(4)}, ${loc.lon!.toStringAsFixed(4)}'
+                        : null,
                   ),
                 ),
               ),
@@ -338,28 +296,14 @@ class _HistoryMapView extends ConsumerWidget {
           );
         }
 
-        final bool isDark = Theme.of(context).brightness == Brightness.dark;
-        final String tileUrl = isDark
-            ? 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-            : 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
-
         final LatLng initialCenter =
             maxLoc != null && maxLoc.lat != null && maxLoc.lon != null
                 ? LatLng(maxLoc.lat!, maxLoc.lon!)
                 : markers.first.point;
 
-        return FlutterMap(
-          options: MapOptions(
-            initialCenter: initialCenter,
-            initialZoom: 11.0,
-          ),
-          children: <Widget>[
-            TileLayer(
-              urlTemplate: tileUrl,
-              userAgentPackageName: 'com.atrium.app',
-            ),
-            MarkerLayer(markers: markers),
-          ],
+        return TracearrFramedMap(
+          initialCenter: initialCenter,
+          markers: markers,
         );
       },
     );
@@ -1836,6 +1780,64 @@ class _AudiencePersonaTable extends StatelessWidget {
   }
 }
 
+class _TracearrListPoster extends StatelessWidget {
+  const _TracearrListPoster({
+    this.imageUrl,
+    this.fallbackIcon = Icons.movie_outlined,
+    this.aspectRatio = 2 / 3,
+    this.maxWidth = 72,
+    this.maxHeight = 108,
+  });
+
+  final String? imageUrl;
+  final IconData fallbackIcon;
+  final double aspectRatio;
+  final double maxWidth;
+  final double maxHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxWidth, maxHeight: maxHeight),
+      child: AspectRatio(
+        aspectRatio: aspectRatio,
+        child: Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: imageUrl != null
+                ? CachedNetworkImage(
+                    imageUrl: imageUrl!,
+                    fit: BoxFit.cover,
+                    errorWidget: (_, __, ___) => Icon(
+                      fallbackIcon,
+                      color: theme.colorScheme.outline,
+                      size: 28,
+                    ),
+                  )
+                : Icon(
+                    fallbackIcon,
+                    color: theme.colorScheme.outline,
+                    size: 28,
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _TopPerformersView extends StatelessWidget {
   const _TopPerformersView({
     required this.topShows,
@@ -1876,34 +1878,26 @@ class _TopPerformersView extends StatelessWidget {
                         imageUrl = api!.proxyImageUrl(
                           serverId: show.serverId,
                           path: show.thumbPath,
-                          width: 100,
-                          height: 150,
                           fallback: 'poster',
                         );
                       }
                       return ListTile(
-                        leading: SizedBox(
-                          width: 48,
-                          height: 56,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: imageUrl != null
-                                ? CachedNetworkImage(
-                                    imageUrl: imageUrl,
-                                    height: 56,
-                                    fit: BoxFit.contain,
-                                    errorWidget: (_, __, ___) =>
-                                        const Icon(Icons.movie))
-                                : const Icon(Icons.movie),
-                          ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        leading: _TracearrListPoster(
+                          imageUrl: imageUrl,
+                          fallbackIcon: Icons.tv_outlined,
                         ),
                         title: Text(show.showTitle),
                         subtitle: Text(
-                            '${show.totalEpisodeViews} views • ${show.totalWatchHours} hrs'),
+                          '${show.totalEpisodeViews} views • ${show.totalWatchHours} hrs',
+                        ),
                         trailing: Text(
-                            'Score: ${show.bingeScore.toStringAsFixed(1)}',
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
+                          'Score: ${show.bingeScore.toStringAsFixed(1)}',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       );
                     },
                   ),
@@ -1918,33 +1912,26 @@ class _TopPerformersView extends StatelessWidget {
                         imageUrl = api!.proxyImageUrl(
                           serverId: content.serverId,
                           path: content.thumbPath,
-                          width: 100,
-                          height: 150,
                           fallback: 'poster',
                         );
                       }
                       return ListTile(
-                        leading: SizedBox(
-                          width: 48,
-                          height: 56,
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: imageUrl != null
-                                ? CachedNetworkImage(
-                                    imageUrl: imageUrl,
-                                    height: 56,
-                                    fit: BoxFit.contain,
-                                    errorWidget: (_, __, ___) =>
-                                        const Icon(Icons.movie))
-                                : const Icon(Icons.movie),
-                          ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        leading: _TracearrListPoster(
+                          imageUrl: imageUrl,
+                          fallbackIcon: Icons.movie_outlined,
                         ),
                         title: Text(content.title),
                         subtitle: Text(
-                            '${content.showTitle ?? 'Movie'} • ${content.totalWatchHours} hrs'),
-                        trailing: Text('${content.completionRate}% completed',
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
+                          '${content.showTitle ?? 'Movie'} • ${content.totalWatchHours} hrs',
+                        ),
+                        trailing: Text(
+                          '${content.completionRate}% completed',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       );
                     },
                   ),
@@ -2610,25 +2597,36 @@ class _TopMoviesSection extends ConsumerWidget {
           itemBuilder: (BuildContext context, int index) {
             final TracearrTopMovieItem movie = data.items[index];
             String? posterUrl;
-            if (movie.thumbPath != null && apiVal.value != null && movie.serverId.isNotEmpty) {
-              posterUrl = apiVal.value!.proxyImageUrl(serverId: movie.serverId, path: movie.thumbPath, width: 120, height: 180, fallback: 'poster');
+            if (movie.thumbPath != null &&
+                apiVal.value != null &&
+                movie.serverId.isNotEmpty) {
+              posterUrl = apiVal.value!.proxyImageUrl(
+                serverId: movie.serverId,
+                path: movie.thumbPath,
+                fallback: 'poster',
+              );
             }
             return ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              leading: SizedBox(
-                width: 48,
-                height: 72,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: posterUrl != null
-                      ? CachedNetworkImage(imageUrl: posterUrl, fit: BoxFit.contain, errorWidget: (_, __, ___) => const Icon(Icons.movie_outlined, size: 28))
-                      : const Icon(Icons.movie_outlined, size: 28),
-                ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
               ),
-              title: Text('${index + 1}. ${movie.title} (${movie.year})', style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text('${movie.totalPlays} plays • ${movie.totalWatchHours.toStringAsFixed(1)} hrs • ${movie.uniqueViewers} viewers'),
+              leading: _TracearrListPoster(
+                imageUrl: posterUrl,
+                fallbackIcon: Icons.movie_outlined,
+              ),
+              title: Text(
+                '${index + 1}. ${movie.title} (${movie.year})',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                '${movie.totalPlays} plays • ${movie.totalWatchHours.toStringAsFixed(1)} hrs • ${movie.uniqueViewers} viewers',
+              ),
               trailing: Chip(
-                label: Text('${movie.completionRate.toStringAsFixed(0)}% Done', style: const TextStyle(fontSize: 11)),
+                label: Text(
+                  '${movie.completionRate.toStringAsFixed(0)}% Done',
+                  style: const TextStyle(fontSize: 11),
+                ),
                 backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                 side: BorderSide.none,
               ),
@@ -2647,15 +2645,30 @@ class _TopShowsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<TracearrTopShowsResponse> val = ref.watch(tracearrTopShowsProvider((instance: instance, period: period)));
-    final AsyncValue<TracearrApi> apiVal = ref.watch(tracearrApiProvider(instance));
+    final AsyncValue<TracearrTopShowsResponse> val =
+        ref.watch(tracearrTopShowsProvider((instance: instance, period: period)));
+    final AsyncValue<TracearrApi> apiVal =
+        ref.watch(tracearrApiProvider(instance));
 
     return val.when(
-      loading: () => const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator())),
-      error: (Object err, StackTrace st) => Center(child: Text('Error: $err', style: TextStyle(color: Theme.of(context).colorScheme.error))),
+      loading: () => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      error: (Object err, StackTrace st) => Center(
+        child: Text(
+          'Error: $err',
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
+        ),
+      ),
       data: (TracearrTopShowsResponse data) {
         if (data.items.isEmpty) {
-          return const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('No TV shows watched in this period.')));
+          return const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: Text('No TV shows watched in this period.')),
+          );
         }
         return ListView.separated(
           shrinkWrap: true,
@@ -2665,26 +2678,41 @@ class _TopShowsSection extends ConsumerWidget {
           itemBuilder: (BuildContext context, int index) {
             final TracearrTopShowItem show = data.items[index];
             String? posterUrl;
-            if (show.thumbPath != null && apiVal.value != null && show.serverId.isNotEmpty) {
-              posterUrl = apiVal.value!.proxyImageUrl(serverId: show.serverId, path: show.thumbPath, width: 120, height: 180, fallback: 'poster');
+            if (show.thumbPath != null &&
+                apiVal.value != null &&
+                show.serverId.isNotEmpty) {
+              posterUrl = apiVal.value!.proxyImageUrl(
+                serverId: show.serverId,
+                path: show.thumbPath,
+                fallback: 'poster',
+              );
             }
             return ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              leading: SizedBox(
-                width: 48,
-                height: 72,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: posterUrl != null
-                      ? CachedNetworkImage(imageUrl: posterUrl, fit: BoxFit.contain, errorWidget: (_, __, ___) => const Icon(Icons.tv_outlined, size: 28))
-                      : const Icon(Icons.tv_outlined, size: 28),
-                ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
               ),
-              title: Text('${index + 1}. ${show.showTitle} (${show.year})', style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text('${show.totalEpisodeViews} ep views • ${show.totalWatchHours.toStringAsFixed(1)} hrs'),
+              leading: _TracearrListPoster(
+                imageUrl: posterUrl,
+                fallbackIcon: Icons.tv_outlined,
+              ),
+              title: Text(
+                '${index + 1}. ${show.showTitle} (${show.year})',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                '${show.totalEpisodeViews} ep views • ${show.totalWatchHours.toStringAsFixed(1)} hrs',
+              ),
               trailing: Chip(
-                label: Text('Binge: ${show.bingeScore.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                label: Text(
+                  'Binge: ${show.bingeScore.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                backgroundColor:
+                    Theme.of(context).colorScheme.secondaryContainer,
                 side: BorderSide.none,
               ),
             );
@@ -2702,10 +2730,14 @@ class _BingeHighlightsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<TracearrApi> apiVal = ref.watch(tracearrApiProvider(instance));
+    final AsyncValue<TracearrApi> apiVal =
+        ref.watch(tracearrApiProvider(instance));
 
     if (shows.isEmpty) {
-      return const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('No binge viewing highlights recorded.')));
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Center(child: Text('No binge viewing highlights recorded.')),
+      );
     }
 
     return ListView.separated(
@@ -2716,23 +2748,31 @@ class _BingeHighlightsSection extends ConsumerWidget {
       itemBuilder: (BuildContext context, int index) {
         final TracearrBingeShow show = shows[index];
         String? posterUrl;
-        if (show.thumbPath != null && apiVal.value != null && show.primaryServerId.isNotEmpty) {
-          posterUrl = apiVal.value!.proxyImageUrl(serverId: show.primaryServerId, path: show.thumbPath, width: 120, height: 180, fallback: 'poster');
+        if (show.thumbPath != null &&
+            apiVal.value != null &&
+            show.primaryServerId.isNotEmpty) {
+          posterUrl = apiVal.value!.proxyImageUrl(
+            serverId: show.primaryServerId,
+            path: show.thumbPath,
+            fallback: 'poster',
+          );
         }
         return ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          leading: SizedBox(
-            width: 48,
-            height: 72,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: posterUrl != null
-                  ? CachedNetworkImage(imageUrl: posterUrl, fit: BoxFit.contain, errorWidget: (_, __, ___) => const Icon(Icons.tv, size: 28))
-                  : const Icon(Icons.tv, size: 28),
-            ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
           ),
-          title: Text(show.showTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
-          subtitle: Text('${show.consecutiveEpisodes} consecutive eps (${show.consecutivePct.toStringAsFixed(0)}% binge)\nAvg interval: ${show.avgGapMinutes.toStringAsFixed(1)} mins • Max/day: ${show.maxEpisodesInOneDay}'),
+          leading: _TracearrListPoster(
+            imageUrl: posterUrl,
+            fallbackIcon: Icons.tv_outlined,
+          ),
+          title: Text(
+            show.showTitle,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          subtitle: Text(
+            '${show.consecutiveEpisodes} consecutive eps (${show.consecutivePct.toStringAsFixed(0)}% binge)\nAvg interval: ${show.avgGapMinutes.toStringAsFixed(1)} mins • Max/day: ${show.maxEpisodesInOneDay}',
+          ),
           isThreeLine: true,
           trailing: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -5287,7 +5327,7 @@ class _SessionCardState extends State<_SessionCard> {
       subTitle = null;
     }
 
-    final String user = session.playerName;
+    final String user = session.displayUser;
     final String device = session.device;
     final String timePosition = formatMs(session.progressMs);
     final String timeDuration = formatMs(session.totalDurationMs);
@@ -5309,6 +5349,7 @@ class _SessionCardState extends State<_SessionCard> {
               session: session,
               posterUrl: posterUrl,
               isHistory: widget.isHistory,
+              api: widget.api,
             ),
           ),
           child: Stack(

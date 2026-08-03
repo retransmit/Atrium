@@ -9,18 +9,23 @@ import 'package:palette_generator_plus/palette_generator_plus.dart';
 import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'models/tracearr_session.dart';
+import 'tracearr_api.dart';
+import 'tracearr_framed_map.dart';
+
 
 class TracearrSessionDetailScreen extends ConsumerStatefulWidget {
   const TracearrSessionDetailScreen({
     required this.session,
     this.posterUrl,
     this.isHistory = false,
+    this.api,
     super.key,
   });
 
   final TracearrSession session;
   final String? posterUrl;
   final bool isHistory;
+  final TracearrApi? api;
 
   @override
   ConsumerState<TracearrSessionDetailScreen> createState() =>
@@ -252,6 +257,7 @@ class _TracearrSessionDetailScreenState
                   ],
                   const SizedBox(height: 48),
                   _buildDetailRow('State', session.state.toUpperCase(), theme),
+                  _buildDetailRow('User', session.displayUser, theme),
                   _buildDetailRow('Player', session.playerName, theme),
                   _buildDetailRow('Platform', session.platform, theme),
                   _buildDetailRow('Product', session.product, theme),
@@ -277,50 +283,37 @@ class _TracearrSessionDetailScreenState
                       theme,
                     ),
                     const SizedBox(height: 16),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: SizedBox(
-                        height: 200,
-                        child: FlutterMap(
-                          options: MapOptions(
-                            initialCenter: LatLng(session.geoLat!, session.geoLon!),
-                            initialZoom: 11.0,
-                          ),
-                          children: <Widget>[
-                            TileLayer(
-                              urlTemplate: theme.brightness == Brightness.dark
-                                  ? 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
-                                  : 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                              userAgentPackageName: 'com.atrium.app',
-                            ),
-                            MarkerLayer(
-                              markers: <Marker>[
-                                Marker(
-                                  point: LatLng(session.geoLat!, session.geoLon!),
-                                  width: 40,
-                                  height: 40,
-                                  child: Center(
-                                    child: Container(
-                                      width: 24,
-                                      height: 24,
-                                      decoration: BoxDecoration(
-                                        color: theme.colorScheme.primary,
-                                        shape: BoxShape.circle,
-                                        boxShadow: <BoxShadow>[
-                                          BoxShadow(
-                                            color: theme.colorScheme.primary.withValues(alpha: 0.6),
-                                            blurRadius: 10,
-                                            spreadRadius: 3,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
+                    SizedBox(
+                      height: 200,
+                      child: TracearrFramedMap(
+                        initialCenter: LatLng(session.geoLat!, session.geoLon!),
+                        markers: <Marker>[
+                          Marker(
+                            point: LatLng(session.geoLat!, session.geoLon!),
+                            width: 180,
+                            height: 54,
+                            child: Center(
+                              child: TracearrMapMarkerBadge(
+                                users: <TracearrMarkerUser>[
+                                  TracearrMarkerUser(
+                                    username: session.displayUser,
+                                    avatarUrl: session.displayUserThumb !=
+                                                null &&
+                                            widget.api != null
+                                        ? widget.api!.proxyImageUrl(
+                                            serverId: session.serverId,
+                                            path: session.displayUserThumb,
+                                            width: 64,
+                                            height: 64,
+                                            fallback: 'avatar',
+                                          )
+                                        : null,
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 32),
