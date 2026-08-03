@@ -273,27 +273,76 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
         child: ListView(
           padding: Insets.page,
           children: <Widget>[
-            DropdownMenu<ServiceKind>(
-              initialSelection: _kind,
-              label: const Text('Service'),
-              expandedInsets: EdgeInsets.zero,
-              leadingIcon: UnconstrainedBox(
-                child: _buildServiceIcon(_kind, size: 24),
-              ),
-              dropdownMenuEntries: <DropdownMenuEntry<ServiceKind>>[
-                for (final ServiceKind k in ServiceKind.values)
-                  DropdownMenuEntry<ServiceKind>(
-                    value: k,
-                    label: '${k.displayName} - ${k.tagline}',
-                    leadingIcon: _buildServiceIcon(k),
-                  ),
-              ],
-              onSelected: (ServiceKind? k) => setState(() {
-                _kind = k ?? _kind;
-                _connectionResults = <String, ConnectionTestResult>{};
-              }),
+            Text(
+              'Select Service',
+              style: Theme.of(context).textTheme.titleSmall,
             ),
-            const SizedBox(height: Insets.md),
+            const SizedBox(height: Insets.sm),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 110,
+                childAspectRatio: 0.88,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+              ),
+              itemCount: ServiceKind.values.length,
+              itemBuilder: (BuildContext context, int index) {
+                final ServiceKind k = ServiceKind.values[index];
+                final bool isSelected = k == _kind;
+                final ThemeData theme = Theme.of(context);
+                return Material(
+                  color: isSelected
+                      ? theme.colorScheme.primaryContainer
+                      : theme.colorScheme.surfaceContainerLow,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: isSelected
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.outlineVariant
+                              .withValues(alpha: 0.5),
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _kind = k;
+                        _connectionResults = <String, ConnectionTestResult>{};
+                      });
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          _buildServiceIcon(k, size: 38),
+                          const SizedBox(height: 8),
+                          Text(
+                            k.displayName,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                              color: isSelected
+                                  ? theme.colorScheme.onPrimaryContainer
+                                  : theme.colorScheme.onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: Insets.lg),
             TextFormField(
               controller: _name,
               decoration: InputDecoration(
