@@ -1,0 +1,73 @@
+name: iOS build
+
+# Proves the iOS target still compiles. Atrium is developed on Windows against
+# Android, so without this the iOS project rots silently: a plugin that drops
+# iOS support, a Podfile that stops resolving or a Swift version bump would only
+# surface whenever someone next picked up a Mac.
+#
+# Deliberately a separate file from release.yml, which fdroiddata parses for
+# FLUTTER_VERSION and must not grow unrelated jobs. Keep the version here in
+# step with that one.
+#
+# This builds UNSIGNED. Atrium is GPL-3.0-or-later, which is incompatible with
+# App Store distribution, so iOS users sideload their own build; nothing here
+# needs a certificate, a provisioning profile or an Apple account.
+
+on:
+  push:
+    branches: [development, main]
+    paths:
+      - 'app/**'
+      - 'packages/**'
+      - 'services/**'
+      - 'pubspec.yaml'
+      - 'tool/**'
+      - '.github/workflows/ios.yml'
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'packages/**'
+      - 'services/**'
+      - 'pubspec.yaml'
+      - 'tool/**'
+      - '.github/workflows/ios.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push supersedes an in-flight run; macOS runners are the expensive
+# ones, so do not queue them up.
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: 3.41.9
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Resolve dependencies
+        working-directory: app
+        run: |
+          flutter config --no-analytics
+          flutter pub get --enforce-lockfile
+
+      # Generated sources are gitignored, so the build has nothing to compile
+      # against until this runs.
+      - name: Generate freezed and json_serializable sources
+        run: dart run tool/build_all.dart
+
+      - name: Build the iOS app
+        working-directory: app
+        run: flutter build ios --release --no-codesign
