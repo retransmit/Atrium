@@ -27,8 +27,6 @@ class TracearrAuthManager {
     switch (auth) {
       case InstanceAuthUserPass(:final String username, :final String password):
         _sessionToken = await _loginUserPass(username, password);
-      case InstanceAuthPlex(:final String token):
-        _sessionToken = await _loginPlex(token);
       default:
         throw StateError(
           'Tracearr does not support auth type: ${auth.runtimeType}',
@@ -63,32 +61,6 @@ class TracearrAuthManager {
       if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
         throw const NetworkAuthException(
           'Tracearr rejected local credentials.',
-        );
-      }
-      throw NetworkException.fromDio(e);
-    }
-  }
-
-  Future<String> _loginPlex(String plexToken) async {
-    try {
-      final Response<dynamic> response = await _dio.post<dynamic>(
-        'api/v1/auth/sign-in/plex',
-        data: <String, dynamic>{
-          'authToken': plexToken,
-        },
-      );
-      final Map<String, dynamic> data = response.data as Map<String, dynamic>;
-      final String? token = data['token'] as String?;
-      if (token == null) {
-        throw const NetworkAuthException(
-          'Tracearr Plex login succeeded but returned no token.',
-        );
-      }
-      return token;
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
-        throw const NetworkAuthException(
-          'Tracearr rejected Plex SSO token.',
         );
       }
       throw NetworkException.fromDio(e);

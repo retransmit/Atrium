@@ -14,16 +14,24 @@ import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 import 'models/tracearr_active_sessions.dart';
 import 'models/tracearr_activity_concurrent.dart';
 import 'models/tracearr_activity_engagement.dart';
+import 'models/tracearr_activity_locations.dart';
 import 'models/tracearr_activity_platform.dart';
 import 'models/tracearr_activity_play.dart';
 import 'models/tracearr_activity_play_dow.dart';
 import 'models/tracearr_activity_play_hod.dart';
 import 'models/tracearr_activity_quality.dart';
 import 'models/tracearr_activity_stats.dart';
-import 'models/tracearr_activity_locations.dart';
+import 'models/tracearr_completion.dart';
 import 'models/tracearr_dashboard_stats.dart';
+import 'models/tracearr_library_roi.dart';
+import 'models/tracearr_library_storage.dart';
+import 'models/tracearr_library_watch_activity.dart';
+import 'models/tracearr_patterns.dart';
 import 'models/tracearr_session.dart';
 import 'models/tracearr_stats.dart';
+import 'models/tracearr_top_movies.dart';
+import 'models/tracearr_top_shows.dart';
+import 'tracearr_api.dart';
 import 'tracearr_providers.dart';
 import 'tracearr_session_detail_screen.dart';
 
@@ -130,9 +138,11 @@ class _HistoryListView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final TracearrApi? api = ref.watch(tracearrApiProvider(instance)).value;
     if (data.isEmpty) {
       return EasyRefresh(
-        onRefresh: () async => ref.invalidate(tracearrHistoryProvider(instance)),
+        onRefresh: () async =>
+            ref.invalidate(tracearrHistoryProvider(instance)),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           children: const <Widget>[
@@ -177,7 +187,7 @@ class _HistoryListView extends ConsumerWidget {
           return Padding(
             padding: const EdgeInsets.only(bottom: Insets.lg),
             child: _SessionCard(
-              serverUrl: servers[session.serverId],
+              api: api,
               session: session,
               isHistory: true,
             ),
@@ -195,12 +205,14 @@ class _HistoryMapView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final Map<String, String> servers = ref.watch(tracearrServersProvider(instance)).value ?? <String, String>{};
-    final AsyncValue<TracearrActivityLocationsResponse> locsVal = ref.watch(tracearrActivityLocationsProvider(instance));
-    
+    final TracearrApi? api = ref.watch(tracearrApiProvider(instance)).value;
+    final AsyncValue<TracearrActivityLocationsResponse> locsVal =
+        ref.watch(tracearrActivityLocationsProvider(instance));
+
     return AsyncValueView<TracearrActivityLocationsResponse>(
       value: locsVal,
-      onRetry: () => ref.invalidate(tracearrActivityLocationsProvider(instance)),
+      onRetry: () =>
+          ref.invalidate(tracearrActivityLocationsProvider(instance)),
       data: (TracearrActivityLocationsResponse res) {
         final List<Marker> markers = <Marker>[];
         TracearrActivityLocation? maxLoc;
@@ -211,8 +223,13 @@ class _HistoryMapView extends ConsumerWidget {
               maxLoc = loc;
             }
 
-            final List<String> parts = <String>[loc.city, loc.region, loc.country];
-            final String locationName = parts.where((String p) => p.isNotEmpty).join(', ');
+            final List<String> parts = <String>[
+              loc.city,
+              loc.region,
+              loc.country
+            ];
+            final String locationName =
+                parts.where((String p) => p.isNotEmpty).join(', ');
 
             final List<InlineSpan> spans = <InlineSpan>[
               TextSpan(
@@ -225,10 +242,13 @@ class _HistoryMapView extends ConsumerWidget {
               for (final TracearrActivityLocationUser user in loc.users) {
                 spans.add(const TextSpan(text: '\n'));
                 String? imageUrl;
-                if (user.thumbUrl != null && servers.isNotEmpty) {
-                  final String serverUrl = servers.values.first;
-                  final String cleanPath = user.thumbUrl!.startsWith('/') ? user.thumbUrl! : '/${user.thumbUrl!}';
-                  imageUrl = '$serverUrl$cleanPath';
+                if (user.thumbUrl != null && api != null) {
+                  imageUrl = api.proxyImageUrl(
+                    path: user.thumbUrl,
+                    width: 32,
+                    height: 32,
+                    fallback: 'avatar',
+                  );
                 }
 
                 spans.add(
@@ -241,11 +261,15 @@ class _HistoryMapView extends ConsumerWidget {
                               imageUrl: imageUrl,
                               width: 16,
                               height: 16,
-                              imageBuilder: (BuildContext context, ImageProvider<Object> provider) => CircleAvatar(
+                              imageBuilder: (BuildContext context,
+                                      ImageProvider<Object> provider) =>
+                                  CircleAvatar(
                                 backgroundImage: provider,
                                 radius: 8,
                               ),
-                              errorWidget: (BuildContext context, String url, Object error) => const Icon(Icons.person, size: 16),
+                              errorWidget: (BuildContext context, String url,
+                                      Object error) =>
+                                  const Icon(Icons.person, size: 16),
                             )
                           : const Icon(Icons.person, size: 16),
                     ),
@@ -272,7 +296,10 @@ class _HistoryMapView extends ConsumerWidget {
                         shape: BoxShape.circle,
                         boxShadow: <BoxShadow>[
                           BoxShadow(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.6),
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.6),
                             blurRadius: 12,
                             spreadRadius: 4,
                           ),
@@ -300,7 +327,8 @@ class _HistoryMapView extends ConsumerWidget {
           return const EmptyView(
             icon: Icons.map,
             title: 'No Map Data',
-            message: 'None of the history sessions have geographic coordinates.',
+            message:
+                'None of the history sessions have geographic coordinates.',
           );
         }
 
@@ -309,9 +337,10 @@ class _HistoryMapView extends ConsumerWidget {
             ? 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
             : 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
 
-        final LatLng initialCenter = maxLoc != null && maxLoc.lat != null && maxLoc.lon != null
-            ? LatLng(maxLoc.lat!, maxLoc.lon!)
-            : markers.first.point;
+        final LatLng initialCenter =
+            maxLoc != null && maxLoc.lat != null && maxLoc.lon != null
+                ? LatLng(maxLoc.lat!, maxLoc.lon!)
+                : markers.first.point;
 
         return FlutterMap(
           options: MapOptions(
@@ -419,7 +448,10 @@ class _PlaysLineChartState extends State<_PlaysLineChart> {
     if (widget.plays.isEmpty) return const SizedBox.shrink();
 
     // 1. Extract unique servers
-    final List<String> serverIds = widget.plays.map((TracearrActivityPlay e) => e.serverId).toSet().toList();
+    final List<String> serverIds = widget.plays
+        .map((TracearrActivityPlay e) => e.serverId)
+        .toSet()
+        .toList();
     final Map<String, Color> serverColors = <String, Color>{};
     final ColorScheme scheme = Theme.of(context).colorScheme;
     final List<Color> availableColors = <Color>[
@@ -439,7 +471,8 @@ class _PlaysLineChartState extends State<_PlaysLineChart> {
     }
 
     // 2. Group by Date
-    final Map<String, Map<String, int>> groupedData = <String, Map<String, int>>{};
+    final Map<String, Map<String, int>> groupedData =
+        <String, Map<String, int>>{};
     for (final TracearrActivityPlay item in widget.plays) {
       final String date = item.date;
       final String server = item.serverId;
@@ -452,7 +485,8 @@ class _PlaysLineChartState extends State<_PlaysLineChart> {
     final List<String> dates = groupedData.keys.toList();
 
     Widget buildSingleServerChart(String serverId, Color color) {
-      final String serverName = widget.servers[serverId] ?? (serverId.length > 8 ? serverId.substring(0, 8) : serverId);
+      final String serverName = widget.servers[serverId] ??
+          (serverId.length > 8 ? serverId.substring(0, 8) : serverId);
 
       double maxVal = 0;
       final List<FlSpot> spots = <FlSpot>[];
@@ -472,12 +506,14 @@ class _PlaysLineChartState extends State<_PlaysLineChart> {
                 Container(
                   width: 10,
                   height: 10,
-                  decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(
+                      color: color, borderRadius: BorderRadius.circular(2)),
                 ),
                 const SizedBox(width: 6),
                 Text(
                   serverName,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -486,15 +522,18 @@ class _PlaysLineChartState extends State<_PlaysLineChart> {
           AspectRatio(
             aspectRatio: 1.70,
             child: Padding(
-              padding: const EdgeInsets.only(right: 18, left: 12, top: 16, bottom: 12),
+              padding: const EdgeInsets.only(
+                  right: 18, left: 12, top: 16, bottom: 12),
               child: LineChart(
                 LineChartData(
                   lineTouchData: LineTouchData(
-                    handleBuiltInTouches: true,
                     touchTooltipData: LineTouchTooltipData(
                       fitInsideHorizontally: true,
                       fitInsideVertically: true,
-                      getTooltipColor: (_) => Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
+                      getTooltipColor: (_) => Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest
+                          .withValues(alpha: 0.9),
                       getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
                         return touchedBarSpots.map((LineBarSpot barSpot) {
                           final int index = barSpot.x.toInt();
@@ -504,12 +543,16 @@ class _PlaysLineChartState extends State<_PlaysLineChart> {
 
                           return LineTooltipItem(
                             '${barSpot.y.toInt()} plays\n',
-                            TextStyle(color: color, fontWeight: FontWeight.bold),
+                            TextStyle(
+                                color: color, fontWeight: FontWeight.bold),
                             children: <TextSpan>[
                               TextSpan(
                                 text: '$serverName\n$dateStr',
                                 style: TextStyle(
-                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withValues(alpha: 0.7),
                                   fontSize: 10,
                                   fontWeight: FontWeight.normal,
                                 ),
@@ -524,10 +567,20 @@ class _PlaysLineChartState extends State<_PlaysLineChart> {
                     horizontalInterval: max(1, maxVal ~/ 5).toDouble(),
                     verticalInterval: 1,
                     getDrawingHorizontalLine: (double value) {
-                      return FlLine(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2), strokeWidth: 1);
+                      return FlLine(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .outline
+                              .withValues(alpha: 0.2),
+                          strokeWidth: 1);
                     },
                     getDrawingVerticalLine: (double value) {
-                      return FlLine(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2), strokeWidth: 1);
+                      return FlLine(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .outline
+                              .withValues(alpha: 0.2),
+                          strokeWidth: 1);
                     },
                   ),
                   titlesData: FlTitlesData(
@@ -540,12 +593,19 @@ class _PlaysLineChartState extends State<_PlaysLineChart> {
                         interval: 1,
                         getTitlesWidget: (double value, TitleMeta meta) {
                           final int index = value.toInt();
-                          if (index < 0 || index >= dates.length) return const SizedBox.shrink();
-                          if (index % max(1, dates.length ~/ 5) != 0) return const SizedBox.shrink();
-                          final String text = dates[index].split(' ').first.substring(5); // MM-DD
+                          if (index < 0 || index >= dates.length)
+                            return const SizedBox.shrink();
+                          if (index % max(1, dates.length ~/ 5) != 0)
+                            return const SizedBox.shrink();
+                          final String text = dates[index]
+                              .split(' ')
+                              .first
+                              .substring(5); // MM-DD
                           return SideTitleWidget(
                             meta: meta,
-                            child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                            child: Text(text,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 10)),
                           );
                         },
                       ),
@@ -557,14 +617,21 @@ class _PlaysLineChartState extends State<_PlaysLineChart> {
                         reservedSize: 42,
                         getTitlesWidget: (double value, TitleMeta meta) {
                           if (value % 1 != 0) return const SizedBox.shrink();
-                          return Text(value.toInt().toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), textAlign: TextAlign.left);
+                          return Text(value.toInt().toString(),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 12),
+                              textAlign: TextAlign.left);
                         },
                       ),
                     ),
                   ),
                   borderData: FlBorderData(
                     show: true,
-                    border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+                    border: Border.all(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outline
+                            .withValues(alpha: 0.2)),
                   ),
                   minX: 0,
                   maxX: max(0, dates.length - 1).toDouble(),
@@ -645,7 +712,8 @@ class _PlaysDowBarChartState extends State<_PlaysDowBarChart> {
     }
     if (maxVal == 0) maxVal = 1;
 
-    final Color barBackgroundColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1);
+    final Color barBackgroundColor =
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1);
     final Color barColor = Theme.of(context).colorScheme.primary;
     final Color touchedBarColor = Theme.of(context).colorScheme.secondary;
 
@@ -660,25 +728,38 @@ class _PlaysDowBarChartState extends State<_PlaysDowBarChart> {
               touchTooltipData: BarTouchTooltipData(
                 fitInsideHorizontally: true,
                 fitInsideVertically: true,
-                getTooltipColor: (_) => Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
+                getTooltipColor: (_) => Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest
+                    .withValues(alpha: 0.9),
                 tooltipHorizontalAlignment: FLHorizontalAlignment.center,
                 tooltipMargin: 8,
-                getTooltipItem: (BarChartGroupData group, int groupIndex, BarChartRodData rod, int rodIndex) {
+                getTooltipItem: (BarChartGroupData group, int groupIndex,
+                    BarChartRodData rod, int rodIndex) {
                   return BarTooltipItem(
                     '${widget.plays[groupIndex].name}\n',
-                    const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14),
                     children: <TextSpan>[
                       TextSpan(
                         text: widget.plays[groupIndex].count.toString(),
-                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500),
                       ),
                     ],
                   );
                 },
               ),
-              touchCallback: (FlTouchEvent event, BarTouchResponse? barTouchResponse) {
+              touchCallback:
+                  (FlTouchEvent event, BarTouchResponse? barTouchResponse) {
                 setState(() {
-                  if (!event.isInterestedForInteractions || barTouchResponse == null || barTouchResponse.spot == null) {
+                  if (!event.isInterestedForInteractions ||
+                      barTouchResponse == null ||
+                      barTouchResponse.spot == null) {
                     touchedIndex = -1;
                     return;
                   }
@@ -695,11 +776,17 @@ class _PlaysDowBarChartState extends State<_PlaysDowBarChart> {
                   reservedSize: 38,
                   getTitlesWidget: (double value, TitleMeta meta) {
                     final int index = value.toInt();
-                    if (index < 0 || index >= widget.plays.length) return const SizedBox.shrink();
+                    if (index < 0 || index >= widget.plays.length)
+                      return const SizedBox.shrink();
                     return SideTitleWidget(
                       meta: meta,
                       space: 16,
-                      child: Text(widget.plays[index].name.substring(0, 3).toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      child: Text(
+                          widget.plays[index].name
+                              .substring(0, 3)
+                              .toUpperCase(),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 12)),
                     );
                   },
                 ),
@@ -707,7 +794,10 @@ class _PlaysDowBarChartState extends State<_PlaysDowBarChart> {
               leftTitles: const AxisTitles(),
             ),
             borderData: FlBorderData(show: false),
-            barGroups: widget.plays.asMap().entries.map((MapEntry<int, TracearrActivityPlayDow> e) {
+            barGroups: widget.plays
+                .asMap()
+                .entries
+                .map((MapEntry<int, TracearrActivityPlayDow> e) {
               final bool isTouched = e.key == touchedIndex;
               return BarChartGroupData(
                 x: e.key,
@@ -716,7 +806,10 @@ class _PlaysDowBarChartState extends State<_PlaysDowBarChart> {
                     toY: e.value.count.toDouble(),
                     color: isTouched ? touchedBarColor : barColor,
                     width: 22,
-                    borderSide: isTouched ? BorderSide(color: touchedBarColor.withValues(alpha: 0.8)) : const BorderSide(color: Colors.white, width: 0),
+                    borderSide: isTouched
+                        ? BorderSide(
+                            color: touchedBarColor.withValues(alpha: 0.8))
+                        : const BorderSide(color: Colors.white, width: 0),
                     backDrawRodData: BackgroundBarChartRodData(
                       show: true,
                       toY: maxVal * 1.2,
@@ -755,19 +848,20 @@ class _PlaysHodBarChartState extends State<_PlaysHodBarChart> {
   @override
   Widget build(BuildContext context) {
     if (widget.plays.isEmpty) return const SizedBox.shrink();
-    
+
     double maxVal = 0;
     for (final TracearrActivityPlayHod p in widget.plays) {
       if (p.count > maxVal) maxVal = p.count.toDouble();
     }
     if (maxVal == 0) maxVal = 1;
 
-    final Color barBackgroundColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1);
+    final Color barBackgroundColor =
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1);
     final Color barColor = Theme.of(context).colorScheme.primary;
     final Color touchedBarColor = Theme.of(context).colorScheme.secondary;
 
     final Map<int, int> playsMap = <int, int>{
-      for (final TracearrActivityPlayHod p in widget.plays) p.hour: p.count
+      for (final TracearrActivityPlayHod p in widget.plays) p.hour: p.count,
     };
 
     return AspectRatio(
@@ -781,19 +875,27 @@ class _PlaysHodBarChartState extends State<_PlaysHodBarChart> {
               touchTooltipData: BarTouchTooltipData(
                 fitInsideHorizontally: true,
                 fitInsideVertically: true,
-                getTooltipColor: (_) => Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
+                getTooltipColor: (_) => Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest
+                    .withValues(alpha: 0.9),
                 tooltipHorizontalAlignment: FLHorizontalAlignment.center,
                 tooltipMargin: 8,
-                getTooltipItem: (BarChartGroupData group, int groupIndex, BarChartRodData rod, int rodIndex) {
+                getTooltipItem: (BarChartGroupData group, int groupIndex,
+                    BarChartRodData rod, int rodIndex) {
                   return BarTooltipItem(
                     '${_formatHour(group.x.toInt())}\n${rod.toY.toInt()} plays',
-                    const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold),
                   );
                 },
               ),
-              touchCallback: (FlTouchEvent event, BarTouchResponse? barTouchResponse) {
+              touchCallback:
+                  (FlTouchEvent event, BarTouchResponse? barTouchResponse) {
                 setState(() {
-                  if (!event.isInterestedForInteractions || barTouchResponse == null || barTouchResponse.spot == null) {
+                  if (!event.isInterestedForInteractions ||
+                      barTouchResponse == null ||
+                      barTouchResponse.spot == null) {
                     touchedIndex = -1;
                     return;
                   }
@@ -811,12 +913,14 @@ class _PlaysHodBarChartState extends State<_PlaysHodBarChart> {
                   getTitlesWidget: (double value, TitleMeta meta) {
                     final int hour = value.toInt();
                     if (hour % 4 != 0) return const SizedBox.shrink();
-                    
+
                     return SideTitleWidget(
                       meta: meta,
-                      space: 8,
-                      fitInside: SideTitleFitInsideData.fromTitleMeta(meta, distanceFromEdge: 0),
-                      child: Text(_formatHour(hour), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                      fitInside: SideTitleFitInsideData.fromTitleMeta(meta,
+                          distanceFromEdge: 0),
+                      child: Text(_formatHour(hour),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 10)),
                     );
                   },
                 ),
@@ -834,7 +938,7 @@ class _PlaysHodBarChartState extends State<_PlaysHodBarChart> {
               // Find if we have a play count for this local hour
               final int count = playsMap[searchHour] ?? 0;
               final bool isTouched = index == touchedIndex;
-              
+
               return BarChartGroupData(
                 x: index,
                 barRods: <BarChartRodData>[
@@ -842,7 +946,10 @@ class _PlaysHodBarChartState extends State<_PlaysHodBarChart> {
                     toY: count.toDouble(),
                     color: isTouched ? touchedBarColor : barColor,
                     width: 8,
-                    borderSide: isTouched ? BorderSide(color: touchedBarColor.withValues(alpha: 0.8)) : const BorderSide(color: Colors.white, width: 0),
+                    borderSide: isTouched
+                        ? BorderSide(
+                            color: touchedBarColor.withValues(alpha: 0.8))
+                        : const BorderSide(color: Colors.white, width: 0),
                     backDrawRodData: BackgroundBarChartRodData(
                       show: true,
                       toY: maxVal * 1.2,
@@ -936,14 +1043,22 @@ class _PlatformsPieChartState extends State<_PlatformsPieChart> {
             alignment: WrapAlignment.center,
             spacing: 12,
             runSpacing: 8,
-            children: widget.platforms.asMap().entries.map((MapEntry<int, TracearrActivityPlatform> e) {
+            children: widget.platforms
+                .asMap()
+                .entries
+                .map((MapEntry<int, TracearrActivityPlatform> e) {
               final bool isTouched = touchedIndex == e.key;
               return _ActivityChartIndicator(
                 color: colors[e.key % colors.length],
                 text: '${e.value.platform} (${e.value.count})',
                 isSquare: false,
                 size: isTouched ? 18 : 16,
-                textColor: isTouched ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                textColor: isTouched
+                    ? Theme.of(context).colorScheme.onSurface
+                    : Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.6),
               );
             }).toList(),
           ),
@@ -954,13 +1069,17 @@ class _PlatformsPieChartState extends State<_PlatformsPieChart> {
               child: PieChart(
                 PieChartData(
                   pieTouchData: PieTouchData(
-                    touchCallback: (FlTouchEvent event, PieTouchResponse? pieTouchResponse) {
+                    touchCallback: (FlTouchEvent event,
+                        PieTouchResponse? pieTouchResponse) {
                       setState(() {
-                        if (!event.isInterestedForInteractions || pieTouchResponse == null || pieTouchResponse.touchedSection == null) {
+                        if (!event.isInterestedForInteractions ||
+                            pieTouchResponse == null ||
+                            pieTouchResponse.touchedSection == null) {
                           touchedIndex = -1;
                           return;
                         }
-                        touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                        touchedIndex = pieTouchResponse
+                            .touchedSection!.touchedSectionIndex;
                       });
                     },
                   ),
@@ -968,9 +1087,13 @@ class _PlatformsPieChartState extends State<_PlatformsPieChart> {
                   borderData: FlBorderData(show: false),
                   sectionsSpace: 1,
                   centerSpaceRadius: 0,
-                  sections: widget.platforms.asMap().entries.map((MapEntry<int, TracearrActivityPlatform> e) {
+                  sections: widget.platforms
+                      .asMap()
+                      .entries
+                      .map((MapEntry<int, TracearrActivityPlatform> e) {
                     final bool isTouched = e.key == touchedIndex;
-                    final double radius = radiusValues[e.key % radiusValues.length];
+                    final double radius =
+                        radiusValues[e.key % radiusValues.length];
                     return PieChartSectionData(
                       color: colors[e.key % colors.length],
                       value: e.value.count.toDouble(),
@@ -978,7 +1101,8 @@ class _PlatformsPieChartState extends State<_PlatformsPieChart> {
                       radius: radius,
                       borderSide: isTouched
                           ? const BorderSide(color: Colors.white, width: 6)
-                          : BorderSide(color: Colors.white.withValues(alpha: 0)),
+                          : BorderSide(
+                              color: Colors.white.withValues(alpha: 0)),
                     );
                   }).toList(),
                 ),
@@ -1007,9 +1131,21 @@ class _QualityPieChartState extends State<_QualityPieChart> {
     if (widget.quality.total == 0) return const SizedBox.shrink();
 
     final ColorScheme scheme = Theme.of(context).colorScheme;
-    final List<Color> colors = <Color>[scheme.primary, scheme.secondary, scheme.tertiary];
-    final List<String> labels = <String>['Direct Play', 'Direct Stream', 'Transcode'];
-    final List<int> counts = <int>[widget.quality.directPlay, widget.quality.directStream, widget.quality.transcode];
+    final List<Color> colors = <Color>[
+      scheme.primary,
+      scheme.secondary,
+      scheme.tertiary
+    ];
+    final List<String> labels = <String>[
+      'Direct Play',
+      'Direct Stream',
+      'Transcode'
+    ];
+    final List<int> counts = <int>[
+      widget.quality.directPlay,
+      widget.quality.directStream,
+      widget.quality.transcode
+    ];
     final List<double> radiusValues = <double>[80, 65, 60];
 
     return AspectRatio(
@@ -1028,7 +1164,12 @@ class _QualityPieChartState extends State<_QualityPieChart> {
                 text: '${labels[i]} (${counts[i]})',
                 isSquare: false,
                 size: isTouched ? 18 : 16,
-                textColor: isTouched ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                textColor: isTouched
+                    ? Theme.of(context).colorScheme.onSurface
+                    : Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.6),
               );
             }),
           ),
@@ -1039,13 +1180,17 @@ class _QualityPieChartState extends State<_QualityPieChart> {
               child: PieChart(
                 PieChartData(
                   pieTouchData: PieTouchData(
-                    touchCallback: (FlTouchEvent event, PieTouchResponse? pieTouchResponse) {
+                    touchCallback: (FlTouchEvent event,
+                        PieTouchResponse? pieTouchResponse) {
                       setState(() {
-                        if (!event.isInterestedForInteractions || pieTouchResponse == null || pieTouchResponse.touchedSection == null) {
+                        if (!event.isInterestedForInteractions ||
+                            pieTouchResponse == null ||
+                            pieTouchResponse.touchedSection == null) {
                           touchedIndex = -1;
                           return;
                         }
-                        touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                        touchedIndex = pieTouchResponse
+                            .touchedSection!.touchedSectionIndex;
                       });
                     },
                   ),
@@ -1063,7 +1208,8 @@ class _QualityPieChartState extends State<_QualityPieChart> {
                       radius: radius,
                       borderSide: isTouched
                           ? const BorderSide(color: Colors.white, width: 6)
-                          : BorderSide(color: Colors.white.withValues(alpha: 0)),
+                          : BorderSide(
+                              color: Colors.white.withValues(alpha: 0)),
                     );
                   }),
                 ),
@@ -1108,10 +1254,13 @@ class _ConcurrentLineChartState extends State<_ConcurrentLineChart> {
           Container(
             width: 12,
             height: 12,
-            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+            decoration: BoxDecoration(
+                color: color, borderRadius: BorderRadius.circular(2)),
           ),
           const SizedBox(width: 4),
-          Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+          Text(text,
+              style:
+                  const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
         ],
       );
     }
@@ -1121,20 +1270,25 @@ class _ConcurrentLineChartState extends State<_ConcurrentLineChart> {
         AspectRatio(
           aspectRatio: 1.70,
           child: Padding(
-            padding: const EdgeInsets.only(right: 18, left: 12, top: 24, bottom: 12),
+            padding:
+                const EdgeInsets.only(right: 18, left: 12, top: 24, bottom: 12),
             child: LineChart(
               LineChartData(
                 lineTouchData: LineTouchData(
-                  handleBuiltInTouches: true,
                   touchTooltipData: LineTouchTooltipData(
                     fitInsideHorizontally: true,
                     fitInsideVertically: true,
-                    getTooltipColor: (_) => Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
+                    getTooltipColor: (_) => Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest
+                        .withValues(alpha: 0.9),
                     getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
                       return touchedBarSpots.map((LineBarSpot barSpot) {
                         final int index = barSpot.x.toInt();
-                        if (index < 0 || index >= widget.concurrentPlays.length) return null;
-                        final TracearrActivityConcurrent p = widget.concurrentPlays[index];
+                        if (index < 0 || index >= widget.concurrentPlays.length)
+                          return null;
+                        final TracearrActivityConcurrent p =
+                            widget.concurrentPlays[index];
                         final String dateStr = p.hour.split('+').first;
 
                         String label;
@@ -1154,13 +1308,24 @@ class _ConcurrentLineChartState extends State<_ConcurrentLineChart> {
 
                         return LineTooltipItem(
                           '${barSpot.y.toInt()} $label${isLast ? '\n' : ''}',
-                          TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
-                          children: isLast ? <TextSpan>[
-                            TextSpan(
-                              text: dateStr,
-                              style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7), fontSize: 10, fontWeight: FontWeight.normal),
-                            ),
-                          ] : null,
+                          TextStyle(
+                              color: color,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12),
+                          children: isLast
+                              ? <TextSpan>[
+                                  TextSpan(
+                                    text: dateStr,
+                                    style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withValues(alpha: 0.7),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.normal),
+                                  ),
+                                ]
+                              : null,
                         );
                       }).toList();
                     },
@@ -1170,10 +1335,20 @@ class _ConcurrentLineChartState extends State<_ConcurrentLineChart> {
                   horizontalInterval: max(1, maxVal ~/ 5).toDouble(),
                   verticalInterval: 1,
                   getDrawingHorizontalLine: (double value) {
-                    return FlLine(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2), strokeWidth: 1);
+                    return FlLine(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outline
+                            .withValues(alpha: 0.2),
+                        strokeWidth: 1);
                   },
                   getDrawingVerticalLine: (double value) {
-                    return FlLine(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2), strokeWidth: 1);
+                    return FlLine(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .outline
+                            .withValues(alpha: 0.2),
+                        strokeWidth: 1);
                   },
                 ),
                 titlesData: FlTitlesData(
@@ -1186,12 +1361,20 @@ class _ConcurrentLineChartState extends State<_ConcurrentLineChart> {
                       interval: 1,
                       getTitlesWidget: (double value, TitleMeta meta) {
                         final int index = value.toInt();
-                        if (index < 0 || index >= widget.concurrentPlays.length) return const SizedBox.shrink();
-                        if (index % max(1, widget.concurrentPlays.length ~/ 5) != 0) return const SizedBox.shrink();
-                        final String text = widget.concurrentPlays[index].hour.split(' ').first.substring(5); // MM-DD
+                        if (index < 0 || index >= widget.concurrentPlays.length)
+                          return const SizedBox.shrink();
+                        if (index %
+                                max(1, widget.concurrentPlays.length ~/ 5) !=
+                            0) return const SizedBox.shrink();
+                        final String text = widget.concurrentPlays[index].hour
+                            .split(' ')
+                            .first
+                            .substring(5); // MM-DD
                         return SideTitleWidget(
                           meta: meta,
-                          child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                          child: Text(text,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 10)),
                         );
                       },
                     ),
@@ -1203,14 +1386,21 @@ class _ConcurrentLineChartState extends State<_ConcurrentLineChart> {
                       reservedSize: 42,
                       getTitlesWidget: (double value, TitleMeta meta) {
                         if (value % 1 != 0) return const SizedBox.shrink();
-                        return Text(value.toInt().toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12), textAlign: TextAlign.left);
+                        return Text(value.toInt().toString(),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 12),
+                            textAlign: TextAlign.left);
                       },
                     ),
                   ),
                 ),
                 borderData: FlBorderData(
                   show: true,
-                  border: Border.all(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2)),
+                  border: Border.all(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .outline
+                          .withValues(alpha: 0.2)),
                 ),
                 minX: 0,
                 maxX: max(0, widget.concurrentPlays.length - 1).toDouble(),
@@ -1218,8 +1408,12 @@ class _ConcurrentLineChartState extends State<_ConcurrentLineChart> {
                 maxY: maxVal * 1.2,
                 lineBarsData: <LineChartBarData>[
                   LineChartBarData(
-                    spots: widget.concurrentPlays.asMap().entries.map((MapEntry<int, TracearrActivityConcurrent> e) {
-                      return FlSpot(e.key.toDouble(), e.value.direct.toDouble());
+                    spots: widget.concurrentPlays
+                        .asMap()
+                        .entries
+                        .map((MapEntry<int, TracearrActivityConcurrent> e) {
+                      return FlSpot(
+                          e.key.toDouble(), e.value.direct.toDouble());
                     }).toList(),
                     isCurved: true,
                     preventCurveOverShooting: true,
@@ -1233,8 +1427,12 @@ class _ConcurrentLineChartState extends State<_ConcurrentLineChart> {
                     ),
                   ),
                   LineChartBarData(
-                    spots: widget.concurrentPlays.asMap().entries.map((MapEntry<int, TracearrActivityConcurrent> e) {
-                      return FlSpot(e.key.toDouble(), e.value.directStream.toDouble());
+                    spots: widget.concurrentPlays
+                        .asMap()
+                        .entries
+                        .map((MapEntry<int, TracearrActivityConcurrent> e) {
+                      return FlSpot(
+                          e.key.toDouble(), e.value.directStream.toDouble());
                     }).toList(),
                     isCurved: true,
                     preventCurveOverShooting: true,
@@ -1248,8 +1446,12 @@ class _ConcurrentLineChartState extends State<_ConcurrentLineChart> {
                     ),
                   ),
                   LineChartBarData(
-                    spots: widget.concurrentPlays.asMap().entries.map((MapEntry<int, TracearrActivityConcurrent> e) {
-                      return FlSpot(e.key.toDouble(), e.value.transcode.toDouble());
+                    spots: widget.concurrentPlays
+                        .asMap()
+                        .entries
+                        .map((MapEntry<int, TracearrActivityConcurrent> e) {
+                      return FlSpot(
+                          e.key.toDouble(), e.value.transcode.toDouble());
                     }).toList(),
                     isCurved: true,
                     preventCurveOverShooting: true,
@@ -1285,9 +1487,11 @@ class _ConcurrentLineChartState extends State<_ConcurrentLineChart> {
 }
 
 class _EngagementSummary extends StatelessWidget {
-  const _EngagementSummary({required this.engagement, required this.servers});
+  const _EngagementSummary(
+      {required this.engagement, required this.servers, this.api});
   final TracearrActivityEngagement engagement;
   final Map<String, String> servers;
+  final TracearrApi? api;
 
   @override
   Widget build(BuildContext context) {
@@ -1302,9 +1506,11 @@ class _EngagementSummary extends StatelessWidget {
           runSpacing: Insets.md,
           alignment: WrapAlignment.center,
           children: <Widget>[
-            _StatCard(title: 'Total Plays', value: engagement.summary.totalPlays.toString()),
             _StatCard(
-              title: 'Avg Completion', 
+                title: 'Total Plays',
+                value: engagement.summary.totalPlays.toString()),
+            _StatCard(
+              title: 'Avg Completion',
               value: '${engagement.summary.avgCompletionRate}%',
               trailing: SizedBox(
                 width: 24,
@@ -1317,8 +1523,9 @@ class _EngagementSummary extends StatelessWidget {
               ),
             ),
             _StatCard(
-              title: 'Session Health', 
-              value: '${engagement.summary.totalValidSessions} / ${engagement.summary.totalAllSessions}',
+              title: 'Session Health',
+              value:
+                  '${engagement.summary.totalValidSessions} / ${engagement.summary.totalAllSessions}',
             ),
           ],
         ),
@@ -1326,7 +1533,11 @@ class _EngagementSummary extends StatelessWidget {
 
         // 2. Engagement Breakdown
         if (engagement.engagementBreakdown.isNotEmpty) ...<Widget>[
-          Text('Engagement Breakdown', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          Text('Engagement Breakdown',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: Insets.md),
           _EngagementPieChart(breakdown: engagement.engagementBreakdown),
           const SizedBox(height: Insets.xl),
@@ -1334,20 +1545,31 @@ class _EngagementSummary extends StatelessWidget {
 
         // 3. Audience Personas
         if (engagement.userProfiles.isNotEmpty) ...<Widget>[
-          Text('Audience Personas', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          Text('Audience Personas',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: Insets.md),
-          _AudiencePersonaTable(profiles: engagement.userProfiles, servers: servers),
+          _AudiencePersonaTable(
+              profiles: engagement.userProfiles, servers: servers, api: api),
           const SizedBox(height: Insets.xl),
         ],
 
         // 4. Top Performers
-        if (engagement.topContent.isNotEmpty || engagement.topShows.isNotEmpty) ...<Widget>[
-          Text('Top Performers', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+        if (engagement.topContent.isNotEmpty ||
+            engagement.topShows.isNotEmpty) ...<Widget>[
+          Text('Top Performers',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: Insets.md),
           _TopPerformersView(
             topShows: engagement.topShows,
             topContent: engagement.topContent,
             servers: servers,
+            api: api,
           ),
         ],
       ],
@@ -1374,9 +1596,17 @@ class _StatCard extends StatelessWidget {
         children: <Widget>[
           Column(
             children: <Widget>[
-              Text(title, style: Theme.of(context).textTheme.labelMedium?.copyWith(color: Theme.of(context).colorScheme.onPrimaryContainer.withValues(alpha: 0.7))),
+              Text(title,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onPrimaryContainer
+                          .withValues(alpha: 0.7))),
               const SizedBox(height: 4),
-              Text(value, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onPrimaryContainer)),
+              Text(value,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer)),
             ],
           ),
           if (trailing != null) ...<Widget>[
@@ -1416,7 +1646,10 @@ class _EngagementPieChartState extends State<_EngagementPieChart> {
             alignment: WrapAlignment.center,
             spacing: 12,
             runSpacing: 8,
-            children: widget.breakdown.asMap().entries.map((MapEntry<int, TracearrEngagementBreakdown> entry) {
+            children: widget.breakdown
+                .asMap()
+                .entries
+                .map((MapEntry<int, TracearrEngagementBreakdown> entry) {
               final int index = entry.key;
               final TracearrEngagementBreakdown data = entry.value;
               final bool isTouched = index == touchedIndex;
@@ -1437,7 +1670,10 @@ class _EngagementPieChartState extends State<_EngagementPieChart> {
                 size: isTouched ? 18 : 16,
                 textColor: isTouched
                     ? Theme.of(context).colorScheme.onSurface
-                    : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    : Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.6),
               );
             }).toList(),
           ),
@@ -1448,13 +1684,17 @@ class _EngagementPieChartState extends State<_EngagementPieChart> {
               child: PieChart(
                 PieChartData(
                   pieTouchData: PieTouchData(
-                    touchCallback: (FlTouchEvent event, PieTouchResponse? pieTouchResponse) {
+                    touchCallback: (FlTouchEvent event,
+                        PieTouchResponse? pieTouchResponse) {
                       setState(() {
-                        if (!event.isInterestedForInteractions || pieTouchResponse == null || pieTouchResponse.touchedSection == null) {
+                        if (!event.isInterestedForInteractions ||
+                            pieTouchResponse == null ||
+                            pieTouchResponse.touchedSection == null) {
                           touchedIndex = -1;
                           return;
                         }
-                        touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                        touchedIndex = pieTouchResponse
+                            .touchedSection!.touchedSectionIndex;
                       });
                     },
                   ),
@@ -1462,11 +1702,15 @@ class _EngagementPieChartState extends State<_EngagementPieChart> {
                   borderData: FlBorderData(show: false),
                   sectionsSpace: 1,
                   centerSpaceRadius: 0,
-                  sections: widget.breakdown.asMap().entries.map((MapEntry<int, TracearrEngagementBreakdown> entry) {
+                  sections: widget.breakdown
+                      .asMap()
+                      .entries
+                      .map((MapEntry<int, TracearrEngagementBreakdown> entry) {
                     final int index = entry.key;
                     final TracearrEngagementBreakdown data = entry.value;
                     final bool isTouched = index == touchedIndex;
-                    final double radius = radiusValues[index % radiusValues.length];
+                    final double radius =
+                        radiusValues[index % radiusValues.length];
 
                     Color color;
                     if (data.tier == 'watched') {
@@ -1484,7 +1728,8 @@ class _EngagementPieChartState extends State<_EngagementPieChart> {
                       radius: radius,
                       borderSide: isTouched
                           ? const BorderSide(color: Colors.white, width: 6)
-                          : BorderSide(color: Colors.white.withValues(alpha: 0)),
+                          : BorderSide(
+                              color: Colors.white.withValues(alpha: 0)),
                     );
                   }).toList(),
                 ),
@@ -1498,9 +1743,11 @@ class _EngagementPieChartState extends State<_EngagementPieChart> {
 }
 
 class _AudiencePersonaTable extends StatelessWidget {
-  const _AudiencePersonaTable({required this.profiles, required this.servers});
+  const _AudiencePersonaTable(
+      {required this.profiles, required this.servers, this.api});
   final List<TracearrUserProfile> profiles;
   final Map<String, String> servers;
+  final TracearrApi? api;
 
   @override
   Widget build(BuildContext context) {
@@ -1516,15 +1763,18 @@ class _AudiencePersonaTable extends StatelessWidget {
           DataColumn(label: Text('Top Format')),
         ],
         rows: profiles.map((TracearrUserProfile profile) {
-          final bool isCompletionist = profile.behaviorType?.toLowerCase() == 'completionist';
-          
+          final bool isCompletionist =
+              profile.behaviorType?.toLowerCase() == 'completionist';
+
           String? imageUrl;
-          if (profile.thumbUrl != null && servers.isNotEmpty) {
-            final String serverUrl = servers.values.first; // Fallback to first server since no serverId is provided
-            final String cleanPath = profile.thumbUrl!.startsWith('/') ? profile.thumbUrl! : '/${profile.thumbUrl!}';
-            imageUrl = '$serverUrl$cleanPath';
+          if (profile.thumbUrl != null && api != null) {
+            imageUrl = api!.proxyImageUrl(
+                path: profile.thumbUrl,
+                width: 32,
+                height: 32,
+                fallback: 'avatar');
           }
-          
+
           return DataRow(
             cells: <DataCell>[
               DataCell(
@@ -1533,9 +1783,14 @@ class _AudiencePersonaTable extends StatelessWidget {
                   children: <Widget>[
                     CircleAvatar(
                       radius: 14,
-                      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
-                      backgroundImage: imageUrl != null ? NetworkImage(imageUrl) : null,
-                      child: imageUrl == null ? const Icon(Icons.person, size: 16) : null,
+                      backgroundColor:
+                          Theme.of(context).colorScheme.surfaceContainerHigh,
+                      backgroundImage: imageUrl != null
+                          ? CachedNetworkImageProvider(imageUrl)
+                          : null,
+                      child: imageUrl == null
+                          ? const Icon(Icons.person, size: 16)
+                          : null,
                     ),
                     const SizedBox(width: 8),
                     Text(profile.username),
@@ -1544,9 +1799,12 @@ class _AudiencePersonaTable extends StatelessWidget {
               ),
               DataCell(
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isCompletionist ? Colors.green.withValues(alpha: 0.2) : Colors.blue.withValues(alpha: 0.2),
+                    color: isCompletionist
+                        ? Colors.green.withValues(alpha: 0.2)
+                        : Colors.blue.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -1575,10 +1833,12 @@ class _TopPerformersView extends StatelessWidget {
     required this.topShows,
     required this.topContent,
     required this.servers,
+    this.api,
   });
   final List<TracearrTopShow> topShows;
   final List<TracearrTopContent> topContent;
   final Map<String, String> servers;
+  final TracearrApi? api;
 
   @override
   Widget build(BuildContext context) {
@@ -1604,20 +1864,38 @@ class _TopPerformersView extends StatelessWidget {
                     itemBuilder: (BuildContext context, int index) {
                       final TracearrTopShow show = topShows[index];
                       String? imageUrl;
-                      if (show.thumbPath != null && servers.containsKey(show.serverId)) {
-                        final String cleanPath = show.thumbPath!.startsWith('/') ? show.thumbPath! : '/${show.thumbPath!}';
-                        imageUrl = '${servers[show.serverId]}$cleanPath';
+                      if (show.thumbPath != null && api != null) {
+                        imageUrl = api!.proxyImageUrl(
+                          serverId: show.serverId,
+                          path: show.thumbPath,
+                          width: 100,
+                          height: 150,
+                          fallback: 'poster',
+                        );
                       }
                       return ListTile(
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: imageUrl != null 
-                              ? Image.network(imageUrl, width: 40, height: 60, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.movie))
-                              : const Icon(Icons.movie),
+                        leading: SizedBox(
+                          width: 48,
+                          height: 56,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: imageUrl != null
+                                ? CachedNetworkImage(
+                                    imageUrl: imageUrl,
+                                    height: 56,
+                                    fit: BoxFit.contain,
+                                    errorWidget: (_, __, ___) =>
+                                        const Icon(Icons.movie))
+                                : const Icon(Icons.movie),
+                          ),
                         ),
                         title: Text(show.showTitle),
-                        subtitle: Text('${show.totalEpisodeViews} views • ${show.totalWatchHours} hrs'),
-                        trailing: Text('Score: ${show.bingeScore.toStringAsFixed(1)}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(
+                            '${show.totalEpisodeViews} views • ${show.totalWatchHours} hrs'),
+                        trailing: Text(
+                            'Score: ${show.bingeScore.toStringAsFixed(1)}',
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
                       );
                     },
                   ),
@@ -1628,20 +1906,37 @@ class _TopPerformersView extends StatelessWidget {
                     itemBuilder: (BuildContext context, int index) {
                       final TracearrTopContent content = topContent[index];
                       String? imageUrl;
-                      if (content.thumbPath != null && servers.containsKey(content.serverId)) {
-                        final String cleanPath = content.thumbPath!.startsWith('/') ? content.thumbPath! : '/${content.thumbPath!}';
-                        imageUrl = '${servers[content.serverId]}$cleanPath';
+                      if (content.thumbPath != null && api != null) {
+                        imageUrl = api!.proxyImageUrl(
+                          serverId: content.serverId,
+                          path: content.thumbPath,
+                          width: 100,
+                          height: 150,
+                          fallback: 'poster',
+                        );
                       }
                       return ListTile(
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: imageUrl != null 
-                              ? Image.network(imageUrl, width: 40, height: 60, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.movie))
-                              : const Icon(Icons.movie),
+                        leading: SizedBox(
+                          width: 48,
+                          height: 56,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: imageUrl != null
+                                ? CachedNetworkImage(
+                                    imageUrl: imageUrl,
+                                    height: 56,
+                                    fit: BoxFit.contain,
+                                    errorWidget: (_, __, ___) =>
+                                        const Icon(Icons.movie))
+                                : const Icon(Icons.movie),
+                          ),
                         ),
                         title: Text(content.title),
-                        subtitle: Text('${content.showTitle ?? 'Movie'} • ${content.totalWatchHours} hrs'),
-                        trailing: Text('${content.completionRate}% completed', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(
+                            '${content.showTitle ?? 'Movie'} • ${content.totalWatchHours} hrs'),
+                        trailing: Text('${content.completionRate}% completed',
+                            style:
+                                const TextStyle(fontWeight: FontWeight.bold)),
                       );
                     },
                   ),
@@ -1736,6 +2031,8 @@ class _ActivityStatsViewState extends ConsumerState<_ActivityStatsView> {
     final Map<String, String> servers =
         ref.watch(tracearrServersProvider(widget.instance)).value ??
             <String, String>{};
+    final TracearrApi? api =
+        ref.watch(tracearrApiProvider(widget.instance)).value;
 
     return Column(
       children: <Widget>[
@@ -1787,6 +2084,7 @@ class _ActivityStatsViewState extends ConsumerState<_ActivityStatsView> {
                   messageText: 'Last updated at %T',
                 ),
                 onRefresh: () async {
+                  ref.invalidate(tracearrServersProvider(params.instance));
                   ref.invalidate(tracearrActivityStatsProvider(params));
                 },
                 child: ListView(
@@ -1839,6 +2137,7 @@ class _ActivityStatsViewState extends ConsumerState<_ActivityStatsView> {
                         child: _EngagementSummary(
                           engagement: data.engagement,
                           servers: servers,
+                          api: api,
                         ),
                       ),
                   ],
@@ -1852,15 +2151,935 @@ class _ActivityStatsViewState extends ConsumerState<_ActivityStatsView> {
   }
 }
 
-class _WatchStatsView extends StatelessWidget {
+class _WatchStatsView extends ConsumerStatefulWidget {
   const _WatchStatsView({required this.instance});
-
   final Instance instance;
 
   @override
+  ConsumerState<_WatchStatsView> createState() => _WatchStatsViewState();
+}
+
+class _WatchStatsViewState extends ConsumerState<_WatchStatsView> {
+  String _selectedPeriod = '30d';
+  final List<String> _periods = const <String>['7d', '30d', '90d', '1y', 'all'];
+
+  String _formatWatchMs(int ms) {
+    if (ms == 0) return '0 hrs';
+    final double hours = ms / (1000 * 60 * 60);
+    if (hours >= 24) {
+      final double days = hours / 24;
+      return '${days.toStringAsFixed(1)} days';
+    }
+    return '${hours.toStringAsFixed(1)} hrs';
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Watch Stats (Coming Soon)'),
+    final AsyncValue<TracearrCompletionSummary> completionVal =
+        ref.watch(tracearrCompletionSummaryProvider(widget.instance));
+    final AsyncValue<TracearrPatternsResponse> patternsVal =
+        ref.watch(tracearrPatternsProvider(widget.instance));
+    final TracearrLibraryWatchNotifier watchNotifier =
+        ref.watch(tracearrLibraryWatchProvider(widget.instance));
+
+    return EasyRefresh(
+      header: const ClassicHeader(
+        dragText: 'Pull to refresh',
+        armedText: 'Release ready',
+        readyText: 'Refreshing...',
+        processingText: 'Refreshing...',
+        processedText: 'Succeeded',
+        failedText: 'Failed',
+      ),
+      onRefresh: () async {
+        ref.invalidate(tracearrCompletionSummaryProvider(widget.instance));
+        ref.invalidate(tracearrPatternsProvider(widget.instance));
+        ref.invalidate(tracearrTopMoviesProvider((instance: widget.instance, period: _selectedPeriod)));
+        ref.invalidate(tracearrTopShowsProvider((instance: widget.instance, period: _selectedPeriod)));
+        await watchNotifier.refresh();
+      },
+      child: ListView(
+        padding: const EdgeInsets.all(Insets.lg),
+        children: <Widget>[
+          // Hero Summary Stats Header
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Card(
+                  elevation: 0,
+                  margin: EdgeInsets.zero,
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                    child: Column(
+                      children: <Widget>[
+                        Icon(Icons.check_circle_outline, size: 28, color: Theme.of(context).colorScheme.onPrimaryContainer),
+                        const SizedBox(height: 8),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            watchNotifier.state.value != null
+                                ? '${watchNotifier.state.value!.summary.watchedCount}/${watchNotifier.state.value!.summary.totalItems} (${watchNotifier.state.value!.summary.watchedPct.toStringAsFixed(1)}%)'
+                                : '0/0 (0%)',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                ),
+                          ),
+                        ),
+                        Text(
+                          'Watched Ratio',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: Insets.md),
+              Expanded(
+                child: Card(
+                  elevation: 0,
+                  margin: EdgeInsets.zero,
+                  color: Theme.of(context).colorScheme.tertiaryContainer,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                    child: Column(
+                      children: <Widget>[
+                        Icon(Icons.schedule, size: 28, color: Theme.of(context).colorScheme.onTertiaryContainer),
+                        const SizedBox(height: 8),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            watchNotifier.state.value != null
+                                ? _formatWatchMs(watchNotifier.state.value!.summary.totalWatchMs)
+                                : '0 hrs',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.onTertiaryContainer,
+                                ),
+                          ),
+                        ),
+                        Text(
+                          'Total Watch Time',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onTertiaryContainer,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: Insets.md),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Card(
+                  elevation: 0,
+                  margin: EdgeInsets.zero,
+                  color: Theme.of(context).colorScheme.secondaryContainer,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                    child: Column(
+                      children: <Widget>[
+                        Icon(Icons.task_alt, size: 28, color: Theme.of(context).colorScheme.onSecondaryContainer),
+                        const SizedBox(height: 8),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            completionVal.value != null
+                                ? completionVal.value!.completedCount.toString()
+                                : '0',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.onSecondaryContainer,
+                                ),
+                          ),
+                        ),
+                        Text(
+                          'Completed Items',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSecondaryContainer,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: Insets.md),
+              Expanded(
+                child: Card(
+                  elevation: 0,
+                  margin: EdgeInsets.zero,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+                    child: Column(
+                      children: <Widget>[
+                        Icon(Icons.trending_up, size: 28, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        const SizedBox(height: 8),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            patternsVal.value != null
+                                ? '${patternsVal.value!.peakTimes.peakHour.toString().padLeft(2, '0')}:00'
+                                : '--:--',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ),
+                        Text(
+                          'Peak Hour',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: Insets.lg),
+
+          // Library Completion Pie Chart
+          _ChartCard(
+            title: 'Library Completion',
+            child: completionVal.when(
+              data: (TracearrCompletionSummary data) => _CompletionPieChart(summary: data),
+              loading: () => const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator())),
+              error: (Object err, StackTrace st) => Center(child: Text('Error: $err', style: TextStyle(color: Theme.of(context).colorScheme.error))),
+            ),
+          ),
+          const SizedBox(height: Insets.lg),
+
+          // Top Content Period Selection
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[
+              Text(
+                'Top Content Period',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              DropdownButton<String>(
+                value: _selectedPeriod,
+                borderRadius: BorderRadius.circular(12),
+                underline: const SizedBox.shrink(),
+                items: _periods.map((String p) => DropdownMenuItem<String>(value: p, child: Text(p.toUpperCase()))).toList(),
+                onChanged: (String? val) {
+                  if (val != null) {
+                    setState(() => _selectedPeriod = val);
+                  }
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: Insets.sm),
+
+          // Top Movies
+          _ChartCard(
+            title: 'Top Movies (${_selectedPeriod.toUpperCase()})',
+            child: _TopMoviesSection(instance: widget.instance, period: _selectedPeriod),
+          ),
+          const SizedBox(height: Insets.lg),
+
+          // Top Shows
+          _ChartCard(
+            title: 'Top TV Shows (${_selectedPeriod.toUpperCase()})',
+            child: _TopShowsSection(instance: widget.instance, period: _selectedPeriod),
+          ),
+          const SizedBox(height: Insets.lg),
+
+          // Binge Highlights
+          _ChartCard(
+            title: 'Binge Highlights',
+            child: patternsVal.when(
+              data: (TracearrPatternsResponse data) => _BingeHighlightsSection(instance: widget.instance, shows: data.bingeShows),
+              loading: () => const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator())),
+              error: (Object err, StackTrace st) => Center(child: Text('Error: $err', style: TextStyle(color: Theme.of(context).colorScheme.error))),
+            ),
+          ),
+          const SizedBox(height: Insets.lg),
+
+          // Viewing Hours Distribution
+          _ChartCard(
+            title: 'Viewing Hours Distribution',
+            child: patternsVal.when(
+              data: (TracearrPatternsResponse data) => _ViewingHoursBarChart(hourly: data.peakTimes.hourlyDistribution),
+              loading: () => const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator())),
+              error: (Object err, StackTrace st) => Center(child: Text('Error: $err', style: TextStyle(color: Theme.of(context).colorScheme.error))),
+            ),
+          ),
+          const SizedBox(height: Insets.lg),
+
+          // Monthly Trends
+          _ChartCard(
+            title: 'Monthly Watch Trends',
+            child: patternsVal.when(
+              data: (TracearrPatternsResponse data) => _MonthlyTrendsChart(trends: data.seasonalTrends.monthlyTrends),
+              loading: () => const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator())),
+              error: (Object err, StackTrace st) => Center(child: Text('Error: $err', style: TextStyle(color: Theme.of(context).colorScheme.error))),
+            ),
+          ),
+          const SizedBox(height: Insets.lg),
+
+          // Paginated Library Watch Items
+          _ChartCard(
+            title: 'Library Watch History',
+            child: _LibraryWatchListSection(instance: widget.instance),
+          ),
+          const SizedBox(height: Insets.xl),
+        ],
+      ),
+    );
+  }
+}
+
+class _CompletionPieChart extends StatefulWidget {
+  const _CompletionPieChart({required this.summary});
+  final TracearrCompletionSummary summary;
+
+  @override
+  State<_CompletionPieChart> createState() => _CompletionPieChartState();
+}
+
+class _CompletionPieChartState extends State<_CompletionPieChart> {
+  int touchedIndex = -1;
+
+  @override
+  Widget build(BuildContext context) {
+    final int completed = widget.summary.completedCount;
+    final int inProgress = widget.summary.inProgressCount;
+    final int notStarted = widget.summary.notStartedCount;
+
+    if (completed == 0 && inProgress == 0 && notStarted == 0) {
+      return const Padding(
+        padding: EdgeInsets.all(24.0),
+        child: Center(child: Text('No library completion statistics found.')),
+      );
+    }
+
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final List<Color> colors = <Color>[scheme.primary, scheme.secondary, scheme.outline.withValues(alpha: 0.5)];
+    final List<String> labels = <String>['Completed', 'In Progress', 'Not Started'];
+    final List<int> counts = <int>[completed, inProgress, notStarted];
+    final List<double> radiusValues = <double>[75, 65, 55];
+
+    final List<Color> validColors = <Color>[];
+    final List<String> validLabels = <String>[];
+    final List<int> validCounts = <int>[];
+
+    for (int i = 0; i < 3; i++) {
+      if (counts[i] > 0) {
+        validColors.add(colors[i]);
+        validLabels.add(labels[i]);
+        validCounts.add(counts[i]);
+      }
+    }
+
+    return AspectRatio(
+      aspectRatio: 1.3,
+      child: Column(
+        children: <Widget>[
+          const SizedBox(height: 20),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
+            children: List<Widget>.generate(validCounts.length, (int i) {
+              final bool isTouched = touchedIndex == i;
+              return _ActivityChartIndicator(
+                color: validColors[i],
+                text: '${validCounts[i]} ${validLabels[i]}',
+                isSquare: false,
+                size: isTouched ? 18 : 16,
+                textColor: isTouched
+                    ? Theme.of(context).colorScheme.onSurface
+                    : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              );
+            }),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: PieChart(
+              PieChartData(
+                pieTouchData: PieTouchData(
+                  touchCallback: (FlTouchEvent event, PieTouchResponse? response) {
+                    setState(() {
+                      if (!event.isInterestedForInteractions || response == null || response.touchedSection == null) {
+                        touchedIndex = -1;
+                        return;
+                      }
+                      touchedIndex = response.touchedSection!.touchedSectionIndex;
+                    });
+                  },
+                ),
+                startDegreeOffset: 180,
+                borderData: FlBorderData(show: false),
+                sectionsSpace: 2,
+                centerSpaceRadius: 30,
+                sections: List<PieChartSectionData>.generate(validCounts.length, (int i) {
+                  final bool isTouched = i == touchedIndex;
+                  return PieChartSectionData(
+                    color: validColors[i],
+                    value: validCounts[i].toDouble(),
+                    title: isTouched ? '${validLabels[i]}\n(${validCounts[i]})' : '',
+                    titleStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                    radius: isTouched ? (radiusValues[i % radiusValues.length] + 6) : radiusValues[i % radiusValues.length],
+                    borderSide: isTouched ? const BorderSide(color: Colors.white, width: 3) : const BorderSide(color: Colors.transparent, width: 0),
+                  );
+                }),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+}
+
+class _TopMoviesSection extends ConsumerWidget {
+  const _TopMoviesSection({required this.instance, required this.period});
+  final Instance instance;
+  final String period;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<TracearrTopMoviesResponse> val = ref.watch(tracearrTopMoviesProvider((instance: instance, period: period)));
+    final AsyncValue<TracearrApi> apiVal = ref.watch(tracearrApiProvider(instance));
+
+    return val.when(
+      loading: () => const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator())),
+      error: (Object err, StackTrace st) => Center(child: Text('Error: $err', style: TextStyle(color: Theme.of(context).colorScheme.error))),
+      data: (TracearrTopMoviesResponse data) {
+        if (data.items.isEmpty) {
+          return const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('No movies watched in this period.')));
+        }
+        return ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: data.items.length,
+          separatorBuilder: (_, __) => const Divider(height: 1),
+          itemBuilder: (BuildContext context, int index) {
+            final TracearrTopMovieItem movie = data.items[index];
+            String? posterUrl;
+            if (movie.thumbPath != null && apiVal.value != null && movie.serverId.isNotEmpty) {
+              posterUrl = apiVal.value!.proxyImageUrl(serverId: movie.serverId, path: movie.thumbPath, width: 120, height: 180, fallback: 'poster');
+            }
+            return ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              leading: SizedBox(
+                width: 48,
+                height: 72,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: posterUrl != null
+                      ? CachedNetworkImage(imageUrl: posterUrl, fit: BoxFit.contain, errorWidget: (_, __, ___) => const Icon(Icons.movie_outlined, size: 28))
+                      : const Icon(Icons.movie_outlined, size: 28),
+                ),
+              ),
+              title: Text('${index + 1}. ${movie.title} (${movie.year})', style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text('${movie.totalPlays} plays • ${movie.totalWatchHours.toStringAsFixed(1)} hrs • ${movie.uniqueViewers} viewers'),
+              trailing: Chip(
+                label: Text('${movie.completionRate.toStringAsFixed(0)}% Done', style: const TextStyle(fontSize: 11)),
+                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                side: BorderSide.none,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _TopShowsSection extends ConsumerWidget {
+  const _TopShowsSection({required this.instance, required this.period});
+  final Instance instance;
+  final String period;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<TracearrTopShowsResponse> val = ref.watch(tracearrTopShowsProvider((instance: instance, period: period)));
+    final AsyncValue<TracearrApi> apiVal = ref.watch(tracearrApiProvider(instance));
+
+    return val.when(
+      loading: () => const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator())),
+      error: (Object err, StackTrace st) => Center(child: Text('Error: $err', style: TextStyle(color: Theme.of(context).colorScheme.error))),
+      data: (TracearrTopShowsResponse data) {
+        if (data.items.isEmpty) {
+          return const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('No TV shows watched in this period.')));
+        }
+        return ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: data.items.length,
+          separatorBuilder: (_, __) => const Divider(height: 1),
+          itemBuilder: (BuildContext context, int index) {
+            final TracearrTopShowItem show = data.items[index];
+            String? posterUrl;
+            if (show.thumbPath != null && apiVal.value != null && show.serverId.isNotEmpty) {
+              posterUrl = apiVal.value!.proxyImageUrl(serverId: show.serverId, path: show.thumbPath, width: 120, height: 180, fallback: 'poster');
+            }
+            return ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              leading: SizedBox(
+                width: 48,
+                height: 72,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: posterUrl != null
+                      ? CachedNetworkImage(imageUrl: posterUrl, fit: BoxFit.contain, errorWidget: (_, __, ___) => const Icon(Icons.tv_outlined, size: 28))
+                      : const Icon(Icons.tv_outlined, size: 28),
+                ),
+              ),
+              title: Text('${index + 1}. ${show.showTitle} (${show.year})', style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text('${show.totalEpisodeViews} ep views • ${show.totalWatchHours.toStringAsFixed(1)} hrs'),
+              trailing: Chip(
+                label: Text('Binge: ${show.bingeScore.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                side: BorderSide.none,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _BingeHighlightsSection extends ConsumerWidget {
+  const _BingeHighlightsSection({required this.instance, required this.shows});
+  final Instance instance;
+  final List<TracearrBingeShow> shows;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<TracearrApi> apiVal = ref.watch(tracearrApiProvider(instance));
+
+    if (shows.isEmpty) {
+      return const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('No binge viewing highlights recorded.')));
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: shows.length,
+      separatorBuilder: (_, __) => const Divider(height: 1),
+      itemBuilder: (BuildContext context, int index) {
+        final TracearrBingeShow show = shows[index];
+        String? posterUrl;
+        if (show.thumbPath != null && apiVal.value != null && show.primaryServerId.isNotEmpty) {
+          posterUrl = apiVal.value!.proxyImageUrl(serverId: show.primaryServerId, path: show.thumbPath, width: 120, height: 180, fallback: 'poster');
+        }
+        return ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          leading: SizedBox(
+            width: 48,
+            height: 72,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: posterUrl != null
+                  ? CachedNetworkImage(imageUrl: posterUrl, fit: BoxFit.contain, errorWidget: (_, __, ___) => const Icon(Icons.tv, size: 28))
+                  : const Icon(Icons.tv, size: 28),
+            ),
+          ),
+          title: Text(show.showTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+          subtitle: Text('${show.consecutiveEpisodes} consecutive eps (${show.consecutivePct.toStringAsFixed(0)}% binge)\nAvg interval: ${show.avgGapMinutes.toStringAsFixed(1)} mins • Max/day: ${show.maxEpisodesInOneDay}'),
+          isThreeLine: true,
+          trailing: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.tertiaryContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text('🔥 ${show.bingeScore.toStringAsFixed(0)}', style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onTertiaryContainer)),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ViewingHoursBarChart extends StatefulWidget {
+  const _ViewingHoursBarChart({required this.hourly});
+  final List<TracearrHourlyDistribution> hourly;
+
+  @override
+  State<_ViewingHoursBarChart> createState() => _ViewingHoursBarChartState();
+}
+
+class _ViewingHoursBarChartState extends State<_ViewingHoursBarChart> {
+  int touchedIndex = -1;
+
+  String _formatHour(int hour) {
+    if (hour == 0) return '12am';
+    if (hour < 12) return '${hour}am';
+    if (hour == 12) return '12pm';
+    return '${hour - 12}pm';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.hourly.isEmpty) {
+      return const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('No hourly viewing data found.')));
+    }
+
+    double maxVal = 0;
+    for (final TracearrHourlyDistribution p in widget.hourly) {
+      if (p.watchCount > maxVal) maxVal = p.watchCount.toDouble();
+    }
+    if (maxVal == 0) maxVal = 1;
+
+    final Color barBackgroundColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1);
+    final Color barColor = Theme.of(context).colorScheme.primary;
+    final Color touchedBarColor = Theme.of(context).colorScheme.secondary;
+
+    final Map<int, int> playsMap = <int, int>{
+      for (final TracearrHourlyDistribution p in widget.hourly) p.hour: p.watchCount,
+    };
+
+    return AspectRatio(
+      aspectRatio: 1.5,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: BarChart(
+          BarChartData(
+            barTouchData: BarTouchData(
+              enabled: true,
+              touchTooltipData: BarTouchTooltipData(
+                fitInsideHorizontally: true,
+                fitInsideVertically: true,
+                getTooltipColor: (_) => Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
+                getTooltipItem: (BarChartGroupData group, int groupIndex, BarChartRodData rod, int rodIndex) {
+                  return BarTooltipItem(
+                    '${_formatHour(group.x.toInt())}\n${rod.toY.toInt()} watches',
+                    const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  );
+                },
+              ),
+              touchCallback: (FlTouchEvent event, BarTouchResponse? barTouchResponse) {
+                setState(() {
+                  if (!event.isInterestedForInteractions || barTouchResponse == null || barTouchResponse.spot == null) {
+                    touchedIndex = -1;
+                    return;
+                  }
+                  touchedIndex = barTouchResponse.spot!.touchedBarGroupIndex;
+                });
+              },
+            ),
+            titlesData: FlTitlesData(
+              rightTitles: const AxisTitles(),
+              topTitles: const AxisTitles(),
+              leftTitles: const AxisTitles(),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 32,
+                  getTitlesWidget: (double value, TitleMeta meta) {
+                    final int hour = value.toInt();
+                    if (hour % 4 != 0) return const SizedBox.shrink();
+                    return SideTitleWidget(
+                      meta: meta,
+                      space: 6,
+                      fitInside: SideTitleFitInsideData.fromTitleMeta(meta, distanceFromEdge: 0),
+                      child: Text(_formatHour(hour), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10)),
+                    );
+                  },
+                ),
+              ),
+            ),
+            borderData: FlBorderData(show: false),
+            maxY: maxVal * 1.2,
+            minY: 0,
+            barGroups: List<BarChartGroupData>.generate(24, (int index) {
+              final int count = playsMap[index] ?? 0;
+              final bool isTouched = index == touchedIndex;
+              return BarChartGroupData(
+                x: index,
+                barRods: <BarChartRodData>[
+                  BarChartRodData(
+                    toY: count.toDouble(),
+                    color: isTouched ? touchedBarColor : barColor,
+                    width: 8,
+                    borderSide: isTouched ? BorderSide(color: touchedBarColor.withValues(alpha: 0.8)) : const BorderSide(color: Colors.white, width: 0),
+                    backDrawRodData: BackgroundBarChartRodData(show: true, toY: maxVal * 1.2, color: barBackgroundColor),
+                  ),
+                ],
+              );
+            }),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MonthlyTrendsChart extends StatelessWidget {
+  const _MonthlyTrendsChart({required this.trends});
+  final List<TracearrMonthlyTrend> trends;
+
+  @override
+  Widget build(BuildContext context) {
+    if (trends.isEmpty) {
+      return const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('No monthly trend statistics found.')));
+    }
+
+    double maxVal = 0;
+    for (final TracearrMonthlyTrend t in trends) {
+      if (t.watchCount > maxVal) maxVal = t.watchCount.toDouble();
+    }
+    if (maxVal == 0) maxVal = 1;
+
+    final Color color = Theme.of(context).colorScheme.primary;
+
+    return AspectRatio(
+      aspectRatio: 1.6,
+      child: Padding(
+        padding: const EdgeInsets.only(right: 18, left: 12, top: 24, bottom: 12),
+        child: LineChart(
+          LineChartData(
+            lineTouchData: LineTouchData(
+              touchTooltipData: LineTouchTooltipData(
+                fitInsideHorizontally: true,
+                fitInsideVertically: true,
+                getTooltipColor: (_) => Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
+                getTooltipItems: (List<LineBarSpot> touchedSpots) {
+                  return touchedSpots.map((LineBarSpot spot) {
+                    final int index = spot.x.toInt();
+                    if (index < 0 || index >= trends.length) return null;
+                    final TracearrMonthlyTrend t = trends[index];
+                    return LineTooltipItem(
+                      '${t.month}\n${t.watchCount} watches\n(${((t.totalWatchMs) / (1000 * 3600)).toStringAsFixed(1)} hrs)',
+                      TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
+                    );
+                  }).toList();
+                },
+              ),
+            ),
+            gridData: FlGridData(
+              horizontalInterval: max(1, maxVal ~/ 4).toDouble(),
+              getDrawingHorizontalLine: (double val) => FlLine(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2), strokeWidth: 1),
+              getDrawingVerticalLine: (_) => FlLine(color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2), strokeWidth: 1),
+            ),
+            titlesData: FlTitlesData(
+              rightTitles: const AxisTitles(),
+              topTitles: const AxisTitles(),
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 36,
+                  interval: max(1, maxVal ~/ 4).toDouble(),
+                  getTitlesWidget: (double val, TitleMeta meta) => SideTitleWidget(meta: meta, space: 6, child: Text(val.toInt().toString(), style: const TextStyle(fontSize: 10))),
+                ),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 28,
+                  getTitlesWidget: (double val, TitleMeta meta) {
+                    final int idx = val.toInt();
+                    if (idx < 0 || idx >= trends.length) return const SizedBox.shrink();
+                    return SideTitleWidget(meta: meta, space: 6, child: Text(trends[idx].month, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)));
+                  },
+                ),
+              ),
+            ),
+            borderData: FlBorderData(border: Border(bottom: BorderSide(color: Theme.of(context).colorScheme.outline), left: BorderSide(color: Theme.of(context).colorScheme.outline))),
+            maxX: (trends.length - 1).toDouble().clamp(0, double.infinity),
+            minX: 0,
+            maxY: maxVal * 1.15,
+            minY: 0,
+            lineBarsData: <LineChartBarData>[
+              LineChartBarData(
+                spots: List<FlSpot>.generate(trends.length, (int i) => FlSpot(i.toDouble(), trends[i].watchCount.toDouble())),
+                isCurved: true,
+                color: color,
+                barWidth: 3,
+                isStrokeCapRound: true,
+                belowBarData: BarAreaData(show: true, color: color.withValues(alpha: 0.15)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LibraryWatchListSection extends ConsumerStatefulWidget {
+  const _LibraryWatchListSection({required this.instance});
+  final Instance instance;
+
+  @override
+  ConsumerState<_LibraryWatchListSection> createState() => _LibraryWatchListSectionState();
+}
+
+class _LibraryWatchListSectionState extends ConsumerState<_LibraryWatchListSection> {
+  void _showWatchPageDialog(BuildContext context, TracearrLibraryWatchNotifier notifier, int totalPages) {
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Select Page'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: GridView.builder(
+              shrinkWrap: true,
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 60,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: 1.2,
+              ),
+              itemCount: totalPages,
+              itemBuilder: (BuildContext context, int index) {
+                final int p = index + 1;
+                final bool isCurrent = p == notifier.page;
+                return InkWell(
+                  onTap: () {
+                    notifier.setPage(p);
+                    Navigator.of(context).pop();
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isCurrent
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '$p',
+                      style: TextStyle(
+                        color: isCurrent
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  IconData _getMediaIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'track':
+      case 'music':
+        return Icons.music_note_outlined;
+      case 'episode':
+        return Icons.tv_outlined;
+      case 'movie':
+      default:
+        return Icons.movie_outlined;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final TracearrLibraryWatchNotifier notifier = ref.watch(tracearrLibraryWatchProvider(widget.instance));
+
+    return notifier.state.when(
+      loading: () => const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator())),
+      error: (Object error, StackTrace stack) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: <Widget>[
+              Text('Failed to load library watch items: $error', style: TextStyle(color: Theme.of(context).colorScheme.error), textAlign: TextAlign.center),
+              const SizedBox(height: 8),
+              OutlinedButton(onPressed: notifier.refresh, child: const Text('Retry')),
+            ],
+          ),
+        ),
+      ),
+      data: (TracearrLibraryWatchResponse data) {
+        if (data.items.isEmpty) {
+          return const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('No library watch history items found.')));
+        }
+        final int totalPages = (data.pagination.total + notifier.pageSize - 1) ~/ notifier.pageSize;
+
+        return Column(
+          children: <Widget>[
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: data.items.length,
+              separatorBuilder: (_, __) => const Divider(height: 1),
+              itemBuilder: (BuildContext context, int index) {
+                final TracearrLibraryWatchItem item = data.items[index];
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    child: Icon(_getMediaIcon(item.mediaType), color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  ),
+                  title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text('${item.serverName} • Watched ${item.watchCount}x • ${((item.totalWatchMs) / (1000 * 60)).toStringAsFixed(0)} mins total'),
+                  trailing: Text(item.mediaType.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+                );
+              },
+            ),
+            const SizedBox(height: Insets.md),
+            // Pagination controls
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                IconButton(
+                  icon: const Icon(Icons.chevron_left),
+                  onPressed: notifier.page > 1 ? notifier.previousPage : null,
+                ),
+                const SizedBox(width: Insets.md),
+                ActionChip(
+                  label: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Text('Page ${notifier.page} of $totalPages'),
+                      if (totalPages > 1) ...<Widget>[
+                        const SizedBox(width: 4),
+                        const Icon(Icons.arrow_drop_down, size: 18),
+                      ],
+                    ],
+                  ),
+                  onPressed: totalPages > 1 ? () => _showWatchPageDialog(context, notifier, totalPages) : null,
+                ),
+                const SizedBox(width: Insets.md),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right),
+                  onPressed: (notifier.page * notifier.pageSize) < data.pagination.total ? notifier.nextPage : null,
+                ),
+              ],
+            ),
+            const SizedBox(height: Insets.sm),
+          ],
+        );
+      },
     );
   }
 }
@@ -1877,22 +3096,34 @@ class _LibraryCompositionPieChart extends StatefulWidget {
   final int episodeCount;
 
   @override
-  State<_LibraryCompositionPieChart> createState() => _LibraryCompositionPieChartState();
+  State<_LibraryCompositionPieChart> createState() =>
+      _LibraryCompositionPieChartState();
 }
 
-class _LibraryCompositionPieChartState extends State<_LibraryCompositionPieChart> {
+class _LibraryCompositionPieChartState
+    extends State<_LibraryCompositionPieChart> {
   int touchedIndex = -1;
 
   @override
   Widget build(BuildContext context) {
-    if (widget.movieCount == 0 && widget.showCount == 0 && widget.episodeCount == 0) {
+    if (widget.movieCount == 0 &&
+        widget.showCount == 0 &&
+        widget.episodeCount == 0) {
       return const SizedBox.shrink();
     }
 
     final ColorScheme scheme = Theme.of(context).colorScheme;
-    final List<Color> colors = <Color>[scheme.primary, scheme.secondary, scheme.tertiary];
+    final List<Color> colors = <Color>[
+      scheme.primary,
+      scheme.secondary,
+      scheme.tertiary
+    ];
     final List<String> labels = <String>['Movies', 'Shows', 'Episodes'];
-    final List<int> counts = <int>[widget.movieCount, widget.showCount, widget.episodeCount];
+    final List<int> counts = <int>[
+      widget.movieCount,
+      widget.showCount,
+      widget.episodeCount
+    ];
     final List<double> radiusValues = <double>[80, 65, 60];
 
     final List<Color> validColors = <Color>[];
@@ -1925,7 +3156,10 @@ class _LibraryCompositionPieChartState extends State<_LibraryCompositionPieChart
                 size: isTouched ? 18 : 16,
                 textColor: isTouched
                     ? Theme.of(context).colorScheme.onSurface
-                    : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    : Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withValues(alpha: 0.6),
               );
             }),
           ),
@@ -1936,13 +3170,17 @@ class _LibraryCompositionPieChartState extends State<_LibraryCompositionPieChart
               child: PieChart(
                 PieChartData(
                   pieTouchData: PieTouchData(
-                    touchCallback: (FlTouchEvent event, PieTouchResponse? pieTouchResponse) {
+                    touchCallback: (FlTouchEvent event,
+                        PieTouchResponse? pieTouchResponse) {
                       setState(() {
-                        if (!event.isInterestedForInteractions || pieTouchResponse == null || pieTouchResponse.touchedSection == null) {
+                        if (!event.isInterestedForInteractions ||
+                            pieTouchResponse == null ||
+                            pieTouchResponse.touchedSection == null) {
                           touchedIndex = -1;
                           return;
                         }
-                        touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                        touchedIndex = pieTouchResponse
+                            .touchedSection!.touchedSectionIndex;
                       });
                     },
                   ),
@@ -1960,7 +3198,8 @@ class _LibraryCompositionPieChartState extends State<_LibraryCompositionPieChart
                       radius: radius,
                       borderSide: isTouched
                           ? const BorderSide(color: Colors.white, width: 6)
-                          : BorderSide(color: Colors.white.withValues(alpha: 0)),
+                          : BorderSide(
+                              color: Colors.white.withValues(alpha: 0)),
                     );
                   }),
                 ),
@@ -1987,7 +3226,8 @@ class _StorageQualityBarChart extends StatefulWidget {
   final int countSd;
 
   @override
-  State<_StorageQualityBarChart> createState() => _StorageQualityBarChartState();
+  State<_StorageQualityBarChart> createState() =>
+      _StorageQualityBarChartState();
 }
 
 class _StorageQualityBarChartState extends State<_StorageQualityBarChart> {
@@ -1996,10 +3236,14 @@ class _StorageQualityBarChartState extends State<_StorageQualityBarChart> {
   @override
   Widget build(BuildContext context) {
     final List<MapEntry<String, int>> items = <MapEntry<String, int>>[];
-    if (widget.count4k > 0) items.add(MapEntry<String, int>('4K', widget.count4k));
-    if (widget.count1080p > 0) items.add(MapEntry<String, int>('1080p', widget.count1080p));
-    if (widget.count720p > 0) items.add(MapEntry<String, int>('720p', widget.count720p));
-    if (widget.countSd > 0) items.add(MapEntry<String, int>('SD', widget.countSd));
+    if (widget.count4k > 0)
+      items.add(MapEntry<String, int>('4K', widget.count4k));
+    if (widget.count1080p > 0)
+      items.add(MapEntry<String, int>('1080p', widget.count1080p));
+    if (widget.count720p > 0)
+      items.add(MapEntry<String, int>('720p', widget.count720p));
+    if (widget.countSd > 0)
+      items.add(MapEntry<String, int>('SD', widget.countSd));
 
     if (items.isEmpty) return const SizedBox.shrink();
 
@@ -2009,7 +3253,8 @@ class _StorageQualityBarChartState extends State<_StorageQualityBarChart> {
     }
     if (maxVal == 0) maxVal = 1;
 
-    final Color barBackgroundColor = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1);
+    final Color barBackgroundColor =
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1);
     final Color barColor = Theme.of(context).colorScheme.primary;
     final Color touchedBarColor = Theme.of(context).colorScheme.secondary;
 
@@ -2024,25 +3269,38 @@ class _StorageQualityBarChartState extends State<_StorageQualityBarChart> {
               touchTooltipData: BarTouchTooltipData(
                 fitInsideHorizontally: true,
                 fitInsideVertically: true,
-                getTooltipColor: (_) => Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.9),
+                getTooltipColor: (_) => Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest
+                    .withValues(alpha: 0.9),
                 tooltipHorizontalAlignment: FLHorizontalAlignment.center,
                 tooltipMargin: 8,
-                getTooltipItem: (BarChartGroupData group, int groupIndex, BarChartRodData rod, int rodIndex) {
+                getTooltipItem: (BarChartGroupData group, int groupIndex,
+                    BarChartRodData rod, int rodIndex) {
                   return BarTooltipItem(
                     '${items[groupIndex].key}\n',
-                    const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14),
                     children: <TextSpan>[
                       TextSpan(
                         text: items[groupIndex].value.toString(),
-                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500),
                       ),
                     ],
                   );
                 },
               ),
-              touchCallback: (FlTouchEvent event, BarTouchResponse? barTouchResponse) {
+              touchCallback:
+                  (FlTouchEvent event, BarTouchResponse? barTouchResponse) {
                 setState(() {
-                  if (!event.isInterestedForInteractions || barTouchResponse == null || barTouchResponse.spot == null) {
+                  if (!event.isInterestedForInteractions ||
+                      barTouchResponse == null ||
+                      barTouchResponse.spot == null) {
                     touchedIndex = -1;
                     return;
                   }
@@ -2059,11 +3317,14 @@ class _StorageQualityBarChartState extends State<_StorageQualityBarChart> {
                   reservedSize: 38,
                   getTitlesWidget: (double value, TitleMeta meta) {
                     final int index = value.toInt();
-                    if (index < 0 || index >= items.length) return const SizedBox.shrink();
+                    if (index < 0 || index >= items.length)
+                      return const SizedBox.shrink();
                     return SideTitleWidget(
                       meta: meta,
                       space: 16,
-                      child: Text(items[index].key, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      child: Text(items[index].key,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 12)),
                     );
                   },
                 ),
@@ -2071,7 +3332,10 @@ class _StorageQualityBarChartState extends State<_StorageQualityBarChart> {
               leftTitles: const AxisTitles(),
             ),
             borderData: FlBorderData(show: false),
-            barGroups: items.asMap().entries.map((MapEntry<int, MapEntry<String, int>> e) {
+            barGroups: items
+                .asMap()
+                .entries
+                .map((MapEntry<int, MapEntry<String, int>> e) {
               final bool isTouched = e.key == touchedIndex;
               return BarChartGroupData(
                 x: e.key,
@@ -2080,7 +3344,10 @@ class _StorageQualityBarChartState extends State<_StorageQualityBarChart> {
                     toY: e.value.value.toDouble(),
                     color: isTouched ? touchedBarColor : barColor,
                     width: 22,
-                    borderSide: isTouched ? BorderSide(color: touchedBarColor.withValues(alpha: 0.8)) : const BorderSide(color: Colors.white, width: 0),
+                    borderSide: isTouched
+                        ? BorderSide(
+                            color: touchedBarColor.withValues(alpha: 0.8))
+                        : const BorderSide(color: Colors.white, width: 0),
                     backDrawRodData: BackgroundBarChartRodData(
                       show: true,
                       toY: maxVal * 1.2,
@@ -2226,7 +3493,10 @@ class _StorageStatsViewState extends ConsumerState<_StorageStatsView> {
         Expanded(
           child: AsyncValueView<TracearrStats>(
             value: statsVal,
-            onRetry: () => ref.invalidate(tracearrStatsProvider(params)),
+            onRetry: () {
+              ref.invalidate(tracearrServersProvider(params.instance));
+              ref.invalidate(tracearrStatsProvider(params));
+            },
             data: (TracearrStats data) {
               final bool hasQualityData = data.qualityBreakdown != null &&
                   (data.qualityBreakdown!.count4k +
@@ -2235,113 +3505,1321 @@ class _StorageStatsViewState extends ConsumerState<_StorageStatsView> {
                           data.qualityBreakdown!.countSd) >
                       0;
 
-              return ListView(
-                padding: const EdgeInsets.all(Insets.lg),
+              return EasyRefresh(
+                header: const ClassicHeader(
+                  dragText: 'Pull to refresh',
+                  armedText: 'Release ready',
+                  readyText: 'Refreshing...',
+                  processingText: 'Refreshing...',
+                  processedText: 'Succeeded',
+                  failedText: 'Failed',
+                  messageText: 'Last updated at %T',
+                ),
+                onRefresh: () async {
+                  ref.invalidate(tracearrServersProvider(params.instance));
+                  ref.invalidate(tracearrStatsProvider(params));
+                  ref.invalidate(tracearrStorageGrowthProvider(params));
+                },
+                child: ListView(
+                  padding: const EdgeInsets.all(Insets.lg),
+                  children: <Widget>[
+                    // Hero section: Totals
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Card(
+                            elevation: 0,
+                            margin: EdgeInsets.zero,
+                            color:
+                                Theme.of(context).colorScheme.primaryContainer,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 24, horizontal: 16),
+                              child: Column(
+                                children: <Widget>[
+                                  Icon(Icons.storage_outlined,
+                                      size: 32,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onPrimaryContainer),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    data.totalItems.toString(),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onPrimaryContainer,
+                                        ),
+                                  ),
+                                  Text(
+                                    'Total Items',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onPrimaryContainer,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: Insets.lg),
+                        Expanded(
+                          child: Card(
+                            elevation: 0,
+                            margin: EdgeInsets.zero,
+                            color:
+                                Theme.of(context).colorScheme.tertiaryContainer,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 24, horizontal: 8),
+                              child: Column(
+                                children: <Widget>[
+                                  Icon(Icons.sd_storage_outlined,
+                                      size: 32,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onTertiaryContainer),
+                                  const SizedBox(height: 8),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      _formatBytes(data.totalSizeBytes),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .headlineSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onTertiaryContainer,
+                                          ),
+                                    ),
+                                  ),
+                                  Text(
+                                    'Total Size',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onTertiaryContainer,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: Insets.lg),
+
+                    // Library Composition (PieChart)
+                    _ChartCard(
+                      title: 'Library Composition',
+                      child: _LibraryCompositionPieChart(
+                        movieCount: data.movieCount,
+                        showCount: data.showCount,
+                        episodeCount: data.episodeCount,
+                      ),
+                    ),
+                    const SizedBox(height: Insets.lg),
+
+                    // Quality Breakdown (BarChart)
+                    if (hasQualityData) ...<Widget>[
+                      _ChartCard(
+                        title: 'Quality Breakdown',
+                        child: _StorageQualityBarChart(
+                          count4k: data.qualityBreakdown!.count4k,
+                          count1080p: data.qualityBreakdown!.count1080p,
+                          count720p: data.qualityBreakdown!.count720p,
+                          countSd: data.qualityBreakdown!.countSd,
+                        ),
+                      ),
+                      const SizedBox(height: Insets.lg),
+                    ],
+                    _StorageGrowthSection(params: params),
+                    const SizedBox(height: Insets.lg),
+                    _StorageRoiSection(instance: widget.instance),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StorageGrowthSection extends ConsumerWidget {
+  const _StorageGrowthSection({required this.params});
+
+  final TracearrStatsFilterParams params;
+
+  String _formatNumBytes(double bytes) {
+    if (bytes == 0) return '0 B';
+    const List<String> suffixes = <String>['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+    int i = 0;
+    double val = bytes;
+    while (val >= 1024 && i < suffixes.length - 1) {
+      val /= 1024;
+      i++;
+    }
+    return '${val.toStringAsFixed(1)} ${suffixes[i]}';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AsyncValue<Map<String, TracearrStorageResponse>> val =
+        ref.watch(tracearrStorageGrowthProvider(params));
+    final Map<String, String> servers =
+        ref.watch(tracearrServersProvider(params.instance)).value ??
+            <String, String>{};
+
+    return AsyncValueView<Map<String, TracearrStorageResponse>>(
+      value: val,
+      onRetry: () => ref.invalidate(tracearrStorageGrowthProvider(params)),
+      data: (Map<String, TracearrStorageResponse> data) {
+        if (data.isEmpty) return const SizedBox.shrink();
+        final TracearrStorageResponse aggregated =
+            TracearrStorageResponse.aggregate(data.values.toList());
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            // Hero section: Totals
             Row(
               children: <Widget>[
                 Expanded(
-                  child: Card(
-                    elevation: 0,
-                    margin: EdgeInsets.zero,
+                  child: _GrowthRateCard(
+                    title: 'Daily Growth',
+                    value:
+                        '+${_formatNumBytes(aggregated.growthRate.bytesPerDay)}/d',
+                    icon: Icons.trending_up,
                     color: Theme.of(context).colorScheme.primaryContainer,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                      child: Column(
-                        children: <Widget>[
-                          Icon(Icons.storage_outlined, size: 32, color: Theme.of(context).colorScheme.onPrimaryContainer),
-                          const SizedBox(height: 8),
-                          Text(
-                            data.totalItems.toString(),
-                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                                ),
-                          ),
-                          Text(
-                            'Total Items',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: Theme.of(context).colorScheme.onPrimaryContainer,
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    onColor: Theme.of(context).colorScheme.onPrimaryContainer,
                   ),
                 ),
-                const SizedBox(width: Insets.lg),
+                const SizedBox(width: Insets.md),
                 Expanded(
-                  child: Card(
-                    elevation: 0,
-                    margin: EdgeInsets.zero,
+                  child: _GrowthRateCard(
+                    title: 'Weekly Growth',
+                    value:
+                        '+${_formatNumBytes(aggregated.growthRate.bytesPerWeek)}/w',
+                    icon: Icons.calendar_view_week,
+                    color: Theme.of(context).colorScheme.secondaryContainer,
+                    onColor: Theme.of(context).colorScheme.onSecondaryContainer,
+                  ),
+                ),
+                const SizedBox(width: Insets.md),
+                Expanded(
+                  child: _GrowthRateCard(
+                    title: 'Monthly Growth',
+                    value:
+                        '+${_formatNumBytes(aggregated.growthRate.bytesPerMonth)}/m',
+                    icon: Icons.date_range,
                     color: Theme.of(context).colorScheme.tertiaryContainer,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 8),
-                      child: Column(
-                        children: <Widget>[
-                          Icon(Icons.sd_storage_outlined, size: 32, color: Theme.of(context).colorScheme.onTertiaryContainer),
-                          const SizedBox(height: 8),
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              _formatBytes(data.totalSizeBytes),
-                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Theme.of(context).colorScheme.onTertiaryContainer,
-                                  ),
-                            ),
-                          ),
-                          Text(
-                            'Total Size',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: Theme.of(context).colorScheme.onTertiaryContainer,
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    onColor: Theme.of(context).colorScheme.onTertiaryContainer,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: Insets.lg),
-
-            // Library Composition (PieChart)
-            _ChartCard(
-              title: 'Library Composition',
-              child: _LibraryCompositionPieChart(
-                movieCount: data.movieCount,
-                showCount: data.showCount,
-                episodeCount: data.episodeCount,
-              ),
-            ),
-            const SizedBox(height: Insets.lg),
-
-            // Quality Breakdown (BarChart)
-            if (hasQualityData)
+            if (params.period.toLowerCase() != 'all') ...<Widget>[
+              const SizedBox(height: Insets.lg),
               _ChartCard(
-                title: 'Quality Breakdown',
-                child: _StorageQualityBarChart(
-                  count4k: data.qualityBreakdown!.count4k,
-                  count1080p: data.qualityBreakdown!.count1080p,
-                  count720p: data.qualityBreakdown!.count720p,
-                  countSd: data.qualityBreakdown!.countSd,
+                title: 'Storage Growth & Predictive Forecast',
+                child: _StorageGrowthCharts(
+                  serverData: data,
+                  servers: servers,
+                  formatNumBytes: _formatNumBytes,
                 ),
               ),
             ],
-          );
-        },
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _StorageGrowthCharts extends StatefulWidget {
+  const _StorageGrowthCharts({
+    required this.serverData,
+    required this.servers,
+    required this.formatNumBytes,
+  });
+  final Map<String, TracearrStorageResponse> serverData;
+  final Map<String, String> servers;
+  final String Function(double) formatNumBytes;
+
+  @override
+  State<_StorageGrowthCharts> createState() => _StorageGrowthChartsState();
+}
+
+class _StorageGrowthChartsState extends State<_StorageGrowthCharts> {
+  bool _showMore = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<String> serverIds = widget.serverData.keys.toList();
+    if (serverIds.isEmpty) return const SizedBox.shrink();
+
+    final Map<String, Color> serverColors = <String, Color>{};
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final List<Color> availableColors = <Color>[
+      scheme.primary,
+      scheme.secondary,
+      scheme.tertiary,
+      scheme.error,
+      scheme.inversePrimary,
+      scheme.primaryContainer,
+      scheme.secondaryContainer,
+      scheme.tertiaryContainer,
+      scheme.surfaceTint,
+      scheme.outline,
+    ];
+    for (int i = 0; i < serverIds.length; i++) {
+      serverColors[serverIds[i]] = availableColors[i % availableColors.length];
+    }
+
+    Widget buildSingleServerChart(String serverId, Color color) {
+      final TracearrStorageResponse data = widget.serverData[serverId]!;
+      final String serverName = widget.servers[serverId] ??
+          (serverId.length > 8 ? serverId.substring(0, 8) : serverId);
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          if (serverIds.length > 1) ...<Widget>[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                      color: color, borderRadius: BorderRadius.circular(2)),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  serverName,
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: Insets.md),
+          ],
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              Chip(
+                avatar: Icon(Icons.psychology_outlined,
+                    size: 16, color: Theme.of(context).colorScheme.primary),
+                label: Text(
+                  '${data.predictions.confidence.toUpperCase()} CONFIDENCE (${data.predictions.currentDataDays}d sample)',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 11),
+                ),
+              ),
+              Chip(
+                label: Text(
+                    '30-Day Est: ${widget.formatNumBytes(data.predictions.day30.predicted)}'),
+              ),
+              Chip(
+                label: Text(
+                    '90-Day Est: ${widget.formatNumBytes(data.predictions.day90.predicted)}'),
+              ),
+              Chip(
+                label: Text(
+                    '1-Year Est: ${widget.formatNumBytes(data.predictions.day365.predicted)}'),
+              ),
+            ],
+          ),
+          const SizedBox(height: Insets.md),
+          _StorageGrowthLineChart(response: data),
+          const SizedBox(height: Insets.sm),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              _StorageGrowthLegendItem(
+                  color: Theme.of(context).colorScheme.primary,
+                  label: 'Historical'),
+              const SizedBox(width: 16),
+              _StorageGrowthLegendItem(
+                  color: Theme.of(context).colorScheme.secondary,
+                  label: 'Predicted (Dotted)'),
+              const SizedBox(width: 16),
+              _StorageGrowthLegendItem(
+                  color: Theme.of(context).colorScheme.tertiary,
+                  label: 'Min/Max Range'),
+            ],
+          ),
+        ],
+      );
+    }
+
+    final String firstServerId = serverIds.first;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        buildSingleServerChart(firstServerId, serverColors[firstServerId]!),
+        if (serverIds.length > 1) ...<Widget>[
+          if (_showMore)
+            for (int i = 1; i < serverIds.length; i++) ...<Widget>[
+              const SizedBox(height: Insets.lg),
+              const Divider(height: 1),
+              const SizedBox(height: Insets.lg),
+              buildSingleServerChart(serverIds[i], serverColors[serverIds[i]]!),
+            ],
+          const SizedBox(height: Insets.md),
+          Center(
+            child: TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  _showMore = !_showMore;
+                });
+              },
+              icon: Icon(_showMore ? Icons.expand_less : Icons.expand_more),
+              label: Text(_showMore ? 'Show Less' : 'Show More'),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _GrowthRateCard extends StatelessWidget {
+  const _GrowthRateCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.color,
+    required this.onColor,
+  });
+
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color color;
+  final Color onColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: color,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Icon(icon, size: 24, color: onColor),
+            const SizedBox(height: 8),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: onColor,
+                    ),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              title,
+              style: Theme.of(context)
+                  .textTheme
+                  .labelSmall
+                  ?.copyWith(color: onColor),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
-    ),
-  ],
-);
+    );
+  }
+}
+
+class _StorageGrowthLegendItem extends StatelessWidget {
+  const _StorageGrowthLegendItem({required this.color, required this.label});
+
+  final Color color;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Container(width: 12, height: 4, color: color),
+        const SizedBox(width: 6),
+        Text(label,
+            style:
+                Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11)),
+      ],
+    );
+  }
+}
+
+class _StorageGrowthLineChart extends StatelessWidget {
+  const _StorageGrowthLineChart({required this.response});
+
+  final TracearrStorageResponse response;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<TracearrStorageHistoryItem> hist = response.history;
+    final Map<int, String> labelsMap = <int, String>{};
+    final List<FlSpot> histSpots = <FlSpot>[];
+    final List<FlSpot> predSpots = <FlSpot>[];
+    final List<FlSpot> minSpots = <FlSpot>[];
+    final List<FlSpot> maxSpots = <FlSpot>[];
+
+    double minY = double.infinity;
+    double maxY = 0.0;
+    const double gbDivisor = 1073741824.0;
+
+    for (int i = 0; i < hist.length; i++) {
+      final double x = i.toDouble();
+      final double y = hist[i].totalSizeBytes / gbDivisor;
+      histSpots.add(FlSpot(x, y));
+      labelsMap[i] = hist[i].day;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+
+    final int lastIdx = hist.isEmpty ? 0 : hist.length - 1;
+    final double startY = hist.isEmpty
+        ? (response.current.totalSizeBytes / gbDivisor)
+        : (hist.last.totalSizeBytes / gbDivisor);
+    final String startLabel = hist.isEmpty ? 'Today' : hist.last.day;
+
+    if (histSpots.isEmpty) {
+      histSpots.add(FlSpot(0.0, startY));
+      labelsMap[0] = startLabel;
+    }
+
+    predSpots.add(FlSpot(lastIdx.toDouble(), startY));
+    minSpots.add(FlSpot(lastIdx.toDouble(), startY));
+    maxSpots.add(FlSpot(lastIdx.toDouble(), startY));
+
+    final int idx30 = lastIdx + 30;
+    final double pred30Y = response.predictions.day30.predicted / gbDivisor;
+    predSpots.add(FlSpot(idx30.toDouble(), pred30Y));
+    minSpots.add(
+        FlSpot(idx30.toDouble(), response.predictions.day30.min / gbDivisor));
+    maxSpots.add(
+        FlSpot(idx30.toDouble(), response.predictions.day30.max / gbDivisor));
+    labelsMap[idx30] = '+30 Days';
+    if (pred30Y < minY) minY = pred30Y;
+    if (pred30Y > maxY) maxY = pred30Y;
+    if (response.predictions.day30.max / gbDivisor > maxY)
+      maxY = response.predictions.day30.max / gbDivisor;
+
+    final int idx90 = lastIdx + 90;
+    final double pred90Y = response.predictions.day90.predicted / gbDivisor;
+    predSpots.add(FlSpot(idx90.toDouble(), pred90Y));
+    minSpots.add(
+        FlSpot(idx90.toDouble(), response.predictions.day90.min / gbDivisor));
+    maxSpots.add(
+        FlSpot(idx90.toDouble(), response.predictions.day90.max / gbDivisor));
+    labelsMap[idx90] = '+90 Days';
+    if (pred90Y < minY) minY = pred90Y;
+    if (pred90Y > maxY) maxY = pred90Y;
+    if (response.predictions.day90.max / gbDivisor > maxY)
+      maxY = response.predictions.day90.max / gbDivisor;
+
+    final int idx365 = lastIdx + 365;
+    final double pred365Y = response.predictions.day365.predicted / gbDivisor;
+    predSpots.add(FlSpot(idx365.toDouble(), pred365Y));
+    minSpots.add(
+        FlSpot(idx365.toDouble(), response.predictions.day365.min / gbDivisor));
+    maxSpots.add(
+        FlSpot(idx365.toDouble(), response.predictions.day365.max / gbDivisor));
+    labelsMap[idx365] = '+1 Year';
+    if (pred365Y < minY) minY = pred365Y;
+    if (pred365Y > maxY) maxY = pred365Y;
+    if (response.predictions.day365.max / gbDivisor > maxY)
+      maxY = response.predictions.day365.max / gbDivisor;
+
+    if (minY == double.infinity || minY > maxY) {
+      minY = 0.0;
+      maxY = 100.0;
+    }
+    final double paddingY = max(5.0, (maxY - minY) * 0.1);
+    final double lowerLimit = max(0.0, minY - paddingY);
+    final double upperLimit = maxY + paddingY;
+    final double intervalY =
+        max(1.0, ((upperLimit - lowerLimit) / 4).floorToDouble());
+
+    final double maxX = max(1.0, idx365.toDouble());
+    final double intervalX = max(1.0, (maxX / 4).floorToDouble());
+
+    return AspectRatio(
+      aspectRatio: 1.70,
+      child: Padding(
+        padding:
+            const EdgeInsets.only(right: 18, left: 12, top: 24, bottom: 12),
+        child: LineChart(
+          LineChartData(
+            minY: lowerLimit,
+            maxY: upperLimit,
+            minX: 0.0,
+            maxX: maxX,
+            lineTouchData: LineTouchData(
+              touchTooltipData: LineTouchTooltipData(
+                fitInsideHorizontally: true,
+                fitInsideVertically: true,
+                getTooltipColor: (_) => Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest
+                    .withValues(alpha: 0.9),
+                getTooltipItems: (List<LineBarSpot> touchedBarSpots) {
+                  return touchedBarSpots.map((LineBarSpot barSpot) {
+                    final int idx = barSpot.x.toInt();
+                    final String title = labelsMap[idx] ?? 'Day $idx';
+                    final String gbVal = '${barSpot.y.toStringAsFixed(1)} GB';
+                    final String lineName;
+                    final Color color = barSpot.bar.color ??
+                        Theme.of(context).colorScheme.primary;
+                    if (barSpot.barIndex == 1) {
+                      lineName = 'Predicted';
+                    } else if (barSpot.barIndex == 2) {
+                      lineName = 'Min Bound';
+                    } else if (barSpot.barIndex == 3) {
+                      lineName = 'Max Bound';
+                    } else {
+                      lineName = 'Actual';
+                    }
+                    final bool isFirst = barSpot == touchedBarSpots.first;
+                    return LineTooltipItem(
+                      '${isFirst ? '$title\n' : ''}$lineName: $gbVal',
+                      TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12),
+                    );
+                  }).toList();
+                },
+              ),
+            ),
+            gridData: FlGridData(
+              horizontalInterval: intervalY,
+              verticalInterval: intervalX,
+              getDrawingHorizontalLine: (double value) {
+                return FlLine(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .outline
+                        .withValues(alpha: 0.2),
+                    strokeWidth: 1);
+              },
+              getDrawingVerticalLine: (double value) {
+                return FlLine(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .outline
+                        .withValues(alpha: 0.2),
+                    strokeWidth: 1);
+              },
+            ),
+            titlesData: FlTitlesData(
+              rightTitles: const AxisTitles(),
+              topTitles: const AxisTitles(),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 30,
+                  interval: intervalX,
+                  getTitlesWidget: (double value, TitleMeta meta) {
+                    final int index = value.toInt();
+                    String? label = labelsMap[index];
+                    if (label == null && index == 0 && hist.isNotEmpty) {
+                      label = hist.first.day;
+                    }
+                    if (label == null) {
+                      return const SizedBox.shrink();
+                    }
+                    return SideTitleWidget(
+                      meta: meta,
+                      child: Text(label.length > 7 ? label.substring(5) : label,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 10)),
+                    );
+                  },
+                ),
+              ),
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  interval: intervalY,
+                  reservedSize: 45,
+                  getTitlesWidget: (double value, TitleMeta meta) {
+                    return Text('${value.toInt()} G',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 11),
+                        textAlign: TextAlign.left);
+                  },
+                ),
+              ),
+            ),
+            borderData: FlBorderData(
+              show: true,
+              border: Border.all(
+                  color: Theme.of(context)
+                      .colorScheme
+                      .outline
+                      .withValues(alpha: 0.2)),
+            ),
+            lineBarsData: <LineChartBarData>[
+              LineChartBarData(
+                spots: histSpots,
+                isCurved: true,
+                preventCurveOverShooting: true,
+                color: Theme.of(context).colorScheme.primary,
+                barWidth: 3,
+                isStrokeCapRound: true,
+                dotData: const FlDotData(show: false),
+                belowBarData: BarAreaData(
+                  show: true,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .primary
+                      .withValues(alpha: 0.15),
+                ),
+              ),
+              LineChartBarData(
+                spots: predSpots,
+                isCurved: true,
+                preventCurveOverShooting: true,
+                color: Theme.of(context).colorScheme.secondary,
+                barWidth: 3,
+                dashArray: <int>[8, 4],
+                isStrokeCapRound: true,
+                belowBarData: BarAreaData(
+                  show: true,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .secondary
+                      .withValues(alpha: 0.08),
+                ),
+              ),
+              LineChartBarData(
+                spots: minSpots,
+                isCurved: true,
+                preventCurveOverShooting: true,
+                color: Theme.of(context)
+                    .colorScheme
+                    .tertiary
+                    .withValues(alpha: 0.6),
+                barWidth: 1.5,
+                dashArray: <int>[4, 4],
+                dotData: const FlDotData(show: false),
+              ),
+              LineChartBarData(
+                spots: maxSpots,
+                isCurved: true,
+                preventCurveOverShooting: true,
+                color: Theme.of(context)
+                    .colorScheme
+                    .tertiary
+                    .withValues(alpha: 0.6),
+                barWidth: 1.5,
+                dashArray: <int>[4, 4],
+                dotData: const FlDotData(show: false),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StorageRoiSection extends ConsumerWidget {
+  const _StorageRoiSection({required this.instance});
+
+  final Instance instance;
+
+  IconData _getMediaIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'movie':
+        return Icons.movie_outlined;
+      case 'episode':
+      case 'show':
+      case 'series':
+        return Icons.tv_outlined;
+      case 'artist':
+      case 'album':
+      case 'track':
+        return Icons.library_music_outlined;
+      default:
+        return Icons.perm_media_outlined;
+    }
+  }
+
+  Color _getValueColor(String category, ColorScheme colorScheme) {
+    switch (category.toLowerCase()) {
+      case 'high_value':
+        return Colors.green;
+      case 'low_value':
+        return colorScheme.error;
+      case 'medium_value':
+      default:
+        return colorScheme.primary;
+    }
+  }
+
+  String _getValueLabel(String category) {
+    switch (category.toLowerCase()) {
+      case 'high_value':
+        return 'High Value';
+      case 'low_value':
+        return 'Low Value';
+      case 'medium_value':
+      default:
+        return 'Medium Value';
+    }
+  }
+
+  void _showPageDialog(
+      BuildContext context, TracearrRoiNotifier notifier, int totalPages) {
+    showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Select Page'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: GridView.builder(
+              shrinkWrap: true,
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 60,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childAspectRatio: 1.2,
+              ),
+              itemCount: totalPages,
+              itemBuilder: (BuildContext context, int index) {
+                final int p = index + 1;
+                final bool isCurrent = p == notifier.page;
+                return InkWell(
+                  onTap: () {
+                    notifier.setPage(p);
+                    Navigator.of(context).pop();
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isCurrent
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context)
+                              .colorScheme
+                              .surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '$p',
+                      style: TextStyle(
+                        color: isCurrent
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight:
+                            isCurrent ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final TracearrRoiNotifier notifier =
+        ref.watch(tracearrRoiProvider(instance));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          'Storage Efficiency & ROI',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+        ),
+        const SizedBox(height: Insets.md),
+        ListenableBuilder(
+          listenable: notifier,
+          builder: (BuildContext context, Widget? child) {
+            final AsyncValue<TracearrLibraryRoiResponse> state = notifier.state;
+            return state.when(
+              data: (TracearrLibraryRoiResponse data) {
+                final TracearrRoiSummary summary = data.summary;
+                final int totalPages =
+                    (data.pagination.total > 0 && notifier.pageSize > 0)
+                        ? ((data.pagination.total + notifier.pageSize - 1) ~/
+                            notifier.pageSize)
+                        : 1;
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    // Summary Cards Row
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Card(
+                            elevation: 0,
+                            margin: EdgeInsets.zero,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .secondaryContainer,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 16, horizontal: 12),
+                              child: Column(
+                                children: <Widget>[
+                                  Icon(Icons.auto_delete_outlined,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSecondaryContainer),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${summary.potentialSavingsGb.toStringAsFixed(1)} GB',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSecondaryContainer,
+                                        ),
+                                  ),
+                                  Text(
+                                    'Potential Savings',
+                                    textAlign: TextAlign.center,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSecondaryContainer,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: Insets.sm),
+                        Expanded(
+                          child: Card(
+                            elevation: 0,
+                            margin: EdgeInsets.zero,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 16, horizontal: 12),
+                              child: Column(
+                                children: <Widget>[
+                                  Icon(Icons.speed_outlined,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${summary.avgWatchHoursPerGb.toStringAsFixed(2)} hrs/GB',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurface,
+                                        ),
+                                  ),
+                                  Text(
+                                    'Avg Efficiency',
+                                    textAlign: TextAlign.center,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: Insets.sm),
+                        Expanded(
+                          child: Card(
+                            elevation: 0,
+                            margin: EdgeInsets.zero,
+                            color: Theme.of(context).colorScheme.errorContainer,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 16, horizontal: 12),
+                              child: Column(
+                                children: <Widget>[
+                                  Icon(Icons.warning_amber_outlined,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onErrorContainer),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${summary.lowValueItems}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onErrorContainer,
+                                        ),
+                                  ),
+                                  Text(
+                                    'Low Value (${summary.lowValueStorageGb.toStringAsFixed(1)} GB)',
+                                    textAlign: TextAlign.center,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onErrorContainer,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: Insets.lg),
+                    // Sorting controls
+                    Row(
+                      children: <Widget>[
+                        Text(
+                          'Sort by:',
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                        ),
+                        const SizedBox(width: Insets.sm),
+                        Expanded(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: <Widget>[
+                                ChoiceChip(
+                                  label: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: <Widget>[
+                                      const Text('Efficiency'),
+                                      if (notifier.sortBy ==
+                                          'watch_hours_per_gb') ...<Widget>[
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          notifier.sortOrder == 'desc'
+                                              ? Icons.arrow_downward
+                                              : Icons.arrow_upward,
+                                          size: 16,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  selected:
+                                      notifier.sortBy == 'watch_hours_per_gb',
+                                  onSelected: (_) =>
+                                      notifier.setSort('watch_hours_per_gb'),
+                                ),
+                                const SizedBox(width: Insets.sm),
+                                ChoiceChip(
+                                  label: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: <Widget>[
+                                      const Text('Size'),
+                                      if (notifier.sortBy ==
+                                          'file_size') ...<Widget>[
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          notifier.sortOrder == 'desc'
+                                              ? Icons.arrow_downward
+                                              : Icons.arrow_upward,
+                                          size: 16,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  selected: notifier.sortBy == 'file_size',
+                                  onSelected: (_) =>
+                                      notifier.setSort('file_size'),
+                                ),
+                                const SizedBox(width: Insets.sm),
+                                ChoiceChip(
+                                  label: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: <Widget>[
+                                      const Text('Score'),
+                                      if (notifier.sortBy ==
+                                          'value_score') ...<Widget>[
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          notifier.sortOrder == 'desc'
+                                              ? Icons.arrow_downward
+                                              : Icons.arrow_upward,
+                                          size: 16,
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  selected: notifier.sortBy == 'value_score',
+                                  onSelected: (_) =>
+                                      notifier.setSort('value_score'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: Insets.md),
+                    if (data.items.isEmpty)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(Insets.xl),
+                          child: Text('No storage efficiency items found.'),
+                        ),
+                      )
+                    else ...<Widget>[
+                      for (final TracearrRoiItem item in data.items)
+                        Card(
+                          margin: const EdgeInsets.only(bottom: Insets.md),
+                          color:
+                              Theme.of(context).colorScheme.surfaceContainerLow,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: Insets.md,
+                              vertical: Insets.xs,
+                            ),
+                            leading: CircleAvatar(
+                              backgroundColor: Theme.of(context)
+                                  .colorScheme
+                                  .surfaceContainerHighest,
+                              child: Icon(_getMediaIcon(item.mediaType)),
+                            ),
+                            title: Text(
+                              item.title +
+                                  (item.year != null ? ' (${item.year})' : ''),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                            subtitle: Text(
+                              '${item.serverName} • ${item.fileSizeGb.toStringAsFixed(2)} GB • ${item.totalWatchHours.toStringAsFixed(1)} watch hrs\nEfficiency: ${item.watchHoursPerGb.toStringAsFixed(2)} hrs/GB (Score: ${item.valueScore.toStringAsFixed(0)})',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            isThreeLine: true,
+                            trailing: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: <Widget>[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _getValueColor(item.valueCategory,
+                                            Theme.of(context).colorScheme)
+                                        .withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: _getValueColor(item.valueCategory,
+                                          Theme.of(context).colorScheme),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    _getValueLabel(item.valueCategory),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: _getValueColor(
+                                              item.valueCategory,
+                                              Theme.of(context).colorScheme),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                  ),
+                                ),
+                                if (item.suggestDeletion) ...<Widget>[
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: <Widget>[
+                                      Icon(
+                                        Icons.delete_outline,
+                                        size: 14,
+                                        color:
+                                            Theme.of(context).colorScheme.error,
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        'Suggest Cleanup',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelSmall
+                                            ?.copyWith(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .error,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      // Pagination controls
+                      const SizedBox(height: Insets.sm),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          IconButton(
+                            icon: const Icon(Icons.chevron_left),
+                            onPressed: notifier.page > 1
+                                ? notifier.previousPage
+                                : null,
+                          ),
+                          const SizedBox(width: Insets.md),
+                          ActionChip(
+                            label: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                Text('Page ${notifier.page} of $totalPages'),
+                                if (totalPages > 1) ...<Widget>[
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.arrow_drop_down, size: 18),
+                                ],
+                              ],
+                            ),
+                            onPressed: totalPages > 1
+                                ? () => _showPageDialog(
+                                    context, notifier, totalPages)
+                                : null,
+                          ),
+                          const SizedBox(width: Insets.md),
+                          IconButton(
+                            icon: const Icon(Icons.chevron_right),
+                            onPressed: (notifier.page * notifier.pageSize) <
+                                    data.pagination.total
+                                ? notifier.nextPage
+                                : null,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                );
+              },
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              error: (Object error, StackTrace stack) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: <Widget>[
+                      Text(
+                        'Failed to load Storage ROI stats: $error',
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.error),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton(
+                        onPressed: notifier.refresh,
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
   }
 }
 
@@ -2353,7 +4831,8 @@ class _DashboardStatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: Insets.lg, horizontal: Insets.sm),
+      padding: const EdgeInsets.symmetric(
+          vertical: Insets.lg, horizontal: Insets.sm),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
@@ -2361,7 +4840,6 @@ class _DashboardStatCard extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[
           Text(
             title,
@@ -2391,46 +4869,73 @@ class _DashboardStatsHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<TracearrDashboardStats> stats = ref.watch(tracearrDashboardStatsProvider(instance));
+    final AsyncValue<TracearrDashboardStats> stats =
+        ref.watch(tracearrDashboardStatsProvider(instance));
 
     return stats.when(
       data: (TracearrDashboardStats data) {
         return Padding(
-          padding: const EdgeInsets.fromLTRB(Insets.lg, 0, Insets.lg, Insets.lg),
+          padding:
+              const EdgeInsets.fromLTRB(Insets.lg, 0, Insets.lg, Insets.lg),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text('Today\'s Overview', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+              Text('Today\'s Overview',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: Insets.md),
               Row(
                 children: <Widget>[
-                  Expanded(child: _DashboardStatCard(title: 'Active Streams', value: '${data.activeStreams}')),
+                  Expanded(
+                      child: _DashboardStatCard(
+                          title: 'Active Streams',
+                          value: '${data.activeStreams}')),
                   const SizedBox(width: Insets.md),
-                  Expanded(child: _DashboardStatCard(title: 'Watch Hours', value: data.watchTimeHours.toStringAsFixed(1))),
+                  Expanded(
+                      child: _DashboardStatCard(
+                          title: 'Watch Hours',
+                          value: data.watchTimeHours.toStringAsFixed(1))),
                 ],
               ),
               const SizedBox(height: Insets.md),
               Row(
                 children: <Widget>[
-                  Expanded(child: _DashboardStatCard(title: 'Plays Today', value: '${data.todayPlays}')),
+                  Expanded(
+                      child: _DashboardStatCard(
+                          title: 'Plays Today', value: '${data.todayPlays}')),
                   const SizedBox(width: Insets.md),
-                  Expanded(child: _DashboardStatCard(title: 'Sessions Today', value: '${data.todaySessions}')),
+                  Expanded(
+                      child: _DashboardStatCard(
+                          title: 'Sessions Today',
+                          value: '${data.todaySessions}')),
                 ],
               ),
               const SizedBox(height: Insets.md),
               Row(
                 children: <Widget>[
-                  Expanded(child: _DashboardStatCard(title: 'Active Users', value: '${data.activeUsersToday}')),
+                  Expanded(
+                      child: _DashboardStatCard(
+                          title: 'Active Users',
+                          value: '${data.activeUsersToday}')),
                   const SizedBox(width: Insets.md),
-                  Expanded(child: _DashboardStatCard(title: 'Recent Alerts', value: '${data.alertsLast24h}')),
+                  Expanded(
+                      child: _DashboardStatCard(
+                          title: 'Recent Alerts',
+                          value: '${data.alertsLast24h}')),
                 ],
               ),
             ],
           ),
         );
       },
-      loading: () => const Padding(padding: EdgeInsets.all(Insets.lg), child: Center(child: CircularProgressIndicator())),
-      error: (Object e, StackTrace st) => Padding(padding: const EdgeInsets.all(Insets.lg), child: Text('Failed to load stats: $e')),
+      loading: () => const Padding(
+          padding: EdgeInsets.all(Insets.lg),
+          child: Center(child: CircularProgressIndicator())),
+      error: (Object e, StackTrace st) => Padding(
+          padding: const EdgeInsets.all(Insets.lg),
+          child: Text('Failed to load stats: $e')),
     );
   }
 }
@@ -2444,9 +4949,7 @@ class _HomeTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AsyncValue<TracearrActiveSessions> sessions =
         ref.watch(tracearrSessionsProvider(instance));
-    final Map<String, String> servers =
-        ref.watch(tracearrServersProvider(instance)).value ??
-            <String, String>{};
+    final TracearrApi? api = ref.watch(tracearrApiProvider(instance)).value;
 
     return AsyncValueView<TracearrActiveSessions>(
       value: sessions,
@@ -2464,6 +4967,7 @@ class _HomeTab extends ConsumerWidget {
               messageText: 'Last updated at %T',
             ),
             onRefresh: () async {
+              ref.invalidate(tracearrServersProvider(instance));
               ref.invalidate(tracearrSessionsProvider(instance));
               ref.invalidate(tracearrDashboardStatsProvider(instance));
             },
@@ -2516,6 +5020,7 @@ class _HomeTab extends ConsumerWidget {
             messageText: 'Last updated at %T',
           ),
           onRefresh: () async {
+            ref.invalidate(tracearrServersProvider(instance));
             ref.invalidate(tracearrSessionsProvider(instance));
             ref.invalidate(tracearrDashboardStatsProvider(instance));
           },
@@ -2537,7 +5042,7 @@ class _HomeTab extends ConsumerWidget {
                         width: 330,
                         child: _SessionCard(
                           session: embySessions[index],
-                          serverUrl: servers[embySessions[index].serverId],
+                          api: api,
                         ),
                       );
                     },
@@ -2560,7 +5065,7 @@ class _HomeTab extends ConsumerWidget {
                         width: 330,
                         child: _SessionCard(
                           session: plexSessions[index],
-                          serverUrl: servers[plexSessions[index].serverId],
+                          api: api,
                         ),
                       );
                     },
@@ -2583,7 +5088,7 @@ class _HomeTab extends ConsumerWidget {
                         width: 330,
                         child: _SessionCard(
                           session: jellyfinSessions[index],
-                          serverUrl: servers[jellyfinSessions[index].serverId],
+                          api: api,
                         ),
                       );
                     },
@@ -2626,12 +5131,12 @@ class _SectionHeader extends StatelessWidget {
 class _SessionCard extends StatefulWidget {
   const _SessionCard({
     required this.session,
-    this.serverUrl,
+    this.api,
     this.isHistory = false,
   });
 
   final TracearrSession session;
-  final String? serverUrl;
+  final TracearrApi? api;
   final bool isHistory;
 
   @override
@@ -2643,11 +5148,16 @@ class _SessionCardState extends State<_SessionCard> {
   String? _lastPosterUrl;
 
   String? get imageUrl {
-    if (widget.serverUrl != null && widget.session.thumbPath != null) {
-      final String cleanPath = widget.session.thumbPath!.startsWith('/')
-          ? widget.session.thumbPath!
-          : '/${widget.session.thumbPath!}';
-      return '${widget.serverUrl}$cleanPath';
+    if (widget.api != null && widget.session.thumbPath != null) {
+      final String type = widget.session.mediaType.toLowerCase();
+      final bool isAudio = type == 'track' || type == 'album' || type == 'audio' || type == 'music' || type == 'song' || type == 'podcast' || type == 'audiobook';
+      return widget.api!.proxyImageUrl(
+        serverId: widget.session.serverId,
+        path: widget.session.thumbPath,
+        width: isAudio ? 600 : 400,
+        height: 600,
+        fallback: isAudio ? 'art' : 'poster',
+      );
     }
     return null;
   }
@@ -2662,7 +5172,7 @@ class _SessionCardState extends State<_SessionCard> {
   void didUpdateWidget(covariant _SessionCard oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.session.thumbPath != widget.session.thumbPath ||
-        oldWidget.serverUrl != widget.serverUrl) {
+        oldWidget.api != widget.api) {
       _updateColorScheme();
     }
   }
@@ -2779,11 +5289,11 @@ class _SessionCardState extends State<_SessionCard> {
                   child: Stack(
                     fit: StackFit.expand,
                     children: <Widget>[
-                      Image.network(
-                        posterUrl,
+                      CachedNetworkImage(
+                        imageUrl: posterUrl,
                         fit: BoxFit.cover,
                         alignment: Alignment.topCenter,
-                        errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                        errorWidget: (_, __, ___) => const SizedBox.shrink(),
                       ),
                       Container(
                         decoration: BoxDecoration(
@@ -2807,56 +5317,59 @@ class _SessionCardState extends State<_SessionCard> {
               Center(
                 child: Padding(
                   padding: const EdgeInsets.all(Insets.md),
-                child: IntrinsicHeight(
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
                       // Poster
                       ConstrainedBox(
                         constraints:
-                            const BoxConstraints(minHeight: 100),
+                            const BoxConstraints(maxWidth: 120, maxHeight: 126),
                         child: AspectRatio(
-                          aspectRatio: session.mediaType.toLowerCase() ==
-                                      'track' ||
+                          aspectRatio: session.mediaType.toLowerCase() == 'track' ||
                                   session.mediaType.toLowerCase() == 'album' ||
-                                  session.mediaType.toLowerCase() == 'audio'
+                                  session.mediaType.toLowerCase() == 'audio' ||
+                                  session.mediaType.toLowerCase() == 'music' ||
+                                  session.mediaType.toLowerCase() == 'song' ||
+                                  session.mediaType.toLowerCase() == 'podcast' ||
+                                  session.mediaType.toLowerCase() == 'audiobook' ||
+                                  session.mediaType.toLowerCase() == 'musicalbum' ||
+                                  session.mediaType.toLowerCase() == 'musicartist'
                               ? 1.0
                               : (2 / 3),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: <BoxShadow>[
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.25),
-                                blurRadius: 12,
-                                offset: const Offset(0, 6),
-                              ),
-                            ],
-                            image: posterUrl != null
-                                ? DecorationImage(
-                                    image: CachedNetworkImageProvider(
-                                      posterUrl,
-                                    ),
-                                    fit: BoxFit.cover,
-                                    onError: (Object _, StackTrace? __) {},
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: <BoxShadow>[
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.25),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
+                              image: posterUrl != null
+                                  ? DecorationImage(
+                                      image: CachedNetworkImageProvider(
+                                        posterUrl,
+                                      ),
+                                      fit: BoxFit.cover,
+                                      onError: (Object _, StackTrace? __) {},
+                                    )
+                                  : null,
+                            ),
+                            child: posterUrl == null
+                                ? Icon(
+                                    Icons.movie_outlined,
+                                    color: theme.colorScheme.outline,
+                                    size: 32,
                                   )
                                 : null,
                           ),
-                          child: posterUrl == null
-                              ? Icon(
-                                  Icons.movie_outlined,
-                                  color: theme.colorScheme.outline,
-                                  size: 32,
-                                )
-                              : null,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: Insets.lg),
+                      const SizedBox(width: Insets.lg),
 
-                    // Details
-                    Expanded(
+                      // Details
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
@@ -2942,12 +5455,14 @@ class _SessionCardState extends State<_SessionCard> {
                             if (session.state.toLowerCase() == 'playing' ||
                                 session.state.toLowerCase() == 'paused' ||
                                 session.state.toLowerCase() == 'buffering' ||
-                                session.state.toLowerCase() == 'idle') ...<Widget>[
+                                session.state.toLowerCase() ==
+                                    'idle') ...<Widget>[
                               const SizedBox(height: 8),
 
                               // Progress Header
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: <Widget>[
                                   Text(
                                     timePosition,
@@ -3006,7 +5521,8 @@ class _SessionCardState extends State<_SessionCard> {
                                       session.platform,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: theme.textTheme.labelSmall?.copyWith(
+                                      style:
+                                          theme.textTheme.labelSmall?.copyWith(
                                         color: theme.colorScheme.outline,
                                       ),
                                     ),
@@ -3029,7 +5545,8 @@ class _SessionCardState extends State<_SessionCard> {
                                           : session.ipAddress,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: theme.textTheme.labelSmall?.copyWith(
+                                      style:
+                                          theme.textTheme.labelSmall?.copyWith(
                                         color: theme.colorScheme.outline,
                                       ),
                                     ),
@@ -3040,10 +5557,9 @@ class _SessionCardState extends State<_SessionCard> {
                           ],
                         ),
                       ),
-                  ],
+                    ],
+                  ),
                 ),
-                ),
-              ),
               ),
             ],
           ),

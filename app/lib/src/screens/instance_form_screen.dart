@@ -8,7 +8,6 @@ import 'package:service_speedtest_tracker/service_speedtest_tracker.dart';
 
 import '../connection_test/connection_test_result.dart';
 import '../connection_test/connection_tester.dart';
-import 'plex_pin_auth_dialog.dart';
 
 const String speedtestConnectionSuccessMessage =
     'Connected with results:read. Run permission cannot be verified until used.';
@@ -60,8 +59,6 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
   /// qBittorrent 5.2+ supports both username/password and API-key auth; this
   /// tracks which the user picked (qBit only).
   bool _qbitUseApiKey = false;
-  /// Tracearr supports both Local and Plex SSO auth.
-  bool _tracearrUsePlexAuth = false;
   bool _testingConnection = false;
   Map<String, ConnectionTestResult> _connectionResults =
       <String, ConnectionTestResult>{};
@@ -114,8 +111,6 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     // A qBittorrent instance saved with key auth reopens on the API-key tab.
     _qbitUseApiKey = instance.kind == ServiceKind.qbittorrent &&
         instance.auth is InstanceAuthApiKey;
-    _tracearrUsePlexAuth = instance.kind == ServiceKind.tracearr &&
-        instance.auth is InstanceAuthPlex;
   }
 
   InstanceAuth _buildAuth() {
@@ -123,12 +118,10 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
       AuthStyle.apiKey => InstanceAuth.apiKey(apiKey: _apiKey.text.trim()),
       AuthStyle.bearerToken => InstanceAuth.apiKey(apiKey: _apiKey.text.trim()),
       AuthStyle.plexToken => InstanceAuth.plexToken(token: _apiKey.text.trim()),
-      AuthStyle.userPass => (_kind == ServiceKind.tracearr && _tracearrUsePlexAuth)
-          ? InstanceAuth.plexToken(token: _apiKey.text.trim())
-          : InstanceAuth.userPass(
-              username: _username.text.trim(),
-              password: _password.text,
-            ),
+      AuthStyle.userPass => InstanceAuth.userPass(
+          username: _username.text.trim(),
+          password: _password.text,
+        ),
       AuthStyle.cookieLogin =>
         (_kind == ServiceKind.qbittorrent && _qbitUseApiKey)
             ? InstanceAuth.apiKey(apiKey: _apiKey.text.trim())
@@ -558,56 +551,6 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                     (v == null || v.trim().isEmpty) ? 'Required' : null,
           ),
         ];
-        if (_kind == ServiceKind.tracearr) {
-          return <Widget>[
-            SegmentedButton<bool>(
-              segments: <ButtonSegment<bool>>[
-                const ButtonSegment<bool>(
-                  value: false,
-                  label: Text('Local'),
-                  icon: Icon(Icons.person),
-                ),
-                ButtonSegment<bool>(
-                  value: true,
-                  label: const Text('Plex'),
-                  icon: _buildServiceIcon(ServiceKind.plex, size: 24),
-                ),
-              ],
-              selected: <bool>{_tracearrUsePlexAuth},
-              onSelectionChanged: (Set<bool> s) =>
-                  setState(() => _tracearrUsePlexAuth = s.first),
-            ),
-            const SizedBox(height: Insets.md),
-            if (_tracearrUsePlexAuth)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text('Plex Authentication', style: Theme.of(context).textTheme.titleSmall),
-                  const SizedBox(height: Insets.xs),
-                  Text(_apiKey.text.isNotEmpty ? 'Signed in with Plex' : 'Not signed in yet', style: Theme.of(context).textTheme.bodyMedium),
-                  const SizedBox(height: Insets.sm),
-                  FilledButton.icon(
-                    onPressed: () async {
-                      final String? token = await showDialog<String>(
-                        context: context,
-                        builder: (BuildContext context) => const PlexPinAuthDialog(),
-                      );
-                      if (token != null) {
-                        setState(() {
-                          _apiKey.text = token;
-                          _clearConnectionTest('');
-                        });
-                      }
-                    },
-                    icon: const Icon(Icons.login),
-                    label: Text(_apiKey.text.isNotEmpty ? 'Sign In Again' : 'Sign in with Plex'),
-                  ),
-                ],
-              )
-            else
-              ...userPass,
-          ];
-        }
 
         if (_kind != ServiceKind.qbittorrent) {
           return userPass;

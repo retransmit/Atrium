@@ -183,12 +183,17 @@ class _TracearrSessionDetailScreenState
                   const SizedBox(height: 40),
                   if (posterUrl != null)
                     Center(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: CachedNetworkImage(
-                          imageUrl: posterUrl,
-                          height: 250,
-                          fit: BoxFit.cover,
+                      child: Container(
+                        constraints: const BoxConstraints(
+                          maxHeight: 320,
+                          maxWidth: 320,
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: CachedNetworkImage(
+                            imageUrl: posterUrl,
+                            fit: BoxFit.contain,
+                          ),
                         ),
                       ),
                     ),
