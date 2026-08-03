@@ -122,6 +122,18 @@ Atrium is a **controller** app. Video playback was removed by design
   fetch deliberately uses a bare Dio rather than the instance one, so an
   instance's credentials are never sent to whatever host a pasted link names
 
+- **iOS**: the target exists and CI builds it unsigned on macOS on every
+  change, so it cannot rot unnoticed. Deep links already no-op off Android and
+  dynamic colour falls back to Atrium's own seed, since iOS has no system
+  palette. NEVER RUN on a device or simulator: verified to compile, nothing
+  more. No App Store build is planned - GPL-3.0-or-later is incompatible with
+  Apple's distribution terms - so iOS users build and sideload. iOS 14+, which
+  is the floor file_picker imposes and costs no devices (iOS 14 runs on the
+  same hardware as 13). Still open: Keychain Sharing may be needed by
+  flutter_secure_storage, the app icon and launch screen are Flutter
+  placeholders, and a denied local-network permission currently looks like a
+  timeout to ConnectionResolver, which would pin Auto to the external URL
+
 ## Partially done
 
 - **SABnzbd**: queue, history with retry, speed limit and server stats;

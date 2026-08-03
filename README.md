@@ -87,6 +87,21 @@ interchangeable: you can move between the releases page and F-Droid without
 uninstalling. F-Droid builds each tag only after it is published, so it can
 sit a version behind the releases page for a few days.
 
+### iOS
+
+There is an iOS target and CI builds it on every change, but there is no
+download and there will not be one. Atrium is GPL-3.0-or-later, which is
+incompatible with the App Store's terms, and relicensing would need the
+agreement of everyone who has contributed. So iOS means building it
+yourself and sideloading, with Xcode or a tool like AltStore. iOS 14 or
+newer.
+
+Be aware this has never run on a real device - it is verified to compile,
+nothing more. The first person to try it will find rough edges; issues and
+fixes are welcome. On iOS the theme uses Atrium's own palette rather than
+the system one, since there is no wallpaper colour to read, and iOS will
+ask permission the first time the app reaches a device on your network.
+
 ## Build
 
 Requires Flutter `^3.27` and Dart `^3.6` (pub workspaces).
