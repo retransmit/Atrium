@@ -1785,8 +1785,8 @@ class _TracearrListPoster extends StatelessWidget {
     this.imageUrl,
     this.fallbackIcon = Icons.movie_outlined,
     this.aspectRatio = 2 / 3,
-    this.maxWidth = 72,
-    this.maxHeight = 108,
+    this.maxWidth = 80,
+    this.maxHeight = 120,
   });
 
   final String? imageUrl;
@@ -1805,7 +1805,7 @@ class _TracearrListPoster extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             color: theme.colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(6),
             boxShadow: <BoxShadow>[
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.2),
@@ -1815,7 +1815,7 @@ class _TracearrListPoster extends StatelessWidget {
             ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(6),
             child: imageUrl != null
                 ? CachedNetworkImage(
                     imageUrl: imageUrl!,
@@ -1833,6 +1833,67 @@ class _TracearrListPoster extends StatelessWidget {
                   ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _TracearrStatItemRow extends StatelessWidget {
+  const _TracearrStatItemRow({
+    required this.title,
+    required this.subtitle,
+    this.trailing,
+    this.imageUrl,
+    this.fallbackIcon = Icons.movie_outlined,
+  });
+
+  final Widget title;
+  final Widget subtitle;
+  final Widget? trailing;
+  final String? imageUrl;
+  final IconData fallbackIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          _TracearrListPoster(
+            imageUrl: imageUrl,
+            fallbackIcon: fallbackIcon,
+            maxWidth: 80,
+            maxHeight: 120,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                DefaultTextStyle(
+                  style: theme.textTheme.bodyLarge!.copyWith(
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  child: title,
+                ),
+                const SizedBox(height: 4),
+                DefaultTextStyle(
+                  style: theme.textTheme.bodyMedium!.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  child: subtitle,
+                ),
+              ],
+            ),
+          ),
+          if (trailing != null) ...<Widget>[
+            const SizedBox(width: 12),
+            trailing!,
+          ],
+        ],
       ),
     );
   }
@@ -1881,15 +1942,9 @@ class _TopPerformersView extends StatelessWidget {
                           fallback: 'poster',
                         );
                       }
-                      return ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        leading: _TracearrListPoster(
-                          imageUrl: imageUrl,
-                          fallbackIcon: Icons.tv_outlined,
-                        ),
+                      return _TracearrStatItemRow(
+                        imageUrl: imageUrl,
+                        fallbackIcon: Icons.tv_outlined,
                         title: Text(show.showTitle),
                         subtitle: Text(
                           '${show.totalEpisodeViews} views • ${show.totalWatchHours} hrs',
@@ -1915,15 +1970,9 @@ class _TopPerformersView extends StatelessWidget {
                           fallback: 'poster',
                         );
                       }
-                      return ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        leading: _TracearrListPoster(
-                          imageUrl: imageUrl,
-                          fallbackIcon: Icons.movie_outlined,
-                        ),
+                      return _TracearrStatItemRow(
+                        imageUrl: imageUrl,
+                        fallbackIcon: Icons.movie_outlined,
                         title: Text(content.title),
                         subtitle: Text(
                           '${content.showTitle ?? 'Movie'} • ${content.totalWatchHours} hrs',
@@ -2606,15 +2655,9 @@ class _TopMoviesSection extends ConsumerWidget {
                 fallback: 'poster',
               );
             }
-            return ListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
-              leading: _TracearrListPoster(
-                imageUrl: posterUrl,
-                fallbackIcon: Icons.movie_outlined,
-              ),
+            return _TracearrStatItemRow(
+              imageUrl: posterUrl,
+              fallbackIcon: Icons.movie_outlined,
               title: Text(
                 '${index + 1}. ${movie.title} (${movie.year})',
                 style: const TextStyle(fontWeight: FontWeight.bold),
@@ -2687,15 +2730,9 @@ class _TopShowsSection extends ConsumerWidget {
                 fallback: 'poster',
               );
             }
-            return ListTile(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
-              leading: _TracearrListPoster(
-                imageUrl: posterUrl,
-                fallbackIcon: Icons.tv_outlined,
-              ),
+            return _TracearrStatItemRow(
+              imageUrl: posterUrl,
+              fallbackIcon: Icons.tv_outlined,
               title: Text(
                 '${index + 1}. ${show.showTitle} (${show.year})',
                 style: const TextStyle(fontWeight: FontWeight.bold),
@@ -2757,15 +2794,9 @@ class _BingeHighlightsSection extends ConsumerWidget {
             fallback: 'poster',
           );
         }
-        return ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 12,
-          ),
-          leading: _TracearrListPoster(
-            imageUrl: posterUrl,
-            fallbackIcon: Icons.tv_outlined,
-          ),
+        return _TracearrStatItemRow(
+          imageUrl: posterUrl,
+          fallbackIcon: Icons.tv_outlined,
           title: Text(
             show.showTitle,
             style: const TextStyle(fontWeight: FontWeight.bold),
@@ -2773,7 +2804,6 @@ class _BingeHighlightsSection extends ConsumerWidget {
           subtitle: Text(
             '${show.consecutiveEpisodes} consecutive eps (${show.consecutivePct.toStringAsFixed(0)}% binge)\nAvg interval: ${show.avgGapMinutes.toStringAsFixed(1)} mins • Max/day: ${show.maxEpisodesInOneDay}',
           ),
-          isThreeLine: true,
           trailing: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
