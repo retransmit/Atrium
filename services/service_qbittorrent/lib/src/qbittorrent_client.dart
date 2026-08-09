@@ -157,6 +157,18 @@ class QbittorrentClient {
             .toList();
       });
 
+  /// Delta sync (`/sync/maindata`). With `rid=0` the server sends the full
+  /// torrent list; with the `rid` from the previous response it sends only
+  /// the fields that changed since (plus `full_update: true` whenever it no
+  /// longer recognizes the rid, e.g. after a qBittorrent restart).
+  Future<Map<String, dynamic>> getMainData(int rid) => _guarded(() async {
+        final Response<dynamic> resp = await _dio.get<dynamic>(
+          'api/v2/sync/maindata',
+          queryParameters: <String, dynamic>{'rid': rid},
+        );
+        return resp.data as Map<String, dynamic>;
+      });
+
   Future<QbitTransferInfo> getTransferInfo() => _guarded(() async {
         final Response<dynamic> resp =
             await _dio.get<dynamic>('api/v2/transfer/info');
