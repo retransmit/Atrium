@@ -29,21 +29,19 @@ final seerrRequestCountsProvider =
   return api.getRequestCounts();
 });
 
+/// All requests, refreshed every 10s while watched. Refresh goes through
+/// [PollingRef.polled], so the next cycle is armed only after the current
+/// multi-page fetch settles - a blind timer here used to restart slow fetches
+/// from page 0 forever on large instances.
 final seerrRequestsProvider =
     FutureProvider.autoDispose.family<List<SeerrRequest>, Instance>((
   Ref ref,
   Instance instance,
-) async {
-  final SeerrApi api = await ref.watch(seerrApiProvider(instance).future);
-
-  final link = ref.keepAlive();
-  final timer = Timer(const Duration(seconds: 10), () {
-    link.close();
-    ref.invalidateSelf();
+) {
+  return ref.polled(const Duration(seconds: 10), () async {
+    final SeerrApi api = await ref.watch(seerrApiProvider(instance).future);
+    return api.getAllRequests();
   });
-  ref.onDispose(timer.cancel);
-
-  return api.getAllRequests();
 });
 
 final seerrTrendingProvider =
@@ -141,11 +139,17 @@ typedef SeerrMediaDetailsArgs = ({
   int tmdbId
 });
 
-final seerrMediaDetailsProvider =
-    FutureProvider.family<SeerrDiscoverResult, SeerrMediaDetailsArgs>((
+/// Details for one title. autoDispose with a short keep-alive: every request
+/// row watches its own entry, so a permanent family would accumulate one
+/// cached response per title ever scrolled past, for the app's lifetime.
+final seerrMediaDetailsProvider = FutureProvider.autoDispose
+    .family<SeerrDiscoverResult, SeerrMediaDetailsArgs>((
   Ref ref,
   SeerrMediaDetailsArgs args,
 ) async {
+  final link = ref.keepAlive();
+  final Timer timer = Timer(const Duration(minutes: 5), link.close);
+  ref.onDispose(timer.cancel);
   final SeerrApi api = await ref.watch(seerrApiProvider(args.instance).future);
   return api.getMediaDetails(args.mediaType, args.tmdbId);
 });

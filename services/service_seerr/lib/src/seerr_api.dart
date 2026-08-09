@@ -63,15 +63,35 @@ class SeerrApi {
     }
   }
 
-  /// All requests, paged in until a short page is returned (the `/request`
-  /// endpoint caps each page, so a single call would only ever return one
-  /// page). A safety cap stops runaway paging on very large libraries.
+  /// All requests (the `/request` endpoint caps each page, so a single call
+  /// would only ever return one page). A safety cap stops runaway paging on
+  /// very large libraries.
+  ///
+  /// Unfiltered calls read the total from `/request/count` first and fetch
+  /// every page concurrently - on large instances (~1500 requests = 15 pages)
+  /// serial paging took long enough that refresh cycles could lap it.
+  /// Filtered calls keep the serial short-page loop because the counts
+  /// endpoint has no per-filter total for every filter value.
   Future<List<SeerrRequest>> getAllRequests({
     String sort = 'added',
     String? filter,
   }) async {
     const int pageSize = 100;
     const int maxItems = 2000;
+    if (filter == null) {
+      final int total = await getRequestCounts()
+          .then((SeerrCounts c) => c.total)
+          .catchError((_) => maxItems);
+      final List<List<SeerrRequest>> pages = await Future.wait(
+        <Future<List<SeerrRequest>>>[
+          for (int skip = 0;
+              skip < total && skip < maxItems;
+              skip += pageSize)
+            getRequests(take: pageSize, skip: skip, sort: sort),
+        ],
+      );
+      return <SeerrRequest>[for (final List<SeerrRequest> p in pages) ...p];
+    }
     final List<SeerrRequest> all = <SeerrRequest>[];
     int skip = 0;
     while (true) {
