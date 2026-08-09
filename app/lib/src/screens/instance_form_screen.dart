@@ -521,7 +521,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
             ],
             if (_kind == ServiceKind.glances ||
                 _kind == ServiceKind.dashdot ||
-                _kind == ServiceKind.gluetun) ...<Widget>[
+                _kind == ServiceKind.gluetun ||
+                _kind == ServiceKind.qbittorrent) ...<Widget>[
               const SizedBox(height: Insets.lg),
               Text(
                 'Polling',

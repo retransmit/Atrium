@@ -13,9 +13,11 @@ import 'qbittorrent_client.dart';
 export 'models/qbit_log_entry.dart';
 
 /// How often list-level data (torrents, global speeds) refreshes while a
-/// qBittorrent screen is visible. qBit's own web UI polls at 1.5s; 3s is a
-/// good mobile compromise.
-const Duration qbitListPollInterval = Duration(seconds: 3);
+/// qBittorrent screen is visible. User-configurable per instance via the
+/// "Polling Interval" field on the instance form (default 5s; qBit's own web
+/// UI polls at 1.5s). Each tick is a cheap `/sync/maindata` delta.
+Duration qbitListPollInterval(Instance instance) =>
+    Duration(seconds: instance.pollingIntervalSeconds);
 
 /// How often detail-level data (properties, files, trackers) refreshes.
 const Duration qbitDetailPollInterval = Duration(seconds: 10);
@@ -355,7 +357,7 @@ final qbitRawTorrentsProvider =
   Instance instance,
 ) {
   final QbitSyncStore store = ref.watch(qbitSyncStoreProvider(instance));
-  return ref.polled(qbitListPollInterval, () async {
+  return ref.polled(qbitListPollInterval(instance), () async {
     final QbittorrentClient client =
         await ref.watch(qbittorrentClientProvider(instance).future);
     return store.apply(await client.getMainData(store.rid));
@@ -481,7 +483,7 @@ final qbitTransferProvider =
   Ref ref,
   Instance instance,
 ) {
-  return ref.polled(qbitListPollInterval, () async {
+  return ref.polled(qbitListPollInterval(instance), () async {
     final QbittorrentClient client =
         await ref.watch(qbittorrentClientProvider(instance).future);
     return client.getTransferInfo();
