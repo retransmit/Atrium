@@ -79,8 +79,9 @@ class _AddTorrentSheetState extends ConsumerState<AddTorrentSheet> {
   final TextEditingController _savePath = TextEditingController();
 
   // Shared files force file mode: there is nothing left to pick.
-  late final AddTorrentMode _mode =
-      (widget.initialFiles?.isNotEmpty ?? false) ? AddTorrentMode.file : widget.initialMode;
+  late final AddTorrentMode _mode = (widget.initialFiles?.isNotEmpty ?? false)
+      ? AddTorrentMode.file
+      : widget.initialMode;
   final List<TorrentFileArg> _files = <TorrentFileArg>[];
   int _done = 0;
   String? _category;
