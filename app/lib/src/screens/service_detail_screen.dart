@@ -82,6 +82,15 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
         ),
       );
     }
+    if (instance.kind == ServiceKind.qbittorrent) {
+      return QbittorrentHome(
+        instance: instance,
+        drawer: ServicesDrawer(
+          instances: ref.watch(activeInstancesProvider),
+          profile: ref.watch(activeProfileProvider),
+        ),
+      );
+    }
     return PopScope<Object?>(
         canPop: false,
         onPopInvokedWithResult: (bool didPop, Object? result) {
