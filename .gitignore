@@ -6,6 +6,7 @@
 .pub-cache/
 .pub/
 build/
+caveman/
 **/build/
 **/.dart_tool/
 # The pub workspace resolves once, into the lockfile at the repo root.
