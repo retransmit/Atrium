@@ -3,6 +3,52 @@ import 'package:core_networking/core_networking.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  group('Unraid GraphQL health', () {
+    test('a query that actually ran is online', () {
+      expect(
+        interpretServiceHealthResponse(
+          ServiceKind.unraid,
+          200,
+          <String, dynamic>{
+            'data': <String, dynamic>{'__typename': 'Query'},
+          },
+        ),
+        Health.ok,
+      );
+    });
+
+    test('a refused key is a warning even though it answers 200', () {
+      // The reason this case exists: GraphQL reports auth failures in the
+      // body, so status alone would call a bad key healthy.
+      expect(
+        interpretServiceHealthResponse(
+          ServiceKind.unraid,
+          200,
+          <String, dynamic>{
+            'errors': <dynamic>[
+              <String, dynamic>{'message': 'Unauthorized'},
+            ],
+          },
+        ),
+        Health.warning,
+      );
+    });
+
+    test('a proxy or web page answering 200 is a warning, not online', () {
+      for (final Object? body in <Object?>[
+        '<html>Sign in</html>',
+        <String, dynamic>{'data': <String, dynamic>{}},
+        null,
+      ]) {
+        expect(
+          interpretServiceHealthResponse(ServiceKind.unraid, 200, body),
+          Health.warning,
+          reason: 'body: $body',
+        );
+      }
+    });
+  });
+
   group('Speedtest Tracker authenticated health', () {
     test('recognizable results JSON is online', () {
       expect(

@@ -88,6 +88,10 @@ enum _HealthMode {
       // is the one kind the probe POSTs (see [_probeBody]), and a real
       // `methodResponse` is required for ok.
       return (path: '', mode: _HealthMode.authed);
+    case ServiceKind.unraid:
+      // The only API Unraid exposes is GraphQL on one endpoint, so the probe
+      // POSTs the cheapest query there is rather than fetching a status page.
+      return (path: 'graphql', mode: _HealthMode.authed);
   }
 }
 
@@ -99,8 +103,20 @@ String? _probeBody(ServiceKind kind) => switch (kind) {
       ServiceKind.rtorrent => '<?xml version="1.0"?><methodCall>'
           '<methodName>system.client_version</methodName>'
           '<params></params></methodCall>',
+      // GraphQL has no status route. `__typename` is the smallest legal query
+      // and answers on any schema, so it costs the server nothing.
+      ServiceKind.unraid => '{"query":"{__typename}"}',
       ServiceKind.beszel => null,
       _ => null,
+    };
+
+/// Content type for the probe body.
+///
+/// rTorrent speaks XML-RPC; GraphQL refuses anything that is not JSON, so the
+/// two POST probes cannot share one header.
+String _probeContentType(ServiceKind kind) => switch (kind) {
+      ServiceKind.unraid => Headers.jsonContentType,
+      _ => 'text/xml',
     };
 
 /// Probes the real health of a configured [Instance].
@@ -127,7 +143,8 @@ class HealthProbe {
       final Options options = Options(
         validateStatus: (_) => true,
         receiveTimeout: const Duration(seconds: 8),
-        contentType: body == null ? null : 'text/xml',
+        contentType:
+            body == null ? null : _probeContentType(instance.kind),
         responseType: body == null ? null : ResponseType.plain,
       );
       final Response<dynamic> resp = body == null
@@ -167,6 +184,12 @@ Health interpretServiceHealthResponse(
         if (kind == ServiceKind.speedtestTracker &&
             !_isSpeedtestResultsEnvelope(data)) {
           // The host answered, but not with the authenticated API contract.
+          return Health.warning;
+        }
+        if (kind == ServiceKind.unraid && !'$data'.contains('__typename')) {
+          // GraphQL answers 200 even when it refuses the key, so the status
+          // alone would call a bad key healthy. The echoed __typename is the
+          // proof the query actually ran.
           return Health.warning;
         }
         if (kind == ServiceKind.rtorrent &&

@@ -30,6 +30,7 @@ void main() {
         'beszel',
         'dashdot',
         'lidarr',
+        'unraid',
       ],
     );
   });
@@ -75,6 +76,7 @@ void main() {
     expect(ServiceKind.qbittorrent.isBeta, isFalse);
     // Tracearr graduated out of beta once its rebuild landed.
     expect(ServiceKind.tracearr.isBeta, isFalse);
+    expect(ServiceKind.unraid.isBeta, isTrue);
   });
 
   test('existing services retain their default ports', () {

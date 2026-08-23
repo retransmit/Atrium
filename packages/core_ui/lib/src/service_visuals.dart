@@ -29,6 +29,7 @@ abstract final class ServiceVisuals {
         ServiceKind.beszel => Icons.monitor_heart_outlined,
         ServiceKind.dashdot => Icons.dashboard_outlined,
         ServiceKind.lidarr => Icons.album_outlined,
+        ServiceKind.unraid => Icons.storage_rounded,
       };
 
   static Color accent(ServiceKind kind) => switch (kind) {
@@ -53,6 +54,7 @@ abstract final class ServiceVisuals {
         ServiceKind.beszel => const Color(0xFF607D8B),
         ServiceKind.dashdot => const Color(0xFFE9433B),
         ServiceKind.lidarr => const Color(0xFF00C7A9),
+        ServiceKind.unraid => const Color(0xFFF15A2C),
       };
 
   /// Human label for a [ServiceRole] section header.
