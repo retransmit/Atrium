@@ -683,6 +683,7 @@ void main() {
 
       bool postCalled = false;
       ArtistResource? sentPayload;
+      Map<String, dynamic>? sentJson;
 
       final dio = Dio(BaseOptions(baseUrl: 'http://localhost:8686/'));
       dio.interceptors.add(
@@ -737,6 +738,9 @@ void main() {
             }
             if (options.method == 'POST' && options.path == '/api/v1/artist') {
               postCalled = true;
+              if (options.data is Map) {
+                sentJson = Map<String, dynamic>.from(options.data as Map);
+              }
               sentPayload = options.data is ArtistResource
                   ? options.data as ArtistResource
                   : ArtistResource.fromJson(
@@ -814,6 +818,18 @@ void main() {
       expect(sentPayload!.metadataProfileId, equals(1));
       expect(sentPayload!.tags, contains(10));
       expect(sentPayload!.addOptions?.searchForMissingAlbums, isTrue);
+
+      // Asserted on the raw body rather than the parsed resource. Lidarr
+      // declares its fields as non-nullable value types and refuses a null
+      // outright, failing the whole request before validating anything, so
+      // nothing the app sends may carry one. Round-tripping through
+      // ArtistResource hides that, which is how it went unnoticed.
+      expect(sentJson, isNotNull);
+      expect(
+        _nullPaths(sentJson!),
+        isEmpty,
+        reason: 'Lidarr rejects a null with a JSON conversion error',
+      );
     });
 
     testWidgets('LidarrEditArtistSheet renders and submits updates',
@@ -1260,4 +1276,28 @@ void main() {
       },
     );
   });
+}
+
+/// Every place a null appears in [body], as a dotted path, so a failure names
+/// the offending field instead of just saying the map is wrong.
+List<String> _nullPaths(Object? node, [String path = r'$']) {
+  final List<String> found = <String>[];
+  if (node is Map) {
+    node.forEach((Object? k, Object? v) {
+      if (v == null) {
+        found.add('$path.$k');
+      } else {
+        found.addAll(_nullPaths(v, '$path.$k'));
+      }
+    });
+  } else if (node is List) {
+    for (int i = 0; i < node.length; i++) {
+      if (node[i] == null) {
+        found.add('$path[$i]');
+      } else {
+        found.addAll(_nullPaths(node[i], '$path[$i]'));
+      }
+    }
+  }
+  return found;
 }

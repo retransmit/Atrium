@@ -43,12 +43,10 @@ never reports anything back to its developers. Credentials are held in
 encrypted storage on the device.
 
 Artwork is loaded from your own servers, which cache it, rather than from
-sites like TheTVDB or TMDB. There are two exceptions, and both are worth
-knowing about. Searching for something to add that your servers have never
-seen has nothing cached for it yet, so its poster comes from the artwork site
-directly, which then sees your address. And Tracearr's streaming-location map
-draws its map tiles from CARTO, so opening that map tells CARTO your address
-and roughly which part of the world you are looking at. Everything else goes
-only to the servers you configure.
+sites like TheTVDB or TMDB. There is one exception worth knowing about.
+Searching for something to add that your servers have never seen has nothing
+cached for it yet, so its poster comes from the artwork site directly, which
+then sees your address. Everything else goes only to the servers you
+configure.
 
 Free software under the GPL-3.0-or-later.

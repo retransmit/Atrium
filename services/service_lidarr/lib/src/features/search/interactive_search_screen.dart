@@ -240,6 +240,12 @@ class _LidarrInteractiveSearchScreenState
       final LidarrApi api =
           await ref.read(lidarrApiProvider(widget.instance).future);
       final ReleaseResource payload = release.copyWith(
+        // A search result carries no id of its own, and Lidarr deserialises
+        // this as a non-nullable int before it validates anything, so a null
+        // fails the request outright. That is true of every branch, not just
+        // nightly. LidarrApi strips nulls as well, but this path is explicit
+        // about it because it is the one that always relies on it.
+        id: release.id ?? 0,
         albumId: release.albumId ?? widget.albumId,
         artistId: release.artistId ?? widget.artistId,
       );
@@ -548,18 +554,24 @@ class _LidarrInteractiveSearchScreenState
                 children: [
                   IconButton(
                     icon: const Icon(Icons.close),
+                    visualDensity: VisualDensity.compact,
                     onPressed: () => Navigator.of(ctx).pop(),
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Release Details',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      'Release Details',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   FilledButton.icon(
                     style: FilledButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
                       backgroundColor:
                           isRejected ? cs.errorContainer : cs.primary,
                       foregroundColor:
@@ -569,9 +581,9 @@ class _LidarrInteractiveSearchScreenState
                       isRejected
                           ? Icons.warning_amber_outlined
                           : Icons.download_outlined,
-                      size: 18,
+                      size: 16,
                     ),
-                    label: Text(isRejected ? 'Force Grab' : 'Grab Release'),
+                    label: Text(isRejected ? 'Force Grab' : 'Grab'),
                     onPressed: () {
                       Navigator.of(ctx).pop();
                       _grabRelease(release);

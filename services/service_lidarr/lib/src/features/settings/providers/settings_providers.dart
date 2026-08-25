@@ -328,3 +328,31 @@ final lidarrNotificationSchemaProvider =
     return unwrapLidarrApiResponse(resp, 'Failed to load notification schemas');
   },
 );
+
+/// Configured remote path mappings in Lidarr.
+final lidarrRemotePathMappingsProvider =
+    FutureProvider.autoDispose.family<List<RemotePathMappingResource>, Instance>(
+  (Ref ref, Instance instance) async {
+    final LidarrApi api = await ref.watch(lidarrApiProvider(instance).future);
+    final ApiResponse<List<RemotePathMappingResource>> resp =
+        await api.remotePathMapping.getRemotepathmapping();
+    return unwrapLidarrApiResponse(
+      resp,
+      'Failed to load remote path mappings',
+    );
+  },
+);
+
+/// Configured import list exclusions in Lidarr.
+final lidarrImportListExclusionsProvider =
+    FutureProvider.autoDispose.family<List<ImportListExclusionResource>, Instance>(
+  (Ref ref, Instance instance) async {
+    final LidarrApi api = await ref.watch(lidarrApiProvider(instance).future);
+    final ApiResponse<List<ImportListExclusionResource>> resp =
+        await api.importListExclusion.getImportlistexclusion();
+    return unwrapLidarrApiResponse(
+      resp,
+      'Failed to load import list exclusions',
+    );
+  },
+);

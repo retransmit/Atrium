@@ -116,6 +116,7 @@ class ProfilesSection extends ConsumerWidget {
                       if (upgradeAllowed && cutoffOptions.isNotEmpty) ...[
                         const SizedBox(height: Insets.xs),
                         DropdownButtonFormField<int>(
+                          isExpanded: true,
                           initialValue: cutoffOptions.any(
                             (Map<String, dynamic> o) => o['id'] == cutoffId,
                           )

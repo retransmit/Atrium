@@ -39,6 +39,9 @@ class _BulkTagsDialogState extends ConsumerState<BulkTagsDialog> {
         artistIds: widget.selectedIds.toList(),
         tags: _selectedTagIds.toList(),
         applyTags: _applyMode,
+        moveFiles: false,
+        deleteFiles: false,
+        addImportListExclusion: false,
       );
 
       final ApiResponse<void> resp =

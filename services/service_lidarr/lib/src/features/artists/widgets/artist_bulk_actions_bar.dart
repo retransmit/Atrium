@@ -107,9 +107,10 @@ class ArtistBulkActionsBar extends ConsumerWidget {
             children: [
               TextButton.icon(
                 style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
                   foregroundColor: cs.primary,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 ),
                 onPressed: () {
                   showDialog<void>(
@@ -126,9 +127,10 @@ class ArtistBulkActionsBar extends ConsumerWidget {
               ),
               TextButton.icon(
                 style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
                   foregroundColor: cs.error,
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 ),
                 onPressed: () {
                   showDialog<void>(
@@ -147,9 +149,10 @@ class ArtistBulkActionsBar extends ConsumerWidget {
                 message: 'More bulk actions',
                 child: TextButton.icon(
                   style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
                     foregroundColor: cs.onSurfaceVariant,
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                   ),
                   icon: const Icon(Icons.more_horiz, size: 20),
                   label: const Text('More'),

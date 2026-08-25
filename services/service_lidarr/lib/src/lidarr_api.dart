@@ -2,11 +2,56 @@ import 'package:dio/dio.dart';
 
 import 'generated/generated.dart';
 
+/// Drops null values from outgoing request bodies.
+///
+/// The generated models make every field nullable and serialise all of them,
+/// so anything the app has not filled in goes out as an explicit null. Lidarr
+/// declares those same fields as non-nullable value types, and its
+/// deserialiser refuses a null outright: the request fails with a JSON
+/// conversion error before any validation runs, naming only the first
+/// offender. That is what broke adding an artist (`id`), every provider and
+/// profile (`id`, and nested ids inside quality profile items), and adding a
+/// root folder (`accessible`).
+///
+/// Omitting the key instead lets Lidarr apply its own default, which is what
+/// its API expects from a partial body. Nulls are never meaningful here: a
+/// request carrying one is rejected wholesale, so there is nothing to
+/// preserve by sending them.
+class _StripNullsFix extends Interceptor {
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    // Not filtered by verb: the bulk endpoints send their payload on a DELETE,
+    // and a null is just as fatal there as on a create.
+    options.data = _clean(options.data);
+    handler.next(options);
+  }
+
+  static Object? _clean(Object? node) {
+    if (node is Map) {
+      final Map<String, dynamic> out = <String, dynamic>{};
+      node.forEach((Object? k, Object? v) {
+        if (v != null) out['$k'] = _clean(v);
+      });
+      return out;
+    }
+    if (node is List) {
+      return node.map(_clean).toList();
+    }
+    return node;
+  }
+}
+
 /// Unified instance-scoped API client aggregating all generated Lidarr Raw API endpoints.
 class LidarrApi {
   final Dio dio;
 
-  LidarrApi(this.dio);
+  LidarrApi(this.dio) {
+    // First in the chain so it still applies when a caller (a test, say) has
+    // already installed an interceptor that answers requests itself.
+    if (!dio.interceptors.any((Interceptor i) => i is _StripNullsFix)) {
+      dio.interceptors.insert(0, _StripNullsFix());
+    }
+  }
 
   /// Dispatches a command by name with optional parameter payload (e.g. RefreshArtist, ArtistSearch, AlbumSearch).
   Future<ApiResponse<CommandResource>> executeCommand(

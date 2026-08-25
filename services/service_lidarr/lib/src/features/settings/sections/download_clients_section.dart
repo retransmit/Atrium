@@ -3,6 +3,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/lidarr_formatters.dart';
 import '../../../generated/generated.dart';
 import '../../../lidarr_api.dart';
 import '../../../lidarr_providers.dart';
@@ -93,6 +94,7 @@ class DownloadClientsSection extends ConsumerWidget {
                   final LidarrApi api =
                       await ref.read(lidarrApiProvider(instance).future);
                   final DownloadClientResource payload = client.copyWith(
+                    id: client.id ?? 0,
                     fields: updatedFields.map(Field.fromJson).toList(),
                   );
                   final ApiResponse<void> resp = await api.downloadClient
@@ -110,6 +112,7 @@ class DownloadClientsSection extends ConsumerWidget {
                     final LidarrApi api =
                         await ref.read(lidarrApiProvider(instance).future);
                     final DownloadClientResource payload = client.copyWith(
+                      id: client.id ?? 0,
                       fields: updatedFields.map(Field.fromJson).toList(),
                     );
 
@@ -350,12 +353,212 @@ class DownloadClientsSection extends ConsumerWidget {
     );
   }
 
+  Future<void> _showRemotePathMappingEditorDialog(
+    BuildContext context,
+    WidgetRef ref, {
+    RemotePathMappingResource? mapping,
+  }) async {
+    final bool isNew = mapping == null;
+    final TextEditingController hostController =
+        TextEditingController(text: mapping?.host ?? '');
+    final TextEditingController remotePathController =
+        TextEditingController(text: mapping?.remotePath ?? '');
+    final TextEditingController localPathController =
+        TextEditingController(text: mapping?.localPath ?? '');
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          title: Text(
+            isNew ? 'Add Remote Path Mapping' : 'Edit Remote Path Mapping',
+          ),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  TextFormField(
+                    controller: hostController,
+                    decoration: const InputDecoration(
+                      labelText: 'Host',
+                      hintText: 'e.g. 192.168.1.100 or localhost',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Host is required';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: Insets.sm),
+                  TextFormField(
+                    controller: remotePathController,
+                    decoration: const InputDecoration(
+                      labelText: 'Remote Path',
+                      hintText: 'e.g. /downloads/music/',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Remote path is required';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: Insets.sm),
+                  TextFormField(
+                    controller: localPathController,
+                    decoration: const InputDecoration(
+                      labelText: 'Local Path',
+                      hintText: r'e.g. /mnt/downloads/ or D:\Downloads\',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Local path is required';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                final ScaffoldMessengerState messenger =
+                    ScaffoldMessenger.of(context);
+                try {
+                  final LidarrApi api =
+                      await ref.read(lidarrApiProvider(instance).future);
+                  final RemotePathMappingResource payload =
+                      (mapping ?? const RemotePathMappingResource()).copyWith(
+                    host: hostController.text.trim(),
+                    remotePath: remotePathController.text.trim(),
+                    localPath: localPathController.text.trim(),
+                  );
+
+                  if (isNew) {
+                    final ApiResponse<RemotePathMappingResource> resp =
+                        await api.remotePathMapping.postRemotepathmapping(
+                      body: payload,
+                    );
+                    if (!resp.isSuccess) {
+                      throw Exception(
+                        resp.error?.message ??
+                            'Failed to create remote path mapping',
+                      );
+                    }
+                  } else {
+                    final ApiResponse<RemotePathMappingResource> resp =
+                        await api.remotePathMapping.putRemotepathmappingById(
+                      id: mapping.id!.toString(),
+                      body: payload,
+                    );
+                    if (!resp.isSuccess) {
+                      throw Exception(
+                        resp.error?.message ??
+                            'Failed to update remote path mapping',
+                      );
+                    }
+                  }
+
+                  ref.invalidate(lidarrRemotePathMappingsProvider(instance));
+                  if (ctx.mounted) {
+                    Navigator.pop(ctx);
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          isNew
+                              ? 'Remote path mapping added!'
+                              : 'Remote path mapping updated!',
+                        ),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (ctx.mounted) {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text('Error saving mapping: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteRemotePathMapping(
+    BuildContext context,
+    WidgetRef ref,
+    RemotePathMappingResource mapping,
+  ) async {
+    final int? id = mapping.id;
+    if (id == null) return;
+
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Delete Remote Path Mapping?'),
+        content: Text(
+          'Are you sure you want to delete the mapping for "${mapping.host ?? 'Host'}" (${mapping.remotePath ?? ''} -> ${mapping.localPath ?? ''})?',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !context.mounted) return;
+
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    try {
+      final LidarrApi api = await ref.read(lidarrApiProvider(instance).future);
+      await api.remotePathMapping.deleteRemotepathmappingById(id: id);
+      ref.invalidate(lidarrRemotePathMappingsProvider(instance));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Remote path mapping deleted.')),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Error deleting mapping: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final AsyncValue<List<DownloadClientResource>> asyncClients =
         ref.watch(lidarrDownloadClientsProvider(instance));
+    final AsyncValue<List<RemotePathMappingResource>> asyncMappings =
+        ref.watch(lidarrRemotePathMappingsProvider(instance));
+
     // Warm up schemas and config
     ref.watch(lidarrDownloadClientSchemaProvider(instance));
     ref.watch(lidarrDownloadClientConfigProvider(instance));
@@ -370,72 +573,120 @@ class DownloadClientsSection extends ConsumerWidget {
       body: EasyRefresh(
         onRefresh: () async {
           ref.invalidate(lidarrDownloadClientsProvider(instance));
+          ref.invalidate(lidarrRemotePathMappingsProvider(instance));
           ref.invalidate(lidarrDownloadClientConfigProvider(instance));
         },
-        child: AsyncValueView<List<DownloadClientResource>>(
-          value: asyncClients,
-          data: (List<DownloadClientResource> clients) {
-            return ListView(
-              padding: const EdgeInsets.all(Insets.md),
-              children: <Widget>[
-                // Options Banner
-                Card(
-                  elevation: 0,
-                  color: cs.surfaceContainerLow,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(
-                      color: cs.outlineVariant.withValues(alpha: 0.3),
-                    ),
+        child: ListView(
+          padding: const EdgeInsets.all(Insets.md),
+          children: <Widget>[
+            // Options Banner
+            Card(
+              elevation: 0,
+              color: cs.surfaceContainerLow,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: cs.outlineVariant.withValues(alpha: 0.3),
+                ),
+              ),
+              child: ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: cs.secondaryContainer,
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child: ListTile(
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: cs.secondaryContainer,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        Icons.tune,
-                        color: cs.onSecondaryContainer,
-                        size: 20,
-                      ),
-                    ),
-                    title: const Text(
-                      'Download Client Handling',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: const Text(
-                      'Completed handling, intervals, and redownloads',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                    trailing: const Icon(Icons.chevron_right, size: 20),
-                    onTap: () => _showDownloadClientOptionsDialog(context, ref),
+                  child: Icon(
+                    Icons.tune,
+                    color: cs.onSecondaryContainer,
+                    size: 20,
                   ),
                 ),
-                const SizedBox(height: Insets.md),
-                if (clients.isEmpty)
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 40),
-                      child: EmptyView(
-                        icon: Icons.download_outlined,
-                        title: 'No Download Clients',
-                        message: 'No download clients configured in Lidarr.',
-                        action: FilledButton.icon(
-                          onPressed: () =>
-                              _selectClientPresetAndAdd(context, ref),
-                          icon: const Icon(Icons.add),
-                          label: const Text('Add Client'),
-                        ),
+                title: const Text(
+                  'Download Client Handling',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'Completed handling, intervals, and redownloads',
+                  style: TextStyle(fontSize: 12),
+                ),
+                trailing: const Icon(Icons.chevron_right, size: 20),
+                onTap: () => _showDownloadClientOptionsDialog(context, ref),
+              ),
+            ),
+            const SizedBox(height: Insets.lg),
+
+            // Section 1: Download Clients
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    'Download Clients',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add, size: 20),
+                  onPressed: () => _selectClientPresetAndAdd(context, ref),
+                ),
+              ],
+            ),
+            const SizedBox(height: Insets.xs),
+
+            AsyncValueView<List<DownloadClientResource>>(
+              value: asyncClients,
+              data: (List<DownloadClientResource> clients) {
+                if (clients.isEmpty) {
+                  return Card(
+                    elevation: 0,
+                    color: cs.surfaceContainerLow,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(
+                        color: cs.outlineVariant.withValues(alpha: 0.3),
                       ),
                     ),
-                  )
-                else
-                  ...clients.map((DownloadClientResource client) {
-                    final String protocolStr =
-                        client.protocol?.value.toUpperCase() ?? 'TORRENT';
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 24,
+                        horizontal: 16,
+                      ),
+                      child: Column(
+                        children: <Widget>[
+                          Icon(
+                            Icons.download_outlined,
+                            size: 36,
+                            color: cs.onSurfaceVariant,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'No Download Clients',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'No download clients configured in Lidarr.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                return Column(
+                  children: clients.map((DownloadClientResource client) {
+                    final String protocolStr = LidarrFormatters.formatWireEnum(
+                      client.protocol?.value,
+                    );
                     final bool isEnabled = client.enable ?? true;
 
                     return Padding(
@@ -476,15 +727,35 @@ class DownloadClientsSection extends ConsumerWidget {
                           ),
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 4),
-                            child: Row(
+                            child: Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: <Widget>[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: cs.secondaryContainer,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    protocolStr,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: cs.onSecondaryContainer,
+                                    ),
+                                  ),
+                                ),
                                 Text(
                                   client.implementationName ?? 'Client',
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: cs.onSurfaceVariant,
                                   ),
                                 ),
-                                const SizedBox(width: 6),
                                 Container(
                                   width: 6,
                                   height: 6,
@@ -495,7 +766,6 @@ class DownloadClientsSection extends ConsumerWidget {
                                     shape: BoxShape.circle,
                                   ),
                                 ),
-                                const SizedBox(width: 6),
                                 Text(
                                   isEnabled ? 'Enabled' : 'Disabled',
                                   style: theme.textTheme.bodySmall?.copyWith(
@@ -510,36 +780,11 @@ class DownloadClientsSection extends ConsumerWidget {
                               ],
                             ),
                           ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: cs.secondaryContainer,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  protocolStr,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: cs.onSecondaryContainer,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              IconButton(
-                                icon:
-                                    const Icon(Icons.delete_outline, size: 20),
-                                tooltip: 'Delete Client',
-                                onPressed: () =>
-                                    _deleteClient(context, ref, client),
-                              ),
-                            ],
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 20),
+                            tooltip: 'Delete Client',
+                            onPressed: () =>
+                                _deleteClient(context, ref, client),
                           ),
                           onTap: () => _showClientEditorDialog(
                             context,
@@ -549,12 +794,164 @@ class DownloadClientsSection extends ConsumerWidget {
                         ),
                       ),
                     );
-                  }),
+                  }).toList(),
+                );
+              },
+            ),
+
+            const SizedBox(height: Insets.lg),
+
+            // Section 2: Remote Path Mappings
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    'Remote Path Mappings',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add, size: 20),
+                  tooltip: 'Add Remote Path Mapping',
+                  onPressed: () =>
+                      _showRemotePathMappingEditorDialog(context, ref),
+                ),
               ],
-            );
-          },
+            ),
+            const SizedBox(height: Insets.xs),
+
+            AsyncValueView<List<RemotePathMappingResource>>(
+              value: asyncMappings,
+              data: (List<RemotePathMappingResource> mappings) {
+                if (mappings.isEmpty) {
+                  return Card(
+                    elevation: 0,
+                    color: cs.surfaceContainerLow,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(
+                        color: cs.outlineVariant.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 24,
+                        horizontal: 16,
+                      ),
+                      child: Column(
+                        children: <Widget>[
+                          Icon(
+                            Icons.folder_shared_outlined,
+                            size: 36,
+                            color: cs.onSurfaceVariant,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'No Remote Path Mappings',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Map remote download client directories to local Lidarr paths.',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                return Column(
+                  children: mappings.map((RemotePathMappingResource mapping) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Card(
+                        elevation: 0,
+                        color: cs.surfaceContainerLow,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(
+                            color: cs.outlineVariant.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          leading: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: cs.tertiaryContainer,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.folder_shared_outlined,
+                              color: cs.onTertiaryContainer,
+                              size: 22,
+                            ),
+                          ),
+                          title: Text(
+                            mapping.host ?? 'Host',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                          ),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  'Remote: ${mapping.remotePath ?? ''}',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                ),
+                                Text(
+                                  'Local: ${mapping.localPath ?? ''}',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 20),
+                            tooltip: 'Delete Mapping',
+                            onPressed: () => _deleteRemotePathMapping(
+                              context,
+                              ref,
+                              mapping,
+                            ),
+                          ),
+                          onTap: () => _showRemotePathMappingEditorDialog(
+                            context,
+                            ref,
+                            mapping: mapping,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+          ],
         ),
       ),
     );
   }
 }
+

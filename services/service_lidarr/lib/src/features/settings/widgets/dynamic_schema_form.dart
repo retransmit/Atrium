@@ -205,8 +205,10 @@ class _DynamicSchemaFormState extends State<DynamicSchemaForm> {
             ),
             const SizedBox(height: Insets.md),
           ],
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+          OverflowBar(
+            alignment: MainAxisAlignment.end,
+            spacing: Insets.xs,
+            overflowSpacing: Insets.xs,
             children: [
               if (widget.onTest != null) ...[
                 if (_testing)
@@ -221,17 +223,15 @@ class _DynamicSchemaFormState extends State<DynamicSchemaForm> {
                 else
                   TextButton.icon(
                     onPressed: _testConnection,
-                    icon: const Icon(Icons.playlist_add_check),
+                    icon: const Icon(Icons.playlist_add_check, size: 18),
                     label: const Text('Test'),
                   ),
-                const Spacer(),
               ],
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Cancel'),
               ),
-              const SizedBox(width: Insets.sm),
-              ElevatedButton(
+              FilledButton(
                 onPressed: _submit,
                 child: const Text('Save'),
               ),

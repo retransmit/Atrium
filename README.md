@@ -8,7 +8,7 @@ whether you're on the home Wi-Fi or out in the world.
 
 **[Website][site]** - screenshots and a tour, no install needed.
 
-> **Status:** v1.5.0. Install from [F-Droid][fdroid], or grab a signed APK
+> **Status:** v1.5.1. Install from [F-Droid][fdroid], or grab a signed APK
 > from the [releases page][releases].
 
 ## Why

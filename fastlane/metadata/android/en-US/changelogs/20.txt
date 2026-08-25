@@ -1,0 +1,12 @@
+Adding things in Lidarr works again. Adding an artist, indexer, download client,
+import list, notification, tag, root folder, custom format or any of the
+profiles was refused by the server, as was grabbing a release from an
+interactive search.
+
+Interactive search no longer fails on Lidarr nightly and on builds with plugins
+installed. Those versions name their download protocols differently, and one
+name Atrium did not recognise discarded the whole list of results.
+
+Lidarr screens no longer run off the edge at large system text sizes, and
+activity history keeps loading as you scroll instead of stopping at the first
+page.

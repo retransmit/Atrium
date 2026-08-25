@@ -330,83 +330,70 @@ class _LidarrAddArtistSearchScreenState
                                           ],
                                         ),
                                         const SizedBox(height: Insets.sm),
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
+                                        Wrap(
+                                          spacing: 6,
+                                          runSpacing: 6,
+                                          crossAxisAlignment:
+                                              WrapCrossAlignment.center,
+                                          alignment: WrapAlignment.spaceBetween,
                                           children: [
-                                            Wrap(
-                                              spacing: 6,
-                                              runSpacing: 4,
-                                              crossAxisAlignment:
-                                                  WrapCrossAlignment.center,
-                                              children: [
-                                                if (artist.artistType != null &&
-                                                    artist
-                                                        .artistType!.isNotEmpty)
-                                                  Container(
-                                                    padding: const EdgeInsets
-                                                        .symmetric(
-                                                      horizontal: 7,
-                                                      vertical: 2,
-                                                    ),
-                                                    decoration: BoxDecoration(
-                                                      color: cs
-                                                          .surfaceContainerHighest,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                        6,
-                                                      ),
-                                                    ),
-                                                    child: Text(
-                                                      artist.artistType!,
-                                                      style: theme
-                                                          .textTheme.bodySmall
-                                                          ?.copyWith(
-                                                        color:
-                                                            cs.onSurfaceVariant,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        fontSize: 10.5,
-                                                      ),
-                                                    ),
+                                            if (artist.artistType != null &&
+                                                artist.artistType!.isNotEmpty)
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 7,
+                                                  vertical: 2,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: cs
+                                                      .surfaceContainerHighest,
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  artist.artistType!,
+                                                  style: theme
+                                                      .textTheme.bodySmall
+                                                      ?.copyWith(
+                                                    color: cs.onSurfaceVariant,
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 10.5,
                                                   ),
-                                                // Status Chip
-                                                if (artist.status != null)
-                                                  Container(
-                                                    padding: const EdgeInsets
-                                                        .symmetric(
-                                                      horizontal: 7,
-                                                      vertical: 2,
-                                                    ),
-                                                    decoration: BoxDecoration(
-                                                      color: _statusColor(
-                                                        artist.status!.value,
-                                                        theme,
-                                                      ).withValues(alpha: 0.15),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                        6,
-                                                      ),
-                                                    ),
-                                                    child: Text(
-                                                      _capitalise(
-                                                        artist.status!.value,
-                                                      ),
-                                                      style: theme
-                                                          .textTheme.bodySmall
-                                                          ?.copyWith(
-                                                        color: _statusColor(
-                                                          artist.status!.value,
-                                                          theme,
-                                                        ),
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        fontSize: 10.5,
-                                                      ),
-                                                    ),
+                                                ),
+                                              ),
+                                            // Status Chip
+                                            if (artist.status != null)
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 7,
+                                                  vertical: 2,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: _statusColor(
+                                                    artist.status!.value,
+                                                    theme,
+                                                  ).withValues(alpha: 0.15),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  _capitalise(
+                                                    artist.status!.value,
                                                   ),
-                                              ],
-                                            ),
+                                                  style: theme
+                                                      .textTheme.bodySmall
+                                                      ?.copyWith(
+                                                    color: _statusColor(
+                                                      artist.status!.value,
+                                                      theme,
+                                                    ),
+                                                    fontWeight: FontWeight.w600,
+                                                    fontSize: 10.5,
+                                                  ),
+                                                ),
+                                              ),
                                             // Added / Not Added indicator
                                             if (isAdded)
                                               Container(

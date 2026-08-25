@@ -650,11 +650,11 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('1 / 2 selected'), findsOneWidget);
-        expect(find.text('Edit Quality'), findsOneWidget);
-        expect(find.text('Delete'), findsOneWidget);
+        expect(find.byTooltip('Edit Quality'), findsOneWidget);
+        expect(find.byTooltip('Delete Selected'), findsOneWidget);
 
         // Bulk edit quality
-        await tester.tap(find.text('Edit Quality'));
+        await tester.tap(find.byTooltip('Edit Quality'));
         await tester.pumpAndSettle();
 
         expect(find.text('Edit 1 Track Files'), findsOneWidget);
@@ -668,7 +668,7 @@ void main() {
         await tester.tap(find.text('01 Burn the Witch.flac'));
         await tester.pumpAndSettle();
 
-        await tester.tap(find.text('Delete'));
+        await tester.tap(find.byTooltip('Delete Selected'));
         await tester.pumpAndSettle();
 
         expect(find.text('Delete 1 Audio Files?'), findsOneWidget);

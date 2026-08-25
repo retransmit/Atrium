@@ -1,4 +1,5 @@
 import 'package:core_models/core_models.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,17 +8,123 @@ import '../../../generated/generated.dart';
 import '../../../lidarr_api.dart';
 import '../../../lidarr_providers.dart';
 
-/// Activity history view with event filtering, chronological grouping, and deep event details inspection.
+/// Activity history view with event filtering, chronological grouping, deep event details inspection, and infinite scroll pagination.
 class HistoryView extends ConsumerStatefulWidget {
   const HistoryView({required this.instance, super.key});
 
   final Instance instance;
 
   @override
-  ConsumerState<HistoryView> createState() => _HistoryViewState();
+  ConsumerState<HistoryView> createState() => HistoryViewState();
 }
 
-class _HistoryViewState extends ConsumerState<HistoryView> {
+class HistoryViewState extends ConsumerState<HistoryView>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  List<HistoryResource> _history = <HistoryResource>[];
+  int _currentPage = 1;
+  static const int _pageSize = 50;
+  bool _hasMore = true;
+  bool _loading = false;
+  Object? _error;
+
+  /// Programmatic initial load / refresh.
+  Future<void> loadInitial() => _loadInitial();
+
+  /// Programmatic pagination load more.
+  Future<void> loadMore() => _loadMore();
+
+  /// Total records currently loaded in memory.
+  int get totalLoaded => _history.length;
+
+  /// Current pagination page.
+  int get currentPage => _currentPage;
+
+  /// Whether additional pages can be fetched.
+  bool get hasMore => _hasMore;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitial();
+    });
+  }
+
+  Future<void> _loadInitial() async {
+    if (!mounted) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+      _currentPage = 1;
+    });
+
+    try {
+      final HistoryResourcePagingResource data = await ref.refresh(
+        lidarrHistoryPagedProvider(
+          (
+            widget.instance,
+            page: 1,
+            pageSize: _pageSize,
+            eventType: null,
+          ),
+        ).future,
+      );
+
+      final List<HistoryResource> records =
+          data.records ?? <HistoryResource>[];
+      final int totalRecords = data.totalRecords ?? 0;
+
+      if (mounted) {
+        setState(() {
+          _history = List<HistoryResource>.from(records);
+          _hasMore = _history.length < totalRecords;
+          _loading = false;
+        });
+      }
+    } catch (err) {
+      if (mounted) {
+        setState(() {
+          _error = err;
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (!_hasMore || _loading) return;
+    try {
+      final int nextPage = _currentPage + 1;
+      final HistoryResourcePagingResource data = await ref.read(
+        lidarrHistoryPagedProvider(
+          (
+            widget.instance,
+            page: nextPage,
+            pageSize: _pageSize,
+            eventType: null,
+          ),
+        ).future,
+      );
+
+      final List<HistoryResource> records =
+          data.records ?? <HistoryResource>[];
+      final int totalRecords = data.totalRecords ?? 0;
+
+      if (mounted) {
+        setState(() {
+          _history = <HistoryResource>[..._history, ...records];
+          _currentPage = nextPage;
+          _hasMore = _history.length < totalRecords;
+        });
+      }
+    } catch (e) {
+      // Soft fail on pagination
+    }
+  }
+
   IconData _getEventIcon(EntityHistoryEventType? eventType) {
     switch (eventType) {
       case EntityHistoryEventType.grabbed:
@@ -96,7 +203,7 @@ class _HistoryViewState extends ConsumerState<HistoryView> {
         throw Exception(resp.error?.message ?? 'Failed to mark as failed');
       }
 
-      ref.invalidate(lidarrHistoryProvider(widget.instance));
+      await _loadInitial();
       ref.invalidate(lidarrQueueProvider(widget.instance));
       ref.invalidate(lidarrBlocklistProvider(widget.instance));
 
@@ -352,10 +459,9 @@ class _HistoryViewState extends ConsumerState<HistoryView> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
-    final AsyncValue<List<HistoryResource>> asyncHistory =
-        ref.watch(lidarrHistoryProvider(widget.instance));
     final String filterQuery =
         ref.watch(lidarrActivitySearchQueryProvider(widget.instance));
     final bool grouped =
@@ -363,38 +469,68 @@ class _HistoryViewState extends ConsumerState<HistoryView> {
     final EntityHistoryEventType? activeFilter =
         ref.watch(lidarrHistoryEventTypeFilterProvider(widget.instance));
 
-    return asyncHistory.when(
-      data: (List<HistoryResource> rawHistory) {
-        List<HistoryResource> history = rawHistory;
+    if (_loading && _history.isEmpty) {
+      return const Center(child: ExpressiveProgressIndicator());
+    }
 
-        // Filter by event type
-        if (activeFilter != null) {
-          history = history.where((HistoryResource item) {
-            if (activeFilter == EntityHistoryEventType.downloadImported) {
-              return item.eventType ==
-                      EntityHistoryEventType.downloadImported ||
-                  item.eventType == EntityHistoryEventType.trackFileImported ||
-                  item.eventType == EntityHistoryEventType.artistFolderImported;
-            }
-            return item.eventType == activeFilter;
-          }).toList();
+    if (_error != null && _history.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Icon(Icons.error_outline, size: 48, color: cs.error),
+            const SizedBox(height: 12),
+            Text(
+              'Failed to load history',
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: cs.error,
+              ),
+            ),
+            const SizedBox(height: 8),
+            FilledButton.tonal(
+              onPressed: _loadInitial,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    List<HistoryResource> history = _history;
+
+    // Filter by event type
+    if (activeFilter != null) {
+      history = history.where((HistoryResource item) {
+        if (activeFilter == EntityHistoryEventType.downloadImported) {
+          return item.eventType ==
+                  EntityHistoryEventType.downloadImported ||
+              item.eventType == EntityHistoryEventType.trackFileImported ||
+              item.eventType == EntityHistoryEventType.artistFolderImported;
         }
+        return item.eventType == activeFilter;
+      }).toList();
+    }
 
-        // Filter by query
-        if (filterQuery.trim().isNotEmpty) {
-          final String q = filterQuery.trim().toLowerCase();
-          history = history.where((HistoryResource item) {
-            final String sourceTitle = (item.sourceTitle ?? '').toLowerCase();
-            final String artist = (item.artist?.artistName ?? '').toLowerCase();
-            final String album = (item.album?.title ?? '').toLowerCase();
-            return sourceTitle.contains(q) ||
-                artist.contains(q) ||
-                album.contains(q);
-          }).toList();
-        }
+    // Filter by query
+    if (filterQuery.trim().isNotEmpty) {
+      final String q = filterQuery.trim().toLowerCase();
+      history = history.where((HistoryResource item) {
+        final String sourceTitle = (item.sourceTitle ?? '').toLowerCase();
+        final String artist = (item.artist?.artistName ?? '').toLowerCase();
+        final String album = (item.album?.title ?? '').toLowerCase();
+        return sourceTitle.contains(q) ||
+            artist.contains(q) ||
+            album.contains(q);
+      }).toList();
+    }
 
-        if (history.isEmpty) {
-          return Center(
+    Widget content;
+    if (history.isEmpty) {
+      content = ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: <Widget>[
+          const SizedBox(height: 100),
+          Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
@@ -416,79 +552,61 @@ class _HistoryViewState extends ConsumerState<HistoryView> {
                 ),
               ],
             ),
-          );
-        }
+          ),
+        ],
+      );
+    } else if (!grouped) {
+      content = ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        itemCount: history.length,
+        itemBuilder: (BuildContext context, int index) {
+          final HistoryResource item = history[index];
+          return _buildHistoryCard(item, theme, cs);
+        },
+      );
+    } else {
+      // Chronological section grouping
+      final Map<String, List<HistoryResource>> sections =
+          <String, List<HistoryResource>>{};
+      for (final item in history) {
+        final String sec = _getDateSection(item.date);
+        sections.putIfAbsent(sec, () => <HistoryResource>[]).add(item);
+      }
 
-        if (!grouped) {
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: history.length,
-            itemBuilder: (BuildContext context, int index) {
-              final HistoryResource item = history[index];
-              return _buildHistoryCard(item, theme, cs);
-            },
-          );
-        }
+      final List<String> sectionKeys = sections.keys.toList();
 
-        // Chronological section grouping
-        final Map<String, List<HistoryResource>> sections =
-            <String, List<HistoryResource>>{};
-        for (final item in history) {
-          final String sec = _getDateSection(item.date);
-          sections.putIfAbsent(sec, () => <HistoryResource>[]).add(item);
-        }
+      content = ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        itemCount: sectionKeys.length,
+        itemBuilder: (BuildContext context, int sIdx) {
+          final String sectionTitle = sectionKeys[sIdx];
+          final List<HistoryResource> sectionItems = sections[sectionTitle]!;
 
-        final List<String> sectionKeys = sections.keys.toList();
-
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          itemCount: sectionKeys.length,
-          itemBuilder: (BuildContext context, int sIdx) {
-            final String sectionTitle = sectionKeys[sIdx];
-            final List<HistoryResource> sectionItems = sections[sectionTitle]!;
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-                  child: Text(
-                    sectionTitle,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: cs.primary,
-                    ),
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+                child: Text(
+                  sectionTitle,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: cs.primary,
                   ),
                 ),
-                for (final item in sectionItems)
-                  _buildHistoryCard(item, theme, cs),
-              ],
-            );
-          },
-        );
-      },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (Object error, StackTrace stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Icon(Icons.error_outline, size: 48, color: cs.error),
-            const SizedBox(height: 12),
-            Text(
-              'Failed to load history',
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: cs.error,
               ),
-            ),
-            const SizedBox(height: 8),
-            FilledButton.tonal(
-              onPressed: () =>
-                  ref.invalidate(lidarrHistoryProvider(widget.instance)),
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      ),
+              for (final item in sectionItems)
+                _buildHistoryCard(item, theme, cs),
+            ],
+          );
+        },
+      );
+    }
+
+    return EasyRefresh(
+      onRefresh: _loadInitial,
+      onLoad: _hasMore ? _loadMore : null,
+      child: content,
     );
   }
 

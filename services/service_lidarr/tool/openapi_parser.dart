@@ -27,6 +27,14 @@ class LidarrOpenApiParser {
   final String outputDir;
 
   final Map<String, String> schemaClassNames = {};
+
+  /// Enum class name -> the variant to fall back to when the server sends a
+  /// value this spec has never heard of. See [_collectEnumFallbacks].
+  final Map<String, String> enumFallbacks = {};
+
+  /// Enum class name -> the raw JSON values it declares, for string enums.
+  /// Used to recognise the same value under a different spelling.
+  final Map<String, List<String>> enumValues = {};
   final Map<String, dynamic> schemas = {};
   final Map<String, List<Map<String, dynamic>>> tagEndpoints = {};
   final Set<String> _writtenFilePaths = {};
@@ -428,9 +436,97 @@ class LidarrException implements Exception {
 ''';
     _writeFileIfChanged(
         '$outputDir/responses/lidarr_exception.dart', exceptionContent);
+
+    const normalizerContent = r'''
+/// Accepts either spelling Lidarr uses for an enum value.
+///
+/// Older builds serialise these in short form (`torrent`), while newer
+/// branches send the full C# member name (`TorrentDownloadProtocol`). The
+/// difference is systematic rather than per-plugin, so rather than teach every
+/// call site about it, the raw value is reconciled here before decoding.
+///
+/// Returns the declared spelling when it can recognise the value, and the
+/// original otherwise, leaving the generated `unknownEnumValue` to catch
+/// anything genuinely new such as a protocol a plugin has introduced.
+Object? normalizeLidarrEnum(
+  Object? raw,
+  String enumName,
+  List<String> allowed,
+) {
+  if (raw is! String) return raw;
+  if (allowed.contains(raw)) return raw;
+
+  var candidate = raw;
+  final lowerName = enumName.toLowerCase();
+  if (candidate.length > enumName.length &&
+      candidate.toLowerCase().endsWith(lowerName)) {
+    candidate = candidate.substring(0, candidate.length - enumName.length);
+  }
+
+  for (final value in allowed) {
+    if (value.toLowerCase() == candidate.toLowerCase()) return value;
+  }
+  return raw;
+}
+''';
+    _writeFileIfChanged(
+        '$outputDir/responses/enum_normalizer.dart', normalizerContent);
+  }
+
+  /// The identifiers [_buildEnumCode] will emit, in order, for one enum.
+  ///
+  /// Kept deliberately in step with that method: a fallback has to name a
+  /// variant that actually exists, collision suffix and all.
+  List<String> _enumIdentifiers(List<dynamic> enumList) {
+    final used = <String>{};
+    final out = <String>[];
+    for (final item in enumList) {
+      var identifier =
+          item is int ? 'val$item' : _toCamelCase(item.toString());
+      while (used.contains(identifier)) {
+        identifier = '${identifier}Alt';
+      }
+      used.add(identifier);
+      out.add(identifier);
+    }
+    return out;
+  }
+
+  /// Picks a landing spot for enum values this spec does not list.
+  ///
+  /// Lidarr's plugin builds introduce protocols and statuses no released spec
+  /// mentions, and json_serializable throws on a value it cannot map, which
+  /// loses the entire response rather than one field. Falling back keeps the
+  /// rest of the payload usable. An `unknown` variant is the natural home
+  /// where the enum has one; otherwise the first value is taken, since the
+  /// alternative is an exception.
+  void _collectEnumFallbacks() {
+    for (final entry in schemas.entries) {
+      final schema = (entry.value as Map).cast<String, dynamic>();
+      if (!schema.containsKey('enum')) continue;
+      final className = schemaClassNames[entry.key];
+      if (className == null) continue;
+      final enumList = schema['enum'] as List<dynamic>;
+      if (enumList.isEmpty) continue;
+
+      final identifiers = _enumIdentifiers(enumList);
+      var chosen = identifiers.first;
+      for (var i = 0; i < enumList.length; i++) {
+        final item = enumList[i];
+        if (item is! int && item.toString().toLowerCase() == 'unknown') {
+          chosen = identifiers[i];
+          break;
+        }
+      }
+      enumFallbacks[className] = chosen;
+      if (enumList.every((e) => e is! int)) {
+        enumValues[className] = enumList.map((e) => e.toString()).toList();
+      }
+    }
   }
 
   void _generateModelFiles() {
+    _collectEnumFallbacks();
     for (final entry in schemas.entries) {
       final fullKey = entry.key;
       final schema = (entry.value as Map).cast<String, dynamic>();
@@ -494,6 +590,7 @@ class LidarrException implements Exception {
     final imports = <String>{};
     final fields = <_ModelField>[];
     final usedFieldNames = <String>{};
+    final enumReadersNeeded = <String>{};
 
     for (final propEntry in properties.entries) {
       final propKey = propEntry.key;
@@ -538,6 +635,7 @@ class LidarrException implements Exception {
     buffer.writeln("// ignore_for_file: unused_import");
     buffer.writeln(
         "import 'package:freezed_annotation/freezed_annotation.dart';");
+    buffer.writeln("import '../responses/enum_normalizer.dart';");
     for (final imp in imports) {
       if (imp != className) {
         final impFileName = _toSnakeCase(imp);
@@ -592,8 +690,28 @@ class LidarrException implements Exception {
             ? (f.dartType.endsWith('?') ? f.dartType : '${f.dartType}?')
             : f.dartType;
         final prefix = f.isNullable ? '' : 'required ';
+        // Give an enum field somewhere to land when the server sends a value
+        // this spec does not list, rather than throwing and losing the whole
+        // response. Covers `List<Enum>` too, where it applies per element.
+        final baseType = typeStr
+            .replaceAll('?', '')
+            .replaceFirst('List<', '')
+            .replaceFirst('>', '');
+        final fallback = enumFallbacks[baseType];
+        final args = <String>["name: '${f.jsonKey}'"];
+        if (fallback != null) {
+          // Lidarr's newer branches serialise an enum by its C# member name
+          // (`TorrentDownloadProtocol`) where older ones sent the short form
+          // (`torrent`), so the raw value is normalised before decoding and
+          // anything still unrecognised lands on the fallback.
+          if (enumValues.containsKey(baseType)) {
+            enumReadersNeeded.add(baseType);
+            args.add('readValue: _read$baseType');
+          }
+          args.add('unknownEnumValue: $baseType.$fallback');
+        }
         buffer.writeln(
-            "    @JsonKey(name: '${f.jsonKey}') $prefix$typeStr ${f.fieldName},");
+            "    @JsonKey(${args.join(', ')}) $prefix$typeStr ${f.fieldName},");
       }
       buffer.writeln('  }) = _$className;');
     }
@@ -602,6 +720,21 @@ class LidarrException implements Exception {
         .writeln('  factory $className.fromJson(Map<String, dynamic> json) =>');
     buffer.writeln('      _\$${className}FromJson(json);');
     buffer.writeln('}');
+
+    for (final enumName in enumReadersNeeded) {
+      final allowed =
+          enumValues[enumName]!.map((v) => "'${v.replaceAll("'", r"'")}'").join(', ');
+      buffer.writeln();
+      buffer.writeln('/// Reads `\$key` allowing for either spelling of a');
+      buffer.writeln('/// [$enumName] value. See `normalizeLidarrEnum`.');
+      buffer.writeln(
+          'Object? _read$enumName(Map<dynamic, dynamic> json, String key) =>');
+      buffer.writeln('    normalizeLidarrEnum(');
+      buffer.writeln("      json[key],");
+      buffer.writeln("      '$enumName',");
+      buffer.writeln('      const <String>[$allowed],');
+      buffer.writeln('    );');
+    }
 
     return buffer.toString();
   }
@@ -1136,6 +1269,7 @@ class LidarrException implements Exception {
     buffer.writeln("export 'responses/api_response.dart';");
     buffer.writeln("export 'responses/lidarr_error.dart';");
     buffer.writeln("export 'responses/lidarr_exception.dart';");
+    buffer.writeln("export 'responses/enum_normalizer.dart';");
 
     for (final entry in schemas.entries) {
       final className = schemaClassNames[entry.key]!;

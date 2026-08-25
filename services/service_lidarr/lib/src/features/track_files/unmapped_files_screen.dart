@@ -302,6 +302,8 @@ class _LidarrUnmappedFilesScreenState
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             asyncUnmapped.maybeWhen(
               data: (files) => Text(
@@ -319,11 +321,21 @@ class _LidarrUnmappedFilesScreenState
             icon: const Icon(Icons.drive_folder_upload_outlined),
             tooltip: 'Manual Import All',
             onPressed: () {
+              final files = asyncUnmapped.value ?? <TrackFileResource>[];
+              String? folder;
+              if (files.isNotEmpty && files.first.path != null) {
+                final String p = files.first.path!;
+                final int idx = p.lastIndexOf(RegExp(r'[\\/]'));
+                if (idx != -1) {
+                  folder = p.substring(0, idx);
+                }
+              }
               showLidarrManualImportFlow(
                 context,
                 ref,
                 widget.instance,
                 artistId: widget.artistId,
+                initialFolder: folder,
               );
             },
           ),
@@ -406,9 +418,10 @@ class _LidarrUnmappedFilesScreenState
                       const SizedBox(width: 8),
                       TextButton.icon(
                         style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
+                            horizontal: 8,
+                            vertical: 6,
                           ),
                         ),
                         icon: Icon(
@@ -725,9 +738,12 @@ class _LidarrUnmappedFilesScreenState
                                       const SizedBox(height: 8),
 
                                       // Actions Row
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.end,
+                                      Wrap(
+                                        alignment: WrapAlignment.end,
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
+                                        spacing: 8,
+                                        runSpacing: 4,
                                         children: [
                                           OutlinedButton.icon(
                                             style: OutlinedButton.styleFrom(
@@ -754,7 +770,6 @@ class _LidarrUnmappedFilesScreenState
                                               );
                                             },
                                           ),
-                                          const SizedBox(width: 8),
                                           IconButton(
                                             icon: const Icon(
                                               Icons.delete_outline,
@@ -796,7 +811,11 @@ class _LidarrUnmappedFilesScreenState
               ),
             ),
             child: SafeArea(
-              child: Row(
+              child: Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 6,
                 children: [
                   Text(
                     '${_selectedIds.length} selected',
@@ -805,45 +824,71 @@ class _LidarrUnmappedFilesScreenState
                       color: cs.primary,
                     ),
                   ),
-                  const Spacer(),
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    icon: const Icon(Icons.download, size: 16),
-                    label: const Text('Import All'),
-                    onPressed: () {
-                      showLidarrManualImportFlow(
-                        context,
-                        ref,
-                        widget.instance,
-                        artistId: widget.artistId,
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: cs.error,
-                      foregroundColor: cs.onError,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    icon: _isProcessing
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(
-                            Icons.delete_outline,
-                            size: 16,
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
                           ),
-                    label: Text('Delete (${_selectedIds.length})'),
-                    onPressed:
-                        _isProcessing ? null : () => _bulkDeleteFiles(files),
+                        ),
+                        icon: const Icon(Icons.download, size: 16),
+                        label: const Text('Import'),
+                        onPressed: () {
+                          final TrackFileResource? sel = files
+                              .where((f) => _selectedIds.contains(f.id))
+                              .firstOrNull;
+                          String? folder;
+                          if (sel?.path != null) {
+                            final String p = sel!.path!;
+                            final int idx = p.lastIndexOf(RegExp(r'[\\/]'));
+                            if (idx != -1) {
+                              folder = p.substring(0, idx);
+                            }
+                          }
+                          showLidarrManualImportFlow(
+                            context,
+                            ref,
+                            widget.instance,
+                            artistId: widget.artistId,
+                            initialFolder: folder,
+                          );
+                        },
+                      ),
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: cs.error,
+                          foregroundColor: cs.onError,
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                        ),
+                        icon: _isProcessing
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.delete_outline,
+                                size: 16,
+                              ),
+                        label: Text('Delete (${_selectedIds.length})'),
+                        onPressed: _isProcessing
+                            ? null
+                            : () => _bulkDeleteFiles(files),
+                      ),
+                    ],
                   ),
                 ],
               ),
