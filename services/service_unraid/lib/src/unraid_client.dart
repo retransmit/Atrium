@@ -3,6 +3,11 @@ import 'package:dio/dio.dart';
 
 import 'models/unraid_models.dart';
 
+/// The disk fields Atrium reads, shared by the three lists the array splits
+/// its disks across so none of them drifts out of step with the others.
+const String _diskFields = 'idx name device type size status temp fsType '
+    'isSpinning warning critical numErrors fsSize fsFree fsUsed';
+
 /// Client for Unraid's GraphQL API.
 ///
 /// Unraid is the only service Atrium talks to over GraphQL: one endpoint,
@@ -10,10 +15,9 @@ import 'models/unraid_models.dart';
 /// header, which the shared [AuthInterceptor] already sends for the api-key
 /// style, so nothing extra is needed here.
 ///
-/// The queries below were written against real responses from a live 7.x
-/// server. The published docs describe a flatter schema, with containers at
-/// the top level rather than under `docker`, which does not match what is
-/// served.
+/// The queries below were written against a live 7.3 server. The published
+/// docs describe a flatter schema, with one list of disks and containers at
+/// the top level, which does not match what is served.
 class UnraidClient {
   UnraidClient(this._dio);
 
@@ -27,11 +31,17 @@ class UnraidClient {
   /// in an `errors` array instead of the status line. Treating that as success
   /// is the classic way to end up rendering an empty screen and calling it
   /// healthy, so an errors array is raised here rather than passed on.
-  Future<Map<String, dynamic>> _query(String query) async {
+  Future<Map<String, dynamic>> _query(
+    String query, {
+    Map<String, dynamic>? variables,
+  }) async {
     try {
       final Response<dynamic> resp = await _dio.post<dynamic>(
         _endpoint,
-        data: <String, dynamic>{'query': query},
+        data: <String, dynamic>{
+          'query': query,
+          if (variables != null) 'variables': variables,
+        },
         options: Options(contentType: Headers.jsonContentType),
       );
 
@@ -45,11 +55,7 @@ class UnraidClient {
 
       final dynamic errors = body['errors'];
       if (errors is List && errors.isNotEmpty) {
-        final dynamic first = errors.first;
-        final String message = first is Map<String, dynamic>
-            ? (first['message']?.toString() ?? 'Unknown GraphQL error')
-            : first.toString();
-        throw NetworkUnknownException(message);
+        throw NetworkUnknownException(_describe(errors.first));
       }
 
       final dynamic data = body['data'];
@@ -64,10 +70,44 @@ class UnraidClient {
     }
   }
 
-  /// Array state and its disks.
+  /// Turns one GraphQL error into something worth showing.
+  ///
+  /// An API key without the right role gets `Forbidden resource`, which tells
+  /// nobody what to do about it. Unraid keys carry per-resource permissions
+  /// and a read-only key is a perfectly ordinary setup, so that case is named
+  /// rather than passed through.
+  static String _describe(Object? error) {
+    if (error is! Map<String, dynamic>) {
+      return error?.toString() ?? 'Unknown GraphQL error';
+    }
+    final String message =
+        error['message']?.toString() ?? 'Unknown GraphQL error';
+    final dynamic extensions = error['extensions'];
+    final Object? code = extensions is Map<String, dynamic>
+        ? extensions['code']
+        : null;
+    if (code == 'FORBIDDEN') {
+      return 'This API key does not carry permission for that. Unraid keys '
+          'are scoped per resource, so a key that can read the array may '
+          'still be refused when changing anything.';
+    }
+    return message;
+  }
+
+  /// Array state, its disks, and how the last parity check went.
+  ///
+  /// The three disk lists are asked for separately because that is how the
+  /// server keeps them: `disks` holds only the data disks, so a query for it
+  /// alone silently loses every parity and cache disk.
   Future<UnraidArray> getArray() async {
     final Map<String, dynamic> data = await _query(
-      '{ array { state disks { name size status temp } } }',
+      '{ array { state '
+      'capacity { kilobytes { free used total } } '
+      'parityCheckStatus { status progress errors date duration correcting '
+      'running paused } '
+      'parities { $_diskFields } '
+      'disks { $_diskFields } '
+      'caches { $_diskFields } } }',
     );
     final dynamic array = data['array'];
     if (array is! Map<String, dynamic>) {
@@ -82,7 +122,9 @@ class UnraidClient {
   /// Every Docker container the server knows about, running or not.
   Future<List<UnraidContainer>> getContainers() async {
     final Map<String, dynamic> data = await _query(
-      '{ docker { containers { id names state status autoStart } } }',
+      '{ docker { containers { id names image state status autoStart '
+      'isOrphaned isUpdateAvailable iconUrl webUiUrl '
+      'ports { privatePort publicPort type } } } }',
     );
     final dynamic docker = data['docker'];
     if (docker is! Map<String, dynamic>) {
@@ -95,5 +137,68 @@ class UnraidClient {
         .whereType<Map<String, dynamic>>()
         .map(UnraidContainer.fromJson)
         .toList();
+  }
+
+  /// How hard the machine is working right now.
+  ///
+  /// One snapshot, not a series: the server keeps no history for these, so a
+  /// graph has to be built by sampling. Memory here is in bytes, unlike the
+  /// kilobytes the array reports for disks.
+  Future<UnraidMetrics> getMetrics() async {
+    final Map<String, dynamic> data = await _query(
+      '{ metrics { '
+      'cpu { percentTotal cpus { percentTotal percentUser percentSystem '
+      'percentIdle } } '
+      'memory { total used free available buffcache percentTotal swapTotal '
+      'swapUsed percentSwapTotal } '
+      'network { name operstate rxSec txSec } } }',
+    );
+    final dynamic metrics = data['metrics'];
+    if (metrics is! Map<String, dynamic>) {
+      throw const NetworkUnknownException(
+        'Unraid did not return any metrics. The API key may not carry the '
+        'permission to read them.',
+      );
+    }
+    return UnraidMetrics.fromJson(metrics);
+  }
+
+  Future<UnraidContainer> startContainer(String id) =>
+      _containerAction('start', id);
+
+  Future<UnraidContainer> stopContainer(String id) =>
+      _containerAction('stop', id);
+
+  Future<UnraidContainer> pauseContainer(String id) =>
+      _containerAction('pause', id);
+
+  Future<UnraidContainer> unpauseContainer(String id) =>
+      _containerAction('unpause', id);
+
+  /// Runs one of Docker's lifecycle mutations and reads back the result.
+  ///
+  /// [id] is the compound identifier the container list hands out, which pairs
+  /// the server id with the container id; the bare Docker id is not accepted.
+  ///
+  /// The mutation returns the container in its new state, so that is used
+  /// rather than refetching: the list takes a moment to catch up, and showing
+  /// the old state right after acting reads as the action having failed.
+  Future<UnraidContainer> _containerAction(String field, String id) async {
+    final Map<String, dynamic> data = await _query(
+      'mutation(\$id: PrefixedID!) { docker { $field(id: \$id) '
+      '{ id names image state status autoStart isOrphaned isUpdateAvailable '
+      'iconUrl webUiUrl ports { privatePort publicPort type } } } }',
+      variables: <String, dynamic>{'id': id},
+    );
+    final dynamic docker = data['docker'];
+    final dynamic result =
+        docker is Map<String, dynamic> ? docker[field] : null;
+    if (result is! Map<String, dynamic>) {
+      throw const NetworkUnknownException(
+        'Unraid accepted the request but did not say what happened to the '
+        'container.',
+      );
+    }
+    return UnraidContainer.fromJson(result);
   }
 }

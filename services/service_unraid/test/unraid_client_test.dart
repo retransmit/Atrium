@@ -76,24 +76,52 @@ void main() {
       expect(lastQuery, contains('array'));
       expect(lastQuery, contains('disks'));
     });
+
+    test('asks for all three disk lists, not just the data disks', () {
+      // `disks` holds only the data disks, so a query that stops there loses
+      // every parity and cache disk without reporting anything wrong.
+      respond = (HttpRequest req) => writeJson(req, <String, dynamic>{
+            'data': <String, dynamic>{
+              'array': <String, dynamic>{'state': 'STARTED'},
+            },
+          });
+
+      return UnraidClient(dio).getArray().then((_) {
+        expect(lastQuery, contains('parities'));
+        expect(lastQuery, contains('caches'));
+        expect(lastQuery, contains('parityCheckStatus'));
+        expect(lastQuery, contains('capacity'));
+      });
+    });
   });
 
   group('successful reads', () {
-    test('an array comes back with its disks', () async {
+    test('an array comes back with its disks, parity kept apart', () async {
       respond = (HttpRequest req) => writeJson(req, <String, dynamic>{
             'data': <String, dynamic>{
               'array': <String, dynamic>{
                 'state': 'STARTED',
+                'parities': <dynamic>[
+                  <String, dynamic>{
+                    'name': 'parity',
+                    'type': 'PARITY',
+                    'size': 6291424,
+                    'status': 'DISK_OK',
+                    'temp': 31,
+                  },
+                ],
                 'disks': <dynamic>[
                   <String, dynamic>{
                     'name': 'disk1',
-                    'size': '3 TB',
+                    'type': 'DATA',
+                    'size': 3145696,
                     'status': 'DISK_OK',
                     'temp': 42,
                   },
                   <String, dynamic>{
                     'name': 'disk2',
-                    'size': '2 TB',
+                    'type': 'DATA',
+                    'size': 2097152,
                     'status': 'DISK_DSBL',
                     'temp': 39,
                   },
@@ -106,6 +134,8 @@ void main() {
 
       expect(array.isStarted, isTrue);
       expect(array.disks, hasLength(2));
+      expect(array.parities.single.name, 'parity');
+      expect(array.disks.first.sizeLabel, '3.0 GB');
       expect(array.unhealthyDisks.single.name, 'disk2');
     });
 
@@ -167,6 +197,31 @@ void main() {
       );
     });
 
+    test('a key without the permission is told what is wrong', () async {
+      // Unraid keys are scoped per resource, so a key that reads the array
+      // fine can still be refused on a mutation. The raw "Forbidden resource"
+      // gives nobody anything to act on.
+      respond = (HttpRequest req) => writeJson(req, <String, dynamic>{
+            'errors': <dynamic>[
+              <String, dynamic>{
+                'message': 'Forbidden resource',
+                'extensions': <String, dynamic>{'code': 'FORBIDDEN'},
+              },
+            ],
+          });
+
+      await expectLater(
+        UnraidClient(dio).startContainer('srv:c1'),
+        throwsA(
+          isA<NetworkException>().having(
+            (NetworkException e) => e.message,
+            'message',
+            contains('permission'),
+          ),
+        ),
+      );
+    });
+
     test('a proxy error page is called out as not being the server', () async {
       respond = (HttpRequest req) {
         req.response
@@ -200,6 +255,70 @@ void main() {
             contains('permission'),
           ),
         ),
+      );
+    });
+  });
+
+  group('container actions', () {
+    /// Answers every lifecycle mutation with the container in [state].
+    void answerWith(String state) {
+      respond = (HttpRequest req) => writeJson(req, <String, dynamic>{
+            'data': <String, dynamic>{
+              'docker': <String, dynamic>{
+                // The field name matches the mutation, so read it back off the
+                // query rather than hard-coding one action's shape.
+                if (lastQuery?.contains('start(') ?? false)
+                  'start': <String, dynamic>{
+                    'id': 'srv:c1',
+                    'names': <dynamic>['/sonarr'],
+                    'state': state,
+                    'status': 'Up Less than a second',
+                  },
+                if (lastQuery?.contains('stop(') ?? false)
+                  'stop': <String, dynamic>{
+                    'id': 'srv:c1',
+                    'names': <dynamic>['/sonarr'],
+                    'state': state,
+                    'status': 'Exited (0) 1 second ago',
+                  },
+              },
+            },
+          });
+    }
+
+    test('starting sends the id as a variable, not spliced into the query',
+        () async {
+      answerWith('RUNNING');
+
+      final UnraidContainer c =
+          await UnraidClient(dio).startContainer('srv:c1');
+
+      expect(lastQuery, contains(r'$id: PrefixedID!'));
+      expect(lastQuery, contains('start(id:'));
+      expect(c.isRunning, isTrue);
+    });
+
+    test('stopping reads the new state back rather than refetching', () async {
+      // The list takes a moment to catch up, and showing the old state right
+      // after acting reads as the action having failed.
+      answerWith('EXITED');
+
+      final UnraidContainer c = await UnraidClient(dio).stopContainer('srv:c1');
+
+      expect(lastQuery, contains('stop(id:'));
+      expect(c.isRunning, isFalse);
+      expect(c.displayName, 'sonarr');
+    });
+
+    test('an answer with no container is raised, not read as success',
+        () async {
+      respond = (HttpRequest req) => writeJson(req, <String, dynamic>{
+            'data': <String, dynamic>{'docker': <String, dynamic>{}},
+          });
+
+      await expectLater(
+        UnraidClient(dio).startContainer('srv:c1'),
+        throwsA(isA<NetworkException>()),
       );
     });
   });
