@@ -39,6 +39,8 @@ class _BulkDeleteDialogState extends ConsumerState<BulkDeleteDialog> {
         artistIds: widget.selectedIds.toList(),
         deleteFiles: _deleteFiles,
         addImportListExclusion: _addImportListExclusion,
+        moveFiles: false,
+        applyTags: ApplyTags.add,
       );
 
       final ApiResponse<void> resp =

@@ -190,7 +190,9 @@ class __ManualImportSetupDialogState
         children: <Widget>[
           Icon(Icons.drive_folder_upload_outlined, color: cs.primary, size: 26),
           const SizedBox(width: 10),
-          const Text('Manual Import'),
+          const Expanded(
+            child: Text('Manual Import', overflow: TextOverflow.ellipsis),
+          ),
         ],
       ),
       content: _scanning
@@ -258,6 +260,7 @@ class __ManualImportSetupDialogState
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
                     initialValue: _importMode,
+                    isExpanded: true,
                     decoration: InputDecoration(
                       labelText: 'Import Mode',
                       border: OutlineInputBorder(
@@ -1170,63 +1173,74 @@ class _LidarrManualImportScreenState
             ),
 
             // Footer actions bar
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainer,
-                border: Border(
-                  top: BorderSide(
-                    color: cs.outlineVariant.withValues(alpha: 0.35),
-                  ),
-                ),
-              ),
-              child: Row(
-                children: <Widget>[
-                  // Import mode selector
-                  DropdownButton<String>(
-                    value: _importMode,
-                    underline: const SizedBox.shrink(),
-                    items: const <DropdownMenuItem<String>>[
-                      DropdownMenuItem(
-                        value: 'auto',
-                        child: Text('Mode: Auto'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'move',
-                        child: Text('Mode: Move'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'copy',
-                        child: Text('Mode: Copy'),
-                      ),
-                    ],
-                    onChanged: (String? val) {
-                      if (val != null) setState(() => _importMode = val);
-                    },
-                  ),
-                  const Spacer(),
-                  Text(
-                    '${_selectedPaths.length} selected',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
+            SafeArea(
+              top: false,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainer,
+                  border: Border(
+                    top: BorderSide(
+                      color: cs.outlineVariant.withValues(alpha: 0.35),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  FilledButton.icon(
-                    onPressed: _importing || _selectedPaths.isEmpty
-                        ? null
-                        : _executeImport,
-                    icon: _importing
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.download_done_rounded),
-                    label: const Text('Import Selected'),
-                  ),
-                ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: <Widget>[
+                        // Import mode selector
+                        DropdownButton<String>(
+                          value: _importMode,
+                          underline: const SizedBox.shrink(),
+                          items: const <DropdownMenuItem<String>>[
+                            DropdownMenuItem(
+                              value: 'auto',
+                              child: Text('Mode: Auto'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'move',
+                              child: Text('Mode: Move'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'copy',
+                              child: Text('Mode: Copy'),
+                            ),
+                          ],
+                          onChanged: (String? val) {
+                            if (val != null) setState(() => _importMode = val);
+                          },
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${_selectedPaths.length} selected',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _importing || _selectedPaths.isEmpty
+                            ? null
+                            : _executeImport,
+                        icon: _importing
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.download_done_rounded),
+                        label: const Text('Import Selected'),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

@@ -27,6 +27,20 @@ class ReleaseNote {
 /// Newest first. Update alongside appVersion and the pubspec at each release.
 const List<ReleaseNote> releaseNotes = <ReleaseNote>[
   ReleaseNote(
+    version: '1.5.1',
+    date: '2026-08-26',
+    groups: <ChangeGroup>[
+      ChangeGroup(ChangeCategory.fixed, <String>[
+        'Adding things in Lidarr works again. Adding an artist, indexer, download client, import list, notification, tag, root folder, custom format or any of the profiles was refused by the server, as was grabbing a release from an interactive search. Atrium was sending empty fields that Lidarr will not accept, and it rejected the whole request without saying which part it disliked.',
+        'Interactive search no longer fails on Lidarr nightly and on builds with plugins installed. Those versions name their download protocols differently, and a single name Atrium did not recognise discarded the entire list of results rather than that one field.',
+        'Lidarr screens no longer run off the edge at large system text sizes, in the track file editor, the unmapped files list and artist history.',
+      ]),
+      ChangeGroup(ChangeCategory.improved, <String>[
+        'Lidarr activity history keeps loading as you scroll instead of stopping at the first page.',
+      ]),
+    ],
+  ),
+  ReleaseNote(
     version: '1.5.0',
     date: '2026-08-23',
     groups: <ChangeGroup>[

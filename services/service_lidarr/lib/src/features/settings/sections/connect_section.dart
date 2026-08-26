@@ -259,6 +259,7 @@ class ConnectSection extends ConsumerWidget {
                               .read(lidarrApiProvider(instance).future);
                           final NotificationResource payload =
                               notification.copyWith(
+                            id: notification.id ?? 0,
                             name: nameController.text.trim().isNotEmpty
                                 ? nameController.text.trim()
                                 : notification.name,
@@ -291,6 +292,7 @@ class ConnectSection extends ConsumerWidget {
                                 .read(lidarrApiProvider(instance).future);
                             final NotificationResource payload =
                                 notification.copyWith(
+                              id: notification.id ?? 0,
                               name: nameController.text.trim().isNotEmpty
                                   ? nameController.text.trim()
                                   : notification.name,

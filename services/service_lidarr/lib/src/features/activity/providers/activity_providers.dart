@@ -23,22 +23,52 @@ final lidarrQueueProvider =
   return page.records ?? <QueueResource>[];
 });
 
-/// Activity history for an instance.
+/// Paginated activity history provider. Key is `(Instance, {int page, int pageSize, List<int>? eventType})`.
+final lidarrHistoryPagedProvider = FutureProvider.family<
+    HistoryResourcePagingResource,
+    (Instance, {int page, int pageSize, List<int>? eventType})>(
+  (
+    Ref ref,
+    (Instance, {int page, int pageSize, List<int>? eventType}) key,
+  ) async {
+    final (
+      Instance instance,
+      page: int page,
+      pageSize: int pageSize,
+      eventType: List<int>? eventType,
+    ) = key;
+    final LidarrApi api = await ref.watch(lidarrApiProvider(instance).future);
+    final ApiResponse<HistoryResourcePagingResource> resp =
+        await api.history.getHistory(
+      page: page,
+      pageSize: pageSize,
+      eventType: eventType,
+      sortKey: 'date',
+      sortDirection: SortDirection.descending,
+      includeArtist: true,
+      includeAlbum: true,
+      includeTrack: true,
+    );
+    return unwrapLidarrApiResponse(resp, 'Failed to load activity history');
+  },
+);
+
+/// Activity history for an instance (initial 50 records).
 final lidarrHistoryProvider =
     FutureProvider.autoDispose.family<List<HistoryResource>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
-  final LidarrApi api = await ref.watch(lidarrApiProvider(instance).future);
-  final ApiResponse<HistoryResourcePagingResource> resp =
-      await api.history.getHistory(
-    pageSize: 50,
-    includeArtist: true,
-    includeAlbum: true,
-    includeTrack: true,
+  final HistoryResourcePagingResource page = await ref.watch(
+    lidarrHistoryPagedProvider(
+      (
+        instance,
+        page: 1,
+        pageSize: 50,
+        eventType: null,
+      ),
+    ).future,
   );
-  final HistoryResourcePagingResource page =
-      unwrapLidarrApiResponse(resp, 'Failed to load activity history');
   return page.records ?? <HistoryResource>[];
 });
 

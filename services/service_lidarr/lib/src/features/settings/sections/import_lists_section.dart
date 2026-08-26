@@ -108,12 +108,25 @@ class ImportListsSection extends ConsumerWidget {
     final List<MetadataProfileResource> metadataProfiles =
         ref.read(lidarrMetadataProfilesProvider(instance)).value ?? [];
 
-    String? rootFolderPath = list.rootFolderPath ??
-        (rootFolders.isNotEmpty ? rootFolders.first.path : null);
-    int? qualityProfileId = list.qualityProfileId ??
-        (qualityProfiles.isNotEmpty ? qualityProfiles.first.id : null);
-    int? metadataProfileId = list.metadataProfileId ??
-        (metadataProfiles.isNotEmpty ? metadataProfiles.first.id : null);
+    final bool hasValidRootFolder =
+        rootFolders.any((rf) => rf.path == list.rootFolderPath);
+    String? rootFolderPath = hasValidRootFolder
+        ? list.rootFolderPath
+        : (rootFolders.isNotEmpty ? rootFolders.first.path : null);
+
+    final bool hasValidQualityProfile = qualityProfiles.any(
+      (qp) => qp.id == list.qualityProfileId && qp.id != null && qp.id != 0,
+    );
+    int? qualityProfileId = hasValidQualityProfile
+        ? list.qualityProfileId
+        : (qualityProfiles.isNotEmpty ? qualityProfiles.first.id : null);
+
+    final bool hasValidMetadataProfile = metadataProfiles.any(
+      (mp) => mp.id == list.metadataProfileId && mp.id != null && mp.id != 0,
+    );
+    int? metadataProfileId = hasValidMetadataProfile
+        ? list.metadataProfileId
+        : (metadataProfiles.isNotEmpty ? metadataProfiles.first.id : null);
 
     if (!context.mounted) return;
 
@@ -168,6 +181,7 @@ class ImportListsSection extends ConsumerWidget {
                       if (rootFolders.isNotEmpty) ...[
                         const SizedBox(height: Insets.xs),
                         DropdownButtonFormField<String>(
+                          isExpanded: true,
                           initialValue: rootFolderPath,
                           decoration: const InputDecoration(
                             labelText: 'Root Folder',
@@ -189,6 +203,7 @@ class ImportListsSection extends ConsumerWidget {
                       if (qualityProfiles.isNotEmpty) ...[
                         const SizedBox(height: Insets.sm),
                         DropdownButtonFormField<int>(
+                          isExpanded: true,
                           initialValue: qualityProfileId,
                           decoration: const InputDecoration(
                             labelText: 'Quality Profile',
@@ -208,6 +223,7 @@ class ImportListsSection extends ConsumerWidget {
                       if (metadataProfiles.isNotEmpty) ...[
                         const SizedBox(height: Insets.sm),
                         DropdownButtonFormField<int>(
+                          isExpanded: true,
                           initialValue: metadataProfileId,
                           decoration: const InputDecoration(
                             labelText: 'Metadata Profile',
@@ -237,6 +253,7 @@ class ImportListsSection extends ConsumerWidget {
                           final LidarrApi api = await ref
                               .read(lidarrApiProvider(instance).future);
                           final ImportListResource payload = list.copyWith(
+                            id: list.id ?? 0,
                             name: nameController.text.trim().isNotEmpty
                                 ? nameController.text.trim()
                                 : list.name,
@@ -261,6 +278,7 @@ class ImportListsSection extends ConsumerWidget {
                               ScaffoldMessenger.of(context);
                           final String enteredName = nameController.text.trim();
                           final ImportListResource payload = list.copyWith(
+                            id: list.id ?? 0,
                             name: enteredName.isNotEmpty
                                 ? enteredName
                                 : list.name,
@@ -333,6 +351,142 @@ class ImportListsSection extends ConsumerWidget {
     );
   }
 
+  Future<void> _showExclusionEditorDialog(
+    BuildContext context,
+    WidgetRef ref, {
+    ImportListExclusionResource? exclusion,
+  }) async {
+    final bool isNew = exclusion == null;
+    final TextEditingController artistNameController =
+        TextEditingController(text: exclusion?.artistName ?? '');
+    final TextEditingController foreignIdController =
+        TextEditingController(text: exclusion?.foreignId ?? '');
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          title: Text(
+            isNew ? 'Add Import List Exclusion' : 'Edit Exclusion',
+          ),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  TextFormField(
+                    controller: artistNameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Artist Name',
+                      hintText: 'e.g. The Beatles',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Artist name is required';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: Insets.sm),
+                  TextFormField(
+                    controller: foreignIdController,
+                    decoration: const InputDecoration(
+                      labelText: 'MusicBrainz Artist ID',
+                      hintText: 'e.g. b10bbbfc-cf9e-42e0-be17-e2c3e1d52350',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (String? value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'MusicBrainz ID is required';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                final ScaffoldMessengerState messenger =
+                    ScaffoldMessenger.of(context);
+                try {
+                  final LidarrApi api =
+                      await ref.read(lidarrApiProvider(instance).future);
+                  final ImportListExclusionResource payload =
+                      (exclusion ?? const ImportListExclusionResource())
+                          .copyWith(
+                    artistName: artistNameController.text.trim(),
+                    foreignId: foreignIdController.text.trim(),
+                  );
+
+                  if (isNew) {
+                    final ApiResponse<ImportListExclusionResource> resp =
+                        await api.importListExclusion
+                            .postImportlistexclusion(body: payload);
+                    if (!resp.isSuccess) {
+                      throw Exception(
+                        resp.error?.message ??
+                            'Failed to create import exclusion',
+                      );
+                    }
+                  } else {
+                    final ApiResponse<ImportListExclusionResource> resp =
+                        await api.importListExclusion
+                            .putImportlistexclusionById(
+                      id: exclusion.id!.toString(),
+                      body: payload,
+                    );
+                    if (!resp.isSuccess) {
+                      throw Exception(
+                        resp.error?.message ??
+                            'Failed to update import exclusion',
+                      );
+                    }
+                  }
+
+                  ref.invalidate(
+                    lidarrImportListExclusionsProvider(instance),
+                  );
+                  if (ctx.mounted) {
+                    Navigator.pop(ctx);
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          isNew
+                              ? 'Artist exclusion added!'
+                              : 'Artist exclusion updated!',
+                        ),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (ctx.mounted) {
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text('Error saving exclusion: $e'),
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _deleteImportList(
     BuildContext context,
     WidgetRef ref,
@@ -347,7 +501,7 @@ class ImportListsSection extends ConsumerWidget {
         title: Text('Delete ${list.name ?? 'Import List'}?'),
         content:
             const Text('Are you sure you want to delete this import list?'),
-        actions: [
+        actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
             child: const Text('Cancel'),
@@ -388,11 +542,70 @@ class ImportListsSection extends ConsumerWidget {
     }
   }
 
+  Future<void> _deleteExclusion(
+    BuildContext context,
+    WidgetRef ref,
+    ImportListExclusionResource exclusion,
+  ) async {
+    final int? id = exclusion.id;
+    if (id == null) return;
+
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Delete Exclusion?'),
+        content: Text(
+          'Are you sure you want to remove "${exclusion.artistName ?? 'Artist'}" from the exclusions list?',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+              foregroundColor: Theme.of(ctx).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    try {
+      final LidarrApi api = await ref.read(lidarrApiProvider(instance).future);
+      final ApiResponse<void> resp =
+          await api.importListExclusion.deleteImportlistexclusionById(id: id);
+      if (!resp.isSuccess) {
+        throw Exception(
+          resp.error?.message ?? 'Failed to delete exclusion',
+        );
+      }
+
+      ref.invalidate(lidarrImportListExclusionsProvider(instance));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Exclusion removed.')),
+      );
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to delete exclusion: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ColorScheme cs = Theme.of(context).colorScheme;
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
     final AsyncValue<List<ImportListResource>> asyncLists =
         ref.watch(lidarrImportListsProvider(instance));
+    final AsyncValue<List<ImportListExclusionResource>> asyncExclusions =
+        ref.watch(lidarrImportListExclusionsProvider(instance));
 
     // Prefetch schemas & dependencies
     ref.watch(lidarrImportListSchemaProvider(instance));
@@ -408,101 +621,287 @@ class ImportListsSection extends ConsumerWidget {
         child: const Icon(Icons.add),
       ),
       body: EasyRefresh(
-        onRefresh: () async =>
-            ref.invalidate(lidarrImportListsProvider(instance)),
-        child: AsyncValueView<List<ImportListResource>>(
-          value: asyncLists,
-          data: (List<ImportListResource> lists) {
-            if (lists.isEmpty) {
-              return Center(
-                child: EmptyView(
-                  icon: Icons.queue_music_outlined,
-                  title: 'No Import Lists',
-                  message:
-                      'Add Spotify, Last.fm, or MusicBrainz sync lists to automatically import artists and albums.',
-                  action: FilledButton.icon(
-                    onPressed: () => _selectListPresetAndAdd(context, ref),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Import List'),
+        onRefresh: () async {
+          ref.invalidate(lidarrImportListsProvider(instance));
+          ref.invalidate(lidarrImportListExclusionsProvider(instance));
+        },
+        child: ListView(
+          padding: const EdgeInsets.all(Insets.md),
+          children: <Widget>[
+            // Section 1: Import Lists
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                Text(
+                  'Import Lists',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              );
-            }
+                IconButton(
+                  icon: const Icon(Icons.add, size: 20),
+                  onPressed: () => _selectListPresetAndAdd(context, ref),
+                ),
+              ],
+            ),
+            const SizedBox(height: Insets.xs),
 
-            return ListView.separated(
-              padding: const EdgeInsets.all(Insets.md),
-              itemCount: lists.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (BuildContext context, int index) {
-                final ImportListResource item = lists[index];
-                final bool autoAdd = item.enableAutomaticAdd == true;
-
-                return Card(
-                  elevation: 0,
-                  color: cs.surfaceContainerLow,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(
-                      color: cs.outlineVariant.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 6,
-                    ),
-                    leading: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: cs.primaryContainer,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.queue_music,
-                        color: cs.onPrimaryContainer,
-                        size: 22,
+            AsyncValueView<List<ImportListResource>>(
+              value: asyncLists,
+              data: (List<ImportListResource> lists) {
+                if (lists.isEmpty) {
+                  return Card(
+                    elevation: 0,
+                    color: cs.surfaceContainerLow,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(
+                        color: cs.outlineVariant.withValues(alpha: 0.3),
                       ),
                     ),
-                    title: Text(
-                      item.name ?? 'Import List',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 15,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 24,
+                        horizontal: 16,
+                      ),
+                      child: Column(
+                        children: <Widget>[
+                          Icon(
+                            Icons.queue_music_outlined,
+                            size: 36,
+                            color: cs.onSurfaceVariant,
                           ),
-                    ),
-                    subtitle: Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        [
-                          item.implementationName ?? 'List',
-                          if (autoAdd)
-                            'Auto-Add Enabled'
-                          else
-                            'Auto-Add Disabled',
-                        ].join(' • '),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          const SizedBox(height: 8),
+                          Text(
+                            'No Import Lists',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Add Spotify, Last.fm, or MusicBrainz sync lists to automatically import artists and albums.',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodySmall?.copyWith(
                               color: cs.onSurfaceVariant,
                             ),
+                          ),
+                        ],
                       ),
                     ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 20),
-                      tooltip: 'Delete Import List',
-                      onPressed: () => _deleteImportList(context, ref, item),
-                    ),
-                    onTap: () => _showImportListEditorDialog(
-                      context,
-                      ref,
-                      item,
-                    ),
-                  ),
+                  );
+                }
+
+                return Column(
+                  children: lists.map((ImportListResource item) {
+                    final bool autoAdd = item.enableAutomaticAdd == true;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Card(
+                        elevation: 0,
+                        color: cs.surfaceContainerLow,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(
+                            color: cs.outlineVariant.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          leading: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: cs.primaryContainer,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.queue_music,
+                              color: cs.onPrimaryContainer,
+                              size: 22,
+                            ),
+                          ),
+                          title: Text(
+                            item.name ?? 'Import List',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                          ),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              <String>[
+                                item.implementationName ?? 'List',
+                                if (autoAdd)
+                                  'Auto-Add Enabled'
+                                else
+                                  'Auto-Add Disabled',
+                              ].join(' • '),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 20),
+                            tooltip: 'Delete Import List',
+                            onPressed: () =>
+                                _deleteImportList(context, ref, item),
+                          ),
+                          onTap: () => _showImportListEditorDialog(
+                            context,
+                            ref,
+                            item,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
                 );
               },
-            );
-          },
+            ),
+
+            const SizedBox(height: Insets.lg),
+
+            // Section 2: Import List Exclusions
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: <Widget>[
+                Text(
+                  'Import List Exclusions',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add, size: 20),
+                  tooltip: 'Add Exclusion',
+                  onPressed: () => _showExclusionEditorDialog(context, ref),
+                ),
+              ],
+            ),
+            const SizedBox(height: Insets.xs),
+
+            AsyncValueView<List<ImportListExclusionResource>>(
+              value: asyncExclusions,
+              data: (List<ImportListExclusionResource> exclusions) {
+                if (exclusions.isEmpty) {
+                  return Card(
+                    elevation: 0,
+                    color: cs.surfaceContainerLow,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(
+                        color: cs.outlineVariant.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 24,
+                        horizontal: 16,
+                      ),
+                      child: Column(
+                        children: <Widget>[
+                          Icon(
+                            Icons.person_off_outlined,
+                            size: 36,
+                            color: cs.onSurfaceVariant,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'No Exclusions',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Artists prevented from being auto-added by import lists.',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                return Column(
+                  children: exclusions.map((ImportListExclusionResource item) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Card(
+                        elevation: 0,
+                        color: cs.surfaceContainerLow,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(
+                            color: cs.outlineVariant.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          leading: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: cs.errorContainer,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              Icons.person_off_outlined,
+                              color: cs.onErrorContainer,
+                              size: 22,
+                            ),
+                          ),
+                          title: Text(
+                            item.artistName ?? 'Excluded Artist',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                          ),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              'MBID: ${item.foreignId ?? ''}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 20),
+                            tooltip: 'Remove Exclusion',
+                            onPressed: () =>
+                                _deleteExclusion(context, ref, item),
+                          ),
+                          onTap: () => _showExclusionEditorDialog(
+                            context,
+                            ref,
+                            exclusion: item,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+          ],
         ),
       ),
     );
   }
 }
+

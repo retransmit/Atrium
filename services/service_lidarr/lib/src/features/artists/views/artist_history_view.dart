@@ -612,6 +612,8 @@ class _ArtistHistoryViewState extends ConsumerState<ArtistHistoryView>
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurfaceVariant,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                 ],
               ),
@@ -1041,12 +1043,16 @@ class _ArtistHistoryViewState extends ConsumerState<ArtistHistoryView>
                                         const SizedBox(height: 4),
                                         Row(
                                           children: [
-                                            Text(
-                                              item.eventType?.value ?? 'Event',
-                                              style: theme.textTheme.bodySmall
-                                                  ?.copyWith(
-                                                color: cs.onSurfaceVariant,
-                                                fontWeight: FontWeight.w500,
+                                            Flexible(
+                                              child: Text(
+                                                item.eventType?.value ?? 'Event',
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: theme.textTheme.bodySmall
+                                                    ?.copyWith(
+                                                  color: cs.onSurfaceVariant,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
                                               ),
                                             ),
                                             if (qualityName != null &&
@@ -1074,7 +1080,7 @@ class _ArtistHistoryViewState extends ConsumerState<ArtistHistoryView>
                                                 ),
                                               ),
                                             ],
-                                            const Spacer(),
+                                            const SizedBox(width: 6),
                                             Text(
                                               timeStr,
                                               style: theme.textTheme.bodySmall

@@ -132,6 +132,7 @@ class MetadataConsumersSection extends ConsumerWidget {
                           final LidarrApi api = await ref
                               .read(lidarrApiProvider(instance).future);
                           final MetadataResource payload = consumer.copyWith(
+                            id: consumer.id ?? 0,
                             name: nameController.text.trim().isNotEmpty
                                 ? nameController.text.trim()
                                 : consumer.name,
@@ -153,6 +154,7 @@ class MetadataConsumersSection extends ConsumerWidget {
                               lidarrApiProvider(instance).future,
                             );
                             final MetadataResource payload = consumer.copyWith(
+                              id: consumer.id ?? 0,
                               name: nameController.text.trim().isNotEmpty
                                   ? nameController.text.trim()
                                   : consumer.name,
@@ -355,6 +357,8 @@ class MetadataConsumersSection extends ConsumerWidget {
                     ),
                     title: Text(
                       item.name ?? 'Metadata Consumer',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w600,
                             fontSize: 15,
@@ -364,12 +368,18 @@ class MetadataConsumersSection extends ConsumerWidget {
                       padding: const EdgeInsets.only(top: 4),
                       child: Row(
                         children: [
-                          Text(
-                            item.implementationName ?? 'Consumer',
-                            style:
-                                Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: cs.onSurfaceVariant,
-                                    ),
+                          Flexible(
+                            child: Text(
+                              item.implementationName ?? 'Consumer',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                            ),
                           ),
                           const SizedBox(width: 6),
                           Container(

@@ -47,6 +47,9 @@ class _BulkEditDialogState extends ConsumerState<BulkEditDialog> {
         metadataProfileId: _metadataProfileId,
         rootFolderPath: _rootFolderPath,
         moveFiles: _moveFiles,
+        deleteFiles: false,
+        addImportListExclusion: false,
+        applyTags: ApplyTags.add,
       );
 
       final ApiResponse<void> resp =
@@ -101,15 +104,16 @@ class _BulkEditDialogState extends ConsumerState<BulkEditDialog> {
         ref.watch(lidarrRootFoldersProvider(widget.instance));
 
     return AlertDialog(
+      scrollable: true,
       title:
           Text('Edit ${widget.selectedIds.length} ${_selectedIdsCountLabel()}'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
             const SizedBox(height: Insets.xs),
             // Monitored
             DropdownButtonFormField<bool?>(
+              isExpanded: true,
               initialValue: _monitored,
               decoration: const InputDecoration(
                 labelText: 'Monitored',
@@ -125,6 +129,7 @@ class _BulkEditDialogState extends ConsumerState<BulkEditDialog> {
             const SizedBox(height: Insets.md),
             // Monitor New Items
             DropdownButtonFormField<NewItemMonitorTypes?>(
+              isExpanded: true,
               initialValue: _monitorNewItems,
               decoration: const InputDecoration(
                 labelText: 'Monitor New Items',
@@ -151,6 +156,7 @@ class _BulkEditDialogState extends ConsumerState<BulkEditDialog> {
             // Quality Profile
             qualityProfilesAsync.when(
               data: (profiles) => DropdownButtonFormField<int?>(
+                isExpanded: true,
                 initialValue: _qualityProfileId,
                 decoration: const InputDecoration(
                   labelText: 'Quality Profile',
@@ -177,6 +183,7 @@ class _BulkEditDialogState extends ConsumerState<BulkEditDialog> {
             // Metadata Profile
             metadataProfilesAsync.when(
               data: (profiles) => DropdownButtonFormField<int?>(
+                isExpanded: true,
                 initialValue: _metadataProfileId,
                 decoration: const InputDecoration(
                   labelText: 'Metadata Profile',
@@ -205,6 +212,7 @@ class _BulkEditDialogState extends ConsumerState<BulkEditDialog> {
               data: (folders) => Column(
                 children: [
                   DropdownButtonFormField<String?>(
+                    isExpanded: true,
                     initialValue: _rootFolderPath,
                     decoration: const InputDecoration(
                       labelText: 'Root Folder',
@@ -248,7 +256,6 @@ class _BulkEditDialogState extends ConsumerState<BulkEditDialog> {
             ),
           ],
         ),
-      ),
       actions: [
         TextButton(
           onPressed: _submitting ? null : () => Navigator.of(context).pop(),

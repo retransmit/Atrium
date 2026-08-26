@@ -3,6 +3,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/lidarr_formatters.dart';
 import '../../../generated/generated.dart';
 import '../../../lidarr_api.dart';
 import '../../../lidarr_providers.dart';
@@ -93,6 +94,7 @@ class IndexersSection extends ConsumerWidget {
                   final LidarrApi api =
                       await ref.read(lidarrApiProvider(instance).future);
                   final IndexerResource payload = indexer.copyWith(
+                    id: indexer.id ?? 0,
                     fields: updatedFields.map(Field.fromJson).toList(),
                   );
                   final ApiResponse<void> resp =
@@ -110,6 +112,7 @@ class IndexersSection extends ConsumerWidget {
                     final LidarrApi api =
                         await ref.read(lidarrApiProvider(instance).future);
                     final IndexerResource payload = indexer.copyWith(
+                      id: indexer.id ?? 0,
                       fields: updatedFields.map(Field.fromJson).toList(),
                     );
 
@@ -401,8 +404,9 @@ class IndexersSection extends ConsumerWidget {
                   )
                 else
                   ...indexers.map((IndexerResource indexer) {
-                    final String protocolStr =
-                        indexer.protocol?.value.toUpperCase() ?? 'TORRENT';
+                    final String protocolStr = LidarrFormatters.formatWireEnum(
+                      indexer.protocol?.value,
+                    );
 
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
@@ -444,11 +448,30 @@ class IndexersSection extends ConsumerWidget {
                             padding: const EdgeInsets.only(top: 4),
                             child: Wrap(
                               spacing: 6,
-                              runSpacing: 2,
+                              runSpacing: 4,
+                              crossAxisAlignment: WrapCrossAlignment.center,
                               children: <Widget>[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: cs.primaryContainer,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    protocolStr,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: cs.onPrimaryContainer,
+                                    ),
+                                  ),
+                                ),
                                 if (indexer.enableRss == true)
                                   Text(
-                                    'RSS Enabled •',
+                                    '• RSS',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: cs.onSurfaceVariant,
@@ -456,7 +479,7 @@ class IndexersSection extends ConsumerWidget {
                                   ),
                                 if (indexer.enableAutomaticSearch == true)
                                   Text(
-                                    'Auto Search •',
+                                    '• Auto Search',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: cs.onSurfaceVariant,
@@ -464,7 +487,7 @@ class IndexersSection extends ConsumerWidget {
                                   ),
                                 if (indexer.enableInteractiveSearch == true)
                                   Text(
-                                    'Interactive Search',
+                                    '• Interactive Search',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: cs.onSurfaceVariant,
@@ -473,36 +496,11 @@ class IndexersSection extends ConsumerWidget {
                               ],
                             ),
                           ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: cs.primaryContainer,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  protocolStr,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: cs.onPrimaryContainer,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              IconButton(
-                                icon:
-                                    const Icon(Icons.delete_outline, size: 20),
-                                tooltip: 'Delete Indexer',
-                                onPressed: () =>
-                                    _deleteIndexer(context, ref, indexer),
-                              ),
-                            ],
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 20),
+                            tooltip: 'Delete Indexer',
+                            onPressed: () =>
+                                _deleteIndexer(context, ref, indexer),
                           ),
                           onTap: () => _showIndexerEditorDialog(
                             context,

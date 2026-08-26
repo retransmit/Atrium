@@ -94,4 +94,17 @@ class LidarrFormatters {
     }
     return '$trimmed Hz';
   }
+
+  /// Formats raw C# backend wire enum strings (e.g. 'torrentDownloadProtocol' -> 'TORRENT', 'usenetDownloadProtocol' -> 'USENET').
+  static String formatWireEnum(String? raw) {
+    if (raw == null || raw.isEmpty) return '--';
+    String s = raw;
+    if (s.toLowerCase().endsWith('downloadprotocol')) {
+      s = s.substring(0, s.length - 'downloadprotocol'.length);
+    } else if (s.toLowerCase().endsWith('protocol')) {
+      s = s.substring(0, s.length - 'protocol'.length);
+    }
+    return s.toUpperCase();
+  }
 }
+

@@ -883,6 +883,7 @@ class _LidarrAddArtistSheetState extends ConsumerState<LidarrAddArtistSheet> {
           await ref.read(lidarrApiProvider(widget.instance).future);
 
       final ArtistResource payload = widget.artist.copyWith(
+        id: 0,
         rootFolderPath: rootFolder,
         qualityProfileId: qualityProfileId,
         metadataProfileId: metadataProfileId,

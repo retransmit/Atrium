@@ -23,6 +23,8 @@ class QueueView extends ConsumerStatefulWidget {
 }
 
 class _QueueViewState extends ConsumerState<QueueView> {
+  bool _showAllStatusMessages = false;
+
   Future<void> _removeQueueItem(QueueResource item) async {
     final int? id = item.id;
     if (id == null) return;
@@ -397,48 +399,44 @@ class _QueueViewState extends ConsumerState<QueueView> {
                 const SizedBox(height: 16),
 
                 // Quick Action Buttons
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: <Widget>[
-                    Expanded(
-                      child: FilledButton.icon(
-                        icon: const Icon(
-                          Icons.drive_folder_upload_outlined,
-                          size: 18,
-                        ),
-                        label: const Text('Manual Import'),
+                    FilledButton.icon(
+                      icon: const Icon(
+                        Icons.drive_folder_upload_outlined,
+                        size: 18,
+                      ),
+                      label: const Text('Manual Import'),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        showLidarrManualImportFlow(
+                          context,
+                          ref,
+                          widget.instance,
+                          downloadId: item.downloadId,
+                          artistId: item.artistId,
+                        );
+                      },
+                    ),
+                    if (item.albumId != null)
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.search, size: 18),
+                        label: const Text('Interactive Search'),
                         onPressed: () {
                           Navigator.of(context).pop();
-                          showLidarrManualImportFlow(
-                            context,
-                            ref,
-                            widget.instance,
-                            downloadId: item.downloadId,
-                            artistId: item.artistId,
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => LidarrInteractiveSearchScreen(
+                                instance: widget.instance,
+                                title: item.album?.title ?? 'Album',
+                                albumId: item.albumId,
+                              ),
+                            ),
                           );
                         },
                       ),
-                    ),
-                    if (item.albumId != null) ...[
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.search, size: 18),
-                          label: const Text('Interactive Search'),
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                            Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => LidarrInteractiveSearchScreen(
-                                  instance: widget.instance,
-                                  title: item.album?.title ?? 'Album',
-                                  albumId: item.albumId,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -478,7 +476,7 @@ class _QueueViewState extends ConsumerState<QueueView> {
                         const Divider(height: 12),
                         _buildDetailRow(
                           'Protocol',
-                          item.protocol?.value.toUpperCase() ?? '--',
+                          LidarrFormatters.formatWireEnum(item.protocol?.value),
                           context,
                         ),
                         const Divider(height: 12),
@@ -531,51 +529,85 @@ class _QueueViewState extends ConsumerState<QueueView> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Card(
-                    elevation: 0,
-                    color: cs.surfaceContainerLow,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          for (final msg in item.statusMessages!) ...[
-                            Text(
-                              msg.title ?? 'Message',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
-                            if (msg.messages != null)
-                              for (final m in msg.messages!)
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                    top: 4,
-                                    left: 8,
-                                  ),
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: <Widget>[
-                                      const Text('• '),
-                                      Expanded(
-                                        child: Text(
-                                          m,
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                      ),
-                                    ],
+                  StatefulBuilder(
+                    builder: (BuildContext context, StateSetter setCardState) {
+                      final List<TrackedDownloadStatusMessage> messages =
+                          item.statusMessages!;
+                      final bool canExpand = messages.length > 3;
+                      final List<TrackedDownloadStatusMessage> visible =
+                          (!canExpand || _showAllStatusMessages)
+                              ? messages
+                              : messages.take(3).toList();
+
+                      return Card(
+                        elevation: 0,
+                        color: cs.surfaceContainerLow,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              for (final msg in visible) ...[
+                                Text(
+                                  msg.title ?? 'Message',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
                                   ),
                                 ),
-                            const SizedBox(height: 8),
-                          ],
-                        ],
-                      ),
-                    ),
+                                if (msg.messages != null)
+                                  for (final m in msg.messages!)
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        top: 4,
+                                        left: 8,
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          const Text('• '),
+                                          Expanded(
+                                            child: Text(
+                                              m,
+                                              style:
+                                                  const TextStyle(fontSize: 12),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                const SizedBox(height: 8),
+                              ],
+                              if (canExpand)
+                                Center(
+                                  child: TextButton(
+                                    onPressed: () {
+                                      setCardState(() {
+                                        _showAllStatusMessages =
+                                            !_showAllStatusMessages;
+                                      });
+                                    },
+                                    child: Text(
+                                      _showAllStatusMessages
+                                          ? 'Show less'
+                                          : 'Show all ${messages.length} messages',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: cs.primary,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ],
                 const SizedBox(height: 24),
@@ -987,8 +1019,9 @@ class _QueueItemRow extends StatelessWidget {
     final double progress =
         size > 0 ? ((size - sizeLeft) / size).clamp(0.0, 1.0) : 0.0;
 
-    final String protocolStr =
-        (item.protocol?.name ?? 'download').toUpperCase();
+    final String protocolStr = LidarrFormatters.formatWireEnum(
+      item.protocol?.value ?? item.protocol?.name,
+    );
     final String qualityName = item.quality?.quality?.name ?? 'Unknown';
     final bool hasError =
         item.trackedDownloadStatus == TrackedDownloadStatus.warning ||
@@ -1024,7 +1057,10 @@ class _QueueItemRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
-                  Row(
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 2,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: <Widget>[
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -1044,7 +1080,6 @@ class _QueueItemRow extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 5,
@@ -1063,7 +1098,6 @@ class _QueueItemRow extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
                       Text(
                         '${LidarrFormatters.formatBytes(size - sizeLeft)} / ${LidarrFormatters.formatBytes(size)}',
                         style: theme.textTheme.labelSmall?.copyWith(
