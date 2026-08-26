@@ -33,15 +33,29 @@ sealed class NetworkException implements Exception {
     if (status == null) {
       return const NetworkUnknownException('Empty response from server.');
     }
+    final String? detail = _bodyMessage(e.response?.data);
     if (status == 401 || status == 403) {
+      // Plenty of 403s have nothing to do with the credentials: a request
+      // quota reached, a title blocklisted, a permission the account lacks.
+      // Telling someone to check an API key that is already working sends
+      // them looking in the wrong place, so the server's own reason wins
+      // whenever it gave one.
+      if (detail != null && detail.toLowerCase().contains('csrf')) {
+        return const NetworkAuthException(
+          'The server refused this as a cross-site request. Services with a '
+          'CSRF protection setting will still answer reads over their API '
+          'but refuse any change that did not come from a browser. Turning '
+          'that setting off lets this app make changes again.',
+        );
+      }
       return NetworkAuthException(
-        'Authentication failed (HTTP $status). Check API key or password.',
+        detail ??
+            'Authentication failed (HTTP $status). Check API key or password.',
       );
     }
     if (status == 404) {
       return const NetworkNotFoundException('Resource not found.');
     }
-    final String? detail = _bodyMessage(e.response?.data);
     if (status >= 500) {
       return NetworkServerException(
         detail == null

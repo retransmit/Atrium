@@ -258,12 +258,21 @@ class _EditBoard extends ConsumerWidget {
                       child: _EditTile(
                         config: c,
                         instances: instances,
+                        // Showing a widget nothing feeds puts it back on a
+                        // board that filters it straight out again, which
+                        // reads as the button having failed. The tile says
+                        // which service it wants instead.
                         trailing: IconButton(
-                          tooltip: 'Show widget',
+                          tooltip: DashboardBoard._configured(c.kind, instances)
+                              ? 'Show widget'
+                              : 'Needs a service that can fill it',
                           icon: const Icon(Icons.add_circle_outline),
-                          onPressed: () => ref
-                              .read(dashboardLayoutProvider.notifier)
-                              .setEnabled(c.kind, true),
+                          onPressed:
+                              DashboardBoard._configured(c.kind, instances)
+                                  ? () => ref
+                                      .read(dashboardLayoutProvider.notifier)
+                                      .setEnabled(c.kind, true)
+                                  : null,
                         ),
                       ),
                     ),
@@ -302,6 +311,21 @@ class _EditBoard extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// Which services would make a widget work, as `Needs Sonarr or Radarr`.
+///
+/// A bare "Not configured" leaves someone to guess what is missing, which is
+/// the whole reason a widget that can never fill looked broken rather than
+/// unavailable.
+String _needsLabel(DashboardWidgetKind kind) {
+  final List<String> names = <String>[
+    for (final ServiceKind k in kind.serviceKinds) k.displayName,
+  ];
+  if (names.isEmpty) return 'Not configured';
+  if (names.length == 1) return 'Needs ${names.single}';
+  return 'Needs ${names.sublist(0, names.length - 1).join(', ')} '
+      'or ${names.last}';
 }
 
 class _EditTile extends StatelessWidget {
@@ -353,7 +377,7 @@ class _EditTile extends StatelessWidget {
                 ),
                 if (!configured)
                   Text(
-                    'Not configured',
+                    _needsLabel(config.kind),
                     style: theme.textTheme.labelSmall
                         ?.copyWith(color: cs.onSurfaceVariant),
                   ),

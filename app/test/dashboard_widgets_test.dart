@@ -486,4 +486,92 @@ void main() {
     expect(find.byIcon(Icons.drag_indicator), findsNWidgets(7));
     expect(find.byIcon(Icons.add_circle_outline), findsOneWidget);
   });
+
+  /// The tile for one widget, found by its label.
+  Finder tileFor(String label) => find.ancestor(
+        of: find.text(label),
+        matching: find.byWidgetPredicate(
+          (Widget w) => w.runtimeType.toString() == '_EditTile',
+        ),
+      );
+
+  testWidgets('an unavailable widget names the service it needs',
+      (WidgetTester tester) async {
+    // "Not configured" leaves someone to guess what is missing, which is why
+    // a widget that could never fill read as broken rather than unavailable.
+    await pumpBody(
+      tester,
+      <Override>[
+        activeInstancesProvider.overrideWithValue(const <Instance>[]),
+        dashboardEditModeProvider.overrideWith((Ref ref) => true),
+      ],
+      const DashboardBoard(),
+    );
+
+    expect(find.text('Needs Glances'), findsOneWidget);
+    expect(find.text('Needs Seerr'), findsOneWidget);
+    expect(find.text('Needs Speedtest Tracker'), findsOneWidget);
+    // Upcoming, recently added and recently downloaded all want the same pair.
+    expect(find.text('Needs Sonarr or Radarr'), findsNWidgets(3));
+    expect(find.text('Needs Tautulli, Jellyfin or Emby'), findsOneWidget);
+    expect(find.text('Not configured'), findsNothing);
+  });
+
+  testWidgets('a widget nothing can fill cannot be shown',
+      (WidgetTester tester) async {
+    await pumpBody(
+      tester,
+      <Override>[
+        activeInstancesProvider.overrideWithValue(const <Instance>[]),
+        dashboardEditModeProvider.overrideWith((Ref ref) => true),
+      ],
+      const DashboardBoard(),
+    );
+
+    // Hide it so it lands in the Hidden section, where the show button lives.
+    await tester.tap(
+      find.descendant(
+        of: tileFor('Server info'),
+        matching: find.byIcon(Icons.visibility_off_outlined),
+      ),
+    );
+    await tester.pump();
+
+    // Showing it again would put it back on a board that filters it straight
+    // out, which reads as the button having failed.
+    final Finder show = find.descendant(
+      of: tileFor('Server info'),
+      matching: find.widgetWithIcon(IconButton, Icons.add_circle_outline),
+    );
+    expect(show, findsOneWidget);
+    expect(tester.widget<IconButton>(show).onPressed, isNull);
+  });
+
+  testWidgets('a widget with its service configured can still be shown',
+      (WidgetTester tester) async {
+    final Instance glances = makeInstance(ServiceKind.glances);
+    await pumpBody(
+      tester,
+      <Override>[
+        activeInstancesProvider.overrideWithValue(<Instance>[glances]),
+        dashboardEditModeProvider.overrideWith((Ref ref) => true),
+      ],
+      const DashboardBoard(),
+    );
+
+    expect(find.text('Needs Glances'), findsNothing);
+    await tester.tap(
+      find.descendant(
+        of: tileFor('Server info'),
+        matching: find.byIcon(Icons.visibility_off_outlined),
+      ),
+    );
+    await tester.pump();
+
+    final Finder show = find.descendant(
+      of: tileFor('Server info'),
+      matching: find.widgetWithIcon(IconButton, Icons.add_circle_outline),
+    );
+    expect(tester.widget<IconButton>(show).onPressed, isNotNull);
+  });
 }
