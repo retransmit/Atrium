@@ -60,6 +60,23 @@ final unraidContainersProvider =
   ),
 );
 
+/// What the machine is, polled while watched.
+///
+/// Almost all of this is fixed for the life of a boot. It is still polled,
+/// because uptime is worked out from the server's clock at the moment of the
+/// answer, and a figure that never moves reads as a screen that has hung.
+final unraidSystemInfoProvider =
+    FutureProvider.autoDispose.family<UnraidSystemInfo, Instance>(
+  (Ref ref, Instance instance) => ref.polled(
+    unraidPollInterval,
+    () async {
+      final UnraidClient client =
+          await ref.watch(unraidClientProvider(instance).future);
+      return client.getSystemInfo();
+    },
+  ),
+);
+
 /// Virtual machines, polled while watched.
 final unraidVmsProvider =
     FutureProvider.autoDispose.family<UnraidVmList, Instance>(

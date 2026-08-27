@@ -627,6 +627,146 @@ void main() {
     });
   });
 
+  group('UnraidSystemInfo', () {
+    /// Captured live. `os.uptime` is a boot timestamp, not a span, and the
+    /// baseboard fields come back as empty strings on a virtual machine.
+    const String raw = '''
+{
+  "time": "2026-08-27T19:12:57.084Z",
+  "os": {
+    "distro": "Unraid OS", "release": "7.3 x86_64",
+    "kernel": "6.18.38-Unraid", "hostname": "Tower",
+    "uptime": "2026-08-27T19:01:03.024Z", "uefi": true
+  },
+  "cpu": {
+    "manufacturer": "AMD", "brand": "Ryzen 7 6800H with Radeon Graphics",
+    "cores": 4, "threads": 4, "processors": 1
+  },
+  "baseboard": {
+    "manufacturer": "", "model": "", "memMax": 4294967296, "memSlots": 1
+  },
+  "system": {
+    "manufacturer": "QEMU", "model": "Standard PC (Q35 + ICH9, 2009)",
+    "virtual": true
+  },
+  "versions": { "core": { "unraid": "7.3.2" } }
+}
+''';
+
+    late UnraidSystemInfo info;
+
+    setUp(() {
+      info = UnraidSystemInfo.fromJson(
+        jsonDecode(raw) as Map<String, dynamic>,
+      );
+    });
+
+    test('uptime is worked out, because the field carries a boot time', () {
+      // Reading os.uptime straight would put a date on screen where a
+      // duration belongs.
+      expect(info.bootTime, isNotNull);
+      expect(info.uptime, const Duration(minutes: 11, seconds: 54, milliseconds: 60));
+      expect(info.uptimeLabel, '11 minutes');
+    });
+
+    test('it measures against the server clock, not the phone\'s', () {
+      // A device running fast would otherwise invent uptime out of nothing.
+      expect(info.serverTime, isNotNull);
+      final UnraidSystemInfo noClock = UnraidSystemInfo.fromJson(
+        <String, dynamic>{
+          'os': <String, dynamic>{'uptime': '2026-08-27T19:01:03.024Z'},
+        },
+      );
+      expect(noClock.uptime, isNull);
+      expect(noClock.uptimeLabel, '');
+    });
+
+    test('a clock that disagrees gives no uptime rather than a silly one', () {
+      final UnraidSystemInfo skewed = UnraidSystemInfo.fromJson(
+        <String, dynamic>{
+          'time': '2026-08-27T19:00:00.000Z',
+          'os': <String, dynamic>{'uptime': '2026-08-27T19:01:03.024Z'},
+        },
+      );
+      expect(skewed.uptime, isNull);
+    });
+
+    test('a blank board reads as absent, not as an empty row', () {
+      // The server sends "" rather than null here, which a ?? would keep.
+      expect(info.boardManufacturer, isNull);
+      expect(info.boardModel, isNull);
+      expect(info.boardLabel, isNull);
+    });
+
+    test('a real board is joined into one line', () {
+      final UnraidSystemInfo bare = UnraidSystemInfo.fromJson(
+        <String, dynamic>{
+          'baseboard': <String, dynamic>{
+            'manufacturer': 'ASUSTeK COMPUTER INC.',
+            'model': 'PRIME X570-P',
+          },
+        },
+      );
+      expect(bare.boardLabel, 'ASUSTeK COMPUTER INC. PRIME X570-P');
+    });
+
+    test('processor and core counts read as words', () {
+      expect(info.cpuLabel, 'Ryzen 7 6800H with Radeon Graphics');
+      // Threads equal to cores says nothing extra, so it is left off.
+      expect(info.coreLabel, '4 cores');
+      expect(
+        UnraidSystemInfo.fromJson(<String, dynamic>{
+          'cpu': <String, dynamic>{'cores': 8, 'threads': 16},
+        }).coreLabel,
+        '8 cores, 16 threads',
+      );
+    });
+
+    test('memory capacity describes headroom, which is what is reported', () {
+      // memMax is the most the board takes, not the amount fitted.
+      expect(info.memoryCapacityLabel, 'up to 4.0 GB across 1 slot');
+    });
+
+    test('the version prefers Unraid\'s own number', () {
+      expect(info.osLabel, 'Unraid 7.3.2');
+      expect(
+        UnraidSystemInfo.fromJson(<String, dynamic>{
+          'os': <String, dynamic>{'distro': 'Unraid OS', 'release': '7.2'},
+        }).osLabel,
+        'Unraid OS 7.2',
+      );
+    });
+
+    test('a virtualised server says so', () {
+      expect(info.isVirtual, isTrue);
+    });
+
+    test('an empty response parses to nothing rather than throwing', () {
+      final UnraidSystemInfo empty =
+          UnraidSystemInfo.fromJson(<String, dynamic>{});
+      expect(empty.cpuLabel, isNull);
+      expect(empty.uptime, isNull);
+      expect(empty.boardLabel, isNull);
+      expect(empty.memoryCapacityLabel, isNull);
+    });
+  });
+
+  group('unraidFmtUptime', () {
+    test('reads the way a server uptime is usually quoted', () {
+      expect(unraidFmtUptime(null), '');
+      expect(unraidFmtUptime(const Duration(seconds: 20)), 'just now');
+      expect(unraidFmtUptime(const Duration(minutes: 1)), '1 minute');
+      expect(unraidFmtUptime(const Duration(minutes: 41)), '41 minutes');
+      expect(unraidFmtUptime(const Duration(hours: 3)), '3h');
+      expect(unraidFmtUptime(const Duration(hours: 3, minutes: 12)), '3h 12m');
+      expect(unraidFmtUptime(const Duration(days: 1)), '1 day');
+      expect(unraidFmtUptime(const Duration(days: 9)), '9 days');
+      // Minutes stop mattering once it has been up for days.
+      expect(unraidFmtUptime(const Duration(days: 9, hours: 4, minutes: 30)),
+          '9d 4h',);
+    });
+  });
+
   group('unraidFmtBytes', () {
     test('memory is scaled from bytes, not kilobytes', () {
       // The array reports kilobytes and the metrics endpoint reports bytes.

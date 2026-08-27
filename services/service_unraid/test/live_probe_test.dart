@@ -143,6 +143,44 @@ void main() {
     }
   }, timeout: const Timeout(Duration(minutes: 2)),);
 
+  test('system info parses, and uptime is worked out not read', () async {
+    final UnraidSystemInfo info = await client.getSystemInfo();
+
+    // ignore: avoid_print
+    print('\n  cpu: ${info.cpuLabel} (${info.coreLabel})'
+        '\n  os: ${info.osLabel}, kernel ${info.kernel}'
+        '\n  host: ${info.hostname}, virtual: ${info.isVirtual}'
+        '\n  board: ${info.boardLabel ?? '(none reported)'}'
+        '\n  memory: ${info.memoryCapacityLabel ?? '(not reported)'}'
+        '\n  booted: ${info.bootTime}  server clock: ${info.serverTime}'
+        '\n  uptime: ${info.uptimeLabel}');
+
+    expect(info.cpuLabel, isNotNull, reason: 'no processor reported');
+    expect(info.osLabel, isNotNull);
+
+    // The field is called uptime but carries the moment of boot, so a naive
+    // read would print a date where a duration belongs.
+    expect(info.bootTime, isNotNull);
+    expect(info.serverTime, isNotNull);
+    expect(
+      info.uptime,
+      isNotNull,
+      reason: 'uptime could not be derived from boot time and server clock',
+    );
+    expect(info.uptime!.isNegative, isFalse);
+    expect(
+      info.uptimeLabel,
+      isNot(contains('20')),
+      reason: 'a year in the label means the timestamp reached the screen raw',
+    );
+
+    // Blank strings are what a virtual machine sends for its board, and they
+    // must read as absent rather than as an empty row.
+    if (info.boardLabel != null) {
+      expect(info.boardLabel!.trim(), isNotEmpty);
+    }
+  }, timeout: const Timeout(Duration(minutes: 2)),);
+
   test('a server with virtualisation off reports it rather than failing',
       () async {
     // Unraid ships the VM manager off, so this refusal is the ordinary case

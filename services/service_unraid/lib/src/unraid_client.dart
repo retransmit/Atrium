@@ -181,6 +181,30 @@ class UnraidClient {
     return UnraidMetrics.fromJson(metrics);
   }
 
+  /// What the machine is: processor, board, uptime and versions.
+  ///
+  /// `os.uptime` is the moment the machine booted, not a span, so `time` is
+  /// asked for alongside it. Measuring against the server's own clock keeps a
+  /// phone running fast or slow from inventing hours of uptime.
+  Future<UnraidSystemInfo> getSystemInfo() async {
+    final Map<String, dynamic> data = await _query(
+      '{ info { time '
+      'os { distro release kernel hostname uptime uefi } '
+      'cpu { manufacturer brand cores threads processors } '
+      'baseboard { manufacturer model memMax memSlots } '
+      'system { manufacturer model virtual } '
+      'versions { core { unraid } } } }',
+    );
+    final dynamic info = data['info'];
+    if (info is! Map<String, dynamic>) {
+      throw const NetworkUnknownException(
+        'Unraid did not return any system information. The API key may not '
+        'carry the permission to read it.',
+      );
+    }
+    return UnraidSystemInfo.fromJson(info);
+  }
+
   /// The virtual machines, or word that there is no VM manager to ask.
   ///
   /// Unraid ships with virtualisation off and a server with it off does not

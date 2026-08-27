@@ -57,8 +57,10 @@ List<Override> _overrides({
   List<UnraidContainer> containers = const <UnraidContainer>[],
   UnraidMetrics metrics = const UnraidMetrics(),
   UnraidVmList vms = const UnraidVmList(enabled: false),
+  UnraidSystemInfo info = const UnraidSystemInfo(),
 }) =>
     <Override>[
+      unraidSystemInfoProvider(_instance).overrideWith((Ref ref) async => info),
       unraidArrayProvider(_instance)
           .overrideWith((Ref ref) async => array ?? _array()),
       unraidContainersProvider(_instance)
@@ -546,6 +548,101 @@ void main() {
       expect(find.text('NETWORK'), findsOneWidget);
       expect(find.text('1.0 KB/s'), findsOneWidget);
       expect(find.text('2.0 KB/s'), findsOneWidget);
+    });
+  });
+
+  group('system info card', () {
+    testWidgets('shows what the machine is, with uptime as a duration', (
+      WidgetTester tester,
+    ) async {
+      await _pump(
+        tester,
+        const UnraidSystemTab(instance: _instance),
+        _overrides(
+          metrics: const UnraidMetrics(cpu: UnraidCpu(percentTotal: 5)),
+          info: UnraidSystemInfo(
+            serverTime: DateTime.utc(2026, 8, 27, 19, 12),
+            bootTime: DateTime.utc(2026, 8, 24, 15, 12),
+            kernel: '6.18.38-Unraid',
+            hostname: 'Tower',
+            cpuBrand: 'Ryzen 7 6800H with Radeon Graphics',
+            cores: 8,
+            threads: 16,
+            boardManufacturer: 'ASUSTeK COMPUTER INC.',
+            boardModel: 'PRIME X570-P',
+            memMaxBytes: 137438953472,
+            memSlots: 4,
+            unraidVersion: '7.3.2',
+          ),
+        ),
+      );
+
+      expect(find.text('ABOUT'), findsOneWidget);
+      expect(find.text('Ryzen 7 6800H with Radeon Graphics'), findsOneWidget);
+      expect(find.text('8 cores, 16 threads'), findsOneWidget);
+      // A duration, not the boot timestamp the field actually carries.
+      expect(find.text('3d 4h'), findsOneWidget);
+      expect(find.text('Unraid 7.3.2'), findsOneWidget);
+      expect(find.text('6.18.38-Unraid'), findsOneWidget);
+      expect(find.text('ASUSTeK COMPUTER INC. PRIME X570-P'), findsOneWidget);
+      expect(find.text('up to 128 GB across 4 slots'), findsOneWidget);
+    });
+
+    testWidgets('a board the server did not report is left out entirely', (
+      WidgetTester tester,
+    ) async {
+      // Every virtual machine sends empty strings here.
+      await _pump(
+        tester,
+        const UnraidSystemTab(instance: _instance),
+        _overrides(
+          metrics: const UnraidMetrics(cpu: UnraidCpu(percentTotal: 5)),
+          info: const UnraidSystemInfo(
+            cpuBrand: 'QEMU Virtual CPU',
+            unraidVersion: '7.3.2',
+            isVirtual: true,
+          ),
+        ),
+      );
+
+      expect(find.text('Board'), findsNothing);
+      expect(find.text('Memory'), findsNothing);
+      // Worth saying, since it explains a lot of odd readings elsewhere.
+      expect(find.text('virtual machine'), findsOneWidget);
+    });
+
+    testWidgets('a server that will not serve it hides the card, not the tab', (
+      WidgetTester tester,
+    ) async {
+      const Instance i = _instance;
+      await tester.binding.setSurfaceSize(const Size(800, 2400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: <Override>[
+            unraidMetricsProvider(i).overrideWith(
+              (Ref ref) async =>
+                  const UnraidMetrics(cpu: UnraidCpu(percentTotal: 5)),
+            ),
+            unraidSystemInfoProvider(i).overrideWith(
+              (Ref ref) async => throw Exception('no permission'),
+            ),
+          ],
+          child: MaterialApp(
+            theme: AtriumTheme.light(null),
+            home: const Scaffold(body: UnraidSystemTab(instance: _instance)),
+          ),
+        ),
+      );
+      for (int n = 0; n < 3; n++) {
+        await tester.pump();
+      }
+
+      expect(tester.takeException(), isNull);
+      expect(find.text('ABOUT'), findsNothing);
+      // The load graphs are the point of this tab and must survive.
+      expect(find.text('System'), findsOneWidget);
+      expect(find.text('5%'), findsOneWidget);
     });
   });
 

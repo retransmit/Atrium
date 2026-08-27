@@ -831,3 +831,189 @@ class UnraidVmList {
 
   final List<UnraidVm> vms;
 }
+
+/// Renders a span of time the way a server uptime is usually read.
+String unraidFmtUptime(Duration? d) {
+  if (d == null || d.isNegative) return '';
+  final int days = d.inDays;
+  final int hours = d.inHours % 24;
+  final int minutes = d.inMinutes % 60;
+  if (days > 0) {
+    // Minutes stop mattering once a server has been up for days.
+    return hours == 0
+        ? (days == 1 ? '1 day' : '$days days')
+        : '${days}d ${hours}h';
+  }
+  if (hours > 0) return minutes == 0 ? '${hours}h' : '${hours}h ${minutes}m';
+  if (minutes > 0) return minutes == 1 ? '1 minute' : '$minutes minutes';
+  return 'just now';
+}
+
+/// A value the server sent but left blank.
+///
+/// Several of these come back as an empty string rather than null, which is
+/// not the same as absent to a `??` and would otherwise render a label with
+/// nothing beside it.
+String? _text(Object? raw) {
+  final String s = raw?.toString().trim() ?? '';
+  return s.isEmpty ? null : s;
+}
+
+/// What the machine is, as opposed to what it is doing.
+class UnraidSystemInfo {
+  const UnraidSystemInfo({
+    this.serverTime,
+    this.bootTime,
+    this.distro,
+    this.release,
+    this.kernel,
+    this.hostname,
+    this.uefi,
+    this.cpuBrand,
+    this.cpuManufacturer,
+    this.cores,
+    this.threads,
+    this.processors,
+    this.boardManufacturer,
+    this.boardModel,
+    this.memMaxBytes,
+    this.memSlots,
+    this.systemManufacturer,
+    this.systemModel,
+    this.isVirtual,
+    this.unraidVersion,
+  });
+
+  factory UnraidSystemInfo.fromJson(Map<String, dynamic> json) {
+    Map<String, dynamic> sub(String key) {
+      final dynamic v = json[key];
+      return v is Map<String, dynamic> ? v : <String, dynamic>{};
+    }
+
+    final Map<String, dynamic> os = sub('os');
+    final Map<String, dynamic> cpu = sub('cpu');
+    final Map<String, dynamic> board = sub('baseboard');
+    final Map<String, dynamic> system = sub('system');
+    final dynamic versions = json['versions'];
+    final dynamic core =
+        versions is Map<String, dynamic> ? versions['core'] : null;
+
+    int? whole(Object? raw) => raw is num ? raw.toInt() : null;
+
+    return UnraidSystemInfo(
+      serverTime: DateTime.tryParse(json['time']?.toString() ?? ''),
+      // Named uptime, but it is the moment the machine booted.
+      bootTime: DateTime.tryParse(os['uptime']?.toString() ?? ''),
+      distro: _text(os['distro']),
+      release: _text(os['release']),
+      kernel: _text(os['kernel']),
+      hostname: _text(os['hostname']),
+      uefi: os['uefi'] is bool ? os['uefi'] as bool : null,
+      cpuBrand: _text(cpu['brand']),
+      cpuManufacturer: _text(cpu['manufacturer']),
+      cores: whole(cpu['cores']),
+      threads: whole(cpu['threads']),
+      processors: whole(cpu['processors']),
+      boardManufacturer: _text(board['manufacturer']),
+      boardModel: _text(board['model']),
+      memMaxBytes: whole(board['memMax']),
+      memSlots: whole(board['memSlots']),
+      systemManufacturer: _text(system['manufacturer']),
+      systemModel: _text(system['model']),
+      isVirtual: system['virtual'] is bool ? system['virtual'] as bool : null,
+      unraidVersion:
+          core is Map<String, dynamic> ? _text(core['unraid']) : null,
+    );
+  }
+
+  /// The server's own clock, which is what uptime is measured against so a
+  /// phone running fast or slow cannot skew the answer.
+  final DateTime? serverTime;
+
+  /// When the machine last booted. The API calls this `uptime`.
+  final DateTime? bootTime;
+
+  final String? distro;
+  final String? release;
+  final String? kernel;
+  final String? hostname;
+  final bool? uefi;
+
+  final String? cpuBrand;
+  final String? cpuManufacturer;
+  final int? cores;
+  final int? threads;
+  final int? processors;
+
+  final String? boardManufacturer;
+  final String? boardModel;
+
+  /// The most memory the board takes, not the amount fitted.
+  final int? memMaxBytes;
+  final int? memSlots;
+
+  final String? systemManufacturer;
+  final String? systemModel;
+
+  /// True when Unraid is itself running in a virtual machine.
+  final bool? isVirtual;
+
+  final String? unraidVersion;
+
+  /// How long the machine has been up.
+  ///
+  /// Both ends come from the server, so a device whose clock is off does not
+  /// turn into hours of imaginary uptime.
+  Duration? get uptime {
+    final DateTime? now = serverTime;
+    final DateTime? boot = bootTime;
+    if (now == null || boot == null) return null;
+    final Duration d = now.difference(boot);
+    return d.isNegative ? null : d;
+  }
+
+  String get uptimeLabel => unraidFmtUptime(uptime);
+
+  /// The processor, as one line.
+  String? get cpuLabel => cpuBrand ?? cpuManufacturer;
+
+  /// `4 cores, 8 threads`, or just the cores when the two match.
+  String? get coreLabel {
+    final int? c = cores;
+    if (c == null || c == 0) return null;
+    final String core = c == 1 ? '1 core' : '$c cores';
+    final int? t = threads;
+    if (t == null || t == 0 || t == c) return core;
+    return '$core, $t threads';
+  }
+
+  /// The motherboard. Null on a machine that does not report one, which is
+  /// every virtual one.
+  String? get boardLabel {
+    final String? make = boardManufacturer;
+    final String? model = boardModel;
+    if (make == null && model == null) return null;
+    return <String>[if (make != null) make, if (model != null) model].join(' ');
+  }
+
+  /// `up to 64 GB across 4 slots`, describing headroom rather than what is
+  /// fitted, which is what the server actually reports here.
+  String? get memoryCapacityLabel {
+    final int? max = memMaxBytes;
+    final int? slots = memSlots;
+    if (max == null || max <= 0) return null;
+    final String size = unraidFmtBytes(max);
+    if (slots == null || slots <= 0) return 'up to $size';
+    return 'up to $size across ${slots == 1 ? '1 slot' : '$slots slots'}';
+  }
+
+  /// `Unraid 7.3.2`, falling back to whatever the OS called itself.
+  String? get osLabel {
+    final String? v = unraidVersion;
+    if (v != null) return 'Unraid $v';
+    final String? d = distro;
+    final String? r = release;
+    if (d == null) return r;
+    return r == null ? d : '$d $r';
+  }
+}

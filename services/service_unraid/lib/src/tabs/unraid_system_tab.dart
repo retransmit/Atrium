@@ -476,8 +476,121 @@ class UnraidSystemTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return UnraidTabScaffold(
-      onRefresh: () => ref.invalidate(unraidMetricsProvider(instance)),
-      children: <Widget>[_SystemBody(instance: instance)],
+      onRefresh: () {
+        ref.invalidate(unraidMetricsProvider(instance));
+        ref.invalidate(unraidSystemInfoProvider(instance));
+      },
+      // Two separate reads, kept apart on purpose: a server that will not
+      // serve one of them should still show the other.
+      children: <Widget>[
+        _SystemBody(instance: instance),
+        const SizedBox(height: Insets.sm),
+        _SystemInfoCard(instance: instance),
+      ],
+    );
+  }
+}
+
+/// What the machine is, as opposed to what it is doing.
+class _SystemInfoCard extends ConsumerWidget {
+  const _SystemInfoCard({required this.instance});
+
+  final Instance instance;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final UnraidSystemInfo? info =
+        ref.watch(unraidSystemInfoProvider(instance)).value;
+    if (info == null) return const SizedBox.shrink();
+
+    final String? cpu = info.cpuLabel;
+    final List<(String, String)> rows = <(String, String)>[
+      if (info.uptimeLabel.isNotEmpty) ('Uptime', info.uptimeLabel),
+      if (info.osLabel != null) ('Version', info.osLabel!),
+      if (info.kernel != null) ('Kernel', info.kernel!),
+      // Absent on anything virtual, which is most test setups.
+      if (info.boardLabel != null) ('Board', info.boardLabel!),
+      if (info.memoryCapacityLabel != null)
+        ('Memory', info.memoryCapacityLabel!),
+      if (info.hostname != null) ('Hostname', info.hostname!),
+    ];
+    if (cpu == null && rows.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.all(Insets.md),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(Radii.lg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Text(
+                'ABOUT',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const Spacer(),
+              // Worth saying: an Unraid inside a VM behaves differently
+              // enough that it explains a lot of odd readings.
+              if (info.isVirtual == true)
+                Text(
+                  'virtual machine',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: cs.onSurfaceVariant,
+                  ),
+                ),
+            ],
+          ),
+          if (cpu != null) ...<Widget>[
+            const SizedBox(height: Insets.sm),
+            Text(
+              cpu,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (info.coreLabel != null)
+              Text(
+                info.coreLabel!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+          ],
+          if (rows.isNotEmpty) const SizedBox(height: Insets.md),
+          for (final (String label, String value) in rows)
+            Padding(
+              padding: const EdgeInsets.only(bottom: Insets.xs),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  SizedBox(
+                    width: 84,
+                    child: Text(
+                      label,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      value,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
