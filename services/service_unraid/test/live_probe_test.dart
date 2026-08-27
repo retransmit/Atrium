@@ -143,6 +143,30 @@ void main() {
     }
   }, timeout: const Timeout(Duration(minutes: 2)),);
 
+  test('a server with virtualisation off reports it rather than failing',
+      () async {
+    // Unraid ships the VM manager off, so this refusal is the ordinary case
+    // for most servers. Raised rather than reported, it would take the tab
+    // down for the majority who do not run VMs.
+    final UnraidVmList vms = await client.getVms();
+
+    // ignore: avoid_print
+    print('\n  VM manager enabled: ${vms.enabled}, ${vms.vms.length} machines');
+    for (final UnraidVm v in vms.vms) {
+      // ignore: avoid_print
+      print('  ${v.displayName}: ${v.stateLabel}');
+      expect(v.id, isNotEmpty);
+      expect(
+        v.stateLabel,
+        isNot(equals(v.state)),
+        reason: '${v.displayName} shows libvirt\'s own word for its state',
+      );
+    }
+    if (!vms.enabled) {
+      expect(vms.vms, isEmpty);
+    }
+  }, timeout: const Timeout(Duration(minutes: 2)),);
+
   test('every container parses, whatever state it is in', () async {
     final List<UnraidContainer> containers = await client.getContainers();
 

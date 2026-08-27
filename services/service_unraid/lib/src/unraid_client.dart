@@ -120,12 +120,12 @@ class UnraidClient {
   }
 
   /// Every Docker container the server knows about, running or not.
+  ///
+  /// A server with the Docker service stopped answers this with `Docker
+  /// socket unavailable`, which reads as a fault in the app rather than a
+  /// service someone turned off, so it is named here instead.
   Future<List<UnraidContainer>> getContainers() async {
-    final Map<String, dynamic> data = await _query(
-      '{ docker { containers { id names image state status autoStart '
-      'isOrphaned isUpdateAvailable iconUrl webUiUrl '
-      'ports { privatePort publicPort type } } } }',
-    );
+    final Map<String, dynamic> data = await _containersQuery();
     final dynamic docker = data['docker'];
     if (docker is! Map<String, dynamic>) {
       throw const NetworkUnknownException(
@@ -137,6 +137,24 @@ class UnraidClient {
         .whereType<Map<String, dynamic>>()
         .map(UnraidContainer.fromJson)
         .toList();
+  }
+
+  Future<Map<String, dynamic>> _containersQuery() async {
+    try {
+      return await _query(
+        '{ docker { containers { id names image state status autoStart '
+        'isOrphaned isUpdateAvailable iconUrl webUiUrl '
+        'ports { privatePort publicPort type } } } }',
+      );
+    } on NetworkException catch (e) {
+      if (e.message.toLowerCase().contains('docker socket')) {
+        throw const NetworkUnknownException(
+          'Docker is not running on this server. Start it under Settings, '
+          'Docker, to manage containers from here.',
+        );
+      }
+      rethrow;
+    }
   }
 
   /// How hard the machine is working right now.
@@ -161,6 +179,39 @@ class UnraidClient {
       );
     }
     return UnraidMetrics.fromJson(metrics);
+  }
+
+  /// The virtual machines, or word that there is no VM manager to ask.
+  ///
+  /// Unraid ships with virtualisation off and a server with it off does not
+  /// answer this with an empty list, it refuses the query. That refusal is a
+  /// normal state for most servers rather than a fault, so it is reported as
+  /// one instead of being raised. It also has to be asked for on its own: an
+  /// errors array anywhere in a response fails the whole request, so bundling
+  /// this with the array or the containers would take those down too.
+  Future<UnraidVmList> getVms() async {
+    try {
+      final Map<String, dynamic> data =
+          await _query('{ vms { domains { id name state } } }');
+      final dynamic vms = data['vms'];
+      final dynamic domains =
+          vms is Map<String, dynamic> ? vms['domains'] : null;
+      if (domains is! List) {
+        return const UnraidVmList(enabled: false);
+      }
+      return UnraidVmList(
+        enabled: true,
+        vms: domains
+            .whereType<Map<String, dynamic>>()
+            .map(UnraidVm.fromJson)
+            .toList(),
+      );
+    } on NetworkException catch (e) {
+      if (e.message.toLowerCase().contains('not available')) {
+        return const UnraidVmList(enabled: false);
+      }
+      rethrow;
+    }
   }
 
   Future<UnraidContainer> startContainer(String id) =>

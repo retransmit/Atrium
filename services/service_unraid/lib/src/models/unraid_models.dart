@@ -771,3 +771,63 @@ double? _double(Object? raw) {
   if (raw is String) return double.tryParse(raw);
   return null;
 }
+
+/// One virtual machine.
+class UnraidVm {
+  const UnraidVm({required this.id, this.name, this.state});
+
+  factory UnraidVm.fromJson(Map<String, dynamic> json) => UnraidVm(
+        id: json['id']?.toString() ?? '',
+        name: json['name']?.toString(),
+        state: json['state']?.toString(),
+      );
+
+  /// The compound identifier the mutations take, as with containers.
+  final String id;
+
+  final String? name;
+
+  /// `RUNNING`, `IDLE`, `PAUSED`, `SHUTDOWN`, `SHUTOFF`, `CRASHED`,
+  /// `PMSUSPENDED` or `NOSTATE`.
+  final String? state;
+
+  String get displayName => (name?.isNotEmpty ?? false) ? name! : id;
+
+  /// libvirt calls a running-but-quiet domain idle, which is still up.
+  bool get isRunning => state == 'RUNNING' || state == 'IDLE';
+
+  bool get isPaused => state == 'PAUSED' || state == 'PMSUSPENDED';
+
+  /// Shutting down is on its way to stopped, not stopped yet, so it gets
+  /// neither the start nor the stop action while it is in between.
+  bool get isBusy => state == 'SHUTDOWN';
+
+  bool get hasCrashed => state == 'CRASHED';
+
+  String get stateLabel => switch (state) {
+        null || '' => 'Unknown',
+        'RUNNING' => 'Running',
+        'IDLE' => 'Idle',
+        'PAUSED' => 'Paused',
+        'PMSUSPENDED' => 'Suspended',
+        'SHUTDOWN' => 'Shutting down',
+        'SHUTOFF' => 'Stopped',
+        'CRASHED' => 'Crashed',
+        'NOSTATE' => 'Unknown',
+        _ => state!,
+      };
+}
+
+/// What the VM manager had to say.
+///
+/// An empty list and a disabled manager are not the same thing, and telling
+/// them apart matters: Unraid ships with virtualisation off, so most servers
+/// refuse this query outright rather than answering with nothing.
+class UnraidVmList {
+  const UnraidVmList({required this.enabled, this.vms = const <UnraidVm>[]});
+
+  /// False when the server has no VM manager running to ask.
+  final bool enabled;
+
+  final List<UnraidVm> vms;
+}

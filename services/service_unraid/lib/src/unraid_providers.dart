@@ -1,9 +1,22 @@
 import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import 'models/unraid_models.dart';
 import 'unraid_client.dart';
+
+/// Which tab is showing, per instance.
+///
+/// Kept per instance so moving between two servers does not drop you on
+/// whichever tab you last used on the other one.
+final tabIndexProvider =
+    StateProvider.family<int, Instance>((Ref ref, Instance instance) => 0);
+
+/// Whether the bottom bar is showing. Hidden while scrolling down so a long
+/// disk list is not read through a navigation bar.
+final bottomNavVisibleProvider =
+    StateProvider.family<bool, Instance>((Ref ref, Instance instance) => true);
 
 /// How often the array and container lists refresh while on screen.
 ///
@@ -43,6 +56,19 @@ final unraidContainersProvider =
       final UnraidClient client =
           await ref.watch(unraidClientProvider(instance).future);
       return client.getContainers();
+    },
+  ),
+);
+
+/// Virtual machines, polled while watched.
+final unraidVmsProvider =
+    FutureProvider.autoDispose.family<UnraidVmList, Instance>(
+  (Ref ref, Instance instance) => ref.polled(
+    unraidPollInterval,
+    () async {
+      final UnraidClient client =
+          await ref.watch(unraidClientProvider(instance).future);
+      return client.getVms();
     },
   ),
 );
