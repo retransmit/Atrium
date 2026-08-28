@@ -492,6 +492,10 @@ class UnraidSystemTab extends ConsumerWidget {
 }
 
 /// What the machine is, as opposed to what it is doing.
+///
+/// Sits under the load cards and deliberately reads quieter than them: this
+/// is reference, not something to watch. Uptime is the exception, being the
+/// one value here that moves, so it is the one given colour.
 class _SystemInfoCard extends ConsumerWidget {
   const _SystemInfoCard({required this.instance});
 
@@ -506,17 +510,22 @@ class _SystemInfoCard extends ConsumerWidget {
     if (info == null) return const SizedBox.shrink();
 
     final String? cpu = info.cpuLabel;
-    final List<(String, String)> rows = <(String, String)>[
-      if (info.uptimeLabel.isNotEmpty) ('Uptime', info.uptimeLabel),
-      if (info.osLabel != null) ('Version', info.osLabel!),
-      if (info.kernel != null) ('Kernel', info.kernel!),
+    final List<_Fact> facts = <_Fact>[
+      if (info.uptimeLabel.isNotEmpty)
+        _Fact(Icons.schedule_rounded, 'Uptime', info.uptimeLabel, live: true),
+      if (info.osLabel != null)
+        _Fact(Icons.sell_outlined, 'Version', info.osLabel!),
+      if (info.kernel != null)
+        _Fact(Icons.terminal_rounded, 'Kernel', info.kernel!),
       // Absent on anything virtual, which is most test setups.
-      if (info.boardLabel != null) ('Board', info.boardLabel!),
+      if (info.boardLabel != null)
+        _Fact(Icons.developer_board_rounded, 'Board', info.boardLabel!),
       if (info.memoryCapacityLabel != null)
-        ('Memory', info.memoryCapacityLabel!),
-      if (info.hostname != null) ('Hostname', info.hostname!),
+        _Fact(Icons.memory_rounded, 'Memory', info.memoryCapacityLabel!),
+      if (info.hostname != null)
+        _Fact(Icons.badge_outlined, 'Hostname', info.hostname!),
     ];
-    if (cpu == null && rows.isEmpty) return const SizedBox.shrink();
+    if (cpu == null && facts.isEmpty) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.all(Insets.md),
@@ -538,57 +547,109 @@ class _SystemInfoCard extends ConsumerWidget {
               ),
               const Spacer(),
               // Worth saying: an Unraid inside a VM behaves differently
-              // enough that it explains a lot of odd readings.
+              // enough that it explains a lot of odd readings elsewhere.
               if (info.isVirtual == true)
-                Text(
-                  'virtual machine',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: cs.onSurfaceVariant,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: Insets.sm,
+                    vertical: Insets.xxs,
+                  ),
+                  decoration: BoxDecoration(
+                    color: cs.tertiary.withValues(alpha: 0.14),
+                    borderRadius: Radii.chip,
+                  ),
+                  child: Text(
+                    'virtual machine',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: cs.tertiary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
             ],
           ),
           if (cpu != null) ...<Widget>[
-            const SizedBox(height: Insets.sm),
+            const SizedBox(height: Insets.md),
             Text(
               cpu,
               style: theme.textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
+                height: 1.2,
               ),
             ),
-            if (info.coreLabel != null)
+            if (info.coreLabel != null) ...<Widget>[
+              const SizedBox(height: Insets.xxs),
               Text(
                 info.coreLabel!,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: cs.onSurfaceVariant,
                 ),
               ),
+            ],
           ],
-          if (rows.isNotEmpty) const SizedBox(height: Insets.md),
-          for (final (String label, String value) in rows)
-            Padding(
-              padding: const EdgeInsets.only(bottom: Insets.xs),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  SizedBox(
-                    width: 84,
-                    child: Text(
-                      label,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(
-                      value,
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ),
-                ],
-              ),
+          if (facts.isNotEmpty) ...<Widget>[
+            const SizedBox(height: Insets.md),
+            Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.6)),
+            const SizedBox(height: Insets.sm),
+            for (final _Fact f in facts) _FactRow(fact: f),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// One line of the About card.
+class _Fact {
+  const _Fact(this.icon, this.label, this.value, {this.live = false});
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  /// Set on the one figure that changes, so it can carry the only colour in
+  /// a card that is otherwise all reference.
+  final bool live;
+}
+
+class _FactRow extends StatelessWidget {
+  const _FactRow({required this.fact});
+
+  final _Fact fact;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final Color accent = fact.live ? cs.primary : cs.onSurfaceVariant;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: Insets.xs),
+      child: Row(
+        children: <Widget>[
+          Icon(fact.icon, size: 16, color: accent),
+          const SizedBox(width: Insets.sm),
+          Text(
+            fact.label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: cs.onSurfaceVariant,
             ),
+          ),
+          const SizedBox(width: Insets.md),
+          // Right aligned so the values line up down the card however long
+          // the labels beside them run.
+          Expanded(
+            child: Text(
+              fact.value,
+              textAlign: TextAlign.right,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: fact.live ? cs.primary : cs.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );
