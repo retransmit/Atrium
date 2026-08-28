@@ -434,6 +434,12 @@ class UnraidContainer {
     this.isUpdateAvailable,
     this.iconUrl,
     this.webUiUrl,
+    this.projectUrl,
+    this.supportUrl,
+    this.registryUrl,
+    this.command,
+    this.createdAt,
+    this.sizeRootFsBytes,
     this.ports = const <UnraidPort>[],
   });
 
@@ -453,6 +459,18 @@ class UnraidContainer {
             : null,
         iconUrl: json['iconUrl']?.toString(),
         webUiUrl: json['webUiUrl']?.toString(),
+        projectUrl: json['projectUrl']?.toString(),
+        supportUrl: json['supportUrl']?.toString(),
+        registryUrl: json['registryUrl']?.toString(),
+        command: json['command']?.toString(),
+        // Seconds since the epoch, not milliseconds.
+        createdAt: json['created'] is num
+            ? DateTime.fromMillisecondsSinceEpoch(
+                (json['created'] as num).toInt() * 1000,
+                isUtc: true,
+              )
+            : null,
+        sizeRootFsBytes: _bigInt(json['sizeRootFs']),
         ports: (json['ports'] as List<dynamic>? ?? <dynamic>[])
             .whereType<Map<String, dynamic>>()
             .map(UnraidPort.fromJson)
@@ -483,10 +501,22 @@ class UnraidContainer {
 
   final bool? isUpdateAvailable;
 
-  /// Taken from the container's Unraid template, so both are null while it is
-  /// orphaned.
+  /// Taken from the container's Unraid template, so these are all null while
+  /// it is orphaned.
   final String? iconUrl;
   final String? webUiUrl;
+  final String? projectUrl;
+  final String? supportUrl;
+  final String? registryUrl;
+
+  /// What the container runs.
+  final String? command;
+
+  /// When the container was created, which is not when it last started.
+  final DateTime? createdAt;
+
+  /// How much disk the container's own layer takes, in bytes.
+  final int? sizeRootFsBytes;
 
   final List<UnraidPort> ports;
 
@@ -512,6 +542,35 @@ class UnraidContainer {
   /// True when a healthcheck is failing, which `state` alone does not show:
   /// an unhealthy container still reports RUNNING.
   bool get isUnhealthy => status?.contains('(unhealthy)') ?? false;
+
+  /// The image without its tag, which is the half worth reading on a phone.
+  String? get imageName {
+    final String? i = image;
+    if (i == null || i.isEmpty) return null;
+    final int at = i.lastIndexOf(':');
+    // A registry port (`host:5000/img`) is not a tag, so only split when the
+    // colon comes after the last slash.
+    return at > i.lastIndexOf('/') ? i.substring(0, at) : i;
+  }
+
+  /// The image tag, `latest` and all.
+  String? get imageTag {
+    final String? i = image;
+    if (i == null) return null;
+    final int at = i.lastIndexOf(':');
+    return at > i.lastIndexOf('/') ? i.substring(at + 1) : null;
+  }
+
+  /// Every published mapping, as `8989 -> 80`.
+  List<String> get portMappings => <String>[
+        for (final UnraidPort p in ports)
+          if (p.publicPort != null)
+            '${p.publicPort} -> ${p.privatePort ?? '?'}'
+                '${p.type == 'UDP' ? ' udp' : ''}',
+      ];
+
+  /// Disk taken by the container's own writable layer.
+  String get sizeLabel => unraidFmtBytes(sizeRootFsBytes);
 
   /// The published ports, as `8989, 7878`. Ports the container exposes but
   /// does not publish are left out: nothing outside the host can reach them.

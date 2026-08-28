@@ -3,12 +3,12 @@ import 'package:core_networking/core_networking.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../models/unraid_models.dart';
 import '../unraid_client.dart';
 import '../unraid_providers.dart';
 import '../widgets/unraid_common.dart';
+import '../widgets/unraid_container_sheet.dart';
 
 enum _DockerFilter { all, running, stopped, issues }
 
@@ -186,30 +186,6 @@ class _ContainerRowState extends ConsumerState<_ContainerRow> {
     }
   }
 
-  /// Opens the container's own web interface.
-  ///
-  /// The address comes from the container's Unraid template, so a container
-  /// without one is never tappable in the first place.
-  Future<void> _openWebUi(String url) async {
-    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
-    try {
-      final bool opened = await launchUrl(
-        Uri.parse(url),
-        mode: LaunchMode.externalApplication,
-      );
-      if (!opened && mounted) {
-        messenger.showSnackBar(
-          SnackBar(content: Text('Could not open $url')),
-        );
-      }
-    } on Object {
-      if (!mounted) return;
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Could not open the web interface.')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
@@ -337,13 +313,19 @@ class _ContainerRowState extends ConsumerState<_ContainerRow> {
       ),
     );
 
-    // Only a container whose template names a web interface has anywhere to
-    // go, so the rest are left inert rather than tapping to nothing.
-    final String? web = c.webUiUrl;
-    if (web == null || web.isEmpty) return row;
+    // Every row opens now, not just the ones with a web interface: the sheet
+    // carries the rest of what a container has to say, and the quick action
+    // stays on the row so the common case needs no detour.
     return Material(
       color: Colors.transparent,
-      child: InkWell(onTap: () => _openWebUi(web), child: row),
+      child: InkWell(
+        onTap: () => showUnraidContainerSheet(
+          context,
+          instance: widget.instance,
+          container: c,
+        ),
+        child: row,
+      ),
     );
   }
 }

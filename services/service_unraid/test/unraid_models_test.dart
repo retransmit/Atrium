@@ -484,6 +484,60 @@ void main() {
       expect(containers.first.id, 'srv:c1');
     });
 
+    test('an image is split into name and tag', () {
+      final UnraidContainer c = UnraidContainer.fromJson(<String, dynamic>{
+        'id': 'x',
+        'names': <dynamic>['/sonarr'],
+        'image': 'lscr.io/linuxserver/sonarr:latest',
+      });
+      expect(c.imageName, 'lscr.io/linuxserver/sonarr');
+      expect(c.imageTag, 'latest');
+    });
+
+    test('a registry port is not mistaken for a tag', () {
+      // `host:5000/img` has a colon that is nothing to do with the tag, so
+      // splitting on the last colon alone would cut the registry in half.
+      final UnraidContainer c = UnraidContainer.fromJson(<String, dynamic>{
+        'id': 'x',
+        'names': <dynamic>['/thing'],
+        'image': 'registry.local:5000/team/thing',
+      });
+      expect(c.imageName, 'registry.local:5000/team/thing');
+      expect(c.imageTag, isNull);
+    });
+
+    test('created is read as seconds, not milliseconds', () {
+      // Off by a factor of a thousand puts the container in 1970.
+      final UnraidContainer c = UnraidContainer.fromJson(<String, dynamic>{
+        'id': 'x',
+        'names': <dynamic>['/a'],
+        'created': 1787721305,
+      });
+      expect(c.createdAt?.year, 2026);
+    });
+
+    test('only published ports become mappings', () {
+      final UnraidContainer c = UnraidContainer.fromJson(<String, dynamic>{
+        'id': 'x',
+        'names': <dynamic>['/a'],
+        'ports': <dynamic>[
+          <String, dynamic>{
+            'privatePort': 80,
+            'publicPort': 8989,
+            'type': 'TCP',
+          },
+          // Exposed but not published: nothing outside can reach it.
+          <String, dynamic>{'privatePort': 6767, 'type': 'TCP'},
+          <String, dynamic>{
+            'privatePort': 53,
+            'publicPort': 5353,
+            'type': 'UDP',
+          },
+        ],
+      });
+      expect(c.portMappings, <String>['8989 -> 80', '5353 -> 53 udp']);
+    });
+
     test('a container with no names falls back to its id', () {
       final UnraidContainer nameless = UnraidContainer.fromJson(
         <String, dynamic>{'id': 'abc123', 'names': <dynamic>[]},

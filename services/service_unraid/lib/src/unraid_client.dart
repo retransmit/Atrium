@@ -143,7 +143,8 @@ class UnraidClient {
     try {
       return await _query(
         '{ docker { containers { id names image state status autoStart '
-        'isOrphaned isUpdateAvailable iconUrl webUiUrl '
+        'isOrphaned isUpdateAvailable iconUrl webUiUrl projectUrl '
+        'supportUrl registryUrl command created sizeRootFs '
         'ports { privatePort publicPort type } } } }',
       );
     } on NetworkException catch (e) {
@@ -262,7 +263,8 @@ class UnraidClient {
     final Map<String, dynamic> data = await _query(
       'mutation(\$id: PrefixedID!) { docker { $field(id: \$id) '
       '{ id names image state status autoStart isOrphaned isUpdateAvailable '
-      'iconUrl webUiUrl ports { privatePort publicPort type } } } }',
+      'iconUrl webUiUrl projectUrl supportUrl registryUrl command created '
+      'sizeRootFs ports { privatePort publicPort type } } } }',
       variables: <String, dynamic>{'id': id},
     );
     final dynamic docker = data['docker'];

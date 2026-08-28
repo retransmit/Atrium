@@ -551,6 +551,149 @@ void main() {
     });
   });
 
+  group('container detail sheet', () {
+    const UnraidContainer sonarr = UnraidContainer(
+      id: 'srv:c1',
+      names: <String>['/sonarr'],
+      image: 'lscr.io/linuxserver/sonarr:latest',
+      state: 'RUNNING',
+      status: 'Up 24 hours',
+      autoStart: true,
+      command: '/init',
+      sizeRootFsBytes: 1288490188,
+      webUiUrl: 'http://10.0.2.15:8989/',
+      projectUrl: 'https://sonarr.tv/',
+      supportUrl: 'https://forums.unraid.net/topic/1',
+      ports: <UnraidPort>[
+        UnraidPort(privatePort: 80, publicPort: 8989, type: 'TCP'),
+      ],
+    );
+
+    testWidgets('every row opens it, not only the ones with a web interface', (
+      WidgetTester tester,
+    ) async {
+      await _pump(
+        tester,
+        const UnraidDockerTab(instance: _instance),
+        _overrides(
+          containers: const <UnraidContainer>[
+            UnraidContainer(
+              id: 'srv:c9',
+              names: <String>['/orphan'],
+              state: 'EXITED',
+              status: 'Exited (0) 2 days ago',
+              isOrphaned: true,
+            ),
+          ],
+        ),
+      );
+
+      await tester.tap(find.text('orphan'));
+      await tester.pumpAndSettle();
+
+      // It has no template, so the old behaviour left it inert entirely.
+      expect(find.text('Start'), findsOneWidget);
+      expect(
+        find.textContaining('No Unraid template matches'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('it shows what the list has no room for', (
+      WidgetTester tester,
+    ) async {
+      await _pump(
+        tester,
+        const UnraidDockerTab(instance: _instance),
+        _overrides(containers: const <UnraidContainer>[sonarr]),
+      );
+
+      await tester.tap(find.text('sonarr'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('lscr.io/linuxserver/sonarr:latest'), findsOneWidget);
+      expect(find.text('8989 -> 80'), findsOneWidget);
+      expect(find.text('1.2 GB'), findsOneWidget);
+      expect(find.text('Starts with the array'), findsOneWidget);
+      expect(find.text('/init'), findsOneWidget);
+      expect(find.text('Web interface'), findsOneWidget);
+      expect(find.text('Project page'), findsOneWidget);
+      expect(find.text('Support thread'), findsOneWidget);
+    });
+
+    testWidgets('a running container is offered stop and pause', (
+      WidgetTester tester,
+    ) async {
+      await _pump(
+        tester,
+        const UnraidDockerTab(instance: _instance),
+        _overrides(containers: const <UnraidContainer>[sonarr]),
+      );
+
+      await tester.tap(find.text('sonarr'));
+      await tester.pumpAndSettle();
+
+      expect(find.widgetWithText(FilledButton, 'Stop'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, 'Pause'), findsOneWidget);
+      // Resuming something already running would do nothing.
+      expect(find.text('Resume'), findsNothing);
+      expect(find.text('Start'), findsNothing);
+    });
+
+    testWidgets('a paused container is offered resume, never pause again', (
+      WidgetTester tester,
+    ) async {
+      await _pump(
+        tester,
+        const UnraidDockerTab(instance: _instance),
+        _overrides(
+          containers: const <UnraidContainer>[
+            UnraidContainer(
+              id: 'srv:c1',
+              names: <String>['/bazarr'],
+              state: 'PAUSED',
+              status: 'Up 6 days (Paused)',
+            ),
+          ],
+        ),
+      );
+
+      await tester.tap(find.text('bazarr'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Resume'), findsOneWidget);
+      expect(find.text('Stop'), findsOneWidget);
+      expect(find.text('Pause'), findsNothing);
+    });
+
+    testWidgets('a stopped container is offered only start', (
+      WidgetTester tester,
+    ) async {
+      await _pump(
+        tester,
+        const UnraidDockerTab(instance: _instance),
+        _overrides(
+          containers: const <UnraidContainer>[
+            UnraidContainer(
+              id: 'srv:c1',
+              names: <String>['/old'],
+              state: 'EXITED',
+              status: 'Exited (0) 2 days ago',
+            ),
+          ],
+        ),
+      );
+
+      await tester.tap(find.text('old'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Start'), findsOneWidget);
+      // Pausing a stopped container does nothing.
+      expect(find.text('Pause'), findsNothing);
+      expect(find.text('Stop'), findsNothing);
+    });
+  });
+
   group('system info card', () {
     testWidgets('shows what the machine is, with uptime as a duration', (
       WidgetTester tester,
