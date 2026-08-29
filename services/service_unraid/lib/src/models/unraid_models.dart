@@ -833,12 +833,13 @@ double? _double(Object? raw) {
 
 /// One virtual machine.
 class UnraidVm {
-  const UnraidVm({required this.id, this.name, this.state});
+  const UnraidVm({required this.id, this.name, this.state, this.uuid});
 
   factory UnraidVm.fromJson(Map<String, dynamic> json) => UnraidVm(
         id: json['id']?.toString() ?? '',
         name: json['name']?.toString(),
         state: json['state']?.toString(),
+        uuid: json['uuid']?.toString(),
       );
 
   /// The compound identifier the mutations take, as with containers.
@@ -849,6 +850,11 @@ class UnraidVm {
   /// `RUNNING`, `IDLE`, `PAUSED`, `SHUTDOWN`, `SHUTOFF`, `CRASHED`,
   /// `PMSUSPENDED` or `NOSTATE`.
   final String? state;
+
+  /// libvirt's own identifier for the machine. The only field the API offers
+  /// beyond the three above: there is no VNC port, no memory, no vCPU count
+  /// and no disk size on this type, so there is nothing further to show.
+  final String? uuid;
 
   String get displayName => (name?.isNotEmpty ?? false) ? name! : id;
 

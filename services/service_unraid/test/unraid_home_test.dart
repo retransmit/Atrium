@@ -843,6 +843,77 @@ void main() {
       expect(find.text('Crashed'), findsOneWidget);
       expect(find.text('1 of 3 running'), findsOneWidget);
     });
+
+    /// Opens the sheet for the one machine in the list.
+    Future<void> openSheet(WidgetTester tester, String state) async {
+      await _pump(
+        tester,
+        const UnraidVmsTab(instance: _instance),
+        _overrides(
+          vms: UnraidVmList(
+            enabled: true,
+            vms: <UnraidVm>[
+              UnraidVm(id: 'srv:v1', name: 'Windows 11', state: state),
+            ],
+          ),
+        ),
+      );
+      await tester.tap(find.text('Windows 11'));
+      for (int i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 120));
+      }
+    }
+
+    testWidgets('a running machine is offered every action it can take', (
+      WidgetTester tester,
+    ) async {
+      await openSheet(tester, 'RUNNING');
+
+      expect(find.text('Shut down'), findsOneWidget);
+      expect(find.text('Pause'), findsOneWidget);
+      expect(find.text('Reboot'), findsOneWidget);
+      expect(find.text('Force stop'), findsOneWidget);
+      expect(find.text('Reset'), findsOneWidget);
+      // Starting something already up is the one thing it cannot do.
+      expect(find.text('Start'), findsNothing);
+    });
+
+    testWidgets('a stopped machine is only offered a start', (
+      WidgetTester tester,
+    ) async {
+      await openSheet(tester, 'SHUTOFF');
+
+      expect(find.text('Start'), findsOneWidget);
+      expect(find.text('Shut down'), findsNothing);
+      expect(find.text('Pause'), findsNothing);
+      // Nothing destructive belongs on a machine that is already off.
+      expect(find.text('Force stop'), findsNothing);
+      expect(find.text('Reset'), findsNothing);
+    });
+
+    testWidgets('a paused machine resumes rather than starts', (
+      WidgetTester tester,
+    ) async {
+      await openSheet(tester, 'PAUSED');
+
+      expect(find.text('Resume'), findsOneWidget);
+      expect(find.text('Shut down'), findsOneWidget);
+      expect(find.text('Start'), findsNothing);
+      expect(find.text('Pause'), findsNothing);
+    });
+
+    testWidgets('a machine on its way down is left alone until it lands', (
+      WidgetTester tester,
+    ) async {
+      // SHUTDOWN is between states: start is refused and stop does nothing,
+      // so offering either would only produce an error.
+      await openSheet(tester, 'SHUTDOWN');
+
+      expect(find.textContaining('shutting down'), findsWidgets);
+      expect(find.text('Start'), findsNothing);
+      expect(find.text('Shut down'), findsNothing);
+      expect(find.text('Force stop'), findsNothing);
+    });
   });
 
   group('navigation', () {

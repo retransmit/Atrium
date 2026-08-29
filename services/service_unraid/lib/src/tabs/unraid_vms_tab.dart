@@ -6,14 +6,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/unraid_models.dart';
 import '../unraid_providers.dart';
 import '../widgets/unraid_common.dart';
+import '../widgets/unraid_vm_sheet.dart';
 
 /// The server's virtual machines.
 ///
-/// Read only for now. The API has start, stop, pause, resume, reboot and
-/// force stop, and they are the obvious next step, but nothing available to
-/// test against runs a VM: this module was built against a virtual machine
-/// itself, which cannot nest another. Shipping buttons nobody has watched
-/// work is worse than shipping the list first.
+/// Tapping one opens its actions. The API offers seven of them, start, stop,
+/// pause, resume, reboot, force stop and reset, and exactly four fields per
+/// machine: id, name, state and uuid. There is no VNC port on the type, so a
+/// console link cannot be built from what the server hands out.
 class UnraidVmsTab extends ConsumerWidget {
   const UnraidVmsTab({required this.instance, super.key});
 
@@ -30,7 +30,8 @@ class UnraidVmsTab extends ConsumerWidget {
           value: vms,
           onRetry: () => ref.invalidate(unraidVmsProvider(instance)),
           loading: const UnraidCardPlaceholder(height: 160),
-          data: (UnraidVmList value) => _VmBody(list: value),
+          data: (UnraidVmList value) =>
+              _VmBody(list: value, instance: instance),
         ),
       ],
     );
@@ -38,9 +39,10 @@ class UnraidVmsTab extends ConsumerWidget {
 }
 
 class _VmBody extends StatelessWidget {
-  const _VmBody({required this.list});
+  const _VmBody({required this.list, required this.instance});
 
   final UnraidVmList list;
+  final Instance instance;
 
   @override
   Widget build(BuildContext context) {
@@ -95,7 +97,7 @@ class _VmBody extends StatelessWidget {
                     indent: Insets.lg,
                     color: cs.outlineVariant,
                   ),
-                _VmRow(vm: sorted[i]),
+                _VmRow(vm: sorted[i], instance: instance),
               ],
             ],
           ),
@@ -106,9 +108,10 @@ class _VmBody extends StatelessWidget {
 }
 
 class _VmRow extends StatelessWidget {
-  const _VmRow({required this.vm});
+  const _VmRow({required this.vm, required this.instance});
 
   final UnraidVm vm;
+  final Instance instance;
 
   @override
   Widget build(BuildContext context) {
@@ -125,7 +128,7 @@ class _VmRow extends StatelessWidget {
                 ? (Icons.play_arrow_rounded, unraidOkGreen(cs))
                 : (Icons.stop_rounded, cs.outline);
 
-    return Padding(
+    final Widget row = Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: Insets.lg,
         vertical: Insets.md,
@@ -164,7 +167,16 @@ class _VmRow extends StatelessWidget {
               ],
             ),
           ),
+          Icon(Icons.chevron_right_rounded, size: 20, color: cs.outline),
         ],
+      ),
+    );
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => showUnraidVmSheet(context, instance: instance, vm: vm),
+        child: row,
       ),
     );
   }

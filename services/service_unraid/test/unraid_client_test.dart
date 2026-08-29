@@ -346,4 +346,70 @@ void main() {
       );
     });
   });
+
+  group('virtual machine actions', () {
+    /// The field names, the argument name and its type were read off a live
+    /// server by probing, because the API refuses introspection. Getting one
+    /// wrong is a request the server rejects outright, and nothing else in the
+    /// suite would notice, so they are pinned here.
+    const Map<String, String> actions = <String, String>{
+      'start': 'start',
+      'stop': 'stop',
+      'pause': 'pause',
+      'resume': 'resume',
+      'reboot': 'reboot',
+      'forceStop': 'forceStop',
+      'reset': 'reset',
+    };
+
+    Future<bool> callByName(UnraidClient c, String name, String id) =>
+        switch (name) {
+          'start' => c.startVm(id),
+          'stop' => c.stopVm(id),
+          'pause' => c.pauseVm(id),
+          'resume' => c.resumeVm(id),
+          'reboot' => c.rebootVm(id),
+          'forceStop' => c.forceStopVm(id),
+          _ => c.resetVm(id),
+        };
+
+    for (final MapEntry<String, String> e in actions.entries) {
+      test('${e.key} asks for vm { ${e.value} } with a PrefixedID', () async {
+        respond = (HttpRequest req) => writeJson(req, <String, dynamic>{
+              'data': <String, dynamic>{
+                'vm': <String, dynamic>{e.value: true},
+              },
+            });
+
+        final bool ok = await callByName(UnraidClient(dio), e.key, 'srv/vm-1');
+
+        expect(ok, isTrue);
+        expect(lastQuery, contains('mutation(\$id: PrefixedID!)'));
+        expect(lastQuery, contains('vm { ${e.value}(id: \$id) }'));
+      });
+    }
+
+    test('a refusal is reported rather than read as success', () async {
+      respond = (HttpRequest req) => writeJson(req, <String, dynamic>{
+            'errors': <dynamic>[
+              <String, dynamic>{'message': 'VMs are not available'},
+            ],
+          });
+
+      await expectLater(
+        UnraidClient(dio).startVm('srv/vm-1'),
+        throwsA(isA<NetworkException>()),
+      );
+    });
+
+    test('an explicit false is carried back, not swallowed', () async {
+      respond = (HttpRequest req) => writeJson(req, <String, dynamic>{
+            'data': <String, dynamic>{
+              'vm': <String, dynamic>{'stop': false},
+            },
+          });
+
+      expect(await UnraidClient(dio).stopVm('srv/vm-1'), isFalse);
+    });
+  });
 }

@@ -217,7 +217,7 @@ class UnraidClient {
   Future<UnraidVmList> getVms() async {
     try {
       final Map<String, dynamic> data =
-          await _query('{ vms { domains { id name state } } }');
+          await _query('{ vms { domains { id name state uuid } } }');
       final dynamic vms = data['vms'];
       final dynamic domains =
           vms is Map<String, dynamic> ? vms['domains'] : null;
@@ -277,5 +277,44 @@ class UnraidClient {
       );
     }
     return UnraidContainer.fromJson(result);
+  }
+
+  Future<bool> startVm(String id) => _vmAction('start', id);
+
+  Future<bool> stopVm(String id) => _vmAction('stop', id);
+
+  Future<bool> pauseVm(String id) => _vmAction('pause', id);
+
+  Future<bool> resumeVm(String id) => _vmAction('resume', id);
+
+  Future<bool> rebootVm(String id) => _vmAction('reboot', id);
+
+  /// Pulls the plug. The guest is not asked and does not get to write
+  /// anything out, which is why the UI keeps it behind a confirmation.
+  Future<bool> forceStopVm(String id) => _vmAction('forceStop', id);
+
+  Future<bool> resetVm(String id) => _vmAction('reset', id);
+
+  /// Runs one of the VM lifecycle mutations.
+  ///
+  /// Unlike the Docker ones these answer with a bare boolean rather than the
+  /// machine in its new state, so the caller has to refetch to see the
+  /// change. The server takes a moment to settle, so a refetch fired
+  /// immediately can still read the old state.
+  ///
+  /// A server with virtualisation switched off answers "VMs are not
+  /// available" here exactly as it does for the query, so the message is left
+  /// to reach the caller rather than being flattened into a bare false.
+  Future<bool> _vmAction(String field, String id) async {
+    final Map<String, dynamic> data = await _query(
+      'mutation(\$id: PrefixedID!) { vm { $field(id: \$id) } }',
+      variables: <String, dynamic>{'id': id},
+    );
+    final dynamic vm = data['vm'];
+    final dynamic result = vm is Map<String, dynamic> ? vm[field] : null;
+    // The schema types this as a boolean, but a server that answers with
+    // anything else has still not refused, so only an explicit false is
+    // treated as the action having been declined.
+    return result is bool ? result : true;
   }
 }
