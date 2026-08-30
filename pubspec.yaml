@@ -46,4 +46,5 @@ workspace:
   - services/service_beszel
   - services/service_dashdot
   - services/service_lidarr
+  - services/service_unraid
   - services/service_ombi

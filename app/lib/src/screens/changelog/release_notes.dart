@@ -27,6 +27,24 @@ class ReleaseNote {
 /// Newest first. Update alongside appVersion and the pubspec at each release.
 const List<ReleaseNote> releaseNotes = <ReleaseNote>[
   ReleaseNote(
+    version: '1.6.0',
+    date: '2026-08-30',
+    groups: <ChangeGroup>[
+      ChangeGroup(ChangeCategory.added, <String>[
+        'Unraid is now a supported service. The array tab shows parity and data disks with per-disk usage, temperature and health, alongside the state of the last parity check. The system tab covers per-core CPU load, memory, network, and an About card naming the processor, uptime, kernel, memory slots and hostname. Docker containers list with their ports and uptime, open to a detail sheet, and can be started, stopped, paused and resumed. Virtual machines can be started, shut down, paused, resumed, rebooted, force stopped and reset. It is marked beta while it settles in.',
+        'Radarr and Sonarr interactive search can open a release on its torrent or indexer page, so you can look it over before grabbing it, and copy its download URL or magnet link.',
+      ]),
+      ChangeGroup(ChangeCategory.improved, <String>[
+        'qBittorrent remembers how you sorted the list. Whatever you last chose is what you get next time you open the app, kept separately for each server, rather than resetting to newest first on every launch.',
+        'The dashboard only offers widgets something you have configured can actually fill, and says which service a widget is waiting on rather than adding an empty card.',
+      ]),
+      ChangeGroup(ChangeCategory.fixed, <String>[
+        'The filter button on the qBittorrent screen opens the filter drawer again. It had been asking the wrong part of the screen, which answered by doing nothing at all, so the button looked dead while swiping in from the edge still worked.',
+        'When a server refuses a request with 401 or 403, Atrium now shows the reason the server gave instead of replacing it with a generic authentication message. A refusal that turns out to be a cross-site check rather than a bad key now says so.',
+      ]),
+    ],
+  ),
+  ReleaseNote(
     version: '1.5.1',
     date: '2026-08-26',
     groups: <ChangeGroup>[

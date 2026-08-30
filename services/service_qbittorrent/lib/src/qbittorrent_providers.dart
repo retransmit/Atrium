@@ -1,5 +1,6 @@
 import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
+import 'package:core_storage/core_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
@@ -132,9 +133,64 @@ class QbitSortConfig {
 }
 
 final qbitSortProvider =
-    StateProvider.family<QbitSortConfig, Instance>((ref, instance) {
-  return const QbitSortConfig(field: QbitSortField.addedOn, ascending: false);
-});
+    NotifierProvider.family<QbitSort, QbitSortConfig, Instance>(QbitSort.new);
+
+/// The order a qBittorrent list is shown in, remembered across launches.
+///
+/// Kept per instance, because someone running two servers is likely to want
+/// them ordered differently. It lives in the shared settings box; where Hive
+/// was never booted (widget tests, for one) this simply behaves in memory and
+/// forgets, which is the old behaviour rather than a crash.
+class QbitSort extends Notifier<QbitSortConfig> {
+  QbitSort(this.instance);
+
+  final Instance instance;
+
+  /// What a list is ordered by until someone says otherwise: newest first.
+  static const QbitSortConfig fallback =
+      QbitSortConfig(field: QbitSortField.addedOn, ascending: false);
+
+  static String _keyFor(String instanceId) => 'qbit.sort.$instanceId';
+
+  Box<String>? get _box => Hive.isBoxOpen(AtriumBoxes.settings)
+      ? Hive.box<String>(AtriumBoxes.settings)
+      : null;
+
+  @override
+  QbitSortConfig build() {
+    final String? raw = _box?.get(_keyFor(instance.id));
+    if (raw == null || raw.isEmpty) {
+      return fallback;
+    }
+    // Stored as `<fieldName>:<asc|desc>`, which survives the enum gaining
+    // values in a later version where an index would not.
+    final List<String> parts = raw.split(':');
+    if (parts.length != 2) {
+      return fallback;
+    }
+    final QbitSortField? field = QbitSortField.values.asNameMap()[parts.first];
+    // A field dropped from the enum between versions must not wedge the list
+    // on a name nothing answers to.
+    if (field == null) {
+      return fallback;
+    }
+    return QbitSortConfig(field: field, ascending: parts[1] == 'asc');
+  }
+
+  Future<void> setField(QbitSortField field) =>
+      _write(state.copyWith(field: field));
+
+  Future<void> toggleDirection() =>
+      _write(state.copyWith(ascending: !state.ascending));
+
+  Future<void> _write(QbitSortConfig config) async {
+    state = config;
+    await _box?.put(
+      _keyFor(instance.id),
+      '${config.field.name}:${config.ascending ? 'asc' : 'desc'}',
+    );
+  }
+}
 
 final qbitFilterStatusProvider = StateProvider.autoDispose
     .family<String?, Instance>((ref, instance) => null);

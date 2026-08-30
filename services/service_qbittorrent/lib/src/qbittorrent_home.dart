@@ -272,7 +272,12 @@ class _TorrentsTabState extends ConsumerState<_TorrentsTab> {
         ),
         title: Text(instance.name),
         actions: <Widget>[
-          QbittorrentAppBarActions(instance: instance),
+          QbittorrentAppBarActions(
+            instance: instance,
+            // This context sits above the Scaffold being built here, so it
+            // resolves to the outer one, which is where the drawer lives.
+            onFilter: () => Scaffold.of(context).openEndDrawer(),
+          ),
         ],
       ),
       floatingActionButton: _torrentFab(context, ref),
@@ -677,9 +682,23 @@ class _TransferStatBadge extends StatelessWidget {
 }
 
 class QbittorrentAppBarActions extends ConsumerWidget {
-  const QbittorrentAppBarActions({required this.instance, super.key});
+  const QbittorrentAppBarActions({
+    required this.instance,
+    this.onFilter,
+    super.key,
+  });
 
   final Instance instance;
+
+  /// How to open the filter drawer.
+  ///
+  /// The home screen nests one Scaffold inside another: the outer one owns the
+  /// drawer, the inner one owns the bar this sits in. `Scaffold.of` finds the
+  /// nearest, so left to itself the button asks the inner Scaffold for a
+  /// drawer it does not have, and openEndDrawer returns quietly rather than
+  /// throwing. The caller passes the right one in. Where the surrounding
+  /// Scaffold does own the drawer, the fallback below is correct.
+  final VoidCallback? onFilter;
 
   void _showSortMenu(BuildContext context, WidgetRef ref) {
     showModalBottomSheet<void>(
@@ -700,8 +719,9 @@ class QbittorrentAppBarActions extends ConsumerWidget {
                   ),
                   title: Text(config.ascending ? 'Ascending' : 'Descending'),
                   onTap: () {
-                    ref.read(qbitSortProvider(instance).notifier).state =
-                        config.copyWith(ascending: !config.ascending);
+                    ref
+                        .read(qbitSortProvider(instance).notifier)
+                        .toggleDirection();
                   },
                 ),
                 const Divider(),
@@ -711,8 +731,9 @@ class QbittorrentAppBarActions extends ConsumerWidget {
                     trailing:
                         config.field == field ? const Icon(Icons.check) : null,
                     onTap: () {
-                      ref.read(qbitSortProvider(instance).notifier).state =
-                          config.copyWith(field: field);
+                      ref
+                          .read(qbitSortProvider(instance).notifier)
+                          .setField(field);
                       Navigator.of(context).pop();
                     },
                   ),
@@ -736,9 +757,7 @@ class QbittorrentAppBarActions extends ConsumerWidget {
           IconButton(
             tooltip: 'Filter Torrents',
             icon: const Icon(Icons.filter_list),
-            onPressed: () {
-              Scaffold.of(context).openEndDrawer();
-            },
+            onPressed: onFilter ?? () => Scaffold.of(context).openEndDrawer(),
           ),
           IconButton(
             tooltip: 'Sort Torrents',

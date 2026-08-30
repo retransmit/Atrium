@@ -20,8 +20,10 @@ Supported services:
 * SABnzbd and NZBGet - usenet queue control and history
 * Jellyfin, Emby and Plex - library browsing, item detail, resume rows and
   now-playing sessions
-* Glances - CPU, memory, GPU and disk usage of the host
+* Glances, Beszel and dashdot - CPU, memory, GPU and disk usage of the host
 * Speedtest Tracker - internet speed results and history
+* Unraid - array and disk health, per-core system load, Docker containers and
+  virtual machine control
 
 Features:
 

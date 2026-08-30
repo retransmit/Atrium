@@ -23,7 +23,7 @@ body:
     attributes:
       label: Atrium version
       description: Settings, then About.
-      placeholder: "1.5.1"
+      placeholder: "1.6.0"
     validations:
       required: true
 
@@ -70,6 +70,7 @@ body:
         - Speedtest Tracker
         - Beszel
         - dashdot
+        - Unraid
         - Something else
     validations:
       required: true

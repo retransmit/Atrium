@@ -110,6 +110,10 @@ Atrium is a **controller** app. Video playback was removed by design
   bars, network with interface pinning, disks, uptime
 - **Beszel**: systems list, live metrics, and a per-system detail screen
 - **dashdot**: live CPU, memory, disk, and GPU usage with a system-info tab
+- **Unraid** (beta): array state with parity and per-disk usage, temperature
+  and health, system with per-core CPU load and an About card, Docker
+  containers with a detail sheet and start/stop/pause/resume, and virtual
+  machines with start, shut down, pause, resume, reboot, force stop and reset
 - **Speedtest Tracker** (live-verified): authenticated 1.1+ result history,
   latest metrics, combined download / upload chart, multi-instance dashboard
   widget, and confirmed 1.6+ remote runs with queued/running/terminal-state

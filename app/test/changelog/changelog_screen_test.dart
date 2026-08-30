@@ -1,5 +1,6 @@
 import 'package:atrium/src/screens/changelog_screen.dart';
 import 'package:atrium/src/screens/changelog/available_release_card.dart';
+import 'package:atrium/src/update_check/app_version.dart';
 import 'package:atrium/src/update_check/update_check_state.dart';
 import 'package:atrium/src/update_check/update_checker.dart';
 import 'package:flutter/material.dart';
@@ -34,8 +35,10 @@ void main() {
 
     expect(find.byType(AvailableReleaseCard, skipOffstage: false),
         findsOneWidget);
-    expect(find.text('v1.3.3'), findsOneWidget);
-    // appVersion is 1.3.3, so exactly one card is Installed.
+    // Tied to appVersion rather than a frozen string: the newest release is
+    // the installed one, and hardcoding it here means every release breaks
+    // this test for no reason.
+    expect(find.text('v$appVersion'), findsOneWidget);
     expect(find.text('Installed'), findsOneWidget);
     expect(find.text('New'), findsWidgets);
   });

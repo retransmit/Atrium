@@ -1,0 +1,19 @@
+Unraid is now a supported service. The array tab shows parity and data disks
+with per-disk usage, temperature and health, alongside the last parity check.
+The system tab covers per-core CPU load, memory, network and an About card
+naming the processor, uptime, kernel and hostname. Docker containers open to a
+detail sheet and can be started, stopped, paused and resumed, and virtual
+machines can be started, shut down, paused, resumed, rebooted, force stopped
+and reset. It is marked beta while it settles in.
+
+Radarr and Sonarr interactive search can open a release on its torrent or
+indexer page, so you can look it over before grabbing it, and copy its download
+URL or magnet link.
+
+qBittorrent now remembers how you sorted the list, per server, instead of
+resetting to newest first every time you open the app.
+
+Fixed: the filter button on the qBittorrent screen opens the filter drawer
+again, the dashboard only offers widgets something you have configured can
+fill, and a server refusing a request with 401 or 403 now shows the reason it
+gave rather than a generic authentication message.
