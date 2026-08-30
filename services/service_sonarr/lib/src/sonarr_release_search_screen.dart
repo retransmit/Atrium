@@ -1,7 +1,9 @@
 import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'models/sonarr_episode.dart';
 import 'models/sonarr_series.dart';
@@ -102,6 +104,23 @@ class _SonarrReleaseSearchScreenState
       }
     }
     return names;
+  }
+
+  String? _getReleaseWebUrl(Map<String, dynamic> r) {
+    final dynamic infoUrl = r['infoUrl'];
+    if (infoUrl is String && infoUrl.trim().isNotEmpty) {
+      return infoUrl.trim();
+    }
+    final dynamic commentUrl = r['commentUrl'];
+    if (commentUrl is String && commentUrl.trim().isNotEmpty) {
+      return commentUrl.trim();
+    }
+    final dynamic guid = r['guid'];
+    if (guid is String &&
+        (guid.startsWith('http://') || guid.startsWith('https://'))) {
+      return guid.trim();
+    }
+    return null;
   }
 
   Future<void> _download(
@@ -520,6 +539,11 @@ class _SonarrReleaseSearchScreenState
                       // Extract custom format score and custom formats safely
                       final int customFormatScore = _getCustomFormatScore(r);
                       final List<String> formatNames = _getCustomFormatNames(r);
+                      final String? webUrl = _getReleaseWebUrl(r);
+                      final String? downloadUrl =
+                          (r['downloadUrl'] as String?)?.trim();
+                      final String? magnetUrl =
+                          (r['magnetUrl'] as String?)?.trim();
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: Insets.sm),
@@ -614,8 +638,7 @@ class _SonarrReleaseSearchScreenState
                                             : customFormatScore < 0
                                                 ? colors.errorContainer
                                                     .withValues(alpha: 0.6)
-                                                : colors
-                                                    .surfaceContainerHighest
+                                                : colors.surfaceContainerHighest
                                                     .withValues(alpha: 0.6),
                                         borderRadius:
                                             BorderRadius.circular(Radii.sm),
@@ -785,7 +808,7 @@ class _SonarrReleaseSearchScreenState
                                       ),
                                     ),
                                     const SizedBox(height: 8),
-                                  ] else
+                                  ] else ...[
                                     Row(
                                       children: [
                                         Icon(
@@ -803,7 +826,148 @@ class _SonarrReleaseSearchScreenState
                                         ),
                                       ],
                                     ),
-                                  const SizedBox(height: 4),
+                                    const SizedBox(height: 8),
+                                  ],
+                                  if (webUrl != null ||
+                                      (downloadUrl != null &&
+                                          downloadUrl.isNotEmpty) ||
+                                      (magnetUrl != null &&
+                                          magnetUrl.isNotEmpty)) ...[
+                                    Wrap(
+                                      spacing: Insets.xs,
+                                      runSpacing: Insets.xs,
+                                      children: [
+                                        if (webUrl != null)
+                                          FilledButton.tonalIcon(
+                                            icon: const Icon(
+                                              Icons.open_in_browser,
+                                              size: 16,
+                                            ),
+                                            label: Text(
+                                              protocol == 'usenet'
+                                                  ? 'Open Indexer Page'
+                                                  : 'Open Torrent Page',
+                                            ),
+                                            style: FilledButton.styleFrom(
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                            ),
+                                            onPressed: () async {
+                                              final uri = Uri.tryParse(webUrl);
+                                              if (uri != null) {
+                                                try {
+                                                  final bool launched =
+                                                      await launchUrl(
+                                                    uri,
+                                                    mode: LaunchMode
+                                                        .externalApplication,
+                                                  );
+                                                  if (!launched &&
+                                                      context.mounted) {
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(
+                                                          protocol == 'usenet'
+                                                              ? 'Could not open indexer page URL'
+                                                              : 'Could not open torrent page URL',
+                                                        ),
+                                                        duration:
+                                                            const Duration(
+                                                          seconds: 2,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  }
+                                                } catch (_) {
+                                                  if (context.mounted) {
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(
+                                                          protocol == 'usenet'
+                                                              ? 'Could not open indexer page URL'
+                                                              : 'Could not open torrent page URL',
+                                                        ),
+                                                        duration:
+                                                            const Duration(
+                                                          seconds: 2,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  }
+                                                }
+                                              }
+                                            },
+                                          ),
+                                        if (downloadUrl != null &&
+                                            downloadUrl.isNotEmpty)
+                                          OutlinedButton.icon(
+                                            icon: const Icon(
+                                              Icons.copy,
+                                              size: 14,
+                                            ),
+                                            label: const Text(
+                                              'Copy Download URL',
+                                            ),
+                                            style: OutlinedButton.styleFrom(
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                            ),
+                                            onPressed: () {
+                                              Clipboard.setData(
+                                                ClipboardData(
+                                                  text: downloadUrl,
+                                                ),
+                                              );
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    'Download URL copied to clipboard',
+                                                  ),
+                                                  duration:
+                                                      Duration(seconds: 2),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        if (magnetUrl != null &&
+                                            magnetUrl.isNotEmpty)
+                                          OutlinedButton.icon(
+                                            icon: const Icon(
+                                              Icons.link,
+                                              size: 14,
+                                            ),
+                                            label: const Text(
+                                              'Copy Magnet Link',
+                                            ),
+                                            style: OutlinedButton.styleFrom(
+                                              visualDensity:
+                                                  VisualDensity.compact,
+                                            ),
+                                            onPressed: () {
+                                              Clipboard.setData(
+                                                ClipboardData(text: magnetUrl),
+                                              );
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(
+                                                const SnackBar(
+                                                  content: Text(
+                                                    'Magnet link copied to clipboard',
+                                                  ),
+                                                  duration:
+                                                      Duration(seconds: 2),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                  ],
                                 ],
                               ),
                             ),

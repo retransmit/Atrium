@@ -100,8 +100,7 @@ void main() {
 
       final highScorePos =
           tester.getTopLeft(find.textContaining('1080p.Remux'));
-      final lowScorePos =
-          tester.getTopLeft(find.textContaining('720p.HDTV'));
+      final lowScorePos = tester.getTopLeft(find.textContaining('720p.HDTV'));
       expect(highScorePos.dy, lessThan(lowScorePos.dy));
 
       // Verify Score badges and Custom Format pills are rendered
@@ -186,6 +185,105 @@ void main() {
       // payloads were absorbed rather than thrown on.
       expect(find.text('Score: 0'), findsNothing);
       expect(find.text('ValidFormat'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'SonarrReleaseSearchScreen renders Open Torrent Page / Open Indexer Page and copy buttons when expanded',
+    (tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final releasesWithLinks = [
+        <String, dynamic>{
+          'guid': 'https://tracker.example.com/guid/201',
+          'title': 'Show.S01E01.Torrent.Release',
+          'indexer': 'Torrent Tracker',
+          'size': 2000000000,
+          'seeders': 25,
+          'leechers': 2,
+          'protocol': 'torrent',
+          'rejections': <String>[],
+          'infoUrl': 'https://tracker.example.com/details/201',
+          'downloadUrl': 'https://tracker.example.com/download/201.torrent',
+          'magnetUrl': 'magnet:?xt=urn:btih:abc123def456',
+        },
+        <String, dynamic>{
+          'guid': 'release-usenet-guid',
+          'title': 'Show.S01E01.Usenet.Release',
+          'indexer': 'NZB Indexer',
+          'size': 3000000000,
+          'protocol': 'usenet',
+          'rejections': <String>['Quality not wanted in profile'],
+          'commentUrl': 'https://nzb.example.com/comments/302',
+          'downloadUrl': 'https://nzb.example.com/get/302.nzb',
+        },
+        <String, dynamic>{
+          'guid': 'plain-non-url-guid',
+          'title': 'Show.S01E01.NoLinks.Release',
+          'indexer': 'Private Tracker',
+          'size': 1000000000,
+          'protocol': 'torrent',
+          'rejections': <String>[],
+        },
+      ];
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sonarrReleasesProvider((instance, episode.id)).overrideWith(
+              (ref) async => releasesWithLinks,
+            ),
+          ],
+          child: const MaterialApp(
+            home: SonarrReleaseSearchScreen(
+              instance: instance,
+              episode: episode,
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ExpansionTile), findsNWidgets(3));
+
+      // Expand the first release (Torrent with infoUrl, downloadUrl, magnetUrl)
+      await tester.tap(find.text('Show.S01E01.Torrent.Release'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Open Torrent Page'), findsOneWidget);
+      expect(find.text('Copy Download URL'), findsOneWidget);
+      expect(find.text('Copy Magnet Link'), findsOneWidget);
+
+      // Collapse first release
+      await tester.tap(find.text('Show.S01E01.Torrent.Release'));
+      await tester.pumpAndSettle();
+
+      // Expand the second release (Usenet with commentUrl, downloadUrl, and rejections)
+      await tester.tap(find.text('Show.S01E01.Usenet.Release'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Open Indexer Page'), findsOneWidget);
+      expect(find.text('Rejection Reasons:'), findsOneWidget);
+      expect(find.text('• Quality not wanted in profile'), findsOneWidget);
+
+      // Collapse second release
+      await tester.tap(find.text('Show.S01E01.Usenet.Release'));
+      await tester.pumpAndSettle();
+
+      // Expand the third release (No web URL, no download/magnet URL)
+      await tester.tap(find.text('Show.S01E01.NoLinks.Release'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Approved for download.'), findsOneWidget);
+      expect(find.text('Open Torrent Page'), findsNothing);
+      expect(find.text('Open Indexer Page'), findsNothing);
     },
   );
 }
