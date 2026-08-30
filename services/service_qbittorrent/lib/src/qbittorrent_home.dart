@@ -719,8 +719,9 @@ class QbittorrentAppBarActions extends ConsumerWidget {
                   ),
                   title: Text(config.ascending ? 'Ascending' : 'Descending'),
                   onTap: () {
-                    ref.read(qbitSortProvider(instance).notifier).state =
-                        config.copyWith(ascending: !config.ascending);
+                    ref
+                        .read(qbitSortProvider(instance).notifier)
+                        .toggleDirection();
                   },
                 ),
                 const Divider(),
@@ -730,8 +731,9 @@ class QbittorrentAppBarActions extends ConsumerWidget {
                     trailing:
                         config.field == field ? const Icon(Icons.check) : null,
                     onTap: () {
-                      ref.read(qbitSortProvider(instance).notifier).state =
-                          config.copyWith(field: field);
+                      ref
+                          .read(qbitSortProvider(instance).notifier)
+                          .setField(field);
                       Navigator.of(context).pop();
                     },
                   ),
