@@ -17,6 +17,7 @@ export 'src/service_visuals.dart';
 export 'src/theme.dart';
 export 'src/widgets/async_value_view.dart';
 export 'src/widgets/beta_badge.dart';
+export 'src/widgets/bottom_nav.dart';
 export 'src/widgets/collapsed_title.dart';
 export 'src/widgets/easy_refresh_wrapper.dart';
 export 'src/widgets/expressive_progress_indicator.dart';

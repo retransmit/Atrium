@@ -26,6 +26,7 @@ import 'package:service_rtorrent/service_rtorrent.dart';
 import 'package:service_transmission/service_transmission.dart';
 import 'package:service_tracearr/service_tracearr.dart';
 import 'package:service_lidarr/service_lidarr.dart';
+import 'package:service_unraid/service_unraid.dart';
 
 import 'dashboard_screen.dart';
 
@@ -76,6 +77,15 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
     }
     if (instance.kind == ServiceKind.lidarr) {
       return LidarrHome(
+        instance: instance,
+        drawer: ServicesDrawer(
+          instances: ref.watch(activeInstancesProvider),
+          profile: ref.watch(activeProfileProvider),
+        ),
+      );
+    }
+    if (instance.kind == ServiceKind.unraid) {
+      return UnraidHome(
         instance: instance,
         drawer: ServicesDrawer(
           instances: ref.watch(activeInstancesProvider),
@@ -236,6 +246,8 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
       ServiceKind.sonarr => const SizedBox.shrink(),
       ServiceKind.radarr => const SizedBox.shrink(),
       ServiceKind.lidarr => const SizedBox.shrink(),
+      // Owns its own scaffold, handled above.
+      ServiceKind.unraid => const SizedBox.shrink(),
       ServiceKind.tracearr => const SizedBox.shrink(),
       ServiceKind.prowlarr => ProwlarrHome(instance: instance),
       ServiceKind.bazarr => BazarrHome(instance: instance),

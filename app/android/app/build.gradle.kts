@@ -81,6 +81,15 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Opt-in only, with `-PdebugAppIdSuffix=true`. A debug build is
+            // signed with the debug key, so it cannot update an installed
+            // release build; without a separate id the only way to try one is
+            // to uninstall the real app and lose its configured servers.
+            if (project.hasProperty("debugAppIdSuffix")) {
+                applicationIdSuffix = ".debug"
+            }
+        }
         release {
             // No signing config at all leaves the APK unsigned. A config
             // carrying a null storeFile is rejected outright by the Android

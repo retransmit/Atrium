@@ -55,6 +55,7 @@ dependencies:
   service_transmission:
   service_tracearr: ^0.0.0
   service_lidarr:
+  service_unraid:
   url_launcher: ^6.3.2
 dev_dependencies:
   flutter_launcher_icons: ^0.14.3
