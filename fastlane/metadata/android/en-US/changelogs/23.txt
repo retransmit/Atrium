@@ -7,8 +7,9 @@ Transmission now does everything its web UI does: filters, search, sorting,
 selection with bulk actions, every torrent action, a full inspector, and a
 Settings tab for the daemon's preferences. It is out of beta.
 
-qBittorrent gains an execution log tab, the Plex form can sign in at plex.tv,
-and a Sonarr or Radarr search carries over to the Add screen.
+dashdot gets a dashboard widget with CPU, memory and disk rings, qBittorrent
+gains an execution log tab, the Plex form can sign in at plex.tv, and a Sonarr
+or Radarr search carries over to the Add screen.
 
 Fixed: saving an instance keeps its custom headers, and the qBittorrent settings
 list the interfaces the server actually has.
