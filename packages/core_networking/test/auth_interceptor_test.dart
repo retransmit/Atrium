@@ -52,6 +52,69 @@ void main() {
     expect(request.queryParameters.values, isNot(contains(token)));
     expect(request.uri.toString(), isNot(contains(token)));
   });
+
+  test('MySpeed password is sent as password and x-password headers', () async {
+    const String password = 'my secret @ password!';
+    final _RecordingAdapter adapter = _RecordingAdapter();
+    final Dio dio = Dio(BaseOptions(baseUrl: 'https://myspeed.example.test/'))
+      ..httpClientAdapter = adapter
+      ..interceptors.add(
+        const AuthInterceptor(
+          kind: ServiceKind.myspeed,
+          auth: InstanceAuth.apiKey(apiKey: password),
+        ),
+      );
+
+    await dio.get<dynamic>('api/speedtests');
+
+    final RequestOptions request = adapter.request!;
+    expect(request.headers['password'], password);
+    expect(request.headers['x-password'], Uri.encodeComponent(password));
+    expect(request.headers.containsKey('X-Api-Key'), isFalse);
+    expect(request.headers.containsKey('Authorization'), isFalse);
+  });
+
+  test('a MySpeed password outside ASCII travels only as x-password',
+      () async {
+    // Dart's HttpHeaders throws on such a value, so the raw header would
+    // fail every request rather than merely be ignored.
+    const String password = 'pässwörd';
+    final _RecordingAdapter adapter = _RecordingAdapter();
+    final Dio dio = Dio(BaseOptions(baseUrl: 'https://myspeed.example.test/'))
+      ..httpClientAdapter = adapter
+      ..interceptors.add(
+        const AuthInterceptor(
+          kind: ServiceKind.myspeed,
+          auth: InstanceAuth.apiKey(apiKey: password),
+        ),
+      );
+
+    await dio.get<dynamic>('api/speedtests');
+
+    final RequestOptions request = adapter.request!;
+    expect(request.headers.containsKey('password'), isFalse);
+    expect(request.headers['x-password'], Uri.encodeComponent(password));
+  });
+
+  test('MySpeed with empty password sets no auth headers', () async {
+    final _RecordingAdapter adapter = _RecordingAdapter();
+    final Dio dio = Dio(BaseOptions(baseUrl: 'https://myspeed.example.test/'))
+      ..httpClientAdapter = adapter
+      ..interceptors.add(
+        const AuthInterceptor(
+          kind: ServiceKind.myspeed,
+          auth: InstanceAuth.apiKey(apiKey: ''),
+        ),
+      );
+
+    await dio.get<dynamic>('api/speedtests');
+
+    final RequestOptions request = adapter.request!;
+    expect(request.headers.containsKey('password'), isFalse);
+    expect(request.headers.containsKey('x-password'), isFalse);
+    expect(request.headers.containsKey('X-Api-Key'), isFalse);
+    expect(request.headers.containsKey('Authorization'), isFalse);
+  });
 }
 
 class _RecordingAdapter implements HttpClientAdapter {

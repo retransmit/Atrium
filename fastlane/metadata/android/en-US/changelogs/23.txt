@@ -1,0 +1,14 @@
+Four new services: MySpeed (status, history, config, a manual run and a
+dashboard widget), Ombi (requests, search and discover, in beta), Navidrome
+(artists, albums, playlists, ratings and favourites, in beta) and Gluetun (VPN
+status, forwarded port, reconnect and a dashboard widget).
+
+Transmission now does everything its web UI does: filters, search, sorting,
+selection with bulk actions, every torrent action, a full inspector, and a
+Settings tab for the daemon's preferences. It is out of beta.
+
+qBittorrent gains an execution log tab, the Plex form can sign in at plex.tv,
+and a Sonarr or Radarr search carries over to the Add screen.
+
+Fixed: saving an instance keeps its custom headers, and the qBittorrent settings
+list the interfaces the server actually has.

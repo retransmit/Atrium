@@ -11,7 +11,8 @@ Supported services:
   system status and the full settings tree
 * Prowlarr - indexers, search and grab
 * Bazarr - subtitle status, search and download
-* Seerr (Overseerr and Jellyseerr) - discover, request and manage requests
+* Seerr (Overseerr and Jellyseerr) and Ombi - discover, request and manage
+  requests
 * Tautulli - active streams, history, statistics and users
 * Tracearr - who is streaming across Plex, Jellyfin and Emby, watch and
   library statistics, history, a media catalog and policy incidents
@@ -20,10 +21,12 @@ Supported services:
 * SABnzbd and NZBGet - usenet queue control and history
 * Jellyfin, Emby and Plex - library browsing, item detail, resume rows and
   now-playing sessions
+* Navidrome - artists, albums and tracks, playlists, ratings and favorites
 * Glances, Beszel and dashdot - CPU, memory, GPU and disk usage of the host
-* Speedtest Tracker - internet speed results and history
+* Speedtest Tracker and MySpeed - internet speed results and history
 * Unraid - array and disk health, per-core system load, Docker containers and
   virtual machine control
+* Gluetun - VPN status, the forwarded port and a one-tap reconnect
 
 Features:
 
@@ -31,8 +34,10 @@ Features:
 * Every instance holds a local and an external URL, and Atrium picks the right
   one for the network you are on
 * A dashboard of at-a-glance widgets you can reorder: active downloads, now
-  streaming, upcoming releases, recently added, recently downloaded, requests
-  and server info
+  streaming, upcoming releases, recently added, recently downloaded, requests,
+  server vitals, speedtest results, VPN status and Wake-on-LAN
+* Custom HTTP headers, for the whole profile or one instance, so services
+  behind a reverse proxy keep working
 * Profile import and export
 * Material 3 Expressive design with dynamic color, custom palettes, light and
   dark themes

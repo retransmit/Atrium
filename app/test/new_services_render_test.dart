@@ -1,4 +1,8 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:core_models/core_models.dart';
+import 'package:core_networking/core_networking.dart';
 import 'package:core_profile/core_profile.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:dio/dio.dart';
@@ -9,10 +13,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:service_bazarr/service_bazarr.dart';
 import 'package:service_seerr/service_seerr.dart';
 import 'package:service_lidarr/service_lidarr.dart';
+import 'package:service_ombi/service_ombi.dart';
 import 'package:service_plex/service_plex.dart';
 import 'package:service_radarr/service_radarr.dart';
 import 'package:service_sabnzbd/service_sabnzbd.dart';
 import 'package:service_tautulli/service_tautulli.dart';
+import 'package:service_myspeed/service_myspeed.dart';
 import 'package:atrium/src/preferences.dart';
 import 'package:atrium/src/screens/calendar_screen.dart';
 
@@ -61,6 +67,45 @@ Future<void> _pump(
 class _FakePreferencesController extends PreferencesController {
   @override
   Preferences build() => const Preferences();
+}
+
+/// Answers Ombi's music switch and pending movie list.
+class _OmbiAnswers implements HttpClientAdapter {
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    final Object body = switch (options.uri.path) {
+      '/api/v1/Lidarr/enabled' => false,
+      '/api/v2/Requests/movie/pending/25/0/requestedDate/desc' =>
+        <String, dynamic>{
+          'total': 1,
+          'collection': <Object>[
+            <String, dynamic>{
+              'id': 1,
+              'title': 'Arrival',
+              'approved': false,
+              'available': false,
+              'denied': false,
+              'requestedUser': <String, dynamic>{'userName': 'alice'},
+            },
+          ],
+        },
+      _ => <String, dynamic>{},
+    };
+    return ResponseBody.fromString(
+      jsonEncode(body),
+      200,
+      headers: <String, List<String>>{
+        Headers.contentTypeHeader: <String>['application/json'],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
 }
 
 void main() {
@@ -114,6 +159,28 @@ void main() {
       TautulliHome(instance: instance),
     );
     expect(find.text('The Matrix'), findsOneWidget);
+  });
+
+  testWidgets('OmbiHome renders a pending request',
+      (WidgetTester tester) async {
+    final Instance instance = _instance(ServiceKind.ombi);
+    await _pump(
+      tester,
+      <Override>[
+        instanceDioProvider(instance).overrideWith(
+          (Ref ref) async => Dio(BaseOptions(baseUrl: 'http://localhost/'))
+            ..httpClientAdapter = _OmbiAnswers(),
+        ),
+      ],
+      OmbiHome(instance: instance),
+      pumps: 6,
+    );
+    // Unlike the overridden leaf providers above, this goes through a real
+    // Dio, whose request path waits on a timer, so fake time has to pass.
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.textContaining('Arrival'), findsOneWidget);
+    expect(find.text('Approve'), findsOneWidget);
   });
 
   testWidgets('SeerrHome renders a request with its media details',
@@ -332,5 +399,23 @@ void main() {
 
     expect(find.text('Radiohead - A Moon Shaped Pool'), findsOneWidget);
     expect(find.text('Downloaded'), findsOneWidget);
+  });
+
+  testWidgets('MySpeedHome renders', (WidgetTester tester) async {
+    final Instance myspeed = _instance(ServiceKind.myspeed);
+    await _pump(
+      tester,
+      <Override>[
+        myspeedStatusProvider(myspeed).overrideWith(
+          (ref) async => const MySpeedStatus(isRunning: false),
+        ),
+      ],
+      MySpeedHome(instance: myspeed),
+      pumps: 2,
+    );
+
+    expect(find.text('Execution status'), findsOneWidget);
+    expect(find.text('Idle'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsOneWidget);
   });
 }

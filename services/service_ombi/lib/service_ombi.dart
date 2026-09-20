@@ -1,5 +1,17 @@
 export 'src/generated/generated.dart';
+export 'src/models/ombi_mapping.dart';
+export 'src/models/ombi_models.dart';
+export 'src/ombi_discover_tab.dart';
+export 'src/ombi_failure.dart';
+export 'src/ombi_home.dart';
+export 'src/ombi_providers.dart';
+export 'src/ombi_request_actions.dart';
+export 'src/ombi_request_sheet.dart';
+export 'src/ombi_search.dart';
 export 'src/services/ombi_client.dart';
 export 'src/services/ombi_request_service.dart';
+export 'src/services/ombi_result.dart';
 export 'src/services/ombi_search_service.dart';
 export 'src/services/ombi_settings_service.dart';
+export 'src/widgets/ombi_request_tile.dart';
+export 'src/widgets/ombi_status_badge.dart';

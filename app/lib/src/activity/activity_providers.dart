@@ -30,6 +30,8 @@ class ActivityStream {
     this.userName,
     this.userAvatarUrl,
     this.imageUrl,
+    this.posterUrl,
+    this.aspectRatio,
     this.detailChip,
     this.onOpenBuilder,
   });
@@ -47,6 +49,12 @@ class ActivityStream {
 
   /// Backdrop preferred, poster fallback.
   final String? imageUrl;
+
+  /// Dedicated poster URL, especially for music / audio.
+  final String? posterUrl;
+
+  /// Aspect ratio of the poster (1.0 for music, 2/3 for movies/shows).
+  final double? aspectRatio;
 
   /// Playback progress, 0-1.
   final double progress;
@@ -351,6 +359,8 @@ List<ActivityStream> _plexStreams(
         userName: (s.user?.title ?? '').isEmpty ? null : s.user!.title,
         userAvatarUrl: api?.imageUrl(s.user?.thumb),
         imageUrl: api?.imageUrl(s.art ?? s.thumb),
+        posterUrl: api?.imageUrl(s.thumb),
+        aspectRatio: null,
         progress: s.progress,
         paused: s.player?.state == 'paused',
         detailChip: s.decisionLabel,
@@ -383,7 +393,10 @@ List<ActivityStream> _jellyfinStreams(
             ? s.episodeName
             : (s.device.isEmpty ? null : s.device),
         userName: s.user.isEmpty ? null : s.user,
-        imageUrl: s.backdropUrl ?? s.posterUrl,
+        imageUrl: (s.aspectRatio == 1.0 ? s.posterUrl : s.backdropUrl) ??
+            s.posterUrl,
+        posterUrl: s.posterUrl,
+        aspectRatio: s.aspectRatio,
         progress: (s.progressPercent / 100).clamp(0.0, 1.0),
         paused: s.status.toLowerCase() == 'paused',
         onOpenBuilder: (BuildContext _) => jf.JellyfinSessionDetailScreen(
@@ -409,7 +422,10 @@ List<ActivityStream> _embyStreams(
             ? s.episodeName
             : (s.device.isEmpty ? null : s.device),
         userName: s.user.isEmpty ? null : s.user,
-        imageUrl: s.backdropUrl ?? s.posterUrl,
+        imageUrl: (s.aspectRatio == 1.0 ? s.posterUrl : s.backdropUrl) ??
+            s.posterUrl,
+        posterUrl: s.posterUrl,
+        aspectRatio: s.aspectRatio,
         progress: (s.progressPercent / 100).clamp(0.0, 1.0),
         paused: s.status.toLowerCase() == 'paused',
         onOpenBuilder: (BuildContext _) => emby.EmbySessionDetailScreen(
@@ -438,8 +454,11 @@ List<ActivityStream> _tautulliStreams(
             : (s.player.isEmpty ? null : s.player),
         userName: s.friendlyName.isEmpty ? null : s.friendlyName,
         userAvatarUrl: api?.imageUrl(s.userThumb, fallback: 'art'),
-        imageUrl: api?.imageUrl(s.art, width: 800, fallback: 'art') ??
+        imageUrl: (s.mediaType == 'track' ? api?.imageUrl(s.posterThumb) : null) ??
+            api?.imageUrl(s.art, width: 800, fallback: 'art') ??
             api?.imageUrl(s.posterThumb),
+        posterUrl: api?.imageUrl(s.posterThumb),
+        aspectRatio: s.mediaType == 'track' ? 1.0 : null,
         progress: (s.progressPercent / 100).clamp(0.0, 1.0),
         paused: s.state.toLowerCase() == 'paused',
         detailChip: _decisionLabel(s.transcodeDecision),

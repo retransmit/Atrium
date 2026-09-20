@@ -14,9 +14,14 @@ import 'sonarr_api.dart';
 import 'sonarr_providers.dart';
 
 class SonarrAddSeriesSearchScreen extends ConsumerStatefulWidget {
-  const SonarrAddSeriesSearchScreen({required this.instance, super.key});
+  const SonarrAddSeriesSearchScreen({
+    required this.instance,
+    this.initialQuery,
+    super.key,
+  });
 
   final Instance instance;
+  final String? initialQuery;
 
   @override
   ConsumerState<SonarrAddSeriesSearchScreen> createState() =>
@@ -26,9 +31,9 @@ class SonarrAddSeriesSearchScreen extends ConsumerStatefulWidget {
 class _SonarrAddSeriesSearchScreenState
     extends ConsumerState<SonarrAddSeriesSearchScreen>
     with WidgetsBindingObserver {
-  final TextEditingController _searchController = TextEditingController();
+  late final TextEditingController _searchController;
   final FocusNode _searchFocusNode = FocusNode();
-  String _debouncedQuery = '';
+  late String _debouncedQuery;
   Timer? _debounceTimer;
   final ScrollController _scrollController = ScrollController();
   double _lastBottomInset = 0;
@@ -36,6 +41,14 @@ class _SonarrAddSeriesSearchScreenState
   @override
   void initState() {
     super.initState();
+    final String initial = widget.initialQuery?.trim() ?? '';
+    _debouncedQuery = initial;
+    _searchController = TextEditingController(text: initial);
+    if (initial.isNotEmpty) {
+      _searchController.selection = TextSelection.fromPosition(
+        TextPosition(offset: initial.length),
+      );
+    }
     WidgetsBinding.instance.addObserver(this);
     _searchFocusNode.requestFocus();
     _searchController.addListener(_onSearchChanged);

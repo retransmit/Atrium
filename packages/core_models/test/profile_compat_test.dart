@@ -103,6 +103,26 @@ void main() {
     expect(decoded.kind, ServiceKind.speedtestTracker);
   });
 
+  test('MySpeed instance round-trips by stable enum name', () {
+    const Instance instance = Instance(
+      id: 'myspeed-1',
+      name: 'Home MySpeed',
+      kind: ServiceKind.myspeed,
+      localUrl: 'http://192.168.1.10:5216',
+      externalUrl: '',
+      urlMode: UrlMode.auto,
+      auth: InstanceAuth.apiKey(apiKey: ''),
+    );
+
+    final Map<String, dynamic> json = jsonDecode(
+      jsonEncode(instance.toJson()),
+    ) as Map<String, dynamic>;
+    final Instance decoded = Instance.fromJson(json);
+
+    expect(json['kind'], 'myspeed');
+    expect(decoded.kind, ServiceKind.myspeed);
+  });
+
   test('WolDevice.fromJson fills broadcast and port defaults', () {
     final WolDevice device = WolDevice.fromJson(<String, dynamic>{
       'id': 'w1',

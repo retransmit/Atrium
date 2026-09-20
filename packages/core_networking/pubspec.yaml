@@ -13,6 +13,7 @@ dependencies:
   collection: ^1.18.0
   connectivity_plus: ^7.2.0
   core_models:
+  crypto: ^3.0.3
   dio: ^5.7.0
   flutter:
     sdk: flutter

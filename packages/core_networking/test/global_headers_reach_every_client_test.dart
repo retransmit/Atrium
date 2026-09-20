@@ -114,9 +114,13 @@ class _RecordingAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     seen = options.headers;
-    return ResponseBody.fromString('{}', 200, headers: <String, List<String>>{
-      Headers.contentTypeHeader: <String>[Headers.jsonContentType],
-    });
+    return ResponseBody.fromString(
+      '{}',
+      200,
+      headers: <String, List<String>>{
+        Headers.contentTypeHeader: <String>[Headers.jsonContentType],
+      },
+    );
   }
 
   @override

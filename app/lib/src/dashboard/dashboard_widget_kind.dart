@@ -10,7 +10,10 @@ enum DashboardWidgetKind {
   recentlyDownloaded,
   requests,
   serverInfo,
+  dashdot,
   speedtestResults,
+  gluetunStatus,
+  myspeed,
   wakeOnLan,
 }
 
@@ -22,8 +25,11 @@ extension DashboardWidgetKindX on DashboardWidgetKind {
         DashboardWidgetKind.recentlyAdded => 'Recently added',
         DashboardWidgetKind.recentlyDownloaded => 'Recently downloaded',
         DashboardWidgetKind.requests => 'Requests',
-        DashboardWidgetKind.serverInfo => 'Server info',
+        DashboardWidgetKind.serverInfo => 'Glances',
+        DashboardWidgetKind.dashdot => 'Dashdot',
         DashboardWidgetKind.speedtestResults => 'Speedtest results',
+        DashboardWidgetKind.gluetunStatus => 'Gluetun VPN',
+        DashboardWidgetKind.myspeed => 'MySpeed',
         DashboardWidgetKind.wakeOnLan => 'Wake on LAN',
       };
 
@@ -35,7 +41,10 @@ extension DashboardWidgetKindX on DashboardWidgetKind {
         DashboardWidgetKind.recentlyDownloaded => Icons.history,
         DashboardWidgetKind.requests => Icons.bookmark_added_outlined,
         DashboardWidgetKind.serverInfo => Icons.memory,
+        DashboardWidgetKind.dashdot => Icons.donut_large_rounded,
         DashboardWidgetKind.speedtestResults => Icons.speed_outlined,
+        DashboardWidgetKind.gluetunStatus => Icons.shield_outlined,
+        DashboardWidgetKind.myspeed => Icons.network_check_outlined,
         DashboardWidgetKind.wakeOnLan => Icons.power_settings_new_rounded,
       };
 
@@ -66,12 +75,24 @@ extension DashboardWidgetKindX on DashboardWidgetKind {
             ServiceKind.sonarr,
             ServiceKind.radarr
           ],
-        DashboardWidgetKind.requests => const <ServiceKind>[ServiceKind.seerr],
+        DashboardWidgetKind.requests => const <ServiceKind>[
+            ServiceKind.seerr,
+            ServiceKind.ombi,
+          ],
         DashboardWidgetKind.serverInfo => const <ServiceKind>[
             ServiceKind.glances
           ],
+        DashboardWidgetKind.dashdot => const <ServiceKind>[
+            ServiceKind.dashdot
+          ],
         DashboardWidgetKind.speedtestResults => const <ServiceKind>[
             ServiceKind.speedtestTracker
+          ],
+        DashboardWidgetKind.gluetunStatus => const <ServiceKind>[
+            ServiceKind.gluetun
+          ],
+        DashboardWidgetKind.myspeed => const <ServiceKind>[
+            ServiceKind.myspeed
           ],
         // Wake-on-LAN answers to no service. Its targets are machines on the
         // network, kept on the profile beside the instances, so there is no

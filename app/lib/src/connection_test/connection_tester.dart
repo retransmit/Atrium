@@ -85,7 +85,12 @@ class ConnectionTester {
       default:
         final HealthProbe probe =
             HealthProbe(dioFactory: _ref.read(dioFactoryProvider));
-        return connectionResultFromHealth(await probe.check(forced));
+        // Only whether the URL and credentials work. A problem the service
+        // reports about itself, such as a stopped Gluetun VPN, is not a
+        // failed connection and would otherwise read as a rejected key.
+        return connectionResultFromHealth(
+          await probe.check(forced, connectionOnly: true),
+        );
     }
   }
 

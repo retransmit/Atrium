@@ -89,6 +89,8 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final String query =
+        ref.watch(sonarrSearchQueryProvider(widget.instance)).trim();
     final AsyncValue<List<SonarrSeries>> filtered =
         ref.watch(sonarrFilteredSeriesProvider(widget.instance));
     final SonarrApi? api = ref.watch(sonarrApiProvider(widget.instance)).value;
@@ -171,6 +173,7 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                         builder: (BuildContext context) =>
                             SonarrAddSeriesSearchScreen(
                           instance: widget.instance,
+                          initialQuery: query.isNotEmpty ? query : null,
                         ),
                       ),
                     );
@@ -346,13 +349,37 @@ class _SeriesTabState extends ConsumerState<SeriesTab>
                   ),
                   const HeaderLocator.sliver(),
                   if (list.isEmpty)
-                    const SliverFillRemaining(
+                    SliverFillRemaining(
                       hasScrollBody: false,
                       child: EmptyView(
                         icon: Icons.live_tv_outlined,
                         title: 'No series found',
                         message:
                             'Try adjusting your search query or active filters.',
+                        action: query.isNotEmpty
+                            ? FilledButton.tonalIcon(
+                                onPressed: () {
+                                  Navigator.of(
+                                    context,
+                                    rootNavigator: true,
+                                  ).push(
+                                    FadePageRoute<void>(
+                                      builder: (BuildContext context) =>
+                                          SonarrAddSeriesSearchScreen(
+                                        instance: widget.instance,
+                                        initialQuery: query,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.travel_explore),
+                                label: Text(
+                                  'Search online for "$query"',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              )
+                            : null,
                       ),
                     )
                   else if (viewMode == SonarrViewMode.grid)

@@ -397,6 +397,146 @@ class EmbyClient {
                       ? 1.0
                       : (2 / 3)));
 
+          final String key = _token == null ? '' : '&api_key=$_token';
+
+          // Resolve primary image target ID and tag
+          String? posterTargetId;
+          String? posterTag;
+
+          if (type == 'Audio') {
+            final Map<String, dynamic>? imageTags =
+                nowPlaying['ImageTags'] as Map<String, dynamic>?;
+            if (imageTags != null && imageTags.containsKey('Primary')) {
+              posterTargetId = nowPlaying['Id'] as String?;
+              posterTag = imageTags['Primary'] as String?;
+            } else {
+              final String? albumId = nowPlaying['AlbumId'] as String?;
+              if (albumId != null && albumId.isNotEmpty) {
+                posterTargetId = albumId;
+                posterTag = (nowPlaying['AlbumPrimaryImageTag'] ??
+                    nowPlaying['PrimaryImageTag']) as String?;
+              } else {
+                final String? primaryItemId =
+                    nowPlaying['PrimaryImageItemId'] as String?;
+                if (primaryItemId != null && primaryItemId.isNotEmpty) {
+                  posterTargetId = primaryItemId;
+                  posterTag = nowPlaying['PrimaryImageTag'] as String?;
+                } else {
+                  final String? parentId = nowPlaying['ParentId'] as String?;
+                  if (parentId != null && parentId.isNotEmpty) {
+                    posterTargetId = parentId;
+                    posterTag =
+                        nowPlaying['ParentPrimaryImageTag'] as String?;
+                  } else {
+                    final List<dynamic>? artists =
+                        nowPlaying['ArtistItems'] as List<dynamic>?;
+                    if (artists != null &&
+                        artists.isNotEmpty &&
+                        artists.first is Map) {
+                      posterTargetId =
+                          (artists.first as Map<String, dynamic>)['Id']
+                              as String?;
+                    } else {
+                      posterTargetId = nowPlaying['Id'] as String?;
+                    }
+                  }
+                }
+              }
+            }
+          } else if (type == 'Episode') {
+            final String? seriesId = nowPlaying['SeriesId'] as String?;
+            if (seriesId != null && seriesId.isNotEmpty) {
+              posterTargetId = seriesId;
+              posterTag = (nowPlaying['SeriesPrimaryImageTag'] ??
+                  nowPlaying['PrimaryImageTag']) as String?;
+            } else {
+              final String? primaryItemId =
+                  nowPlaying['PrimaryImageItemId'] as String?;
+              if (primaryItemId != null && primaryItemId.isNotEmpty) {
+                posterTargetId = primaryItemId;
+                posterTag = nowPlaying['PrimaryImageTag'] as String?;
+              } else {
+                final String? parentId = nowPlaying['ParentId'] as String?;
+                if (parentId != null && parentId.isNotEmpty) {
+                  posterTargetId = parentId;
+                  posterTag =
+                      nowPlaying['ParentPrimaryImageTag'] as String?;
+                } else {
+                  posterTargetId = nowPlaying['Id'] as String?;
+                  final Map<String, dynamic>? imageTags =
+                      nowPlaying['ImageTags'] as Map<String, dynamic>?;
+                  posterTag = imageTags?['Primary'] as String?;
+                }
+              }
+            }
+          } else {
+            final String? primaryItemId =
+                nowPlaying['PrimaryImageItemId'] as String?;
+            if (primaryItemId != null && primaryItemId.isNotEmpty) {
+              posterTargetId = primaryItemId;
+              posterTag = nowPlaying['PrimaryImageTag'] as String?;
+            } else {
+              final String? seriesId = nowPlaying['SeriesId'] as String?;
+              if (seriesId != null && seriesId.isNotEmpty) {
+                posterTargetId = seriesId;
+                posterTag = (nowPlaying['SeriesPrimaryImageTag'] ??
+                    nowPlaying['PrimaryImageTag']) as String?;
+              } else {
+                posterTargetId = nowPlaying['Id'] as String?;
+                final Map<String, dynamic>? imageTags =
+                    nowPlaying['ImageTags'] as Map<String, dynamic>?;
+                posterTag = imageTags?['Primary'] as String? ??
+                    nowPlaying['PrimaryImageTag'] as String?;
+              }
+            }
+          }
+
+          final String? posterUrl = posterTargetId != null
+              ? '$_baseStr/Items/$posterTargetId/Images/Primary?quality=100${(posterTag != null && posterTag.isNotEmpty) ? '&tag=$posterTag' : ''}$key'
+              : null;
+
+          // Resolve backdrop image target ID and tag
+          String? backdropUrl;
+          final List<dynamic>? backdropTags =
+              nowPlaying['BackdropImageTags'] as List<dynamic>?;
+          final List<dynamic>? parentBackdropTags =
+              nowPlaying['ParentBackdropImageTags'] as List<dynamic>?;
+
+          if (backdropTags != null && backdropTags.isNotEmpty) {
+            final String tag = backdropTags.first.toString();
+            backdropUrl =
+                '$_baseStr/Items/${nowPlaying['Id']}/Images/Backdrop/0?quality=100&tag=$tag$key';
+          } else if (parentBackdropTags != null &&
+              parentBackdropTags.isNotEmpty) {
+            final String? parentBackdropId =
+                nowPlaying['ParentBackdropItemId'] as String? ??
+                    nowPlaying['SeriesId'] as String? ??
+                    nowPlaying['AlbumId'] as String? ??
+                    nowPlaying['ParentId'] as String?;
+            if (parentBackdropId != null && parentBackdropId.isNotEmpty) {
+              final String tag = parentBackdropTags.first.toString();
+              backdropUrl =
+                  '$_baseStr/Items/$parentBackdropId/Images/Backdrop/0?quality=100&tag=$tag$key';
+            }
+          } else if (type != 'Audio') {
+            final String? fallbackBackdropId =
+                nowPlaying['SeriesId'] as String? ??
+                    nowPlaying['Id'] as String?;
+            if (fallbackBackdropId != null && fallbackBackdropId.isNotEmpty) {
+              backdropUrl =
+                  '$_baseStr/Items/$fallbackBackdropId/Images/Backdrop/0?quality=100$key';
+            }
+          }
+
+          final String? resolvedItemId = type == 'Audio'
+              ? (nowPlaying['AlbumId'] as String? ??
+                  nowPlaying['PrimaryImageItemId'] as String? ??
+                  nowPlaying['ParentId'] as String? ??
+                  nowPlaying['Id'] as String?)
+              : (nowPlaying['SeriesId'] as String? ??
+                  nowPlaying['PrimaryImageItemId'] as String? ??
+                  nowPlaying['Id'] as String?);
+
           active.add(
             ActiveSession(
               id: element['Id'] as String? ?? '',
@@ -415,13 +555,10 @@ class EmbyClient {
               durationTicks: durTicks,
               volumeLevel: playState['VolumeLevel'] as int? ?? 100,
               isMuted: playState['IsMuted'] as bool? ?? false,
-              posterUrl:
-                  '$_baseStr/Items/${nowPlaying['SeriesId'] ?? nowPlaying['Id']}/Images/Primary?quality=100${_token == null ? '' : '&api_key=$_token'}',
-              backdropUrl:
-                  '$_baseStr/Items/${nowPlaying['SeriesId'] ?? nowPlaying['Id']}/Images/Backdrop/0?quality=100${_token == null ? '' : '&api_key=$_token'}',
+              posterUrl: posterUrl,
+              backdropUrl: backdropUrl,
               aspectRatio: computedAspectRatio,
-              itemId: nowPlaying['SeriesId'] as String? ??
-                  nowPlaying['Id'] as String?,
+              itemId: resolvedItemId,
             ),
           );
         }

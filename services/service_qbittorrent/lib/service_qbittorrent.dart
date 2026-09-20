@@ -7,10 +7,12 @@ library;
 
 export 'src/add_torrent_sheet.dart';
 export 'src/models/qbit_detail.dart';
+export 'src/models/qbit_log_entry.dart';
 export 'src/models/qbit_torrent.dart';
 export 'src/models/qbit_transfer_info.dart';
 export 'src/qbittorrent_client.dart';
 export 'src/qbittorrent_filter_drawer.dart';
 export 'src/qbittorrent_home.dart';
+export 'src/qbittorrent_logs_tab.dart';
 export 'src/qbittorrent_providers.dart';
 export 'src/torrent_detail_screen.dart';

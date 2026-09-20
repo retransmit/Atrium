@@ -4,20 +4,42 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:service_ombi/service_ombi.dart';
 import 'package:service_seerr/service_seerr.dart';
 
 import '../dashboard_widget_card.dart';
 import '../dashboard_widget_kind.dart';
 
-class _Request {
-  const _Request({required this.request, required this.instance});
+/// One row on the widget, whichever service it came from.
+sealed class _Entry {
+  const _Entry(this.instance);
 
-  final SeerrRequest request;
   final Instance instance;
+
+  DateTime get at;
 }
 
-/// Recent Seerr requests across every instance, newest first, each with its
-/// poster and live availability status - not just the approval queue.
+class _SeerrEntry extends _Entry {
+  const _SeerrEntry(super.instance, this.request);
+
+  final SeerrRequest request;
+
+  @override
+  DateTime get at =>
+      DateTime.tryParse(request.createdAt ?? '') ?? DateTime(1970);
+}
+
+class _OmbiEntry extends _Entry {
+  const _OmbiEntry(super.instance, this.request);
+
+  final OmbiRequest request;
+
+  @override
+  DateTime get at => request.requestedAt ?? DateTime(1970);
+}
+
+/// Recent requests across every Seerr and Ombi instance, newest first, each
+/// with its poster and where it stands, not just the approval queue.
 class DashboardRequestsWidget extends ConsumerWidget {
   const DashboardRequestsWidget({required this.instances, super.key});
 
@@ -28,35 +50,41 @@ class DashboardRequestsWidget extends ConsumerWidget {
     final ColorScheme cs = Theme.of(context).colorScheme;
 
     int totalRequested = 0;
-    final List<_Request> requests = <_Request>[];
+    final List<_Entry> entries = <_Entry>[];
     bool anyLoading = false;
     bool anyError = false;
 
     for (final Instance i in instances) {
-      final AsyncValue<SeerrCounts> counts =
-          ref.watch(seerrRequestCountsProvider(i));
-      totalRequested += counts.value?.total ?? 0;
-
-      final AsyncValue<List<SeerrRequest>> list =
-          ref.watch(seerrRequestsProvider(i));
-      anyLoading |= list.isLoading && !list.hasValue;
-      anyError |= list.hasError;
-      for (final SeerrRequest r in list.value ?? const <SeerrRequest>[]) {
-        requests.add(_Request(request: r, instance: i));
+      switch (i.kind) {
+        case ServiceKind.seerr:
+          totalRequested +=
+              ref.watch(seerrRequestCountsProvider(i)).value?.total ?? 0;
+          final AsyncValue<List<SeerrRequest>> list =
+              ref.watch(seerrRequestsProvider(i));
+          anyLoading |= list.isLoading && !list.hasValue;
+          anyError |= list.hasError;
+          for (final SeerrRequest r in list.value ?? const <SeerrRequest>[]) {
+            entries.add(_SeerrEntry(i, r));
+          }
+        case ServiceKind.ombi:
+          totalRequested += ref.watch(ombiCountsProvider(i)).value?.total ?? 0;
+          final AsyncValue<List<OmbiRequest>> list =
+              ref.watch(ombiRecentRequestsProvider(i));
+          anyLoading |= list.isLoading && !list.hasValue;
+          anyError |= list.hasError;
+          for (final OmbiRequest r in list.value ?? const <OmbiRequest>[]) {
+            entries.add(_OmbiEntry(i, r));
+          }
+        default:
+          break;
       }
     }
 
-    requests.sort((_Request a, _Request b) {
-      final DateTime da =
-          DateTime.tryParse(a.request.createdAt ?? '') ?? DateTime(1970);
-      final DateTime db =
-          DateTime.tryParse(b.request.createdAt ?? '') ?? DateTime(1970);
-      return db.compareTo(da);
-    });
-    final List<_Request> top = requests.take(3).toList();
+    entries.sort((_Entry a, _Entry b) => b.at.compareTo(a.at));
+    final List<_Entry> top = entries.take(3).toList();
 
     Widget body;
-    if (requests.isEmpty && anyLoading) {
+    if (entries.isEmpty && anyLoading) {
       body = const Center(
         child: Padding(
           padding: EdgeInsets.all(Insets.sm),
@@ -67,16 +95,23 @@ class DashboardRequestsWidget extends ConsumerWidget {
           ),
         ),
       );
-    } else if (requests.isEmpty && anyError) {
+    } else if (entries.isEmpty && anyError) {
       body = DashboardErrorRow(
         onRetry: () {
           for (final Instance i in instances) {
-            ref.invalidate(seerrRequestCountsProvider(i));
-            ref.invalidate(seerrRequestsProvider(i));
+            if (i.kind == ServiceKind.ombi) {
+              ref
+                ..invalidate(ombiCountsProvider(i))
+                ..invalidate(ombiRecentRequestsProvider(i));
+            } else {
+              ref
+                ..invalidate(seerrRequestCountsProvider(i))
+                ..invalidate(seerrRequestsProvider(i));
+            }
           }
         },
       );
-    } else if (requests.isEmpty) {
+    } else if (entries.isEmpty) {
       body = const DashboardIdleRow(text: 'No requests yet');
     } else {
       body = Column(
@@ -84,13 +119,17 @@ class DashboardRequestsWidget extends ConsumerWidget {
         children: <Widget>[
           for (int j = 0; j < top.length; j++) ...<Widget>[
             if (j > 0) const SizedBox(height: Insets.sm),
-            _RequestRow(request: top[j]),
+            switch (top[j]) {
+              final _SeerrEntry e => _SeerrRequestRow(entry: e),
+              final _OmbiEntry e => _OmbiRequestRow(entry: e),
+            },
           ],
-          if (requests.length > top.length)
+          if (entries.length > top.length)
             Padding(
               padding: const EdgeInsets.only(top: Insets.sm),
               child: DashboardIdleRow(
-                  text: '+${requests.length - top.length} more'),
+                text: '+${entries.length - top.length} more',
+              ),
             ),
         ],
       );
@@ -119,21 +158,20 @@ class DashboardRequestsWidget extends ConsumerWidget {
   }
 }
 
-/// A single request as a poster banner: artwork thumb, resolved title, the
-/// requester, and an availability chip.
-class _RequestRow extends ConsumerWidget {
-  const _RequestRow({required this.request});
+/// A Seerr request, with its title and poster looked up the way the Seerr
+/// requests tab does it.
+class _SeerrRequestRow extends ConsumerWidget {
+  const _SeerrRequestRow({required this.entry});
 
-  final _Request request;
+  final _SeerrEntry entry;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ThemeData theme = Theme.of(context);
-    final ColorScheme cs = theme.colorScheme;
-    final SeerrRequest r = request.request;
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    final SeerrRequest r = entry.request;
 
-    // Resolve the title + poster like the Seerr requests tab does; fall back
-    // to the request type while it loads or when there is no tmdb id.
+    // Fall back to the request type while it loads or when there is no
+    // TMDB id.
     final int? tmdbId = r.media?.tmdbId;
     String title = r.type == 'movie' ? 'Movie request' : 'Series request';
     String? posterPath;
@@ -141,27 +179,122 @@ class _RequestRow extends ConsumerWidget {
       final String mediaType =
           (r.media?.mediaType ?? '').isNotEmpty ? r.media!.mediaType : r.type;
       final SeerrDiscoverResult? details = ref
-          .watch(seerrMediaDetailsProvider(
-            (instance: request.instance, mediaType: mediaType, tmdbId: tmdbId),
-          ))
+          .watch(
+            seerrMediaDetailsProvider(
+              (instance: entry.instance, mediaType: mediaType, tmdbId: tmdbId),
+            ),
+          )
           .value;
       if (details != null) {
         title = details.displayTitle;
         posterPath = details.posterPath;
       }
     }
-    final SeerrApi? api = ref.watch(seerrApiProvider(request.instance)).value;
-    final String? posterUrl = api?.imageUrl(posterPath, size: 'w185');
-    final String by = r.requestedBy?.displayName ?? '';
-    final (String statusLabel, Color statusColor) = _status(r, cs);
+    final SeerrApi? api = ref.watch(seerrApiProvider(entry.instance)).value;
+    final (String label, Color color) = _status(r, cs);
+
+    return _RequestRowShell(
+      instance: entry.instance,
+      title: title,
+      posterUrl: api?.imageUrl(posterPath, size: 'w185'),
+      fallbackIcon:
+          r.type == 'movie' ? Icons.movie_outlined : Icons.live_tv_outlined,
+      statusLabel: label,
+      statusColor: color,
+      by: r.requestedBy?.displayName ?? '',
+    );
+  }
+
+  /// Approval status wins; otherwise the media's availability (1 unknown,
+  /// 2 pending, 3 processing, 4 partial, 5 available).
+  (String, Color) _status(SeerrRequest r, ColorScheme cs) {
+    if (r.status == 3) {
+      return ('Declined', cs.onSurfaceVariant);
+    }
+    if (r.status == 1) {
+      return ('Needs approval', cs.primary);
+    }
+    return switch (r.media?.status ?? 1) {
+      5 => ('Available', cs.tertiary),
+      4 => ('Partial', cs.tertiary),
+      3 => ('Processing', cs.secondary),
+      _ => ('Requested', cs.onSurfaceVariant),
+    };
+  }
+}
+
+/// An Ombi request, worded the way Ombi's own Recently Requested cards word
+/// it. Ombi's lists carry the title and poster already.
+class _OmbiRequestRow extends StatelessWidget {
+  const _OmbiRequestRow({required this.entry});
+
+  final _OmbiEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    final OmbiRequest r = entry.request;
+    final String label = ombiRecentStatusLabel(r.recentStatus);
+    final Color color = switch (r.recentStatus) {
+      OmbiRecentStatus.pending => cs.primary,
+      OmbiRecentStatus.approved => cs.secondary,
+      OmbiRecentStatus.partlyAvailable ||
+      OmbiRecentStatus.available =>
+        cs.tertiary,
+      OmbiRecentStatus.denied => cs.onSurfaceVariant,
+    };
+    return _RequestRowShell(
+      instance: entry.instance,
+      title: r.title,
+      posterUrl: r.posterUrl,
+      fallbackIcon: switch (r.kind) {
+        OmbiMediaKind.movie => Icons.movie_outlined,
+        OmbiMediaKind.tv => Icons.live_tv_outlined,
+        OmbiMediaKind.music => Icons.album_outlined,
+      },
+      statusLabel: label,
+      statusColor: color,
+      by: r.requestedBy ?? '',
+    );
+  }
+}
+
+/// The row layout both services share: artwork thumb, title, a status chip
+/// and who asked. Tapping it opens the instance.
+class _RequestRowShell extends StatelessWidget {
+  const _RequestRowShell({
+    required this.instance,
+    required this.title,
+    required this.posterUrl,
+    required this.fallbackIcon,
+    required this.statusLabel,
+    required this.statusColor,
+    required this.by,
+  });
+
+  final Instance instance;
+  final String title;
+  final String? posterUrl;
+  final IconData fallbackIcon;
+  final String statusLabel;
+  final Color statusColor;
+  final String by;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final Widget fallback = Container(
+      color: cs.surfaceContainerHighest,
+      alignment: Alignment.center,
+      child: Icon(fallbackIcon, size: 18, color: cs.onSurfaceVariant),
+    );
+    final String? url = posterUrl;
 
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () => context.go(
-        AtriumRoutes.servicePath(
-          request.instance.kind.name,
-          request.instance.id,
-        ),
+        AtriumRoutes.servicePath(instance.kind.name, instance.id),
       ),
       child: Row(
         children: <Widget>[
@@ -170,13 +303,13 @@ class _RequestRow extends ConsumerWidget {
             child: SizedBox(
               width: 40,
               height: 56,
-              child: posterUrl == null
-                  ? _posterFallback(cs, r.type)
+              child: url == null
+                  ? fallback
                   : AtriumNetworkImage(
-                      imageUrl: posterUrl,
+                      imageUrl: url,
                       fit: BoxFit.cover,
                       memCacheWidth: 120,
-                      errorWidget: (_, __, ___) => _posterFallback(cs, r.type),
+                      errorWidget: (_, __, ___) => fallback,
                     ),
             ),
           ),
@@ -217,34 +350,6 @@ class _RequestRow extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  Widget _posterFallback(ColorScheme cs, String type) => Container(
-        color: cs.surfaceContainerHighest,
-        alignment: Alignment.center,
-        child: Icon(
-          type == 'movie' ? Icons.movie_outlined : Icons.live_tv_outlined,
-          size: 18,
-          color: cs.onSurfaceVariant,
-        ),
-      );
-
-  /// Request state -> (label, colour). Approval status wins; otherwise the
-  /// media availability status (1 unknown, 2 pending, 3 processing, 4 partial,
-  /// 5 available) is surfaced.
-  (String, Color) _status(SeerrRequest r, ColorScheme cs) {
-    if (r.status == 3) {
-      return ('Declined', cs.onSurfaceVariant);
-    }
-    if (r.status == 1) {
-      return ('Needs approval', cs.primary);
-    }
-    return switch (r.media?.status ?? 1) {
-      5 => ('Available', cs.tertiary),
-      4 => ('Partial', cs.tertiary),
-      3 => ('Processing', cs.secondary),
-      _ => ('Requested', cs.onSurfaceVariant),
-    };
   }
 }
 

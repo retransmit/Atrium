@@ -10,6 +10,7 @@ library;
 
 export 'src/models/plex_models.dart';
 export 'src/models/plex_session.dart';
+export 'src/plex_account_api.dart';
 export 'src/plex_api.dart';
 export 'src/plex_deep_link.dart';
 export 'src/plex_home.dart';
@@ -19,3 +20,4 @@ export 'src/plex_providers.dart';
 export 'src/plex_search.dart';
 export 'src/plex_season_screen.dart';
 export 'src/plex_session_detail_screen.dart';
+export 'src/plex_sign_in_sheet.dart';

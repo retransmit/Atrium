@@ -317,45 +317,12 @@ class DashdotHome extends ConsumerWidget {
   }
 }
 
-class DashdotRingMetricsCard extends ConsumerWidget {
+class DashdotRingMetricsCard extends StatelessWidget {
   const DashdotRingMetricsCard({required this.instance, super.key});
   final Instance instance;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final cpuHistory = ref.watch(dashdotCpuHistoryProvider(instance)).overall;
-    final ramHistory = ref.watch(dashdotRamHistoryProvider(instance));
-    final storageHistory = ref.watch(dashdotStorageHistoryProvider(instance));
-
-    final currentCpu = cpuHistory.values.isNotEmpty
-        ? cpuHistory.values.last
-        : 0.0;
-
-    final info = ref.read(dashdotInfoProvider(instance)).value;
-
-    final num totalRamGb = (info?.ram?.totalCapacity as num?) ?? 0;
-    final currentRamLoad = ramHistory.values.isNotEmpty
-        ? ramHistory.values.last
-        : 0.0;
-    final double ramPct = totalRamGb > 0
-        ? (currentRamLoad / totalRamGb * 100)
-        : 0.0;
-
-    double totalDiskGb = 0;
-    for (final disk in info?.storage ?? []) {
-      totalDiskGb += (disk.capacity as num?)?.toDouble() ?? 0;
-    }
-    final currentDiskLoad = storageHistory.values.isNotEmpty
-        ? storageHistory.values.last
-        : 0.0;
-    final double diskPct = totalDiskGb > 0
-        ? (currentDiskLoad / totalDiskGb * 100)
-        : 0.0;
-
-    final cpuColor = Theme.of(context).colorScheme.primary;
-    final ramColor = Theme.of(context).colorScheme.tertiary;
-    final diskColor = Theme.of(context).colorScheme.secondary;
-
+  Widget build(BuildContext context) {
     return Card(
       elevation: 0,
       clipBehavior: Clip.antiAlias,
@@ -384,52 +351,95 @@ class DashdotRingMetricsCard extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: Insets.lg),
-            Row(
-              children: [
-                Expanded(
-                  child: Center(
-                    child: SizedBox(
-                      width: 140,
-                      height: 140,
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          _buildRing(140, currentCpu / 100, cpuColor),
-                          _buildRing(105, ramPct / 100, ramColor),
-                          _buildRing(70, diskPct / 100, diskColor),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: Insets.md),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _LegendItem(
-                      color: cpuColor,
-                      label: 'CPU',
-                      value: '${currentCpu.toStringAsFixed(0)}%',
-                    ),
-                    const SizedBox(height: Insets.md),
-                    _LegendItem(
-                      color: ramColor,
-                      label: 'RAM',
-                      value: '${ramPct.toStringAsFixed(0)}%',
-                    ),
-                    const SizedBox(height: Insets.md),
-                    _LegendItem(
-                      color: diskColor,
-                      label: 'Disk',
-                      value: '${diskPct.toStringAsFixed(0)}%',
-                    ),
-                  ],
-                ),
-              ],
-            ),
+            DashdotRingMetrics(instance: instance),
           ],
         ),
       ),
+    );
+  }
+}
+
+class DashdotRingMetrics extends ConsumerWidget {
+  const DashdotRingMetrics({required this.instance, super.key});
+  final Instance instance;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cpuHistory = ref.watch(dashdotCpuHistoryProvider(instance)).overall;
+    final ramHistory = ref.watch(dashdotRamHistoryProvider(instance));
+    final storageHistory = ref.watch(dashdotStorageHistoryProvider(instance));
+
+    final currentCpu = cpuHistory.values.isNotEmpty
+        ? cpuHistory.values.last
+        : 0.0;
+
+    final info = ref.watch(dashdotInfoProvider(instance)).value;
+
+    final num totalRamGb = (info?.ram?.totalCapacity as num?) ?? 0;
+    final currentRamLoad = ramHistory.values.isNotEmpty
+        ? ramHistory.values.last
+        : 0.0;
+    final double ramPct = totalRamGb > 0
+        ? (currentRamLoad / totalRamGb * 100)
+        : 0.0;
+
+    double totalDiskGb = 0;
+    for (final disk in info?.storage ?? []) {
+      totalDiskGb += (disk.capacity as num?)?.toDouble() ?? 0;
+    }
+    final currentDiskLoad = storageHistory.values.isNotEmpty
+        ? storageHistory.values.last
+        : 0.0;
+    final double diskPct = totalDiskGb > 0
+        ? (currentDiskLoad / totalDiskGb * 100)
+        : 0.0;
+
+    final cpuColor = Theme.of(context).colorScheme.primary;
+    final ramColor = Theme.of(context).colorScheme.tertiary;
+    final diskColor = Theme.of(context).colorScheme.secondary;
+
+    return Row(
+      children: [
+        Expanded(
+          child: Center(
+            child: SizedBox(
+              width: 140,
+              height: 140,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  _buildRing(140, currentCpu / 100, cpuColor),
+                  _buildRing(105, ramPct / 100, ramColor),
+                  _buildRing(70, diskPct / 100, diskColor),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: Insets.md),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _LegendItem(
+              color: cpuColor,
+              label: 'CPU',
+              value: '${currentCpu.toStringAsFixed(0)}%',
+            ),
+            const SizedBox(height: Insets.md),
+            _LegendItem(
+              color: ramColor,
+              label: 'RAM',
+              value: '${ramPct.toStringAsFixed(0)}%',
+            ),
+            const SizedBox(height: Insets.md),
+            _LegendItem(
+              color: diskColor,
+              label: 'Disk',
+              value: '${diskPct.toStringAsFixed(0)}%',
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -448,6 +458,7 @@ class DashdotRingMetricsCard extends ConsumerWidget {
             trackColor: color.withValues(alpha: 0.15),
             activeColor: color,
             strokeWidth: 12,
+            gap: 0,
           ),
         );
       },

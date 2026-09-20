@@ -1,6 +1,6 @@
 # Atrium - Status
 
-> Snapshot of what genuinely works and what is left, as of 2026-08-23.
+> Snapshot of what genuinely works and what is left, as of 2026-09-21.
 > Atrium is published on F-Droid and on the GitHub releases page. It is
 > still in early development and every module is work in progress; nothing
 > here is a release promise.
@@ -25,10 +25,15 @@ Atrium is a **controller** app. Video playback was removed by design
   degrades to a chip, never blocks the feed
 - **Calendar tab**: month grid aggregating upcoming Sonarr + Radarr
   airings/releases with status dots
+- **Dashboard widgets**, reorderable from Customize dashboard: Active
+  downloads, Now streaming, Upcoming releases, Recently added, Recently
+  downloaded, Requests (Seerr and Ombi), Glances, Dashdot, Speedtest
+  results, MySpeed, Gluetun VPN and Wake on LAN
 - **Settings**: theme, biometric lock, profile import/export (SAF,
   live-verified), **Wake-on-LAN devices** (profile-stored, magic packets
   over pure Dart UDP), **custom HTTP headers** (global + per-instance,
-  for reverse-proxy auth), all carried by profile export/import
+  for reverse-proxy auth, kept intact when an instance's own form is
+  saved), all carried by profile export/import
 - Material 3 Expressive look app-wide: tonal cards, pills,
   poster-palette theming, backdrop session cards, M3 pull-to-refresh
 
@@ -44,13 +49,17 @@ Atrium is a **controller** app. Video playback was removed by design
   mirroring the web UI across nine tabs. The four settings that would cut
   Atrium off from the server - web UI address and port, CSRF and
   clickjacking protection - confirm before applying, because once the
-  address moves the app can no longer reach the server to undo it
+  address moves the app can no longer reach the server to undo it. An
+  execution log tab (contributed by lxBlazarxl in PR #159) reads the
+  server's log on demand, with copy, and the settings screen offers the
+  network interfaces the server actually routes
 - **Sonarr** (the canonical *arr module): poster/banner grid with
   client-side sort & filter (status, network, airing, added, size on
   disk) and per-series disk sizes, series detail (fanart backdrop,
-  season monitor/search), search-and-add, queue/wanted/history/
-  blocklist/system tabs, and a full Settings editor (17 panels) -
-  settings writes live-verified
+  season monitor/search), search-and-add (the list's search query carries
+  over to the Add screen, contributed by Bhavyashah94 in PR #160),
+  queue/wanted/history/blocklist/system tabs, and a full Settings editor
+  (17 panels) - settings writes live-verified
 - **Radarr**: same depth as Sonarr, movie flavored
 - **Lidarr** (beta, added in 1.5.0): artists and discography with grid and
   list views and bulk actions, artist detail with release-type filters,
@@ -70,6 +79,13 @@ Atrium is a **controller** app. Video playback was removed by design
 - **Seerr** (Jellyseerr / Overseerr): discover (trending/upcoming/genres),
   search, item detail with request submission (profile/folder/server
   selection), requests management (approve/decline/delete/retry)
+- **Ombi** (beta, added 2026-09-19, live-verified against 4.53): requests
+  for movies, TV and, where Lidarr is set up, music, filtered as Ombi's own
+  Requests page filters them, with approve / deny (with a reason) / delete;
+  search and a Discover tab (popular and upcoming movies, popular and
+  trending TV) whose request sheet reads a title's state before offering to
+  request it; Ombi rows on the dashboard's Requests widget. Every state is
+  worded the way Ombi's own pages word it
 - **Tautulli**: activity (10s poll) with backdrop session cards and a
   detail sheet (codecs, decisions, bandwidth, terminate with inline
   errors), history, 30-day stats, users - restyled to the expressive
@@ -105,15 +121,43 @@ Atrium is a **controller** app. Video playback was removed by design
   otherwise; terminate degrades to a clear Plex Pass message), Open in
   Plex deep link. Note: real remote control needs a live stream on a
   controllable client - the UI and read-only data are verified, the
-  transport commands are exercised best-effort
+  transport commands are exercised best-effort. Since 2026-09-18 the
+  instance form offers a plex.tv sign-in beside the token field, which
+  fills in a server that answers
+- **Navidrome** (beta, added 2026-09-10, depth by lxBlazarxl 2026-09-12 to
+  09-14): Subsonic API with signed requests and the envelope read for
+  errors; an overview tab; artists in list and grid views with section
+  badges; artist and album screens with half-page banners, biographies,
+  metadata badges and tracklists with artwork; five-star ratings and
+  favorites for artists and albums; custom playlists (create, rename,
+  delete, add tracks); search in the shape of Emby's; quick library scan;
+  artwork and web UI links respect a reverse-proxy sub-path
 - **Glances**: per-instance polling, CPU/memory gauges, swap + per-core
   bars, network with interface pinning, disks, uptime
 - **Beszel**: systems list, live metrics, and a per-system detail screen
-- **dashdot**: live CPU, memory, disk, and GPU usage with a system-info tab
+- **dashdot**: live CPU, memory, disk, and GPU usage with a system-info tab,
+  and a dashboard widget with a circular monitor and live vitals
 - **Unraid** (beta): array state with parity and per-disk usage, temperature
   and health, system with per-core CPU load and an About card, Docker
   containers with a detail sheet and start/stop/pause/resume, and virtual
   machines with start, shut down, pause, resume, reboot, force stop and reset
+- **Gluetun** (contributed by monuk7735 in PR #157, 2026-09-17; out of beta
+  since 2026-09-20): VPN
+  status with public IP, location and the forwarded port, reconnect in one
+  tap, stop the VPN or DNS behind a confirmation, refused changes reported
+  rather than claimed, an optional API key (a control server can run a
+  no-auth role), a per-instance polling interval, and a Gluetun VPN
+  dashboard widget. The connection test judges the connection rather than
+  the VPN behind it, and the health dot warns when Gluetun reports its VPN
+  down. Update Servers on ProtonVPN says what it needs
+- **MySpeed** (added 2026-09-20 by lxBlazarxl, live-verified against 1.0.9):
+  execution status with a manual run, the last 24 hours of results, a
+  history with averages and a search by test id, the server's config and
+  storage figures. Password-protected instances work: the password is
+  sent the way 1.0.9 reads it and the way newer builds prefer it.
+  Live-verified behind a reverse proxy with a required header as well. A
+  dashboard widget (lxBlazarxl, PR #162) shows the latest figures and runs
+  a test from the board
 - **Speedtest Tracker** (live-verified): authenticated 1.1+ result history,
   latest metrics, combined download / upload chart, multi-instance dashboard
   widget, and confirmed 1.6+ remote runs with queued/running/terminal-state
@@ -129,16 +173,28 @@ Atrium is a **controller** app. Video playback was removed by design
   pause and global bandwidth caps, add by magnet / .torrent URL / file, a
   detail screen with files, trackers and peers, plus dashboard widget and
   Activity feed integration
-- **Transmission** (live-verified against 4.1.3, RPC 19): RPC client that rides
-  the shared Dio and handles the CSRF-token handshake (409 plus a rotating
-  session id) transparently, with optional HTTP Basic. Torrent list with
-  start / stop / start-now / remove (optionally with data), verify, reannounce
-  and queue moves; status and label filter chips built from the list itself;
-  nine sort fields; global limits with their separate enabled flags plus turtle
-  mode; add by magnet / .torrent URL / file, reporting duplicates as such; a
-  detail screen with files (wanted toggling), peers and trackers; dashboard
-  widget and Activity feed integration. The add, reannounce and remove paths
-  were exercised against the live daemon
+- **Transmission** (live-verified against 4.1.3, RPC 19; out of beta since
+  2026-09-20, when it was brought to parity with Transmission's own web UI):
+  RPC client that rides the shared Dio and handles the CSRF-token handshake
+  (409 plus a rotating session id) transparently, with optional HTTP Basic.
+  Torrent list with the web UI's nine filters (Active, Downloading, Seeding,
+  Paused, Finished, Error, Private, Public), tracker and label chips, search,
+  ten sort fields, compact rows, long-press selection with bulk actions, pause
+  all / start all, and per-torrent resume / resume now / pause / verify /
+  reannounce / set location / rename / edit labels / copy magnet link / queue
+  moves / remove / trash; a detail screen whose Info tab carries every line the
+  web UI's inspector shows, a Files tab as a folder tree with per-folder
+  wanted and priority, Peers with the flag letters and their legend plus web
+  seeds, and Trackers grouped by tier with announce and scrape state; a
+  Settings tab mirroring the web UI's Torrents / Speed / Peers / Network
+  preferences (each change written on its own, then read back) with the
+  session and all-time statistics, a per-protocol port test and blocklist
+  update; add by magnet / .torrent URL / file with the daemon's folder
+  prefilled and its free space shown; dashboard widget and Activity feed
+  integration. Every action and every setting was exercised against the live
+  daemon. Restyled to the expressive look on 2026-09-20, and the screen owns
+  its scaffold so back unwinds a selection, then the tab, then the drawer,
+  before it leaves
 
 - **rTorrent** (live-verified against 0.16.17): the one client that speaks
   **XML-RPC** rather than JSON - a hand-rolled codec builds the `methodCall`
@@ -179,13 +235,14 @@ Atrium is a **controller** app. Video playback was removed by design
 
 ## App-wide TODO
 
-1. A Wake-on-LAN dashboard widget (the board and its eight widgets ship
-   in 1.0.0)
-2. iOS platform scaffold
-3. Live-stack testing of SABnzbd
-4. Possible profile loss after Android hard-kill (seen once -
+1. Run iOS on a real device or simulator (the target builds on CI, nothing
+   more)
+2. Live-stack testing of SABnzbd
+3. Possible profile loss after Android hard-kill (seen once -
    investigate crash-safe Hive writes/backup)
-5. Polish: tablet layouts, localization
+4. Polish: tablet layouts, localization
+5. The website's service list and showcase still stop at 1.6.1: Ombi,
+   Navidrome, Gluetun and MySpeed need icons and screenshots there
 
 ## Contributing
 

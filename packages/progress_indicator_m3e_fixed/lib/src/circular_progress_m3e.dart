@@ -14,6 +14,7 @@ class CircularProgressIndicatorM3E extends StatefulWidget {
     this.trackColor,
     this.rotation = 0.0, // radians, for indeterminate rotation
     this.strokeWidth = 4.0,
+    this.gap,
   });
 
   final double? value; // 0..1 (null => indeterminate arc sweep)
@@ -23,6 +24,7 @@ class CircularProgressIndicatorM3E extends StatefulWidget {
   final Color? trackColor;
   final double rotation;
   final double strokeWidth;
+  final double? gap;
 
   @override
   State<CircularProgressIndicatorM3E> createState() =>
@@ -105,6 +107,7 @@ class _CircularProgressIndicatorM3EState
                   rotation: rot,
                   size: widget.size,
                   strokeWidth: widget.strokeWidth,
+                  gap: widget.gap,
                 ),
         ),
       ),
@@ -120,6 +123,7 @@ class _CircularFlatPainter extends CustomPainter {
     required this.rotation,
     required this.size,
     required this.strokeWidth,
+    this.gap,
   });
 
   final double? value;
@@ -128,6 +132,7 @@ class _CircularFlatPainter extends CustomPainter {
   final double rotation;
   final CircularProgressM3ESize size;
   final double strokeWidth;
+  final double? gap;
 
   @override
   void paint(Canvas canvas, Size s) {
@@ -164,8 +169,15 @@ class _CircularFlatPainter extends CustomPainter {
       return;
     }
 
-    // gap before active in dp -> angle; scales with stroke (8dp at stroke 4)
-    final gapDp = strokeWidth * 2;
+    if (gap == 0.0) {
+      canvas.drawCircle(center, radius, trackPaint);
+      canvas.drawArc(rect, start, sweep, false, activePaint);
+      return;
+    }
+
+    // gap before active in dp -> angle; default 4dp visual gap between caps
+    final visualGap = gap ?? (strokeWidth <= 4.0 ? 4.0 : 2.0);
+    final gapDp = strokeWidth + visualGap;
     final gapAngle = gapDp / radius; // s = r * angle
     const total = math.pi * 2;
 
@@ -190,7 +202,8 @@ class _CircularFlatPainter extends CustomPainter {
       track != old.track ||
       rotation != old.rotation ||
       size != old.size ||
-      strokeWidth != old.strokeWidth;
+      strokeWidth != old.strokeWidth ||
+      gap != old.gap;
 }
 
 class _CircularWavyPainter extends CustomPainter {

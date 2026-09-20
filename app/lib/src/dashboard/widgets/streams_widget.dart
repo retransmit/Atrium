@@ -46,6 +46,7 @@ class _StreamRow {
     this.quality,
     this.transcoding = false,
     this.timeLabel,
+    this.isAudio = false,
   });
 
   final String user;
@@ -59,6 +60,7 @@ class _StreamRow {
   final String? quality;
   final bool transcoding;
   final String? timeLabel;
+  final bool isAudio;
 }
 
 String? _timeLabel(String position, String duration) {
@@ -120,6 +122,7 @@ class DashboardStreamsWidget extends ConsumerWidget {
           device: s.player,
           quality: s.videoResolution.isEmpty ? null : s.videoResolution,
           transcoding: s.transcodeDecision.toLowerCase() == 'transcode',
+          isAudio: s.mediaType == 'track',
           instance: i,
         ));
       }
@@ -142,6 +145,7 @@ class DashboardStreamsWidget extends ConsumerWidget {
           backdropUrl: s.backdropUrl,
           device: s.device,
           timeLabel: _timeLabel(s.timePosition, s.timeDuration),
+          isAudio: s.aspectRatio == 1.0,
           instance: i,
         ));
       }
@@ -164,6 +168,7 @@ class DashboardStreamsWidget extends ConsumerWidget {
           backdropUrl: s.backdropUrl,
           device: s.device,
           timeLabel: _timeLabel(s.timePosition, s.timeDuration),
+          isAudio: s.aspectRatio == 1.0,
           instance: i,
         ));
       }
@@ -508,7 +513,7 @@ class _StreamBannerState extends State<_StreamBanner> {
         color: cs.surfaceContainerHigh,
         alignment: Alignment.center,
         child: Icon(
-          Icons.play_circle_outline,
+          widget.row.isAudio ? Icons.music_note_rounded : Icons.play_circle_outline,
           size: 18,
           color: cs.onSurfaceVariant,
         ),

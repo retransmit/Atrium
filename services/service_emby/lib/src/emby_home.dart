@@ -1632,7 +1632,9 @@ class _SessionCardState extends State<_SessionCard> {
                           ),
                           child: session.posterUrl == null
                               ? Icon(
-                                  Icons.movie_outlined,
+                                  session.aspectRatio == 1.0
+                                      ? Icons.music_note_rounded
+                                      : Icons.movie_outlined,
                                   color: theme.colorScheme.outline,
                                   size: 32,
                                 )

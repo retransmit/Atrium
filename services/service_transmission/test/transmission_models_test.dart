@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:service_transmission/service_transmission.dart';
 
+import 'support/transmission_fixtures.dart';
+
 /// Defaults are values no test passes explicitly, so a test spelling out a
 /// field is saying something rather than repeating the default.
 TransmissionTorrent _t({
@@ -22,6 +24,7 @@ TransmissionTorrent _t({
   String errorString = '',
   bool isStalled = false,
   double recheckProgress = 0,
+  bool isFinished = false,
 }) {
   return TransmissionTorrent(
     id: id,
@@ -42,6 +45,7 @@ TransmissionTorrent _t({
     errorString: errorString,
     isStalled: isStalled,
     recheckProgress: recheckProgress,
+    isFinished: isFinished,
   );
 }
 
@@ -90,7 +94,47 @@ void main() {
       expect(t.percentDone, 0.0);
       expect(t.doneBytes, 0);
       expect(t.hasEta, isFalse);
-      expect(t.statusLabel, 'Stopped');
+      expect(t.statusLabel, 'Paused');
+    });
+
+    test('parses the list fields the filters need', () {
+      final TransmissionTorrent t = TransmissionTorrent.fromJson(
+        <String, dynamic>{
+          'id': 1,
+          'hashString': 'aaaa',
+          'isPrivate': true,
+          'activityDate': 1758303600,
+          'metadataPercentComplete': 0.4,
+          'webseedsSendingToUs': 2,
+          'trackers': <Map<String, dynamic>>[
+            <String, dynamic>{
+              'announce': 'udp://tracker.example.org:1337/announce',
+              'sitename': '',
+              'tier': 0,
+            },
+            <String, dynamic>{
+              'announce': 'http://bttracker.debian.org:6969/announce',
+              'sitename': 'debian',
+              'tier': 1,
+            },
+          ],
+        },
+      );
+
+      expect(t.isPrivate, isTrue);
+      expect(t.activityDate, 1758303600);
+      expect(t.needsMetadata, isTrue);
+      expect(t.webseedsSendingToUs, 2);
+      // sitename when the daemon gives one, else the announce URL's host.
+      expect(t.trackerHosts, <String>{'tracker.example.org', 'debian'});
+    });
+
+    test('a daemon that omits metadataPercentComplete is not retrieving',
+        () {
+      expect(
+        TransmissionTorrent.fromJson(<String, dynamic>{'id': 1}).needsMetadata,
+        isFalse,
+      );
     });
 
     test('tolerates keys the daemon omitted', () {
@@ -138,8 +182,23 @@ void main() {
         _t(statusCode: 4, isStalled: true).statusLabel,
         'Downloading (idle)',
       );
-      // A stopped torrent is not "idle", it is stopped.
-      expect(_t(statusCode: 0, isStalled: true).statusLabel, 'Stopped');
+      // A stopped torrent is not "idle", it is paused, in the web UI's words.
+      expect(_t(statusCode: 0, isStalled: true).statusLabel, 'Paused');
+    });
+
+    test('state strings are the web UI words, with Seeding complete', () {
+      expect(_t(statusCode: 0).stateString, 'Paused');
+      expect(
+        _t(statusCode: 0, isFinished: true).stateString,
+        'Seeding complete',
+      );
+      expect(_t(statusCode: 1).stateString, 'Queued for verification');
+      expect(_t(statusCode: 2).stateString, 'Verifying local data');
+      expect(_t(statusCode: 3).stateString, 'Queued for download');
+      expect(_t(statusCode: 5).stateString, 'Queued for seeding');
+      // Seeding is the helper's default status.
+      expect(_t().stateString, 'Seeding');
+      expect(_t(statusCode: 42).stateString, 'Unknown');
     });
 
     test('hasError needs both a code and a message', () {
@@ -234,12 +293,161 @@ void main() {
     });
   });
 
+  group('TransmissionSession', () {
+    test('parses every settings key and the version gates', () {
+      final TransmissionSession s = TransmissionSession.fromJson(
+        <String, dynamic>{
+          'rpc-version': 19,
+          'start-added-torrents': true,
+          'seedRatioLimited': true,
+          'seedRatioLimit': 1.5,
+          'idle-seeding-limit-enabled': true,
+          'idle-seeding-limit': 45,
+          'incomplete-dir-enabled': true,
+          'incomplete-dir': '/downloads/incomplete',
+          'rename-partial-files': false,
+          'download-queue-enabled': true,
+          'download-queue-size': 3,
+          'default-trackers': 'udp://a\n\nudp://b',
+          'alt-speed-time-enabled': true,
+          'alt-speed-time-begin': 540,
+          'alt-speed-time-end': 1020,
+          'alt-speed-time-day': 62,
+          'peer-limit-per-torrent': 50,
+          'peer-limit-global': 200,
+          'encryption': 'required',
+          'pex-enabled': false,
+          'dht-enabled': true,
+          'lpd-enabled': true,
+          'blocklist-enabled': true,
+          'blocklist-url': 'http://example.com/list',
+          'blocklist-size': 12,
+          'peer-port': 6881,
+          'peer-port-random-on-start': true,
+          'port-forwarding-enabled': false,
+          'utp-enabled': false,
+        },
+      );
+
+      expect(s.startAddedTorrents, isTrue);
+      expect(s.seedRatioLimit, 1.5);
+      expect(s.idleSeedingLimit, 45);
+      expect(s.incompleteDir, '/downloads/incomplete');
+      expect(s.renamePartialFiles, isFalse);
+      expect(s.downloadQueueSize, 3);
+      expect(s.defaultTrackers, 'udp://a\n\nudp://b');
+      expect(s.altSpeedTimeBegin, 540);
+      expect(s.altSpeedTimeDay, 62);
+      expect(s.peerLimitGlobal, 200);
+      expect(s.encryption, 'required');
+      expect(s.pexEnabled, isFalse);
+      expect(s.blocklistSize, 12);
+      expect(s.peerPort, 6881);
+      expect(s.peerPortRandomOnStart, isTrue);
+      expect(s.utpEnabled, isFalse);
+      expect(s.supportsLabels, isTrue);
+      expect(s.supportsDefaultTrackers, isTrue);
+      expect(s.supportsPortTestPerProtocol, isTrue);
+    });
+
+    test('an older daemon hides what it cannot do', () {
+      final TransmissionSession s =
+          TransmissionSession.fromJson(<String, dynamic>{'rpc-version': 16});
+      expect(s.supportsLabels, isTrue);
+      expect(s.supportsDefaultTrackers, isFalse);
+      expect(s.supportsPortTestPerProtocol, isFalse);
+    });
+
+    test('statistics carry both blocks', () {
+      final TransmissionSessionStats s =
+          TransmissionSessionStats.fromJson(statsJson());
+      expect(s.currentStats.secondsActive, 3600);
+      expect(s.cumulativeStats.sessionCount, 57);
+      expect(s.cumulativeStats.uploadedBytes, 391807173959);
+    });
+  });
+
+  group('TransmissionDetail inspector fields', () {
+    test('reads the inspector fields, peer flags, tracker times and web seeds',
+        () {
+      final TransmissionDetail d =
+          TransmissionDetail.fromTorrentJson(detailJson());
+
+      expect(d.haveValid, 900000000);
+      expect(d.haveUnchecked, 100000000);
+      expect(d.desiredAvailable, 3000000000);
+      expect(d.downloadedEver, 1050000000);
+      expect(d.corruptEver, 50000000);
+      expect(d.startDate, 1758303000);
+      expect(d.magnetLink, startsWith('magnet:?xt=urn:btih:aaaa'));
+      expect(d.webseeds, <String>['https://cdimage.debian.org/']);
+      expect(d.peers.single.port, 51413);
+      expect(d.peers.single.flagStr, 'DEI');
+      final TransmissionTracker tr = d.trackers.single;
+      expect(tr.sitename, 'debian');
+      expect(tr.announceState, 1);
+      expect(tr.hasAnnounced, isTrue);
+      expect(tr.lastAnnouncePeerCount, 40);
+      expect(tr.nextAnnounceTime, 1758304800);
+      expect(tr.lastScrapeTime, 1758302000);
+      expect(tr.downloadCount, 5000);
+      expect(tr.isBackup, isFalse);
+    });
+  });
+
+  group('TransmissionFilterMode', () {
+    test('uses the web UI definitions', () {
+      final TransmissionTorrent active =
+          _t(statusCode: 0).copyWith(peersSendingToUs: 1);
+      final TransmissionTorrent quiet = _t();
+      expect(TransmissionFilterMode.active.matches(active), isTrue);
+      expect(TransmissionFilterMode.active.matches(_t(statusCode: 2)), isTrue);
+      expect(TransmissionFilterMode.active.matches(quiet), isFalse);
+
+      expect(
+        TransmissionFilterMode.downloading.matches(_t(statusCode: 3)),
+        isTrue,
+      );
+      expect(
+        TransmissionFilterMode.downloading.matches(_t(statusCode: 4)),
+        isTrue,
+      );
+      expect(TransmissionFilterMode.downloading.matches(_t()), isFalse);
+      expect(TransmissionFilterMode.seeding.matches(_t(statusCode: 5)), isTrue);
+      expect(TransmissionFilterMode.seeding.matches(_t()), isTrue);
+      expect(TransmissionFilterMode.paused.matches(_t(statusCode: 0)), isTrue);
+      expect(TransmissionFilterMode.paused.matches(_t(statusCode: 4)), isFalse);
+      expect(
+        TransmissionFilterMode.finished.matches(_t(isFinished: true)),
+        isTrue,
+      );
+      expect(TransmissionFilterMode.finished.matches(_t()), isFalse);
+      expect(TransmissionFilterMode.error.matches(_t(error: 2)), isTrue);
+      expect(TransmissionFilterMode.error.matches(_t()), isFalse);
+      final TransmissionTorrent private = _t().copyWith(isPrivate: true);
+      expect(TransmissionFilterMode.private.matches(private), isTrue);
+      expect(TransmissionFilterMode.public.matches(private), isFalse);
+      expect(TransmissionFilterMode.public.matches(_t()), isTrue);
+      expect(TransmissionFilterMode.all.matches(private), isTrue);
+    });
+  });
+
   group('filterTransmissionTorrents', () {
     final List<TransmissionTorrent> torrents = <TransmissionTorrent>[
-      _t(hash: 'a', statusCode: 4, labels: const <String>['linux']),
+      _t(hash: 'a', name: 'Alpha', statusCode: 4, labels: const <String>['linux'])
+          .copyWith(
+        trackers: const <TransmissionTrackerRef>[
+          TransmissionTrackerRef(announce: 'http://t1.example.org/announce'),
+        ],
+      ),
       // statusCode 6 (seeding) is the helper default.
-      _t(hash: 'b'),
-      _t(hash: 'c', statusCode: 0, labels: const <String>['linux', 'iso']),
+      _t(hash: 'b', name: 'Beta'),
+      _t(
+        hash: 'c',
+        name: 'Gamma',
+        statusCode: 0,
+        labels: const <String>['linux', 'iso'],
+      ),
     ];
 
     test('the default filter keeps everything', () {
@@ -249,10 +457,10 @@ void main() {
       );
     });
 
-    test('narrows by status', () {
+    test('narrows by mode', () {
       final List<TransmissionTorrent> out = filterTransmissionTorrents(
         torrents,
-        const TransmissionFilter(status: TransmissionStatus.seeding),
+        const TransmissionFilter(mode: TransmissionFilterMode.seeding),
       );
       expect(out.single.hashString, 'b');
     });
@@ -268,18 +476,81 @@ void main() {
       );
     });
 
-    test('clearStatus drops the status without touching the label', () {
+    test('narrows by tracker host', () {
+      final List<TransmissionTorrent> out = filterTransmissionTorrents(
+        torrents,
+        const TransmissionFilter(tracker: 't1.example.org'),
+      );
+      expect(out.single.hashString, 'a');
+    });
+
+    test('search matches the name or a label, case-insensitively', () {
+      expect(
+        filterTransmissionTorrents(
+          torrents,
+          const TransmissionFilter(),
+          search: 'ALPHA',
+        ).single.hashString,
+        'a',
+      );
+      expect(
+        filterTransmissionTorrents(
+          torrents,
+          const TransmissionFilter(),
+          search: 'iso',
+        ).single.hashString,
+        'c',
+      );
+    });
+
+    test('copyWith changes one thing at a time', () {
       const TransmissionFilter f = TransmissionFilter(
-        status: TransmissionStatus.seeding,
+        mode: TransmissionFilterMode.seeding,
         label: 'linux',
       );
-      final TransmissionFilter cleared = f.copyWith(clearStatus: true);
-      expect(cleared.status, isNull);
+      final TransmissionFilter cleared =
+          f.copyWith(mode: TransmissionFilterMode.all);
+      expect(cleared.mode, TransmissionFilterMode.all);
       expect(cleared.label, 'linux');
+      expect(cleared.isActive, isTrue);
+    });
+  });
+
+  group('transmissionTrackers', () {
+    test('collects a sorted, de-duplicated set of hosts', () {
+      const TransmissionTrackerRef debian = TransmissionTrackerRef(
+        announce: 'http://x/announce',
+        sitename: 'debian',
+      );
+      final List<TransmissionTorrent> torrents = <TransmissionTorrent>[
+        _t(hash: 'a').copyWith(trackers: const <TransmissionTrackerRef>[debian]),
+        _t(hash: 'b').copyWith(
+          trackers: const <TransmissionTrackerRef>[
+            debian,
+            TransmissionTrackerRef(announce: 'udp://tracker.example.org:1337'),
+          ],
+        ),
+      ];
+      expect(
+        transmissionTrackers(torrents),
+        <String>['debian', 'tracker.example.org'],
+      );
     });
   });
 
   group('sortTransmissionTorrents', () {
+    test('last activity puts the most recent first before the toggle', () {
+      final List<TransmissionTorrent> out = sortTransmissionTorrents(
+        <TransmissionTorrent>[
+          _t(hash: 'old').copyWith(activityDate: 100),
+          _t(hash: 'new').copyWith(activityDate: 200),
+        ],
+        TransmissionSortField.activity,
+        descending: false,
+      );
+      expect(out.first.hashString, 'new');
+    });
+
     test('pushes unqueued torrents to the end of a queue sort', () {
       final List<TransmissionTorrent> out = sortTransmissionTorrents(
         <TransmissionTorrent>[

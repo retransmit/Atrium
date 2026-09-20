@@ -27,6 +27,30 @@ class ReleaseNote {
 /// Newest first. Update alongside appVersion and the pubspec at each release.
 const List<ReleaseNote> releaseNotes = <ReleaseNote>[
   ReleaseNote(
+    version: '1.7.0',
+    date: '2026-09-21',
+    groups: <ChangeGroup>[
+      ChangeGroup(ChangeCategory.added, <String>[
+        'MySpeed is a supported service. Its Status tab shows whether a test is running and can start one, with the last day of results beneath; History lists every test with averages and a search by id; Config shows the schedule, the provider and the storage figures. Password-protected instances work, and a dashboard widget shows the latest figures and runs a test from the board.',
+        'Ombi is a supported service, in beta. Requests for movies, TV and music are listed the way the Requests page in Ombi lists them, with approve, deny with a reason, and delete. Search and a Discover tab of popular and upcoming titles let you request from the app, and the requests appear on the Requests widget of the dashboard.',
+        'Navidrome is a supported service, in beta. Browse artists and albums with banners and biographies, rate them and mark favourites, keep playlists, search the library and start a quick scan.',
+        'Gluetun is a supported service. See the public address, location and forwarded port of the VPN, reconnect it in one tap, and stop the VPN or DNS behind a confirmation. A dashboard widget shows its status, and a control server that runs without an API key can be added without one.',
+        'Transmission does everything its web UI does and is out of beta: the nine filters, tracker and label chips, search, ten sort orders, compact rows, selection with bulk actions, every torrent action including set location, rename, labels and queue moves, a detail screen with everything the inspector shows plus a folder tree, peer flags and tracker tiers, and a Settings tab for the Torrents, Speed, Peers and Network preferences with statistics, a port test and a blocklist update. Adding a torrent fills in the folder the server uses and shows its free space.',
+        'qBittorrent has an execution log tab, read when you open it, with copy.',
+        'The Plex form can sign in at plex.tv and fill in a server that answers, instead of asking for a token.',
+        'The search typed in the Sonarr or Radarr list carries over to the Add screen.',
+      ]),
+      ChangeGroup(ChangeCategory.improved, <String>[
+        'The Transmission screens follow the same look as qBittorrent, and back unwinds a selection, then the tab, then the drawer before it leaves the screen.',
+      ]),
+      ChangeGroup(ChangeCategory.fixed, <String>[
+        'Saving an instance no longer drops the custom headers set for it.',
+        'The qBittorrent settings list the network interfaces the server actually has.',
+        'Navidrome signs its requests the way Subsonic expects and reports a rejected password instead of hiding it.',
+      ]),
+    ],
+  ),
+  ReleaseNote(
     version: '1.6.1',
     date: '2026-09-11',
     groups: <ChangeGroup>[

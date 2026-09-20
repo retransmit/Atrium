@@ -11,6 +11,9 @@ import 'models/transmission_torrent.dart';
 /// The CSRF token header Transmission requires on every RPC call.
 const String _sessionHeader = 'X-Transmission-Session-Id';
 
+/// A file's download priority, as `torrent-set` names it.
+enum TransmissionPriority { low, normal, high }
+
 /// Client for the Transmission RPC API (spec version 19 / Transmission 4.x,
 /// backwards compatible with 3.x).
 ///
@@ -65,6 +68,11 @@ class TransmissionApi {
     'error',
     'errorString',
     'recheckProgress',
+    'isPrivate',
+    'activityDate',
+    'metadataPercentComplete',
+    'webseedsSendingToUs',
+    'trackers',
   ];
 
   Future<List<TransmissionTorrent>> getTorrents() async {
@@ -158,6 +166,104 @@ class TransmissionApi {
 
   Future<void> queueBottom(List<String> hashes) =>
       _rpc('queue-move-bottom', <String, Object?>{'ids': hashes});
+
+  /// Every torrent: Transmission treats a missing `ids` as all of them.
+  Future<void> startAll() => _rpc('torrent-start');
+
+  Future<void> stopAll() => _rpc('torrent-stop');
+
+  /// Moves the torrents' data to [path]. `move: true` is what the web UI
+  /// sends; false would make Transmission look for the files there instead.
+  Future<void> setLocation(List<String> hashes, String path) =>
+      _rpc('torrent-set-location', <String, Object?>{
+        'ids': hashes,
+        'location': path,
+        'move': true,
+      });
+
+  /// Renames a torrent's top-level name. The RPC takes exactly one torrent
+  /// and addresses the thing to rename by its current path, which for the
+  /// root is the name itself.
+  Future<void> rename(
+    String hash, {
+    required String oldName,
+    required String newName,
+  }) =>
+      _rpc('torrent-rename-path', <String, Object?>{
+        'ids': <String>[hash],
+        'path': oldName,
+        'name': newName,
+      });
+
+  Future<void> setLabels(List<String> hashes, List<String> labels) =>
+      _rpc('torrent-set', <String, Object?>{'ids': hashes, 'labels': labels});
+
+  Future<void> setFilePriority(
+    String hash,
+    List<int> indices,
+    TransmissionPriority priority,
+  ) =>
+      _rpc('torrent-set', <String, Object?>{
+        'ids': <String>[hash],
+        switch (priority) {
+          TransmissionPriority.low => 'priority-low',
+          TransmissionPriority.normal => 'priority-normal',
+          TransmissionPriority.high => 'priority-high',
+        }: indices,
+      });
+
+  /// Fetched on demand rather than with the list: a magnet link is a few
+  /// hundred bytes per torrent, which adds up on a list polled every 3 s.
+  Future<String> getMagnetLink(String hash) async {
+    final Map<String, dynamic> args = await _rpc(
+      'torrent-get',
+      <String, Object?>{
+        'ids': <String>[hash],
+        'fields': <String>['magnetLink'],
+      },
+    );
+    final List<dynamic> torrents =
+        (args['torrents'] as List<dynamic>?) ?? const <dynamic>[];
+    if (torrents.isEmpty) return '';
+    return (torrents.first as Map<String, dynamic>)['magnetLink']
+            as String? ??
+        '';
+  }
+
+  /// Free bytes at [path], or null when the daemon cannot tell. `free-space`
+  /// answers with an error result for a path it cannot stat, and a number
+  /// shown under a text field must never take the sheet down with it.
+  Future<int?> freeSpace(String path) async {
+    try {
+      final Map<String, dynamic> args =
+          await _rpc('free-space', <String, Object?>{'path': path});
+      final int bytes = (args['size-bytes'] as num?)?.toInt() ?? -1;
+      return bytes < 0 ? null : bytes;
+    } on NetworkServerException {
+      return null;
+    }
+  }
+
+  /// Whether the peer port is reachable. [ipProtocol] is `ipv4` or `ipv6`
+  /// on RPC 18+; older daemons take no argument and test what they have.
+  Future<bool> portTest({String? ipProtocol}) async {
+    final Map<String, dynamic> args =
+        await _rpc('port-test', <String, Object?>{
+      if (ipProtocol != null) 'ipProtocol': ipProtocol,
+    });
+    return args['port-is-open'] as bool? ?? false;
+  }
+
+  /// Fetches the blocklist again and returns how many rules it now holds.
+  Future<int> updateBlocklist() async {
+    final Map<String, dynamic> args = await _rpc('blocklist-update');
+    return (args['blocklist-size'] as num?)?.toInt() ?? 0;
+  }
+
+  /// Writes any session keys. The Settings tab sends one key at a time so a
+  /// refused value never takes a neighbour down with it.
+  Future<void> setSession(Map<String, Object?> args) =>
+      _rpc('session-set', args);
 
   /// Sets which files are wanted, and their priority.
   Future<void> setFileWanted(

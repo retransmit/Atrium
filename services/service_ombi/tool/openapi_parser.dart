@@ -367,7 +367,11 @@ class OmbiException implements Exception {
     for (final item in enumList) {
       final strVal = item.toString();
       final identifier = _toCamelCase(strVal);
-      buffer.writeln("  @JsonValue('$strVal')");
+      // Most of Ombi's enums are integers on the wire. Quoting them made
+      // every model carrying one throw as soon as it met the real value.
+      buffer.writeln(
+        item is num ? '  @JsonValue($item)' : "  @JsonValue('$strVal')",
+      );
       buffer.writeln('  $identifier,');
     }
 

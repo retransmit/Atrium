@@ -1,7 +1,11 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:core_models/core_models.dart';
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
+
+import 'service_auth_headers.dart';
 
 /// Adds the auth header(s) appropriate for the [Instance]'s service kind.
 ///
@@ -18,6 +22,8 @@ import 'package:dio/dio.dart';
 /// | NZBGet                   | HTTP Basic Authorization header             |
 /// | Transmission             | HTTP Basic, and only when configured        |
 /// | Deluge                   | `Cookie: _session_id=…` after `auth.login`  |
+/// | Navidrome                | `?u=` + `?t=` salted MD5 + `?s=` query params |
+/// | Ombi                     | `ApiKey` header                             |
 ///
 /// `Jellyfin/Emby` and `qBittorrent` both use the user/password auth flow:
 /// the session token / cookie is acquired out of band and stored in the
@@ -48,6 +54,19 @@ class AuthInterceptor extends Interceptor {
             if (kind == ServiceKind.sabnzbd) {
               options.queryParameters['output'] = 'json';
             }
+          case ServiceKind.ombi:
+            // Ombi reads only its own header; X-Api-Key gets a 401.
+            options.headers['ApiKey'] = apiKey;
+          case ServiceKind.myspeed:
+            // MySpeed 1.0.9 reads a raw 'password' header; newer builds
+            // prefer a URL-encoded 'x-password' and fall back to the raw
+            // one. The raw header only goes when Dart will let it through:
+            // a password outside printable ASCII would otherwise throw
+            // inside every request.
+            if (apiKey.isNotEmpty) {
+              options.headers['x-password'] = Uri.encodeComponent(apiKey);
+              if (fitsHeaderValue(apiKey)) options.headers['password'] = apiKey;
+            }
           case _:
             options.headers['X-Api-Key'] = apiKey;
         }
@@ -73,6 +92,35 @@ class AuthInterceptor extends Interceptor {
           options.headers['Authorization'] =
               'Basic ${base64Encode(utf8.encode('$username:$password'))}';
         }
+      case InstanceAuthUserPass(
+            :final String username,
+            :final String password,
+          )
+          when kind == ServiceKind.navidrome:
+        // Subsonic puts its credentials in the query string rather than a
+        // header: the username, a random salt, and an MD5 of the password
+        // with that salt appended.
+        //
+        // This has to live here and not only in the service package, because
+        // the dashboard health probe and the connection tester build their
+        // requests from this interceptor alone. Without it they send an
+        // unauthenticated request, Subsonic answers 200 with a `failed`
+        // envelope rather than a 401, and every Navidrome instance reads as
+        // healthy no matter what its credentials are.
+        if (username.isNotEmpty) {
+          options.queryParameters['u'] = username;
+          if (password.isNotEmpty) {
+            final String salt = _subsonicSalt();
+            options.queryParameters['t'] =
+                md5.convert(utf8.encode('$password$salt')).toString();
+            options.queryParameters['s'] = salt;
+          }
+        }
+        // Subsonic rejects a request that omits these, so the probe needs
+        // them as much as the service module does.
+        options.queryParameters['v'] = subsonicApiVersion;
+        options.queryParameters['c'] = subsonicClientName;
+        options.queryParameters['f'] = 'json';
       case InstanceAuthUserPass() || InstanceAuthCookie():
         // Token / cookie auth is handled by the service's session manager,
         // not here.
@@ -80,4 +128,27 @@ class AuthInterceptor extends Interceptor {
     }
     handler.next(options);
   }
+
+  /// A fresh salt per request, which is what the Subsonic spec asks for.
+  ///
+  /// [Random.secure] rather than [Random]: the salt is sent in the clear
+  /// beside the hash, so a predictable one lets an attacker who captures a
+  /// single request precompute against it.
+  static String _subsonicSalt([int length = 16]) {
+    const String chars =
+        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final Random random = Random.secure();
+    return String.fromCharCodes(
+      Iterable<int>.generate(
+        length,
+        (_) => chars.codeUnitAt(random.nextInt(chars.length)),
+      ),
+    );
+  }
 }
+
+/// The Subsonic protocol version Atrium speaks, and the client name it
+/// identifies itself with. Shared so the interceptor and the service module
+/// cannot drift apart.
+const String subsonicApiVersion = '1.16.1';
+const String subsonicClientName = 'Atrium';

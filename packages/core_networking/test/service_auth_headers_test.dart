@@ -20,6 +20,7 @@ void main() {
   }
 
   const InstanceAuth apiKey = InstanceAuth.apiKey(apiKey: 'k');
+  const InstanceAuth blankApiKey = InstanceAuth.apiKey(apiKey: '');
   const InstanceAuth plex = InstanceAuth.plexToken(token: 't');
   const InstanceAuth userPass =
       InstanceAuth.userPass(username: 'u', password: 'p');
@@ -30,6 +31,7 @@ void main() {
     for (final ServiceKind kind in ServiceKind.values) {
       for (final InstanceAuth auth in <InstanceAuth>[
         apiKey,
+        blankApiKey,
         plex,
         userPass,
         blankUserPass,
@@ -41,6 +43,24 @@ void main() {
         );
       }
     }
+  });
+
+  test('MySpeed sets password and x-password headers only when key provided', () {
+    expect(
+      serviceAuthHeaderNames(ServiceKind.myspeed, apiKey),
+      <String>{'password', 'x-password'},
+    );
+    expect(
+      serviceAuthHeaderNames(ServiceKind.myspeed, blankApiKey),
+      isEmpty,
+    );
+    expect(
+      serviceAuthHeaderNames(
+        ServiceKind.myspeed,
+        const InstanceAuth.apiKey(apiKey: 'pässwörd'),
+      ),
+      <String>{'x-password'},
+    );
   });
 
   test('the five kinds that spend Authorization on themselves are named', () {

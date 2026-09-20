@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:core_models/core_models.dart';
@@ -6,8 +7,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'models/transmission_session.dart';
 import 'transmission_api.dart';
+import 'transmission_format.dart';
 import 'transmission_providers.dart';
+import 'transmission_visuals.dart';
 
 /// Opens the add-torrent sheet for [instance].
 ///
@@ -28,6 +32,7 @@ Future<void> showTransmissionAddSheet(
     // same reason a pushed page does.
     useRootNavigator: true,
     isScrollControlled: true,
+    showDragHandle: true,
     builder: (BuildContext context) => _TransmissionAddSheet(
       instance: instance,
       initialLink: initialLink,
@@ -69,8 +74,18 @@ class _TransmissionAddSheetState
   final TextEditingController _downloadDir = TextEditingController();
 
   _AddMode _mode = _AddMode.link;
-  bool _startPaused = false;
   bool _busy = false;
+
+  /// Null until the session says what the daemon's own default is.
+  bool? _startWhenAdded;
+
+  /// Set once the session's download folder has been filled in, so a folder
+  /// the user typed is never overwritten by a late answer.
+  bool _prefilled = false;
+
+  /// The folder whose free space is being asked about, after the debounce.
+  String _spacePath = '';
+  Timer? _debounce;
 
   final List<TorrentFileArg> _files = <TorrentFileArg>[];
 
@@ -110,9 +125,18 @@ class _TransmissionAddSheetState
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _link.dispose();
     _downloadDir.dispose();
     super.dispose();
+  }
+
+  /// Asks for the folder's free space once typing pauses, not per keystroke.
+  void _onFolderChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      if (mounted) setState(() => _spacePath = value.trim());
+    });
   }
 
   Future<void> _pickFile() async {
@@ -167,7 +191,7 @@ class _TransmissionAddSheetState
             final bool added = await api.addFile(
               file.bytes,
               downloadDir: dir,
-              paused: _startPaused,
+              paused: !(_startWhenAdded ?? true),
             );
             if (!added) duplicates++;
           } catch (_) {
@@ -188,7 +212,7 @@ class _TransmissionAddSheetState
       final bool added = await api.addUrl(
         _link.text.trim(),
         downloadDir: dir,
-        paused: _startPaused,
+        paused: !(_startWhenAdded ?? true),
       );
       ref.invalidate(transmissionRawTorrentsProvider(widget.instance));
       navigator.pop();
@@ -222,12 +246,27 @@ class _TransmissionAddSheetState
 
   @override
   Widget build(BuildContext context) {
+    final TransmissionSession? session =
+        ref.watch(transmissionSessionProvider(widget.instance)).value;
+    if (session != null && !_prefilled) {
+      _prefilled = true;
+      _startWhenAdded ??= session.startAddedTorrents;
+      if (_downloadDir.text.isEmpty && session.downloadDir.isNotEmpty) {
+        _downloadDir.text = session.downloadDir;
+        _spacePath = session.downloadDir;
+      }
+    }
+    final AsyncValue<int?>? space = _spacePath.isEmpty
+        ? null
+        : ref.watch(
+            transmissionFreeSpaceProvider((widget.instance, _spacePath)),
+          );
+    final ColorScheme cs = Theme.of(context).colorScheme;
     return Padding(
       padding: EdgeInsets.only(
-        left: Insets.md,
-        right: Insets.md,
-        top: Insets.md,
-        bottom: MediaQuery.viewInsetsOf(context).bottom + Insets.md,
+        left: Insets.lg,
+        right: Insets.lg,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + Insets.lg,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -236,7 +275,10 @@ class _TransmissionAddSheetState
           children: <Widget>[
             Text(
               'Add torrent',
-              style: Theme.of(context).textTheme.titleLarge,
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: Insets.md),
             SegmentedButton<_AddMode>(
@@ -264,14 +306,15 @@ class _TransmissionAddSheetState
                 autofocus: true,
                 minLines: 1,
                 maxLines: 3,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  labelText: 'magnet: link or .torrent URL',
+                decoration: transmissionFieldDecoration(
+                  context,
+                  label: 'magnet: link or .torrent URL',
+                  prefixIcon: const Icon(Icons.link),
                 ),
                 onChanged: (_) => setState(() {}),
               )
             else
-              OutlinedButton.icon(
+              FilledButton.tonalIcon(
                 onPressed: _busy ? null : _pickFile,
                 icon: const Icon(Icons.folder_open),
                 label: Text(_fileLabel),
@@ -279,19 +322,57 @@ class _TransmissionAddSheetState
             const SizedBox(height: Insets.md),
             TextField(
               controller: _downloadDir,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Download folder (optional)',
-                helperText: 'A path as the server sees it, not your phone',
+              decoration: transmissionFieldDecoration(
+                context,
+                label: 'Download folder (optional)',
+                helper: 'A path as the server sees it, not your phone',
+                prefixIcon: const Icon(Icons.folder_outlined),
               ),
+              onChanged: _onFolderChanged,
             ),
+            if (space != null)
+              Padding(
+                padding: const EdgeInsets.only(top: Insets.sm),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: switch (space) {
+                    AsyncData<int?>(:final int? value) => TransmissionPill(
+                        icon: value == null
+                            ? Icons.help_outline
+                            : Icons.storage_rounded,
+                        label: value == null
+                            ? 'Free space unknown'
+                            : '${trFmtBytes(value)} free',
+                        foreground: value == null
+                            ? cs.onSurfaceVariant
+                            : cs.onTertiaryContainer,
+                        background: value == null
+                            ? cs.surfaceContainerHighest
+                            : cs.tertiaryContainer,
+                      ),
+                    AsyncError<int?>() => TransmissionPill(
+                        icon: Icons.help_outline,
+                        label: 'Free space unknown',
+                        foreground: cs.onSurfaceVariant,
+                        background: cs.surfaceContainerHighest,
+                      ),
+                    _ => TransmissionPill(
+                        icon: Icons.hourglass_empty_rounded,
+                        label: 'Checking free space',
+                        foreground: cs.onSurfaceVariant,
+                        background: cs.surfaceContainerHighest,
+                      ),
+                  },
+                ),
+              ),
             const SizedBox(height: Insets.sm),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              value: _startPaused,
-              onChanged:
-                  _busy ? null : (bool v) => setState(() => _startPaused = v),
-              title: const Text('Add paused'),
+              value: _startWhenAdded ?? true,
+              onChanged: _busy
+                  ? null
+                  : (bool v) => setState(() => _startWhenAdded = v),
+              title: const Text('Start when added'),
             ),
             const SizedBox(height: Insets.sm),
             FilledButton.icon(

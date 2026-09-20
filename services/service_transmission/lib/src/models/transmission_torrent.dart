@@ -5,12 +5,12 @@ part 'transmission_torrent.g.dart';
 
 /// Transmission's `status` field, which arrives as a bare integer.
 enum TransmissionStatus {
-  stopped(0, 'Stopped'),
-  checkWait(1, 'Queued to verify'),
-  checking(2, 'Verifying'),
-  downloadWait(3, 'Queued to download'),
+  stopped(0, 'Paused'),
+  checkWait(1, 'Queued for verification'),
+  checking(2, 'Verifying local data'),
+  downloadWait(3, 'Queued for download'),
   downloading(4, 'Downloading'),
-  seedWait(5, 'Queued to seed'),
+  seedWait(5, 'Queued for seeding'),
   seeding(6, 'Seeding'),
   unknown(-1, 'Unknown');
 
@@ -33,6 +33,32 @@ enum TransmissionStatus {
   bool get isDownloading => this == downloading;
   bool get isQueued =>
       this == checkWait || this == downloadWait || this == seedWait;
+}
+
+/// One entry of a torrent's `trackers` field: enough to name the tracker for
+/// the filter row without the cost of `trackerStats`.
+@freezed
+abstract class TransmissionTrackerRef with _$TransmissionTrackerRef {
+  const TransmissionTrackerRef._();
+
+  const factory TransmissionTrackerRef({
+    @Default('') String announce,
+
+    /// Empty below RPC 17.
+    @Default('') String sitename,
+    @Default(0) int tier,
+  }) = _TransmissionTrackerRef;
+
+  factory TransmissionTrackerRef.fromJson(Map<String, dynamic> json) =>
+      _$TransmissionTrackerRefFromJson(json);
+
+  /// The name the filter row shows: the site name when the daemon gives one,
+  /// else the announce URL's host.
+  String get host {
+    if (sitename.isNotEmpty) return sitename;
+    final String? h = Uri.tryParse(announce)?.host;
+    return h == null || h.isEmpty ? announce : h;
+  }
 }
 
 /// One torrent from `torrent-get`.
@@ -93,6 +119,18 @@ abstract class TransmissionTorrent with _$TransmissionTorrent {
 
     /// 0.0 - 1.0 while [TransmissionStatus.checking].
     @JsonKey(name: 'recheckProgress') @Default(0) double recheckProgress,
+    @JsonKey(name: 'isPrivate') @Default(false) bool isPrivate,
+
+    /// Unix seconds of the last traffic, 0 when there was none.
+    @JsonKey(name: 'activityDate') @Default(0) int activityDate,
+
+    /// 0.0 - 1.0. Defaults to 1 so a daemon that omits it is not shown as
+    /// still fetching metadata.
+    @JsonKey(name: 'metadataPercentComplete')
+    @Default(1.0)
+    double metadataPercentComplete,
+    @JsonKey(name: 'webseedsSendingToUs') @Default(0) int webseedsSendingToUs,
+    @Default(<TransmissionTrackerRef>[]) List<TransmissionTrackerRef> trackers,
   }) = _TransmissionTorrent;
 
   factory TransmissionTorrent.fromJson(Map<String, dynamic> json) =>
@@ -113,6 +151,24 @@ abstract class TransmissionTorrent with _$TransmissionTorrent {
   /// Ratio for display, treating Transmission's -1 as zero.
   double get ratio => uploadRatio < 0 ? 0 : uploadRatio;
 
+  /// A magnet whose metadata has not fully arrived yet.
+  bool get needsMetadata => metadataPercentComplete < 1;
+
+  /// Every wanted byte is on disk.
+  bool get isDone => leftUntilDone < 1;
+
+  Set<String> get trackerHosts =>
+      <String>{for (final TransmissionTrackerRef t in trackers) t.host};
+
+  /// The web UI's state string: a stopped torrent that finished reads
+  /// "Seeding complete" rather than "Paused".
+  String get stateString {
+    if (status == TransmissionStatus.stopped && isFinished) {
+      return 'Seeding complete';
+    }
+    return status.label;
+  }
+
   /// A short line describing what the torrent is doing, folding in the
   /// stalled and error cases that the bare status code cannot express.
   String get statusLabel {
@@ -120,7 +176,7 @@ abstract class TransmissionTorrent with _$TransmissionTorrent {
     if (status == TransmissionStatus.checking) {
       return 'Verifying ${(recheckProgress * 100).toStringAsFixed(0)}%';
     }
-    if (isStalled && !status.isStopped) return '${status.label} (idle)';
-    return status.label;
+    if (isStalled && !status.isStopped) return '$stateString (idle)';
+    return stateString;
   }
 }

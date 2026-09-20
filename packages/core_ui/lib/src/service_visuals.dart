@@ -30,6 +30,10 @@ abstract final class ServiceVisuals {
         ServiceKind.dashdot => Icons.dashboard_outlined,
         ServiceKind.lidarr => Icons.album_outlined,
         ServiceKind.unraid => Icons.storage_rounded,
+        ServiceKind.gluetun => Icons.shield_outlined,
+        ServiceKind.navidrome => Icons.queue_music_rounded,
+        ServiceKind.ombi => Icons.movie_filter_outlined,
+        ServiceKind.myspeed => Icons.network_check_outlined,
       };
 
   static Color accent(ServiceKind kind) => switch (kind) {
@@ -55,6 +59,10 @@ abstract final class ServiceVisuals {
         ServiceKind.dashdot => const Color(0xFFE9433B),
         ServiceKind.lidarr => const Color(0xFF00C7A9),
         ServiceKind.unraid => const Color(0xFFF15A2C),
+        ServiceKind.gluetun => const Color(0xFF3B82F6),
+        ServiceKind.navidrome => const Color(0xFF0086D6),
+        ServiceKind.ombi => const Color(0xFFDF691A),
+        ServiceKind.myspeed => const Color(0xFF06B6D4),
       };
 
   /// Human label for a [ServiceRole] section header.

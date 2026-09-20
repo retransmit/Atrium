@@ -5,9 +5,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import 'models/qbit_detail.dart';
+import 'models/qbit_log_entry.dart';
 import 'models/qbit_torrent.dart';
 import 'models/qbit_transfer_info.dart';
 import 'qbittorrent_client.dart';
+
+export 'models/qbit_log_entry.dart';
 
 /// How often list-level data (torrents, global speeds) refreshes while a
 /// qBittorrent screen is visible. qBit's own web UI polls at 1.5s; 3s is a
@@ -597,4 +600,15 @@ final qbitNetworkInterfaceAddressesProvider =
   final QbittorrentClient client =
       await ref.watch(qbittorrentClientProvider(instance).future);
   return client.getNetworkInterfaceAddresses(iface: iface);
+});
+
+/// qBittorrent main log messages provider.
+final qbitLogsProvider = FutureProvider.family
+    .autoDispose<List<QbitLogEntry>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final QbittorrentClient client =
+      await ref.watch(qbittorrentClientProvider(instance).future);
+  return client.getLogs();
 });

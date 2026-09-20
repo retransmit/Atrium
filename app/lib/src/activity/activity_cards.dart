@@ -104,41 +104,82 @@ class ActivityStreamCard extends StatelessWidget {
                     ),
                     const Spacer(),
                     Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: <Widget>[
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Icon(
-                            stream.paused ? Icons.pause : Icons.play_arrow,
-                            size: 18,
-                            color: Colors.white70,
-                          ),
-                        ),
-                        const SizedBox(width: Insets.xs),
-                        Expanded(
-                          child: Text(
-                            stream.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+                        if (stream.aspectRatio == 1.0 &&
+                            stream.posterUrl != null &&
+                            stream.posterUrl!.isNotEmpty) ...<Widget>[
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: AtriumNetworkImage(
+                                imageUrl: stream.posterUrl!,
+                                fit: BoxFit.cover,
+                                placeholder: (_, __) => ColoredBox(
+                                  color: theme.colorScheme.surfaceContainerHighest,
+                                ),
+                                errorWidget: (_, __, ___) => Container(
+                                  color: theme.colorScheme.surfaceContainerHighest,
+                                  alignment: Alignment.center,
+                                  child: const Icon(
+                                    Icons.music_note_rounded,
+                                    size: 24,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                              ),
                             ),
+                          ),
+                          const SizedBox(width: Insets.sm),
+                        ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: <Widget>[
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 2),
+                                    child: Icon(
+                                      stream.paused ? Icons.pause : Icons.play_arrow,
+                                      size: 18,
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                  const SizedBox(width: Insets.xs),
+                                  Expanded(
+                                    child: Text(
+                                      stream.title,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.titleMedium?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (meta.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    meta,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.labelMedium
+                                        ?.copyWith(color: Colors.white70),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                    if (meta.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(
-                          meta,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.labelMedium
-                              ?.copyWith(color: Colors.white70),
-                        ),
-                      ),
                   ],
                 ),
               ),

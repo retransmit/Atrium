@@ -90,6 +90,8 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final String query =
+        ref.watch(radarrSearchQueryProvider(widget.instance)).trim();
     final AsyncValue<List<RadarrMovie>> filtered =
         ref.watch(radarrFilteredMoviesProvider(widget.instance));
     final RadarrApi? api = ref.watch(radarrApiProvider(widget.instance)).value;
@@ -167,8 +169,10 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                   onPressed: () {
                     Navigator.of(context, rootNavigator: true).push(
                       FadePageRoute<void>(
-                        builder: (BuildContext context) =>
-                            AddMovieScreen(instance: widget.instance),
+                        builder: (BuildContext context) => AddMovieScreen(
+                          instance: widget.instance,
+                          initialQuery: query.isNotEmpty ? query : null,
+                        ),
                       ),
                     );
                   },
@@ -342,13 +346,37 @@ class _MoviesTabState extends ConsumerState<MoviesTab>
                   ),
                   const HeaderLocator.sliver(),
                   if (list.isEmpty)
-                    const SliverFillRemaining(
+                    SliverFillRemaining(
                       hasScrollBody: false,
                       child: EmptyView(
                         icon: Icons.movie_outlined,
                         title: 'No movies found',
                         message:
                             'Try adjusting your search query or active filters.',
+                        action: query.isNotEmpty
+                            ? FilledButton.tonalIcon(
+                                onPressed: () {
+                                  Navigator.of(
+                                    context,
+                                    rootNavigator: true,
+                                  ).push(
+                                    FadePageRoute<void>(
+                                      builder: (BuildContext context) =>
+                                          AddMovieScreen(
+                                        instance: widget.instance,
+                                        initialQuery: query,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.travel_explore),
+                                label: Text(
+                                  'Search online for "$query"',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              )
+                            : null,
                       ),
                     )
                   else if (viewMode == RadarrViewMode.grid)

@@ -4,10 +4,12 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:service_plex/service_plex.dart';
 import 'package:service_speedtest_tracker/service_speedtest_tracker.dart';
 
 import '../connection_test/connection_test_result.dart';
 import '../connection_test/connection_tester.dart';
+import '../plex_client_identifier.dart';
 
 const String speedtestConnectionSuccessMessage =
     'Connected with results:read. Run permission cannot be verified until used.';
@@ -70,6 +72,10 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
   bool _allowSelfSigned = false;
   bool _loaded = false;
 
+  /// Not edited here: an instance's own headers live under Settings. Held so
+  /// that saving the form, and testing it, carry them rather than drop them.
+  Map<String, String> _customHeaders = const <String, String>{};
+
   bool get _isEdit => widget.instanceId != null;
 
   @override
@@ -96,6 +102,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     _urlMode = instance.urlMode;
     _allowSelfSigned = instance.allowSelfSignedCerts;
     _pollingInterval.text = instance.pollingIntervalSeconds.toString();
+    _customHeaders = instance.customHeaders;
     switch (instance.auth) {
       case InstanceAuthApiKey(:final String apiKey):
         _apiKey.text = apiKey;
@@ -143,12 +150,80 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
         auth: _buildAuth(),
         allowSelfSignedCerts: _allowSelfSigned,
         pollingIntervalSeconds: int.tryParse(_pollingInterval.text.trim()) ?? 5,
+        customHeaders: _customHeaders,
       );
 
   void _clearConnectionTest(String _) {
     setState(() {
       _connectionResults = <String, ConnectionTestResult>{};
     });
+  }
+
+  /// Fills the token, and the URLs too when the user picks a server.
+  ///
+  /// Anything the sheet did not find is left alone rather than blanked: a
+  /// server with no remote connection should not wipe an external URL the
+  /// user typed themselves.
+  Future<void> _signInWithPlex() async {
+    final PlexSignInResult? result = await showPlexSignInSheet(
+      context: context,
+      clientIdentifier: ref.read(plexClientIdentifierProvider),
+    );
+    if (result == null || !mounted) {
+      return;
+    }
+    setState(() {
+      _apiKey.text = result.token;
+      final String? local = result.localUrl;
+      if (local != null && local.isNotEmpty) {
+        _localUrl.text = local;
+      }
+      final String? external = result.externalUrl;
+      if (external != null && external.isNotEmpty) {
+        _externalUrl.text = external;
+      }
+      final String? serverName = result.serverName;
+      if (_name.text.trim().isEmpty &&
+          serverName != null &&
+          serverName.isNotEmpty) {
+        _name.text = serverName;
+      }
+      _connectionResults = <String, ConnectionTestResult>{};
+    });
+    final String? note = _plexFillNote(result);
+    if (note != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(note)));
+    }
+  }
+
+  /// Says what the sign-in could not work out, so an empty field is never a
+  /// mystery.
+  static String? _plexFillNote(PlexSignInResult result) {
+    final bool noLocal = result.localUrl == null || result.localUrl!.isEmpty;
+    final bool noExternal =
+        result.externalUrl == null || result.externalUrl!.isEmpty;
+    if (noLocal && noExternal) {
+      return 'None of the addresses Plex advertises for that server answered, '
+          'so both URLs are yours to fill in.';
+    }
+    if (result.externalUnverified) {
+      return 'The external URL is the one Plex advertises. It could not be '
+          'checked from this network, since a router will not usually turn a '
+          'connection back on itself.';
+    }
+    if (result.usesRelay) {
+      return 'Nothing answered on that server\'s public address, so the '
+          'external URL is a Plex Relay one. It works, but Plex caps it at '
+          '1 Mbps.';
+    }
+    if (noLocal) {
+      // Almost always a server in a Docker bridge network, which can only
+      // advertise its address on that bridge.
+      return 'Nothing Plex advertises on the local network answered, so the '
+          'local URL is yours to fill in. Servers in Docker usually only '
+          'advertise their container address.';
+    }
+    return null;
   }
 
   IconData _connectionOutcomeIcon(ConnectionOutcome outcome) =>
@@ -445,7 +520,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
               ),
             ],
             if (_kind == ServiceKind.glances ||
-                _kind == ServiceKind.dashdot) ...<Widget>[
+                _kind == ServiceKind.dashdot ||
+                _kind == ServiceKind.gluetun) ...<Widget>[
               const SizedBox(height: Insets.lg),
               Text(
                 'Polling',
@@ -484,16 +560,43 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
   List<Widget> _authFields() {
     switch (_kind.authStyle) {
       case AuthStyle.apiKey:
+        if (_kind == ServiceKind.myspeed) {
+          return <Widget>[
+            TextFormField(
+              controller: _apiKey,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'Password (optional)',
+                helperText:
+                    'Leave empty if password protection is disabled on your MySpeed instance.',
+              ),
+              obscureText: true,
+              autocorrect: false,
+              enableSuggestions: false,
+              onChanged: _clearConnectionTest,
+              validator: (String? v) => null,
+            ),
+          ];
+        }
+        // Gluetun's control server can run without auth, through a role with
+        // auth = "none", and then there is no key to give.
+        final bool keyOptional = _kind == ServiceKind.gluetun;
         return <Widget>[
           TextFormField(
             controller: _apiKey,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-              labelText: 'API key',
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              labelText: keyOptional ? 'API key (optional)' : 'API key',
+              helperText: keyOptional
+                  ? 'Leave empty if the control server has auth turned off.'
+                  : null,
             ),
             autocorrect: false,
+            onChanged: _clearConnectionTest,
             validator: (String? v) =>
-                (v == null || v.trim().isEmpty) ? 'Required' : null,
+                !keyOptional && (v == null || v.trim().isEmpty)
+                    ? 'Required'
+                    : null,
           ),
         ];
       case AuthStyle.bearerToken:
@@ -515,6 +618,12 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
         ];
       case AuthStyle.plexToken:
         return <Widget>[
+          OutlinedButton.icon(
+            onPressed: _signInWithPlex,
+            icon: const Icon(Icons.login_rounded),
+            label: const Text('Sign in with Plex'),
+          ),
+          const SizedBox(height: Insets.sm),
           TextFormField(
             controller: _apiKey,
             decoration: const InputDecoration(
@@ -522,6 +631,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
               labelText: 'Plex token (X-Plex-Token)',
             ),
             autocorrect: false,
+            onChanged: _clearConnectionTest,
             validator: (String? v) =>
                 (v == null || v.trim().isEmpty) ? 'Required' : null,
           ),

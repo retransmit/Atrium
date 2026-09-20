@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:core_models/core_models.dart';
 import 'package:dio/dio.dart';
 
@@ -36,8 +38,21 @@ enum _HealthMode {
       return (path: 'api/system/status', mode: _HealthMode.authed);
     case ServiceKind.seerr:
       return (path: 'api/v1/status', mode: _HealthMode.authed);
+    case ServiceKind.ombi:
+      // Status, about and the request count answer anyone, so none of them
+      // can prove a key works. The smallest protected read is one movie
+      // request.
+      return (
+        path: 'api/v2/Requests/movie/1/0/requestedDate/desc',
+        mode: _HealthMode.authed,
+      );
     case ServiceKind.tracearr:
       return (path: 'api/v2/public/docs', mode: _HealthMode.authed);
+    case ServiceKind.gluetun:
+      // The control server answers whether or not the tunnel is up, so the
+      // answer is read for the VPN status; see the gluetun arm of
+      // [interpretServiceHealthResponse].
+      return (path: 'v1/vpn/status', mode: _HealthMode.authed);
     // Query-key services - AuthInterceptor appends the key as a query param.
     case ServiceKind.tautulli:
       return (
@@ -92,6 +107,14 @@ enum _HealthMode {
       // The only API Unraid exposes is GraphQL on one endpoint, so the probe
       // POSTs the cheapest query there is rather than fetching a status page.
       return (path: 'graphql', mode: _HealthMode.authed);
+    case ServiceKind.navidrome:
+      // Subsonic's ping, with the credentials the interceptor attaches as
+      // query parameters. `authed` rather than `reachable` because the
+      // response is only worth anything once the envelope has been read;
+      // see the navidrome arm of [interpretServiceHealthResponse].
+      return (path: 'rest/ping.view', mode: _HealthMode.authed);
+    case ServiceKind.myspeed:
+      return (path: 'api/speedtests', mode: _HealthMode.authed);
   }
 }
 
@@ -127,14 +150,17 @@ String _probeContentType(ServiceKind kind) => switch (kind) {
 ///
 /// * [Health.ok] - reachable and the credentials work.
 /// * [Health.warning] - reachable but the API key / token was rejected
-///   (so the user knows to fix it), or the server answered 5xx.
+///   (so the user knows to fix it), the server answered 5xx, or it reports a
+///   problem of its own, such as Gluetun's VPN being down.
 /// * [Health.error] - could not reach the server at all.
 class HealthProbe {
   HealthProbe({required DioFactory dioFactory}) : _dioFactory = dioFactory;
 
   final DioFactory _dioFactory;
 
-  Future<Health> check(Instance instance) async {
+  /// Probes [instance]; see [interpretServiceHealthResponse] for
+  /// [connectionOnly].
+  Future<Health> check(Instance instance, {bool connectionOnly = false}) async {
     final ({String path, _HealthMode mode}) cfg = _config(instance.kind);
     Dio? dio;
     try {
@@ -156,6 +182,7 @@ class HealthProbe {
         status,
         resp.data,
         contentType: resp.headers.value(Headers.contentTypeHeader),
+        connectionOnly: connectionOnly,
       );
     } on DioException {
       return Health.error;
@@ -170,11 +197,16 @@ class HealthProbe {
 /// Interprets a completed HTTP health response without retaining or exposing
 /// its body. Public for focused tests; callers should normally use
 /// [HealthProbe].
+///
+/// With [connectionOnly], only whether the server answered and accepted the
+/// credentials counts, not what it reports about itself. Test connection
+/// passes it: a Gluetun whose VPN is stopped still has the right URL and key.
 Health interpretServiceHealthResponse(
   ServiceKind kind,
   int status,
   Object? data, {
   String? contentType,
+  bool connectionOnly = false,
 }) {
   if (status == 0) {
     return Health.error;
@@ -215,6 +247,31 @@ Health interpretServiceHealthResponse(
           // proof the query actually ran.
           return Health.warning;
         }
+        if (kind == ServiceKind.navidrome && !_subsonicSaysOk(data)) {
+          // Subsonic never reports an error through the HTTP status. A
+          // healthy server, a rejected password and a malformed request all
+          // answer 200 with JSON; only the `status` inside the envelope
+          // tells them apart. Verified against Navidrome 0.64: a wrong
+          // password is 200 with status failed and error code 40, and an
+          // unauthenticated request is 200 with code 10. Without this the
+          // dot stayed green for both.
+          return Health.warning;
+        }
+        if (kind == ServiceKind.gluetun) {
+          final String? vpn = _gluetunVpnStatus(data);
+          if (vpn == null) {
+            // Something answered on the status route, but not with Gluetun's
+            // status object.
+            return Health.warning;
+          }
+          if (!connectionOnly && vpn.toLowerCase() != 'running') {
+            // Gluetun answers 200 whether or not the tunnel is up, so the
+            // status code alone showed a stopped VPN as Online. Everything
+            // routed through Gluetun is cut off while it is down, which is
+            // the one thing this dot should not hide.
+            return Health.warning;
+          }
+        }
         if (kind == ServiceKind.rtorrent &&
             !'$data'.contains('methodResponse')) {
           // A 200 from the web UI or a proxy landing page is not the XML-RPC
@@ -236,3 +293,37 @@ Health interpretServiceHealthResponse(
 
 bool _isSpeedtestResultsEnvelope(Object? data) =>
     data is Map && data['data'] is List;
+
+/// The VPN status in a Gluetun answer, or null if [data] is not one.
+///
+/// Gluetun labels its JSON `text/plain`, so the body normally arrives as a
+/// string to decode here rather than as a map.
+String? _gluetunVpnStatus(Object? data) {
+  Object? body = data;
+  if (body is String) {
+    try {
+      body = jsonDecode(body);
+    } on FormatException {
+      return null;
+    }
+  }
+  if (body is! Map) {
+    return null;
+  }
+  final Object? status = body['status'];
+  return status is String ? status : null;
+}
+
+/// Whether a Subsonic reply actually succeeded.
+///
+/// Every response is wrapped in a `subsonic-response` object carrying a
+/// `status` of `ok` or `failed`. Anything that is not a recognisable envelope
+/// saying `ok` is treated as a failure, which also covers the case of some
+/// other server answering on that URL.
+bool _subsonicSaysOk(Object? data) {
+  if (data is! Map) {
+    return false;
+  }
+  final Object? envelope = data['subsonic-response'];
+  return envelope is Map && envelope['status'] == 'ok';
+}

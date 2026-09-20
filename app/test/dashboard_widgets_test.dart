@@ -18,6 +18,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:service_jellyfin/service_jellyfin.dart' as jf;
 import 'package:service_glances/service_glances.dart';
 import 'package:service_nzbget/service_nzbget.dart';
+import 'package:service_ombi/service_ombi.dart';
 import 'package:service_qbittorrent/service_qbittorrent.dart';
 import 'package:service_radarr/service_radarr.dart';
 import 'package:service_seerr/service_seerr.dart';
@@ -330,6 +331,115 @@ void main() {
     expect(find.textContaining('Bob'), findsOneWidget);
   });
 
+  testWidgets('DashboardRequestsWidget merges Ombi with Seerr, newest first',
+      (WidgetTester tester) async {
+    final Instance seerr = makeInstance(ServiceKind.seerr);
+    final Instance ombi = makeInstance(ServiceKind.ombi);
+    await pumpBody(
+      tester,
+      <Override>[
+        seerrRequestCountsProvider(seerr).overrideWith(
+          (Ref ref) async => const SeerrCounts(total: 3, pending: 2),
+        ),
+        seerrRequestsProvider(seerr).overrideWith(
+          (Ref ref) async => const <SeerrRequest>[
+            SeerrRequest(
+              id: 1,
+              status: 1,
+              type: 'movie',
+              media: SeerrMedia(mediaType: 'movie', tmdbId: 603),
+              requestedBy: SeerrUser(displayName: 'Bob'),
+              createdAt: '2026-07-01T00:00:00Z',
+            ),
+          ],
+        ),
+        seerrMediaDetailsProvider(
+          (instance: seerr, mediaType: 'movie', tmdbId: 603),
+        ).overrideWith(
+          (Ref ref) async =>
+              const SeerrDiscoverResult(id: 603, title: 'The Matrix'),
+        ),
+        ombiCountsProvider(ombi).overrideWith(
+          (Ref ref) async => const OmbiCounts(pending: 1, approved: 1),
+        ),
+        ombiRecentRequestsProvider(ombi).overrideWith(
+          (Ref ref) async => <OmbiRequest>[
+            OmbiRequest(
+              id: 5,
+              kind: OmbiMediaKind.movie,
+              title: 'Arrival',
+              status: OmbiRequestStatus.pending,
+              requestedBy: 'alice',
+              requestedAt: DateTime.utc(2026, 8),
+            ),
+          ],
+        ),
+      ],
+      DashboardRequestsWidget(instances: <Instance>[seerr, ombi]),
+      pumps: 3,
+    );
+
+    expect(find.text('5 requested'), findsOneWidget);
+    // Each service keeps its own words for the same state: Seerr's row is as
+    // it was, Ombi's reads like Ombi's Recently Requested cards.
+    expect(find.text('Needs approval'), findsOneWidget);
+    expect(find.text('Pending'), findsOneWidget);
+    expect(find.textContaining('alice'), findsOneWidget);
+    // Ombi's request is a month newer, so it comes first.
+    expect(
+      tester.getTopLeft(find.textContaining('Arrival')).dy,
+      lessThan(tester.getTopLeft(find.textContaining('The Matrix')).dy),
+    );
+  });
+
+  testWidgets('Ombi rows read like Ombi Recently Requested cards',
+      (WidgetTester tester) async {
+    final Instance ombi = makeInstance(ServiceKind.ombi);
+    await pumpBody(
+      tester,
+      <Override>[
+        ombiCountsProvider(ombi).overrideWith(
+          (Ref ref) async => const OmbiCounts(approved: 2, available: 1),
+        ),
+        ombiRecentRequestsProvider(ombi).overrideWith(
+          (Ref ref) async => <OmbiRequest>[
+            OmbiRequest(
+              id: 1,
+              kind: OmbiMediaKind.movie,
+              title: 'Hacksaw Ridge',
+              status: OmbiRequestStatus.processing,
+              requestedAt: DateTime.utc(2026, 9, 3),
+            ),
+            OmbiRequest(
+              id: 2,
+              kind: OmbiMediaKind.tv,
+              title: 'Severance',
+              status: OmbiRequestStatus.processing,
+              partlyAvailable: true,
+              requestedAt: DateTime.utc(2026, 9, 2),
+            ),
+            // Denied, then found by Ombi's sync: the cards still say Denied.
+            OmbiRequest(
+              id: 3,
+              kind: OmbiMediaKind.movie,
+              title: 'Arrival',
+              status: OmbiRequestStatus.available,
+              denied: true,
+              requestedAt: DateTime.utc(2026, 9),
+            ),
+          ],
+        ),
+      ],
+      DashboardRequestsWidget(instances: <Instance>[ombi]),
+      pumps: 3,
+    );
+
+    expect(find.text('Approved'), findsOneWidget);
+    expect(find.text('Partially Available'), findsOneWidget);
+    expect(find.text('Denied'), findsOneWidget);
+    expect(find.text('Processing'), findsNothing);
+  });
+
   testWidgets('DashboardServerInfoWidget shows CPU, memory, GPU and disks',
       (WidgetTester tester) async {
     final Instance glances = makeInstance(ServiceKind.glances);
@@ -376,7 +486,7 @@ void main() {
     // The gauges fill via a TweenAnimationBuilder, so let it run out before
     // reading the settled percentage.
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('Server info'), findsOneWidget);
+    expect(find.text('Glances'), findsOneWidget);
     expect(find.text('CPU'), findsOneWidget);
     expect(find.text('Memory'), findsOneWidget);
     expect(find.text('GPU'), findsOneWidget);
@@ -420,7 +530,7 @@ void main() {
     // No sonarr/radarr, seerr or glances configured:
     expect(find.text('Upcoming releases'), findsNothing);
     expect(find.text('Requests'), findsNothing);
-    expect(find.text('Server info'), findsNothing);
+    expect(find.text('Glances'), findsNothing);
   });
 
   testWidgets('DashboardBoard activity-gates downloads and streams',
@@ -467,6 +577,11 @@ void main() {
 
   testWidgets('DashboardBoard edit mode reorders and hides widgets',
       (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final Instance qbit = makeInstance(ServiceKind.qbittorrent);
     await pumpBody(
       tester,
@@ -476,7 +591,7 @@ void main() {
       ],
       const DashboardBoard(),
     );
-    // All eight widgets are arrangeable in edit mode, configured or not.
+    // All widgets are arrangeable in edit mode, configured or not.
     // Counted from the enum so adding a widget does not break this.
     expect(
       find.byIcon(Icons.drag_indicator),
@@ -516,7 +631,8 @@ void main() {
     );
 
     expect(find.text('Needs Glances'), findsOneWidget);
-    expect(find.text('Needs Seerr'), findsOneWidget);
+    // Either request service can fill it.
+    expect(find.text('Needs Seerr or Ombi'), findsOneWidget);
     expect(find.text('Needs Speedtest Tracker'), findsOneWidget);
     // Upcoming, recently added and recently downloaded all want the same pair.
     expect(find.text('Needs Sonarr or Radarr'), findsNWidgets(3));
@@ -526,6 +642,11 @@ void main() {
 
   testWidgets('a widget nothing can fill cannot be shown',
       (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     await pumpBody(
       tester,
       <Override>[
@@ -538,7 +659,7 @@ void main() {
     // Hide it so it lands in the Hidden section, where the show button lives.
     await tester.tap(
       find.descendant(
-        of: tileFor('Server info'),
+        of: tileFor('Glances'),
         matching: find.byIcon(Icons.visibility_off_outlined),
       ),
     );
@@ -547,7 +668,7 @@ void main() {
     // Showing it again would put it back on a board that filters it straight
     // out, which reads as the button having failed.
     final Finder show = find.descendant(
-      of: tileFor('Server info'),
+      of: tileFor('Glances'),
       matching: find.widgetWithIcon(IconButton, Icons.add_circle_outline),
     );
     expect(show, findsOneWidget);
@@ -556,6 +677,11 @@ void main() {
 
   testWidgets('a widget with its service configured can still be shown',
       (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     final Instance glances = makeInstance(ServiceKind.glances);
     await pumpBody(
       tester,
@@ -569,14 +695,14 @@ void main() {
     expect(find.text('Needs Glances'), findsNothing);
     await tester.tap(
       find.descendant(
-        of: tileFor('Server info'),
+        of: tileFor('Glances'),
         matching: find.byIcon(Icons.visibility_off_outlined),
       ),
     );
     await tester.pump();
 
     final Finder show = find.descendant(
-      of: tileFor('Server info'),
+      of: tileFor('Glances'),
       matching: find.widgetWithIcon(IconButton, Icons.add_circle_outline),
     );
     expect(tester.widget<IconButton>(show).onPressed, isNotNull);

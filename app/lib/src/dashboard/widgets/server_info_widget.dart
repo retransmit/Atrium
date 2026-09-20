@@ -40,7 +40,14 @@ class DashboardServerInfoWidget extends ConsumerWidget {
     bool anyLoading = false;
     bool anyError = false;
 
+    final Set<String> seenIds = <String>{};
+    final Set<String> seenEndpoints = <String>{};
     for (final Instance i in instances) {
+      if (!seenIds.add(i.id)) continue;
+      final String endpoint =
+          i.localUrl.isNotEmpty ? i.localUrl : i.externalUrl;
+      if (endpoint.isNotEmpty && !seenEndpoints.add(endpoint)) continue;
+
       final AsyncValue<GlancesStats> stats = ref.watch(glancesStatsProvider(i));
       anyLoading |= stats.isLoading && !stats.hasValue;
       anyError |= stats.hasError;
@@ -71,7 +78,7 @@ class DashboardServerInfoWidget extends ConsumerWidget {
         },
       );
     } else if (servers.isEmpty) {
-      body = const DashboardIdleRow(text: 'No server stats available');
+      body = const DashboardIdleRow(text: 'No Glances stats available');
     } else {
       final bool showName = servers.length > 1;
       body = Column(

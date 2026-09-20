@@ -2,7 +2,7 @@ name: atrium
 description: Atrium - mobile controller for a self-hosted media stack.
 publish_to: none
 resolution: workspace
-version: 1.6.1+22
+version: 1.7.0+23
 
 environment:
   sdk: ^3.6.0
@@ -56,6 +56,10 @@ dependencies:
   service_tracearr: ^0.0.0
   service_lidarr:
   service_unraid:
+  service_gluetun:
+  service_navidrome:
+  service_ombi:
+  service_myspeed:
   url_launcher: ^6.3.2
 dev_dependencies:
   flutter_launcher_icons: ^0.14.3

@@ -23,7 +23,7 @@ body:
     attributes:
       label: Atrium version
       description: Settings, then About.
-      placeholder: "1.6.1"
+      placeholder: "1.7.0"
     validations:
       required: true
 
@@ -55,11 +55,13 @@ body:
         - Prowlarr
         - Bazarr
         - Seerr (Overseerr or Jellyseerr)
+        - Ombi
         - Tautulli
         - Tracearr
         - Jellyfin
         - Emby
         - Plex
+        - Navidrome
         - qBittorrent
         - Deluge
         - Transmission
@@ -68,8 +70,10 @@ body:
         - NZBGet
         - Glances
         - Speedtest Tracker
+        - MySpeed
         - Beszel
         - dashdot
+        - Gluetun
         - Unraid
         - Something else
     validations:

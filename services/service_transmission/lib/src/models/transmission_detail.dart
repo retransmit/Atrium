@@ -48,6 +48,10 @@ abstract class TransmissionFile with _$TransmissionFile {
 abstract class TransmissionPeer with _$TransmissionPeer {
   const factory TransmissionPeer({
     @Default('') String address,
+    @Default(0) int port,
+
+    /// The web UI's flag letters, such as `DEI`; see the legend sheet.
+    @JsonKey(name: 'flagStr') @Default('') String flagStr,
     @JsonKey(name: 'clientName') @Default('') String clientName,
 
     /// 0.0 - 1.0.
@@ -69,6 +73,26 @@ abstract class TransmissionTracker with _$TransmissionTracker {
     @Default('') String host,
     @Default('') String announce,
     @Default(0) int tier,
+
+    /// Empty below RPC 17.
+    @Default('') String sitename,
+
+    /// 0 inactive, 1 waiting, 2 queued, 3 active.
+    @JsonKey(name: 'announceState') @Default(0) int announceState,
+    @JsonKey(name: 'hasAnnounced') @Default(false) bool hasAnnounced,
+    @JsonKey(name: 'lastAnnounceTime') @Default(0) int lastAnnounceTime,
+    @JsonKey(name: 'lastAnnouncePeerCount')
+    @Default(0)
+    int lastAnnouncePeerCount,
+    @JsonKey(name: 'nextAnnounceTime') @Default(0) int nextAnnounceTime,
+    @JsonKey(name: 'hasScraped') @Default(false) bool hasScraped,
+    @JsonKey(name: 'lastScrapeSucceeded')
+    @Default(false)
+    bool lastScrapeSucceeded,
+    @JsonKey(name: 'lastScrapeResult') @Default('') String lastScrapeResult,
+    @JsonKey(name: 'lastScrapeTime') @Default(0) int lastScrapeTime,
+    @JsonKey(name: 'downloadCount') @Default(-1) int downloadCount,
+    @JsonKey(name: 'isBackup') @Default(false) bool isBackup,
     @JsonKey(name: 'lastAnnounceResult') @Default('') String lastAnnounceResult,
     @JsonKey(name: 'lastAnnounceSucceeded')
     @Default(false)
@@ -91,6 +115,16 @@ abstract class TransmissionDetail with _$TransmissionDetail {
     @JsonKey(name: 'pieceCount') @Default(0) int pieceCount,
     @JsonKey(name: 'pieceSize') @Default(0) int pieceSize,
     @JsonKey(name: 'dateCreated') @Default(0) int dateCreated,
+    @JsonKey(name: 'haveValid') @Default(0) int haveValid,
+    @JsonKey(name: 'haveUnchecked') @Default(0) int haveUnchecked,
+    @JsonKey(name: 'desiredAvailable') @Default(0) int desiredAvailable,
+    @JsonKey(name: 'downloadedEver') @Default(0) int downloadedEver,
+    @JsonKey(name: 'corruptEver') @Default(0) int corruptEver,
+
+    /// Unix seconds the torrent was last started, 0 when never.
+    @JsonKey(name: 'startDate') @Default(0) int startDate,
+    @JsonKey(name: 'magnetLink') @Default('') String magnetLink,
+    @Default(<String>[]) List<String> webseeds,
     @JsonKey(includeFromJson: false, includeToJson: false)
     @Default(<TransmissionFile>[])
     List<TransmissionFile> files,
@@ -159,6 +193,14 @@ abstract class TransmissionDetail with _$TransmissionDetail {
     'pieceCount',
     'pieceSize',
     'dateCreated',
+    'haveValid',
+    'haveUnchecked',
+    'desiredAvailable',
+    'downloadedEver',
+    'corruptEver',
+    'startDate',
+    'magnetLink',
+    'webseeds',
     'files',
     'fileStats',
     'peers',
