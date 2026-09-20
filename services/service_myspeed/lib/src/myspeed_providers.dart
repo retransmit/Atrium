@@ -162,3 +162,26 @@ final myspeedStorageProvider =
   final MySpeedApi api = await ref.watch(myspeedApiProvider(instance).future);
   return api.getStorage();
 });
+
+/// The newest few tests across the whole history, for the dashboard: the
+/// latest good run and whether a newer one failed, without the day's window
+/// (a weekly schedule has no run in the last 24 hours) and without the
+/// History tab's thousand rows.
+final myspeedRecentTestsProvider =
+    FutureProvider.autoDispose.family<List<MySpeedTest>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final MySpeedApi api = await ref.watch(myspeedApiProvider(instance).future);
+  return api.getSpeedtests(hours: MySpeedApi.historyHours, limit: 5);
+});
+
+/// The newest run that produced figures, or null. A failed run is a row
+/// with an error and no speeds, which is not what a card should show.
+MySpeedTest? myspeedLatestGood(List<MySpeedTest>? tests) {
+  if (tests == null) return null;
+  for (final MySpeedTest test in tests) {
+    if (test.error == null) return test;
+  }
+  return null;
+}

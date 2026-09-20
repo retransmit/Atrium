@@ -11,6 +11,7 @@ class MySpeedTest {
     this.createdAt,
     this.server,
     this.duration,
+    this.error,
     this.raw,
   });
 
@@ -36,6 +37,10 @@ class MySpeedTest {
 
   /// Test execution duration in seconds or ms, if provided by API.
   final int? duration;
+
+  /// What went wrong, for a run that failed. MySpeed keeps such runs as
+  /// rows with this set and no speeds.
+  final String? error;
 
   /// Raw payload from MySpeed API.
   final Map<String, dynamic>? raw;
@@ -84,6 +89,9 @@ class MySpeedTest {
     }
 
     final int? durVal = json['time'] is int ? json['time'] as int : null;
+    final dynamic rawError = json['error'];
+    final String? errorVal =
+        rawError is String && rawError.trim().isNotEmpty ? rawError : null;
 
     return MySpeedTest(
       id: idVal.toString(),
@@ -94,6 +102,7 @@ class MySpeedTest {
       createdAt: date,
       server: serverName,
       duration: durVal,
+      error: errorVal,
       raw: json,
     );
   }

@@ -22,6 +22,7 @@ import 'package:service_tracearr/service_tracearr.dart';
 import 'package:service_rtorrent/service_rtorrent.dart';
 import 'package:service_transmission/service_transmission.dart';
 import 'package:service_gluetun/service_gluetun.dart';
+import 'package:service_myspeed/service_myspeed.dart';
 
 import '../health_providers.dart';
 import '../screens/calendar_screen.dart';
@@ -30,6 +31,7 @@ import 'dashboard_widget_kind.dart';
 import 'widgets/dashdot_widget.dart';
 import 'widgets/downloads_widget.dart';
 import 'widgets/gluetun_status_widget.dart';
+import 'widgets/myspeed_widget.dart';
 import 'widgets/recently_added_widget.dart';
 import 'widgets/recently_downloaded_widget.dart';
 import 'widgets/requests_widget.dart';
@@ -196,6 +198,10 @@ class DashboardBoard extends ConsumerWidget {
         return DashboardGluetunStatusWidget(
           instances: _byKind(instances, ServiceKind.gluetun),
         );
+      case DashboardWidgetKind.myspeed:
+        return DashboardMySpeedWidget(
+          instances: _byKind(instances, ServiceKind.myspeed),
+        );
       case DashboardWidgetKind.wakeOnLan:
         return const DashboardWakeOnLanWidget();
     }
@@ -256,6 +262,9 @@ class DashboardBoard extends ConsumerWidget {
         case ServiceKind.gluetun:
           ref.invalidate(gluetunVpnStatusProvider(i));
           ref.invalidate(gluetunPublicIpProvider(i));
+        case ServiceKind.myspeed:
+          ref.invalidate(myspeedStatusProvider(i));
+          ref.invalidate(myspeedRecentTestsProvider(i));
         default:
           break;
       }

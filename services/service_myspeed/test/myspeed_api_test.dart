@@ -61,6 +61,30 @@ void main() {
       expect(test.server, 'Cloudflare');
     });
 
+    test('keeps the error a failed run carries', () {
+      final MySpeedTest failed = MySpeedTest.fromJson(<String, dynamic>{
+        'id': 7,
+        'ping': null,
+        'download': null,
+        'upload': null,
+        'error': 'Speedtest timed out',
+        'created': '2026-09-20T15:00:32.908Z',
+      });
+      final MySpeedTest good = MySpeedTest.fromJson(<String, dynamic>{
+        'id': 8,
+        'ping': 32,
+        'download': 47.76,
+        'upload': 17.21,
+        'error': null,
+        'created': '2026-09-20T15:30:32.908Z',
+      });
+
+      expect(failed.error, 'Speedtest timed out');
+      expect(good.error, isNull);
+      expect(myspeedLatestGood(<MySpeedTest>[failed, good])?.id, '8');
+      expect(myspeedLatestGood(<MySpeedTest>[failed]), isNull);
+    });
+
     test('parses MySpeed API schema with created timestamp and serverName', () {
       final test = MySpeedTest.fromJson(<String, dynamic>{
         'id': 42,

@@ -28,7 +28,7 @@ Atrium is a **controller** app. Video playback was removed by design
 - **Dashboard widgets**, reorderable from Customize dashboard: Active
   downloads, Now streaming, Upcoming releases, Recently added, Recently
   downloaded, Requests (Seerr and Ombi), Glances, Dashdot, Speedtest
-  results, Gluetun VPN and Wake on LAN
+  results, MySpeed, Gluetun VPN and Wake on LAN
 - **Settings**: theme, biometric lock, profile import/export (SAF,
   live-verified), **Wake-on-LAN devices** (profile-stored, magic packets
   over pure Dart UDP), **custom HTTP headers** (global + per-instance,
@@ -155,7 +155,9 @@ Atrium is a **controller** app. Video playback was removed by design
   history with averages and a search by test id, the server's config and
   storage figures. Password-protected instances work: the password is
   sent the way 1.0.9 reads it and the way newer builds prefer it.
-  Live-verified behind a reverse proxy with a required header as well
+  Live-verified behind a reverse proxy with a required header as well. A
+  dashboard widget (lxBlazarxl, PR #162) shows the latest figures and runs
+  a test from the board
 - **Speedtest Tracker** (live-verified): authenticated 1.1+ result history,
   latest metrics, combined download / upload chart, multi-instance dashboard
   widget, and confirmed 1.6+ remote runs with queued/running/terminal-state

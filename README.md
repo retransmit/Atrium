@@ -77,7 +77,7 @@ each one covers:
 | NZBGet                 | queue with reorder/priority/category, add NZB, speed limit, history   |
 | Glances                | CPU/memory/network/disk monitoring                                    |
 | Speedtest Tracker      | latest result, history chart, dashboard, confirmed remote test runs   |
-| MySpeed                | status and manual runs, the day's results, history with averages, password auth |
+| MySpeed                | status and manual runs, the day's results, history with averages, password auth, dashboard widget |
 | Beszel                 | systems list, live metrics, per-system detail screen                  |
 | dashdot                | live CPU, memory, disk, and GPU usage with a system-info tab, dashboard widget |
 | Gluetun                | VPN status, forwarded port, reconnect, dashboard widget               |
