@@ -53,6 +53,17 @@ final radarrMovieByIdProvider =
   return api.getMovieById(id);
 });
 
+/// Collection details for a given TMDB collection ID.
+final radarrCollectionByTmdbIdProvider =
+    FutureProvider.autoDispose.family<RadarrCollection?, (Instance, int)>((
+  Ref ref,
+  (Instance, int) key,
+) async {
+  final (Instance instance, int tmdbId) = key;
+  final RadarrApi api = await ref.watch(radarrApiProvider(instance).future);
+  return api.getCollectionByTmdbId(tmdbId);
+});
+
 /// Active layout view mode for the movies tab (grid or list).
 enum RadarrViewMode { grid, list }
 

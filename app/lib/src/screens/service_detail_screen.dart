@@ -142,6 +142,15 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
         ),
       );
     }
+    if (instance.kind == ServiceKind.ombi) {
+      return OmbiHome(
+        instance: instance,
+        drawer: ServicesDrawer(
+          instances: ref.watch(activeInstancesProvider),
+          profile: ref.watch(activeProfileProvider),
+        ),
+      );
+    }
     return PopScope<Object?>(
         canPop: false,
         onPopInvokedWithResult: (bool didPop, Object? result) {
@@ -200,8 +209,7 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
                   instance.kind == ServiceKind.jellyfin ||
                   instance.kind == ServiceKind.plex ||
                   instance.kind == ServiceKind.seerr ||
-                  instance.kind == ServiceKind.navidrome ||
-                  instance.kind == ServiceKind.ombi)
+                  instance.kind == ServiceKind.navidrome)
                 IconButton(
                   tooltip: 'Search',
                   icon: const Icon(Icons.search),
@@ -221,8 +229,6 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
                           SeerrSearchDelegate(instance: instance),
                         ServiceKind.navidrome =>
                           NavidromeSearchDelegate(instance: instance),
-                        ServiceKind.ombi =>
-                          OmbiSearchDelegate(instance: instance),
                         _ => JellyfinSearchDelegate(instance: instance),
                       },
                     );
@@ -355,7 +361,8 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
       ServiceKind.speedtestTracker => SpeedtestTrackerHome(instance: instance),
       ServiceKind.gluetun => GluetunHome(instance: instance),
       ServiceKind.navidrome => const SizedBox.shrink(),
-      ServiceKind.ombi => OmbiHome(instance: instance),
+      // Owns its own scaffold, handled above.
+      ServiceKind.ombi => const SizedBox.shrink(),
       ServiceKind.myspeed => const SizedBox.shrink(),
     };
   }

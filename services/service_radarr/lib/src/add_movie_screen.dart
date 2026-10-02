@@ -389,6 +389,7 @@ class _RadarrAddMovieSheetState extends ConsumerState<RadarrAddMovieSheet> {
   String? _selectedRootFolder;
   int? _selectedQualityProfileId;
   bool _monitored = true;
+  bool _monitorCollection = false;
   String _minimumAvailability = 'announced';
   bool _searchForMovie = false;
   final List<int> _selectedTagIds = [];
@@ -610,9 +611,27 @@ class _RadarrAddMovieSheetState extends ConsumerState<RadarrAddMovieSheet> {
                               title: const Text('Monitored'),
                               value: _monitored,
                               contentPadding: EdgeInsets.zero,
-                              onChanged: (val) =>
-                                  setState(() => _monitored = val),
+                              onChanged: (val) => setState(() {
+                                _monitored = val;
+                                if (!val) {
+                                  _monitorCollection = false;
+                                }
+                              }),
                             ),
+                            if (widget.movie.collection != null)
+                              SwitchListTile(
+                                title: const Text('Monitor collection'),
+                                subtitle: widget.movie.collection?.title != null
+                                    ? Text(widget.movie.collection!.title!)
+                                    : null,
+                                value: _monitorCollection,
+                                contentPadding: EdgeInsets.zero,
+                                onChanged: _monitored
+                                    ? (val) => setState(
+                                        () => _monitorCollection = val,
+                                      )
+                                    : null,
+                              ),
                             SwitchListTile(
                               title: const Text('Start search for movie'),
                               value: _searchForMovie,
@@ -748,6 +767,9 @@ class _RadarrAddMovieSheetState extends ConsumerState<RadarrAddMovieSheet> {
         'tags': _selectedTagIds,
         'addOptions': {
           'searchForMovie': _searchForMovie,
+          'monitor': !_monitored
+              ? 'none'
+              : (_monitorCollection ? 'movieAndCollection' : 'movieOnly'),
         },
       };
 

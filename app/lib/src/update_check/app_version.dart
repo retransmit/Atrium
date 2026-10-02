@@ -2,4 +2,4 @@
 ///
 /// Source of truth for the update check and the Settings version line. Bump
 /// this at release time together with pubspec.
-const String appVersion = '1.7.0';
+const String appVersion = '1.8.0';

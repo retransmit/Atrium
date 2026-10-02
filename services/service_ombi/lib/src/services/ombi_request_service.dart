@@ -30,14 +30,16 @@ class OmbiRequestService {
     );
   }
 
-  /// One page of [kind] requests matching [filter], newest first.
+  /// One page of [kind] requests matching [filter], newest first, [take]
+  /// rows to a page.
   Future<OmbiRequestPage> list(
     OmbiMediaKind kind,
     OmbiRequestFilter filter, {
     int page = 0,
+    int take = pageSize,
   }) async {
-    const String count = '$pageSize';
-    final String position = '${page * pageSize}';
+    final String count = '$take';
+    final String position = '${page * take}';
     switch (kind) {
       case OmbiMediaKind.movie:
         final UIRequestsViewModelMovieRequests data = requireData(
@@ -187,6 +189,21 @@ class OmbiRequestService {
           total: data.total ?? 0,
         );
     }
+  }
+
+  /// How many [kind] requests each filter holds. Ombi's list routes report
+  /// their total whatever the page size, so one row each is enough.
+  Future<Map<OmbiRequestFilter, int>> filterCounts(OmbiMediaKind kind) async {
+    final List<OmbiRequestPage> pages = await Future.wait(
+      <Future<OmbiRequestPage>>[
+        for (final OmbiRequestFilter filter in OmbiRequestFilter.values)
+          list(kind, filter, take: 1),
+      ],
+    );
+    return <OmbiRequestFilter, int>{
+      for (int i = 0; i < pages.length; i++)
+        OmbiRequestFilter.values[i]: pages[i].total,
+    };
   }
 
   /// The newest movie and TV requests together, for the dashboard.

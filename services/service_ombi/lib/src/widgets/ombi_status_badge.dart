@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/ombi_models.dart';
+import 'ombi_visuals.dart';
 
 /// Ombi's Recently Requested cards' words, which the dashboard shows.
 String ombiRecentStatusLabel(OmbiRecentStatus status) => switch (status) {
@@ -28,14 +29,34 @@ class OmbiStatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
-    return _Pill(
+    final (Color foreground, Color background, IconData icon) =
+        switch (status) {
+      OmbiRequestStatus.pending => (
+          cs.onPrimaryContainer,
+          cs.primaryContainer,
+          Icons.hourglass_top_rounded,
+        ),
+      OmbiRequestStatus.processing => (
+          cs.onSecondaryContainer,
+          cs.secondaryContainer,
+          Icons.autorenew_rounded,
+        ),
+      OmbiRequestStatus.available => (
+          cs.onTertiaryContainer,
+          cs.tertiaryContainer,
+          Icons.check_circle_outline_rounded,
+        ),
+      OmbiRequestStatus.denied => (
+          cs.onErrorContainer,
+          cs.errorContainer,
+          Icons.block_rounded,
+        ),
+    };
+    return OmbiPill(
       label: labelFor(status),
-      color: switch (status) {
-        OmbiRequestStatus.pending => cs.primary,
-        OmbiRequestStatus.processing => cs.secondary,
-        OmbiRequestStatus.available => cs.tertiary,
-        OmbiRequestStatus.denied => cs.error,
-      },
+      foreground: foreground,
+      background: background,
+      icon: icon,
     );
   }
 }
@@ -45,31 +66,12 @@ class OmbiFourKBadge extends StatelessWidget {
   const OmbiFourKBadge({super.key});
 
   @override
-  Widget build(BuildContext context) =>
-      _Pill(label: '4K', color: Theme.of(context).colorScheme.onSurfaceVariant);
-}
-
-class _Pill extends StatelessWidget {
-  const _Pill({required this.label, required this.color});
-
-  final String label;
-  final Color color;
-
-  @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context)
-            .textTheme
-            .labelSmall
-            ?.copyWith(fontWeight: FontWeight.w700, color: color),
-      ),
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    return OmbiPill(
+      label: '4K',
+      foreground: cs.onSurfaceVariant,
+      background: cs.surfaceContainerHighest,
     );
   }
 }

@@ -77,24 +77,28 @@ class _OmbiAnswers implements HttpClientAdapter {
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
   ) async {
-    final Object body = switch (options.uri.path) {
-      '/api/v1/Lidarr/enabled' => false,
-      '/api/v2/Requests/movie/pending/25/0/requestedDate/desc' =>
-        <String, dynamic>{
-          'total': 1,
-          'collection': <Object>[
-            <String, dynamic>{
-              'id': 1,
-              'title': 'Arrival',
-              'approved': false,
-              'available': false,
-              'denied': false,
-              'requestedUser': <String, dynamic>{'userName': 'alice'},
-            },
-          ],
-        },
-      _ => <String, dynamic>{},
-    };
+    final String path = options.uri.path;
+    final Object body;
+    if (path == '/api/v1/Lidarr/enabled') {
+      body = false;
+    } else if (path.startsWith('/api/v2/Requests/movie/pending/')) {
+      // The one-row call the chips are counted from, and the list itself.
+      body = <String, dynamic>{
+        'total': 1,
+        'collection': <Object>[
+          <String, dynamic>{
+            'id': 1,
+            'title': 'Arrival',
+            'approved': false,
+            'available': false,
+            'denied': false,
+            'requestedUser': <String, dynamic>{'userName': 'alice'},
+          },
+        ],
+      };
+    } else {
+      body = <String, dynamic>{};
+    }
     return ResponseBody.fromString(
       jsonEncode(body),
       200,

@@ -53,6 +53,23 @@ final ombiRecentRequestsProvider =
   return client.requestService.recent();
 });
 
+typedef OmbiKindKey = ({Instance instance, OmbiMediaKind kind});
+
+/// How many requests of one kind each filter holds, for the chips.
+///
+/// Not retried: the numbers are a convenience, and a server that fails one
+/// of five small calls is better shown without them than asked again and
+/// again. Pull to refresh asks once more.
+final ombiFilterCountsProvider =
+    FutureProvider.family<Map<OmbiRequestFilter, int>, OmbiKindKey>(
+  (Ref ref, OmbiKindKey key) async {
+    final OmbiClient client =
+        await ref.watch(ombiClientProvider(key.instance).future);
+    return client.requestService.filterCounts(key.kind);
+  },
+  retry: (int _, Object __) => null,
+);
+
 typedef OmbiListKey = ({
   Instance instance,
   OmbiMediaKind kind,
@@ -206,6 +223,7 @@ Future<void> runOmbiAction(
   await action(client);
   ref
     ..invalidate(ombiCountsProvider(instance))
+    ..invalidate(ombiFilterCountsProvider)
     ..invalidate(ombiRecentRequestsProvider(instance))
     ..invalidate(ombiRequestListProvider);
 }

@@ -1,6 +1,6 @@
 # Atrium - Status
 
-> Snapshot of what genuinely works and what is left, as of 2026-09-21.
+> Snapshot of what genuinely works and what is left, as of 2026-10-03 (release 1.8.0).
 > Atrium is published on F-Droid and on the GitHub releases page. It is
 > still in early development and every module is work in progress; nothing
 > here is a release promise.
@@ -52,7 +52,10 @@ Atrium is a **controller** app. Video playback was removed by design
   address moves the app can no longer reach the server to undo it. An
   execution log tab (contributed by lxBlazarxl in PR #159) reads the
   server's log on demand, with copy, and the settings screen offers the
-  network interfaces the server actually routes
+  network interfaces the server actually routes. Torrents are marked
+  private or public (contributed by lxBlazarxl in PR #171) wherever the
+  server says which: in the list from qBittorrent 5.0, on a torrent's own
+  screen from 4.5.1, and nowhere while a magnet has no metadata
 - **Sonarr** (the canonical *arr module): poster/banner grid with
   client-side sort & filter (status, network, airing, added, size on
   disk) and per-series disk sizes, series detail (fanart backdrop,
@@ -60,8 +63,11 @@ Atrium is a **controller** app. Video playback was removed by design
   over to the Add screen, contributed by Bhavyashah94 in PR #160),
   queue/wanted/history/blocklist/system tabs, and a full Settings editor
   (17 panels) - settings writes live-verified
-- **Radarr**: same depth as Sonarr, movie flavored
-- **Lidarr** (beta, added in 1.5.0): artists and discography with grid and
+- **Radarr**: same depth as Sonarr, movie flavored, plus collection
+  monitoring when adding a movie and from its detail screen (contributed by
+  Bhavyashah94 in PR #173)
+- **Lidarr** (added in 1.5.0, out of beta since 2026-10-01): artists and
+  discography with grid and
   list views and bulk actions, artist detail with release-type filters,
   album and track detail with a file inspector and single-track search,
   album studio, track file rename/retag previews and manual import, wanted
@@ -69,8 +75,7 @@ Atrium is a **controller** app. Video playback was removed by design
   tree (profiles, download clients, indexers, import lists, notifications,
   metadata, media management, quality definitions), system diagnostics and
   an in-app log viewer with level filtering and search. Album releases also
-  appear in the shared calendar. Marked beta: it has not been exercised
-  against a live Lidarr for long
+  appear in the shared calendar
 - **Prowlarr**: indexers (add/edit/test from schema), manual search
   across indexers with grab-to-client, history, full settings menu,
   system
@@ -79,13 +84,18 @@ Atrium is a **controller** app. Video playback was removed by design
 - **Seerr** (Jellyseerr / Overseerr): discover (trending/upcoming/genres),
   search, item detail with request submission (profile/folder/server
   selection), requests management (approve/decline/delete/retry)
-- **Ombi** (beta, added 2026-09-19, live-verified against 4.53): requests
-  for movies, TV and, where Lidarr is set up, music, filtered as Ombi's own
-  Requests page filters them, with approve / deny (with a reason) / delete;
-  search and a Discover tab (popular and upcoming movies, popular and
-  trending TV) whose request sheet reads a title's state before offering to
-  request it; Ombi rows on the dashboard's Requests widget. Every state is
-  worded the way Ombi's own pages word it
+- **Ombi** (beta, added 2026-09-19, live-verified against 4.53, restyled
+  2026-10-02): its own screen with a bottom bar for Requests and Discover
+  and search in the app bar. Requests for movies, TV and, where Lidarr is
+  set up, music, filtered as Ombi's own Requests page filters them, each
+  filter showing its count, as cards with approve / deny (with a reason) /
+  delete and, for a show, the seasons asked for and how many episodes are
+  in; tapping a card opens the title. Search and a Discover tab (popular
+  and upcoming movies, popular and trending TV, with year, score and
+  requested / available marks) open a title sheet with backdrop, tagline,
+  runtime, genres and network that reads the title's state before offering
+  to request it; Ombi rows on the dashboard's Requests widget. Every state
+  is worded the way Ombi's own pages word it
 - **Tautulli**: activity (10s poll) with backdrop session cards and a
   detail sheet (codecs, decisions, bandwidth, terminate with inline
   errors), history, 30-day stats, users - restyled to the expressive
@@ -124,20 +134,24 @@ Atrium is a **controller** app. Video playback was removed by design
   transport commands are exercised best-effort. Since 2026-09-18 the
   instance form offers a plex.tv sign-in beside the token field, which
   fills in a server that answers
-- **Navidrome** (beta, added 2026-09-10, depth by lxBlazarxl 2026-09-12 to
-  09-14): Subsonic API with signed requests and the envelope read for
-  errors; an overview tab; artists in list and grid views with section
-  badges; artist and album screens with half-page banners, biographies,
-  metadata badges and tracklists with artwork; five-star ratings and
-  favorites for artists and albums; custom playlists (create, rename,
-  delete, add tracks); search in the shape of Emby's; quick library scan;
-  artwork and web UI links respect a reverse-proxy sub-path
+- **Navidrome** (added 2026-09-10, out of beta since 2026-10-02, depth by
+  lxBlazarxl 2026-09-12 to 09-14): Subsonic API with signed requests and
+  the envelope read for errors; an overview tab; artists in list and grid
+  views with section badges named as the server names its index groups;
+  artist, album and playlist screens with half-page banners, the cover
+  beside the title, metadata badges and tracklists with artwork (an
+  album's banner is its artist's picture where there is one); albums and
+  playlists as cover grids; five-star ratings and favorites for artists
+  and albums; custom playlists (create, rename, delete, add tracks);
+  search in the shape of Emby's; quick library scan; artwork and web UI
+  links respect a reverse-proxy sub-path
 - **Glances**: per-instance polling, CPU/memory gauges, swap + per-core
   bars, network with interface pinning, disks, uptime
 - **Beszel**: systems list, live metrics, and a per-system detail screen
 - **dashdot**: live CPU, memory, disk, and GPU usage with a system-info tab,
   and a dashboard widget with a circular monitor and live vitals
-- **Unraid** (beta): array state with parity and per-disk usage, temperature
+- **Unraid** (out of beta since 2026-10-01): array state with parity and
+  per-disk usage, temperature
   and health, system with per-core CPU load and an About card, Docker
   containers with a detail sheet and start/stop/pause/resume, and virtual
   machines with start, shut down, pause, resume, reboot, force stop and reset

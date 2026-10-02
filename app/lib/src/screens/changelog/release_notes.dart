@@ -27,6 +27,28 @@ class ReleaseNote {
 /// Newest first. Update alongside appVersion and the pubspec at each release.
 const List<ReleaseNote> releaseNotes = <ReleaseNote>[
   ReleaseNote(
+    version: '1.8.0',
+    date: '2026-10-03',
+    groups: <ChangeGroup>[
+      ChangeGroup(ChangeCategory.added, <String>[
+        'Radarr monitors collections. Adding a movie that belongs to one offers to monitor the whole collection, and the movie screen shows the collection with a button to monitor or unmonitor it.',
+        'qBittorrent marks torrents as private or public. The badge is in the list on qBittorrent 5.0 and later, and on the torrent screen from 4.5.1.',
+        'A profile can be renamed from its card.',
+      ]),
+      ChangeGroup(ChangeCategory.improved, <String>[
+        'Ombi has a new look: Requests and Discover as its two tabs, a count on each filter chip, request cards with the poster, status and who asked, richer Discover and search cards, and a sheet for a title with its details and the request button.',
+        'Navidrome is out of beta. Playlists are a grid of covers like the albums, and an album opens with the artist across the banner and the cover beside the title.',
+        'Lidarr and Unraid are out of beta.',
+      ]),
+      ChangeGroup(ChangeCategory.fixed, <String>[
+        'Ombi request times are no longer off by your timezone.',
+        'An Ombi request shows its denial reason only while it is denied, not after it has been approved again.',
+        'Navidrome artist section headers fit the longer group names a server uses, such as X-Z and [Unknown].',
+        'The Navidrome album and playlist grids no longer overflow at large text sizes.',
+      ]),
+    ],
+  ),
+  ReleaseNote(
     version: '1.7.0',
     date: '2026-09-21',
     groups: <ChangeGroup>[

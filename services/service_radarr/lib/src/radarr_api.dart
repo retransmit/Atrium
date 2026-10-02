@@ -109,6 +109,53 @@ class RadarrApi {
     }
   }
 
+  /// Fetches collections from Radarr. If [tmdbId] is provided, Radarr filters
+  /// to matching collection(s).
+  Future<List<RadarrCollection>> getCollections({int? tmdbId}) async {
+    try {
+      final Map<String, dynamic> query = <String, dynamic>{};
+      if (tmdbId != null) {
+        query['tmdbId'] = tmdbId;
+      }
+      final Response<dynamic> resp = await _dio.get<dynamic>(
+        '$_base/collection',
+        queryParameters: query.isEmpty ? null : query,
+      );
+      return (resp.data as List<dynamic>)
+          .map(
+            (dynamic e) => RadarrCollection.fromJson(e as Map<String, dynamic>),
+          )
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// Looks up a collection by TMDB ID, returning `null` if not found.
+  Future<RadarrCollection?> getCollectionByTmdbId(int tmdbId) async {
+    final List<RadarrCollection> collections =
+        await getCollections(tmdbId: tmdbId);
+    return collections.isEmpty ? null : collections.first;
+  }
+
+  /// Updates collection monitoring status.
+  Future<void> updateCollectionMonitoring(
+    int collectionId, {
+    required bool monitored,
+  }) async {
+    try {
+      await _dio.put<dynamic>(
+        '$_base/collection',
+        data: <String, dynamic>{
+          'collectionIds': <int>[collectionId],
+          'monitored': monitored,
+        },
+      );
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
   Future<void> bulkDeleteMovies(
     List<int> ids, {
     bool deleteFiles = false,

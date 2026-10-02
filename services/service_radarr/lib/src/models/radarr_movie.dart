@@ -78,9 +78,17 @@ abstract class RadarrImage with _$RadarrImage {
 @freezed
 abstract class RadarrCollection with _$RadarrCollection {
   const factory RadarrCollection({
+    @Default(0) int id,
     String? title,
     int? tmdbId,
+    @Default(false) bool monitored,
     @Default(<RadarrImage>[]) List<RadarrImage> images,
+    String? overview,
+    String? rootFolderPath,
+    int? qualityProfileId,
+    @Default(false) bool searchOnAdd,
+    String? minimumAvailability,
+    @Default(0) int missingMovies,
   }) = _RadarrCollection;
 
   factory RadarrCollection.fromJson(Map<String, dynamic> json) =>

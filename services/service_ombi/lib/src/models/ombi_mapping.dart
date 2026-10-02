@@ -5,7 +5,7 @@ const String _tmdbImages = 'https://image.tmdb.org/t/p/';
 
 /// A poster URL for a path Ombi stored. TMDB paths arrive relative
 /// (`/abc.jpg`); a source that stores a full URL has it used as it is.
-String? ombiPosterUrl(String? path, {String size = 'w185'}) {
+String? ombiPosterUrl(String? path, {String size = 'w342'}) {
   final String? p = _text(path);
   if (p == null) {
     return null;
@@ -16,15 +16,21 @@ String? ombiPosterUrl(String? path, {String size = 'w185'}) {
   return '$_tmdbImages$size${p.startsWith('/') ? p : '/$p'}';
 }
 
+/// A backdrop URL for a path Ombi stored, wide enough to head a sheet.
+String? ombiBackdropUrl(String? path) => ombiPosterUrl(path, size: 'w780');
+
 OmbiRequest ombiRequestFromMovie(MovieRequests m) => OmbiRequest(
       id: m.id ?? 0,
       kind: OmbiMediaKind.movie,
       title: _text(m.title) ?? 'Untitled movie',
       status: _status(m.approved, m.available, m.denied),
+      tmdbId: m.theMovieDbId,
       year: _year(m.releaseDate),
       posterUrl: ombiPosterUrl(m.posterPath),
+      backdropUrl: ombiBackdropUrl(m.background),
+      overview: _text(m.overview),
       requestedBy: _requester(m.requestedByAlias, m.requestedUser),
-      requestedAt: _date(m.requestedDate),
+      requestedAt: _utcDate(m.requestedDate),
       deniedReason: _text(m.deniedReason),
       denied: m.denied ?? false,
       has4K: m.has4KRequest ?? false,
@@ -34,23 +40,36 @@ OmbiRequest ombiRequestFromMovie(MovieRequests m) => OmbiRequest(
 /// Its title, poster and year belong to the parent show.
 OmbiRequest ombiRequestFromChild(ChildRequests c) {
   final TvRequests? show = c.parentRequest;
+  final List<SeasonRequests> seasons =
+      c.seasonRequests ?? const <SeasonRequests>[];
+  final List<EpisodeRequests> episodes = <EpisodeRequests>[
+    for (final SeasonRequests season in seasons) ...?season.episodes,
+  ];
+  final int episodesIn =
+      episodes.where((EpisodeRequests e) => e.available ?? false).length;
   return OmbiRequest(
     id: c.id ?? 0,
     kind: OmbiMediaKind.tv,
     title: _text(show?.title) ?? _text(c.title) ?? 'Untitled show',
     status: _status(c.approved, c.available, c.denied),
+    // The show's TMDB id. Its TVDB one is kept beside it and opens nothing.
+    tmdbId: show?.externalProviderId,
     year: _year(show?.releaseDate) ?? _year(c.releaseYear),
     posterUrl: ombiPosterUrl(show?.posterPath),
+    backdropUrl: ombiBackdropUrl(show?.background),
+    overview: _text(show?.overview),
     requestedBy: _requester(c.requestedByAlias, c.requestedUser),
-    requestedAt: _date(c.requestedDate),
+    requestedAt: _utcDate(c.requestedDate),
     deniedReason: _text(c.deniedReason),
     denied: c.denied ?? false,
     // Ombi's own rule for its cards: any requested episode being in.
-    partlyAvailable: <EpisodeRequests>[
-      for (final SeasonRequests season
-          in c.seasonRequests ?? const <SeasonRequests>[])
-        ...?season.episodes,
-    ].any((EpisodeRequests e) => e.available ?? false),
+    partlyAvailable: episodesIn > 0,
+    seasons: <int>[
+      for (final SeasonRequests season in seasons)
+        if (season.seasonNumber case final int number) number,
+    ]..sort(),
+    episodes: episodes.length,
+    episodesAvailable: episodesIn,
   );
 }
 
@@ -112,7 +131,10 @@ OmbiSearchHit? ombiSearchHitFromMovie(SearchMovieViewModel m) {
     tmdbId: id,
     kind: OmbiMediaKind.movie,
     title: title,
+    year: _year(m.releaseDate),
+    rating: _rating(m.voteAverage),
     posterUrl: ombiPosterUrl(m.posterPath),
+    backdropUrl: ombiBackdropUrl(m.backdropPath),
     overview: _text(m.overview),
     requested: m.requested ?? false,
     available: m.available ?? false,
@@ -131,7 +153,11 @@ OmbiSearchHit? ombiSearchHitFromShow(SearchTvShowViewModel t) {
     tmdbId: id,
     kind: OmbiMediaKind.tv,
     title: title,
+    year: _year(t.firstAired),
+    // Shows carry their numbers as text.
+    rating: _rating(double.tryParse(t.rating ?? '')),
     posterUrl: ombiPosterUrl(t.posterPath),
+    backdropUrl: ombiBackdropUrl(t.backdropPath ?? t.banner),
     overview: _text(t.overview),
     requested: t.requested ?? false,
     available: t.available ?? false,
@@ -145,6 +171,15 @@ OmbiTitleState ombiTitleStateFromMovie(MovieFullInfoViewModel m) =>
       available: m.available ?? false,
       denied: m.denied ?? false,
       deniedReason: _text(m.deniedReason),
+      posterUrl: ombiPosterUrl(m.posterPath),
+      backdropUrl: ombiBackdropUrl(m.backdropPath),
+      tagline: _text(m.tagline),
+      overview: _text(m.overview),
+      year: _year(m.releaseDate),
+      runtimeMinutes: _positive(m.runtime),
+      rating: _rating(m.voteAverage),
+      genres: _genres(m.genres),
+      releaseStatus: _text(m.status),
     );
 
 OmbiTitleState ombiTitleStateFromTv(SearchFullInfoTvShowViewModel t) =>
@@ -155,6 +190,18 @@ OmbiTitleState ombiTitleStateFromTv(SearchFullInfoTvShowViewModel t) =>
       partlyAvailable: t.partlyAvailable ?? false,
       denied: t.denied ?? false,
       deniedReason: _text(t.deniedReason),
+      posterUrl: ombiPosterUrl(t.images?.original),
+      // A show's backdrop is its banner.
+      backdropUrl: ombiBackdropUrl(t.banner),
+      tagline: _text(t.tagline),
+      overview: _text(t.overview),
+      year: _year(t.firstAired),
+      // Shows carry their numbers as text, and a missing runtime as "0".
+      runtimeMinutes: _positive(int.tryParse(t.runtime ?? '')),
+      rating: _rating(double.tryParse(t.rating ?? '')),
+      genres: _genres(t.genres),
+      releaseStatus: _text(t.status),
+      network: _text(t.network?.name),
     );
 
 /// The order Ombi's own request status takes, which its request list shows:
@@ -195,5 +242,39 @@ String? _text(String? s) {
 }
 
 DateTime? _date(String? s) => s == null ? null : DateTime.tryParse(s);
+
+/// When a movie or TV request was made.
+///
+/// Ombi stores these in UTC and sends them with no zone on them, which a
+/// plain parse reads as this phone's local time: every request would then
+/// look older, or newer, by the phone's distance from UTC. A date that does
+/// name its zone is left as it is. Albums are not read this way, since Ombi
+/// stamps those in its own local time.
+DateTime? _utcDate(String? s) {
+  final DateTime? d = _date(s);
+  if (d == null || d.isUtc) {
+    return d;
+  }
+  return DateTime.utc(
+    d.year,
+    d.month,
+    d.day,
+    d.hour,
+    d.minute,
+    d.second,
+    d.millisecond,
+    d.microsecond,
+  );
+}
+
+/// A score worth showing. TheMovieDB reports an unrated title as zero.
+double? _rating(double? value) => (value == null || value <= 0) ? null : value;
+
+int? _positive(int? value) => (value == null || value <= 0) ? null : value;
+
+List<String> _genres(List<GenreViewModel>? genres) => <String>[
+      for (final GenreViewModel g in genres ?? const <GenreViewModel>[])
+        if (_text(g.name) case final String name) name,
+    ];
 
 int? _year(String? s) => _date(s)?.year;

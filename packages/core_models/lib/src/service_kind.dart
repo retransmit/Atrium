@@ -103,9 +103,6 @@ extension ServiceKindX on ServiceKind {
   bool get isBeta => switch (this) {
         ServiceKind.deluge ||
         ServiceKind.rtorrent ||
-        ServiceKind.lidarr ||
-        ServiceKind.unraid ||
-        ServiceKind.navidrome ||
         ServiceKind.ombi =>
           true,
         _ => false,

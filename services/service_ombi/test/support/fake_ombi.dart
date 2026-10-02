@@ -27,6 +27,31 @@ class FakeOmbi implements HttpClientAdapter {
     _statuses['$method $path'] = status;
   }
 
+  /// Answers the five one-row list routes the filter chips are counted from,
+  /// for [kind]'s route segment: `movie`, `tv` or `album`.
+  void onCounts(
+    String kind, {
+    int all = 0,
+    int pending = 0,
+    int processing = 0,
+    int available = 0,
+    int denied = 0,
+  }) {
+    for (final (String filter, int total) in <(String, int)>[
+      ('', all),
+      ('pending/', pending),
+      ('processing/', processing),
+      ('available/', available),
+      ('denied/', denied),
+    ]) {
+      on(
+        'GET',
+        '/api/v2/Requests/$kind/${filter}1/0/requestedDate/desc',
+        <String, dynamic>{'collection': <Object>[], 'total': total},
+      );
+    }
+  }
+
   /// Makes the next [times] requests to `method path` fail with [status]
   /// before the configured answer comes back, the way a flaky upstream does.
   void failNext(String method, String path, int times, {int status = 500}) {

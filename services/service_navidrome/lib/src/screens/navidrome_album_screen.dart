@@ -40,6 +40,18 @@ String _formatFileSize(int? bytes) {
   return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
 }
 
+/// Whether the server holds a picture of [artist].
+///
+/// Navidrome names one in `artistImageUrl` or in the artist info only when
+/// it has one; an artist without is given neither.
+bool _artistHasPicture(NavidromeArtistDetail? artist) {
+  bool named(String? url) => url != null && url.trim().isNotEmpty;
+  return artist != null &&
+      (named(artist.artist.artistImageUrl) ||
+          named(artist.info?.largeImageUrl) ||
+          named(artist.info?.mediumImageUrl));
+}
+
 class NavidromeAlbumScreen extends ConsumerWidget {
   const NavidromeAlbumScreen({
     required this.instance,
@@ -423,6 +435,40 @@ class NavidromeAlbumScreen extends ConsumerWidget {
           final String? coverUrl =
               client?.getCoverArtUrl(album.coverArt, size: 1000);
           final double bannerHeight = MediaQuery.sizeOf(context).height * 0.48;
+          // The banner is the artist and the square beside the title is the
+          // album, so the cover is not shown twice. Navidrome answers for an
+          // artist with no picture with a stand-in image of its own, a white
+          // star, and a good status, so asking for the picture cannot tell
+          // the two apart. The artist's own record can: it names a picture
+          // only when there is one. Until that is known, and for an artist
+          // without one, the banner is the album's cover.
+          final String? artistId = album.artistId;
+          final NavidromeArtistDetail? artist = artistId == null
+              ? null
+              : ref
+                  .watch(navidromeArtistDetailProvider((instance, artistId)))
+                  .value;
+          final String? bannerUrl = _artistHasPicture(artist)
+              ? client?.getCoverArtUrl('ar-$artistId', size: 1000)
+              : coverUrl;
+          final Widget noBanner = Container(
+            color: cs.surfaceContainerHighest,
+            child: Icon(
+              Icons.album_rounded,
+              size: 72,
+              color: cs.onSurfaceVariant.withValues(alpha: 0.5),
+            ),
+          );
+          final Widget noCover = Container(
+            width: 140,
+            height: 140,
+            color: cs.surfaceContainerHighest,
+            child: Icon(
+              Icons.album_rounded,
+              size: 48,
+              color: cs.onSurfaceVariant.withValues(alpha: 0.5),
+            ),
+          );
 
           return RefreshIndicator(
             onRefresh: () async {
@@ -437,32 +483,16 @@ class NavidromeAlbumScreen extends ConsumerWidget {
                   height: bannerHeight,
                   child: Stack(
                     children: <Widget>[
-                      // 1. Background cover image or placeholder
+                      // 1. Background: the artist, else the cover
                       Positioned.fill(
-                        child: coverUrl != null
+                        child: bannerUrl != null
                             ? AtriumNetworkImage(
-                                key: ValueKey<String>(coverUrl),
-                                imageUrl: coverUrl,
+                                key: ValueKey<String>(bannerUrl),
+                                imageUrl: bannerUrl,
                                 fit: BoxFit.cover,
-                                errorWidget: (_, __, ___) => Container(
-                                  color: cs.surfaceContainerHighest,
-                                  child: Icon(
-                                    Icons.album_rounded,
-                                    size: 72,
-                                    color: cs.onSurfaceVariant
-                                        .withValues(alpha: 0.5),
-                                  ),
-                                ),
+                                errorWidget: (_, __, ___) => noBanner,
                               )
-                            : Container(
-                                color: cs.surfaceContainerHighest,
-                                child: Icon(
-                                  Icons.album_rounded,
-                                  size: 72,
-                                  color: cs.onSurfaceVariant
-                                      .withValues(alpha: 0.5),
-                                ),
-                              ),
+                            : noBanner,
                       ),
                       // 2. Dim overlay for readability
                       Positioned.fill(
@@ -493,103 +523,143 @@ class NavidromeAlbumScreen extends ConsumerWidget {
                         left: Insets.lg,
                         right: Insets.lg,
                         bottom: Insets.sm,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
                           children: <Widget>[
-                            Text(
-                              album.name,
-                              style: theme.textTheme.headlineMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                shadows: const <Shadow>[
-                                  Shadow(
-                                    color: Colors.black87,
-                                    offset: Offset(0, 1.5),
-                                    blurRadius: 6,
-                                  ),
-                                ],
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
+                            ClipRRect(
+                              borderRadius: Radii.card,
+                              child: coverUrl != null
+                                  ? AtriumNetworkImage(
+                                      imageUrl: coverUrl,
+                                      width: 140,
+                                      height: 140,
+                                      fit: BoxFit.contain,
+                                      // Without one a cover that fails to
+                                      // load is an empty square that still
+                                      // pushes the title aside.
+                                      errorWidget: (_, __, ___) => noCover,
+                                    )
+                                  : noCover,
                             ),
-                            const SizedBox(height: 6),
-                            GestureDetector(
-                              onTap: album.artistId != null
-                                  ? () {
-                                      pushScreen<void>(
-                                        context,
-                                        NavidromeArtistScreen(
-                                          instance: instance,
-                                          artistId: album.artistId!,
-                                          initialArtistName: album.artist,
-                                        ),
-                                      );
-                                    }
-                                  : null,
-                              child: Row(
+                            const SizedBox(width: Insets.lg),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisSize: MainAxisSize.min,
                                 children: <Widget>[
-                                  Flexible(
+                                  // The whole title on a tap. A
+                                  // tooltip, since a snackbar queues one
+                                  // per tap and holds up real messages.
+                                  Tooltip(
+                                    message: album.name,
+                                    triggerMode: TooltipTriggerMode.tap,
                                     child: Text(
-                                      album.artist,
-                                      style:
-                                          theme.textTheme.titleMedium?.copyWith(
-                                        color: cs.primary,
-                                        fontWeight: FontWeight.w600,
+                                      album.name,
+                                      style: theme.textTheme.headlineMedium?.copyWith(
+                                        fontWeight: FontWeight.bold,
                                         shadows: const <Shadow>[
                                           Shadow(
                                             color: Colors.black87,
-                                            offset: Offset(0, 1),
-                                            blurRadius: 4,
+                                            offset: Offset(0, 1.5),
+                                            blurRadius: 6,
                                           ),
                                         ],
                                       ),
-                                      maxLines: 1,
+                                      maxLines: 3,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  if (album.artistId != null) ...<Widget>[
-                                    const SizedBox(width: 4),
-                                    Icon(
-                                      Icons.chevron_right_rounded,
-                                      size: 18,
-                                      color: cs.primary,
+                                  const SizedBox(height: 6),
+                                  GestureDetector(
+                                    onTap: album.artistId != null
+                                        ? () {
+                                            pushScreen<void>(
+                                              context,
+                                              NavidromeArtistScreen(
+                                                instance: instance,
+                                                artistId: album.artistId!,
+                                                initialArtistName: album.artist,
+                                              ),
+                                            );
+                                          }
+                                        : null,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: <Widget>[
+                                        Flexible(
+                                          child: Text(
+                                            album.artist,
+                                            style:
+                                                theme.textTheme.titleMedium?.copyWith(
+                                              color: cs.primary,
+                                              fontWeight: FontWeight.w600,
+                                              shadows: const <Shadow>[
+                                                Shadow(
+                                                  color: Colors.black87,
+                                                  offset: Offset(0, 1),
+                                                  blurRadius: 4,
+                                                ),
+                                              ],
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        if (album.artistId != null) ...<Widget>[
+                                          const SizedBox(width: 4),
+                                          Icon(
+                                            Icons.chevron_right_rounded,
+                                            size: 18,
+                                            color: cs.primary,
+                                          ),
+                                        ],
+                                      ],
                                     ),
-                                  ],
+                                  ),
                                 ],
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              children: <Widget>[
-                                if (album.year != null)
-                                  _AlbumBadge(
-                                    icon: Icons.calendar_today_rounded,
-                                    label: '${album.year}',
-                                  ),
-                                if (album.genre != null &&
-                                    album.genre!.isNotEmpty)
-                                  _AlbumBadge(
-                                    icon: Icons.music_note_rounded,
-                                    label: album.genre!,
-                                  ),
-                                _AlbumBadge(
-                                  icon: Icons.queue_music_rounded,
-                                  label:
-                                      '${detail.songs.length} ${detail.songs.length == 1 ? 'Track' : 'Tracks'}',
-                                ),
-                                if (album.duration > 0)
-                                  _AlbumBadge(
-                                    icon: Icons.schedule_rounded,
-                                    label: _formatAlbumDuration(album.duration),
-                                  ),
-                              ],
                             ),
                           ],
                         ),
                       ),
+                    ],
+                  ),
+                ),
+              ),
+              // The facts as badges under the header: one line or two,
+              // which leaves the tracklist the rest of the screen.
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(
+                  Insets.lg,
+                  Insets.sm,
+                  Insets.lg,
+                  Insets.xs,
+                ),
+                sliver: SliverToBoxAdapter(
+                  child: Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: <Widget>[
+                      if (album.year != null)
+                        _AlbumBadge(
+                          icon: Icons.calendar_today_rounded,
+                          label: '${album.year}',
+                        ),
+                      if (album.genre != null && album.genre!.isNotEmpty)
+                        _AlbumBadge(
+                          icon: Icons.music_note_rounded,
+                          label: album.genre!,
+                        ),
+                      _AlbumBadge(
+                        icon: Icons.queue_music_rounded,
+                        label:
+                            '${detail.songs.length} ${detail.songs.length == 1 ? 'Track' : 'Tracks'}',
+                      ),
+                      if (album.duration > 0)
+                        _AlbumBadge(
+                          icon: Icons.schedule_rounded,
+                          label: _formatAlbumDuration(album.duration),
+                        ),
                     ],
                   ),
                 ),

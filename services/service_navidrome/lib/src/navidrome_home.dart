@@ -15,18 +15,6 @@ import 'widgets/navidrome_artists_tab.dart';
 import 'widgets/navidrome_overview_tab.dart';
 import 'widgets/navidrome_playlist_dialogs.dart';
 
-String _formatDuration(int seconds) {
-  if (seconds <= 0) return '0:00';
-  final int m = seconds ~/ 60;
-  final int s = seconds % 60;
-  if (m >= 60) {
-    final int h = m ~/ 60;
-    final int remM = m % 60;
-    return '$h:${remM.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
-  }
-  return '$m:${s.toString().padLeft(2, '0')}';
-}
-
 /// Filter categories for the Albums tab.
 enum NavidromeAlbumCategory {
   all('All', 'alphabeticalByName'),
@@ -154,8 +142,6 @@ class _NavidromeHomeState extends ConsumerState<NavidromeHome> {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(width: 8),
-            const BetaBadge(),
           ],
         ),
         actions: <Widget>[
@@ -322,6 +308,35 @@ class _NavidromeHomeState extends ConsumerState<NavidromeHome> {
     );
   }
 
+  /// The grid the albums and the playlists share: two columns of square
+  /// covers, each over a line of title and a line of detail.
+  ///
+  /// A cell is as tall as its cover and those two lines at the text size in
+  /// use. A fixed shape left the text no room once the system font was set
+  /// larger, and the second line ran out of the cell.
+  SliverGridDelegate _coverGrid(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final TextScaler scaler = MediaQuery.textScalerOf(context);
+    double line(TextStyle? style, double size, double height) =>
+        scaler.scale(style?.fontSize ?? size) * (style?.height ?? height);
+
+    final double cover =
+        (MediaQuery.sizeOf(context).width - Insets.md * 2 - Insets.sm) / 2;
+    return SliverGridDelegateWithFixedCrossAxisCount(
+      crossAxisCount: 2,
+      crossAxisSpacing: Insets.sm,
+      mainAxisSpacing: Insets.sm,
+      mainAxisExtent: cover +
+          _coverGap +
+          line(theme.textTheme.titleSmall, 14, 1.43) +
+          line(theme.textTheme.bodySmall, 12, 1.33) +
+          Insets.md,
+    );
+  }
+
+  /// The space between a cover and the title under it.
+  static const double _coverGap = 6;
+
   Widget _buildAlbumsTab(
     ThemeData theme,
     ColorScheme cs,
@@ -374,12 +389,7 @@ class _NavidromeHomeState extends ConsumerState<NavidromeHome> {
                 }
                 return GridView.builder(
                   padding: const EdgeInsets.all(Insets.md),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 0.74,
-                    crossAxisSpacing: Insets.sm,
-                    mainAxisSpacing: Insets.sm,
-                  ),
+                  gridDelegate: _coverGrid(context),
                   itemCount: albums.length,
                   itemBuilder: (BuildContext ctx, int index) {
                     final NavidromeAlbum album = albums[index];
@@ -427,7 +437,7 @@ class _NavidromeHomeState extends ConsumerState<NavidromeHome> {
                                     ),
                             ),
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: _coverGap),
                           Text(
                             album.name,
                             maxLines: 1,
@@ -460,7 +470,6 @@ class _NavidromeHomeState extends ConsumerState<NavidromeHome> {
       ],
     );
   }
-
 
   Widget _buildPlaylistsTab(
     ThemeData theme,
@@ -515,54 +524,24 @@ class _NavidromeHomeState extends ConsumerState<NavidromeHome> {
             );
           }
 
-          return ListView.separated(
-            padding: const EdgeInsets.symmetric(vertical: Insets.sm),
+          return GridView.builder(
+            // The bottom keeps the last row clear of the add button, which
+            // floats over that corner.
+            padding: const EdgeInsets.fromLTRB(
+              Insets.md,
+              Insets.md,
+              Insets.md,
+              88,
+            ),
+            gridDelegate: _coverGrid(context),
             itemCount: playlists.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
             itemBuilder: (BuildContext ctx, int index) {
               final NavidromePlaylist pl = playlists[index];
               final String? coverUrl =
-                  client?.getCoverArtUrl(pl.coverArt, size: 160);
+                  client?.getCoverArtUrl(pl.coverArt, size: 300);
 
-              return ListTile(
-                leading: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    color: cs.primaryContainer,
-                    child: coverUrl != null
-                        ? AtriumNetworkImage(
-                            imageUrl: coverUrl,
-                            fit: BoxFit.cover,
-                            errorWidget: (_, __, ___) => Icon(
-                              Icons.queue_music_rounded,
-                              size: 24,
-                              color: cs.onPrimaryContainer,
-                            ),
-                          )
-                        : Icon(
-                            Icons.queue_music_rounded,
-                            size: 24,
-                            color: cs.onPrimaryContainer,
-                          ),
-                  ),
-                ),
-                title: Text(
-                  pl.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                subtitle: Text(
-                  '${pl.songCount} songs • ${_formatDuration(pl.duration)}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                  ),
-                ),
-                trailing: const Icon(Icons.chevron_right_rounded, size: 20),
+              return InkWell(
+                borderRadius: BorderRadius.circular(12),
                 onTap: () {
                   pushScreen<void>(
                     context,
@@ -573,6 +552,53 @@ class _NavidromeHomeState extends ConsumerState<NavidromeHome> {
                     ),
                   );
                 },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    AspectRatio(
+                      aspectRatio: 1.0,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: coverUrl != null
+                            ? AtriumNetworkImage(
+                                imageUrl: coverUrl,
+                                fit: BoxFit.cover,
+                                errorWidget: (_, __, ___) => Container(
+                                  color: cs.surfaceContainerHighest,
+                                  child: const Icon(
+                                    Icons.queue_music_rounded,
+                                    size: 40,
+                                  ),
+                                ),
+                              )
+                            : Container(
+                                color: cs.surfaceContainerHighest,
+                                child: const Icon(
+                                  Icons.queue_music_rounded,
+                                  size: 40,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: _coverGap),
+                    Text(
+                      pl.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      pl.songCount == 1 ? '1 song' : '${pl.songCount} songs',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
               );
             },
           );

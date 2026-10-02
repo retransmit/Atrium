@@ -1,0 +1,12 @@
+Radarr monitors collections: adding a movie can monitor its whole collection,
+and the movie screen has a button for it.
+
+qBittorrent marks torrents as private or public, in the list on 5.0 and later
+and on the torrent screen from 4.5.1. A profile can be renamed from its card.
+
+Ombi has a new look, with Requests and Discover tabs, counts on the filters and
+richer cards. Navidrome is out of beta, with playlists as a grid of covers and
+the artist across an album's banner. Lidarr and Unraid are out of beta too.
+
+Fixed: Ombi request times were off by the timezone, Navidrome artist headers
+fit the server's longer group names, and its cover grids fit at large text sizes.

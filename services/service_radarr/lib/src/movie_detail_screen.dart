@@ -131,6 +131,13 @@ class _MovieDetailBodyState extends ConsumerState<_MovieDetailBody> {
     ref.invalidate(radarrMovieByIdProvider((widget.instance, widget.movie.id)));
     ref.invalidate(radarrMoviesProvider(widget.instance));
     ref.invalidate(radarrQueueProvider(widget.instance));
+    if (widget.movie.collection?.tmdbId != null) {
+      ref.invalidate(
+        radarrCollectionByTmdbIdProvider(
+          (widget.instance, widget.movie.collection!.tmdbId!),
+        ),
+      );
+    }
   }
 
   @override
@@ -345,6 +352,15 @@ class _MovieDetailBodyState extends ConsumerState<_MovieDetailBody> {
                     widget.movie.overview!.isNotEmpty) ...[
                   const SizedBox(height: Insets.lg),
                   _OverviewSection(overview: widget.movie.overview!),
+                ],
+                if (widget.movie.collection != null &&
+                    (widget.movie.collection?.tmdbId ?? 0) > 0) ...[
+                  const SizedBox(height: Insets.lg),
+                  _CollectionSection(
+                    instance: widget.instance,
+                    movie: widget.movie,
+                    onRefreshed: _invalidateProviders,
+                  ),
                 ],
                 const SizedBox(height: Insets.lg),
                 _FileSection(movie: widget.movie),
@@ -623,6 +639,190 @@ class _OverviewSection extends StatelessWidget {
             Text(
               overview,
               style: theme.textTheme.bodyMedium?.copyWith(height: 1.45),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CollectionSection extends ConsumerStatefulWidget {
+  const _CollectionSection({
+    required this.instance,
+    required this.movie,
+    required this.onRefreshed,
+  });
+
+  final Instance instance;
+  final RadarrMovie movie;
+  final VoidCallback onRefreshed;
+
+  @override
+  ConsumerState<_CollectionSection> createState() => _CollectionSectionState();
+}
+
+class _CollectionSectionState extends ConsumerState<_CollectionSection> {
+  bool _toggling = false;
+
+  Future<void> _toggleMonitoring(RadarrCollection collection) async {
+    if (collection.id <= 0 || _toggling) return;
+
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    setState(() => _toggling = true);
+
+    try {
+      final RadarrApi api =
+          await ref.read(radarrApiProvider(widget.instance).future);
+      final bool newMonitored = !collection.monitored;
+      await api.updateCollectionMonitoring(
+        collection.id,
+        monitored: newMonitored,
+      );
+
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            newMonitored
+                ? 'Collection "${collection.title ?? 'Collection'}" monitored.'
+                : 'Collection "${collection.title ?? 'Collection'}" unmonitored.',
+          ),
+        ),
+      );
+      ref.invalidate(
+        radarrCollectionByTmdbIdProvider(
+          (widget.instance, widget.movie.collection!.tmdbId!),
+        ),
+      );
+      widget.onRefreshed();
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Failed to update collection monitoring: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _toggling = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final int tmdbId = widget.movie.collection!.tmdbId!;
+    final AsyncValue<RadarrCollection?> collectionAsync =
+        ref.watch(radarrCollectionByTmdbIdProvider((widget.instance, tmdbId)));
+
+    final RadarrCollection? collection = collectionAsync.value;
+    final String collectionTitle = collection?.title ??
+        widget.movie.collection?.title ??
+        'Collection';
+    final bool isMonitored = collection?.monitored ?? false;
+
+    return Card(
+      margin: EdgeInsets.zero,
+      color: theme.colorScheme.surfaceContainerHigh,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 0,
+      child: Padding(
+        padding: const EdgeInsets.all(Insets.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Icon(
+                  Icons.collections_bookmark_outlined,
+                  size: 20,
+                  color: cs.primary,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Collection',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: Insets.md),
+            Text(
+              collectionTitle,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            if (collection?.overview != null &&
+                collection!.overview!.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                collection.overview!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            const SizedBox(height: Insets.md),
+            SizedBox(
+              width: double.infinity,
+              child: collectionAsync.isLoading && collection == null
+                  ? const Center(
+                      child: SizedBox(
+                        height: 36,
+                        width: 36,
+                        child: ExpressiveProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : _toggling
+                      ? const Center(
+                          child: SizedBox(
+                            height: 36,
+                            width: 36,
+                            child: ExpressiveProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : isMonitored
+                          ? FilledButton.tonalIcon(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: cs.primaryContainer
+                                    .withValues(alpha: 0.8),
+                                foregroundColor: cs.onPrimaryContainer,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: const Icon(Icons.bookmark, size: 18),
+                              label: const Text(
+                                'Collection monitored',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              onPressed:
+                                  (collection == null || collection.id <= 0)
+                                      ? null
+                                      : () => _toggleMonitoring(collection),
+                            )
+                          : OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 10),
+                                side: BorderSide(color: cs.outline),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon:
+                                  const Icon(Icons.bookmark_border, size: 18),
+                              label: const Text('Collection unmonitored'),
+                              onPressed:
+                                  (collection == null || collection.id <= 0)
+                                      ? null
+                                      : () => _toggleMonitoring(collection),
+                            ),
             ),
           ],
         ),

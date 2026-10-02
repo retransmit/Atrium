@@ -7,8 +7,9 @@ import 'models/ombi_models.dart';
 import 'ombi_failure.dart';
 import 'ombi_providers.dart';
 import 'ombi_request_sheet.dart';
+import 'widgets/ombi_visuals.dart';
 
-/// Searches Ombi for movies and shows; tapping one opens its request sheet.
+/// Searches Ombi for movies and shows; tapping one opens its title sheet.
 class OmbiSearchDelegate extends SearchDelegate<void> {
   OmbiSearchDelegate({required this.instance})
       : super(searchFieldLabel: 'Search movies and shows');
@@ -55,7 +56,10 @@ class _OmbiSearchResults extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final String q = query.trim();
     if (q.length < 2) {
-      return const Center(child: Text('Search for a movie or a show.'));
+      return const EmptyView(
+        icon: Icons.search,
+        title: 'Search for a movie or a show.',
+      );
     }
     final OmbiSearchKey key = (instance: instance, query: q);
     return ref.watch(ombiSearchProvider(key)).when(
@@ -73,39 +77,93 @@ class _OmbiSearchResults extends ConsumerWidget {
                 message: 'Nothing on Ombi matches "$q".',
               );
             }
-            return ListView.builder(
+            return ListView.separated(
+              padding: const EdgeInsets.fromLTRB(
+                Insets.lg,
+                Insets.sm,
+                Insets.lg,
+                Insets.xl,
+              ),
               itemCount: hits.length,
-              itemBuilder: (BuildContext context, int i) {
-                final OmbiSearchHit hit = hits[i];
-                final String? poster = hit.posterUrl;
-                return ListTile(
-                  leading: ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: SizedBox(
-                      width: 40,
-                      height: 60,
-                      child: poster == null
-                          ? const Icon(Icons.image_not_supported_outlined)
-                          : AtriumNetworkImage(
-                              imageUrl: poster,
-                              fit: BoxFit.cover,
-                              memCacheWidth: 120,
-                            ),
-                    ),
-                  ),
-                  title: Text(hit.title),
-                  subtitle: Text(
-                    hit.kind == OmbiMediaKind.movie ? 'Movie' : 'TV show',
-                  ),
-                  onTap: () => showOmbiRequestSheet(
-                    context: context,
-                    instance: instance,
-                    hit: hit,
-                  ),
-                );
-              },
+              separatorBuilder: (BuildContext _, int __) =>
+                  const SizedBox(height: Insets.md),
+              itemBuilder: (BuildContext context, int i) => _ResultCard(
+                hit: hits[i],
+                onTap: () => showOmbiRequestSheet(
+                  context: context,
+                  instance: instance,
+                  hit: hits[i],
+                ),
+              ),
             );
           },
         );
+  }
+}
+
+/// One result: its poster, title, whether it is a movie or a show, and the
+/// opening of its overview, which is what tells two films of one name apart.
+class _ResultCard extends StatelessWidget {
+  const _ResultCard({required this.hit, required this.onTap});
+
+  final OmbiSearchHit hit;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final String? overview = hit.overview;
+
+    return Material(
+      color: cs.surfaceContainerHigh,
+      borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(Insets.md),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              OmbiPoster(url: hit.posterUrl, kind: hit.kind, width: 60),
+              const SizedBox(width: Insets.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      hit.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: Insets.xs),
+                    OmbiPill(
+                      label:
+                          hit.kind == OmbiMediaKind.movie ? 'Movie' : 'TV show',
+                      icon: ombiKindIcon(hit.kind),
+                      foreground: cs.onSurfaceVariant,
+                      background: cs.surfaceContainerHighest,
+                    ),
+                    if (overview != null) ...<Widget>[
+                      const SizedBox(height: Insets.sm),
+                      Text(
+                        overview,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(color: cs.onSurfaceVariant),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

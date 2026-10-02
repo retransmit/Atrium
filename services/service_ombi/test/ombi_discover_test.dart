@@ -16,9 +16,10 @@ void main() {
   setUp(() {
     fake = FakeOmbi()
       ..on('GET', '/api/v1/Lidarr/enabled', false)
+      ..onCounts('movie')
       ..on(
         'GET',
-        '/api/v2/Requests/movie/pending/25/0/requestedDate/desc',
+        '/api/v2/Requests/movie/25/0/requestedDate/desc',
         pageJson(<Map<String, dynamic>>[]),
       )
       ..on('GET', '/api/v2/Search/movie/popular/0/20', <Object>[
@@ -47,14 +48,11 @@ void main() {
           instanceDioProvider(ombiTestInstance)
               .overrideWith((Ref ref) async => fakeOmbiDio(fake)),
         ],
-        child: const MaterialApp(
-          home: Scaffold(body: OmbiHome(instance: ombiTestInstance)),
-        ),
+        child: const MaterialApp(home: OmbiHome(instance: ombiTestInstance)),
       ),
     );
-    await settle(tester);
+    await settle(tester, frames: 10);
     await tester.tap(find.text('Discover'));
-    // The tab slides over for 300 ms, and a page ignores taps while it moves.
     await settle(tester, frames: 12);
   }
 
@@ -70,6 +68,49 @@ void main() {
     expect(find.text('The Scandal'), findsOneWidget);
     expect(find.text('Trending TV'), findsOneWidget);
     expect(find.text('Hot'), findsOneWidget);
+  });
+
+  testWidgets('a card shows the year and the score',
+      (WidgetTester tester) async {
+    fake
+      ..on('GET', '/api/v2/Search/movie/upcoming/0/20', <Object>[])
+      ..on('GET', '/api/v2/Search/tv/popular/0/20', <Object>[])
+      ..on('GET', '/api/v2/Search/tv/trending/0/20', <Object>[]);
+    await openDiscover(tester);
+
+    // Released 2026-07-31 and scored 7.9 on TheMovieDB.
+    expect(find.text('2026'), findsOneWidget);
+    expect(find.text('7.9'), findsOneWidget);
+  });
+
+  testWidgets('a title with no score yet shows none',
+      (WidgetTester tester) async {
+    fake
+      ..on('GET', '/api/v2/Search/movie/popular/0/20', <Object>[])
+      ..on('GET', '/api/v2/Search/movie/upcoming/0/20', <Object>[])
+      ..on('GET', '/api/v2/Search/tv/popular/0/20', <Object>[
+        discoverShowJson(rating: '0'),
+      ])
+      ..on('GET', '/api/v2/Search/tv/trending/0/20', <Object>[]);
+    await openDiscover(tester);
+
+    expect(find.text('The Scandal'), findsOneWidget);
+    expect(find.text('0.0'), findsNothing);
+  });
+
+  testWidgets('a card says in words when a title is requested or available',
+      (WidgetTester tester) async {
+    fake
+      ..on('GET', '/api/v2/Search/movie/popular/0/20', <Object>[
+        discoverMovieJson(requested: true),
+      ])
+      ..on('GET', '/api/v2/Search/movie/upcoming/0/20', <Object>[
+        discoverMovieJson(id: 1, title: 'Soon', available: true),
+      ]);
+    await openDiscover(tester);
+
+    expect(find.text('Requested'), findsOneWidget);
+    expect(find.text('Available'), findsOneWidget);
   });
 
   testWidgets('a poster opens the request sheet', (WidgetTester tester) async {

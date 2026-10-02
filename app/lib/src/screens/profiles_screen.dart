@@ -4,7 +4,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Manage profiles: switch the active profile, create, or delete one.
+/// Manage profiles: switch the active profile, create, rename, or delete one.
 ///
 /// A profile bundles a set of instances. Most users keep one; power users
 /// split "Home" vs "Friend's place" etc.
@@ -20,7 +20,7 @@ class ProfilesScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Profiles')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _createDialog(context, ref),
+        onPressed: () => _create(context, ref),
         icon: const Icon(Icons.add),
         label: const Text('New profile'),
       ),
@@ -51,13 +51,29 @@ class ProfilesScreen extends ConsumerWidget {
                         '${p.instances.length} '
                         'service${p.instances.length == 1 ? '' : 's'}',
                       ),
-                      secondary: IconButton(
-                        icon: const Icon(Icons.delete_outline),
-                        onPressed: list.length == 1
-                            ? null
-                            : () => ref
-                                .read(profileListProvider.notifier)
-                                .deleteProfile(p.id),
+                      secondary: PopupMenuButton<_ProfileAction>(
+                        tooltip: 'Profile actions',
+                        onSelected: (_ProfileAction action) =>
+                            switch (action) {
+                          _ProfileAction.rename => _rename(context, ref, p),
+                          _ProfileAction.delete => ref
+                              .read(profileListProvider.notifier)
+                              .deleteProfile(p.id),
+                        },
+                        itemBuilder: (BuildContext _) =>
+                            <PopupMenuEntry<_ProfileAction>>[
+                          const PopupMenuItem<_ProfileAction>(
+                            value: _ProfileAction.rename,
+                            child: Text('Rename'),
+                          ),
+                          // The last profile stays: the app needs one to
+                          // hold its instances.
+                          PopupMenuItem<_ProfileAction>(
+                            value: _ProfileAction.delete,
+                            enabled: list.length > 1,
+                            child: const Text('Delete'),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -69,35 +85,91 @@ class ProfilesScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _createDialog(BuildContext context, WidgetRef ref) async {
-    final TextEditingController controller = TextEditingController();
+  Future<void> _create(BuildContext context, WidgetRef ref) async {
     final String? name = await showDialog<String>(
       context: context,
-      builder: (BuildContext context) => AlertDialog(
-        title: const Text('New profile'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'Profile name'),
-          onSubmitted: (String v) => Navigator.of(context).pop(v),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text),
-            child: const Text('Create'),
-          ),
-        ],
+      builder: (BuildContext _) => const _ProfileNameDialog(
+        title: 'New profile',
+        confirm: 'Create',
       ),
     );
-    if (name != null && name.trim().isNotEmpty) {
-      final Profile created = await ref
-          .read(profileListProvider.notifier)
-          .createProfile(name.trim());
-      await ref.read(activeProfileIdProvider.notifier).select(created.id);
-    }
+    final String trimmed = name?.trim() ?? '';
+    if (trimmed.isEmpty) return;
+    final Profile created =
+        await ref.read(profileListProvider.notifier).createProfile(trimmed);
+    await ref.read(activeProfileIdProvider.notifier).select(created.id);
+  }
+
+  Future<void> _rename(
+    BuildContext context,
+    WidgetRef ref,
+    Profile profile,
+  ) async {
+    final String? name = await showDialog<String>(
+      context: context,
+      builder: (BuildContext _) => _ProfileNameDialog(
+        title: 'Rename profile',
+        confirm: 'Rename',
+        initial: profile.name,
+      ),
+    );
+    final String trimmed = name?.trim() ?? '';
+    if (trimmed.isEmpty || trimmed == profile.name) return;
+    await ref
+        .read(profileListProvider.notifier)
+        .updateProfile(profile.copyWith(name: trimmed));
+  }
+}
+
+enum _ProfileAction { rename, delete }
+
+/// One name field, used to create a profile and to rename one. Owns its
+/// controller so it outlives the dialog's exit animation.
+class _ProfileNameDialog extends StatefulWidget {
+  const _ProfileNameDialog({
+    required this.title,
+    required this.confirm,
+    this.initial = '',
+  });
+
+  final String title;
+  final String confirm;
+  final String initial;
+
+  @override
+  State<_ProfileNameDialog> createState() => _ProfileNameDialogState();
+}
+
+class _ProfileNameDialogState extends State<_ProfileNameDialog> {
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.initial);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        decoration: const InputDecoration(hintText: 'Profile name'),
+        onSubmitted: (String v) => Navigator.of(context).pop(v),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: Text(widget.confirm),
+        ),
+      ],
+    );
   }
 }

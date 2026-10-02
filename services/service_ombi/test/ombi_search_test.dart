@@ -18,6 +18,11 @@ void main() {
   });
 
   Future<void> search(WidgetTester tester, String term) async {
+    // A phone's shape: the title sheet is taller than the default surface.
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
       ProviderScope(
         retry: (int _, Object __) => null,
@@ -61,6 +66,19 @@ void main() {
     expect(find.text('Arrival'), findsOneWidget);
     expect(find.text('Severance'), findsOneWidget);
     expect(find.text('Amy Adams'), findsNothing);
+  });
+
+  testWidgets('a result says what it is and what it is about',
+      (WidgetTester tester) async {
+    await search(tester, 'arrival');
+
+    expect(find.text('Movie'), findsOneWidget);
+    expect(find.text('TV show'), findsOneWidget);
+    expect(
+      find.text('A linguist is recruited to talk to visitors.'),
+      findsOneWidget,
+    );
+    expect(find.text('Mark leads a team of office workers.'), findsOneWidget);
   });
 
   testWidgets('a movie nobody asked for can be requested',

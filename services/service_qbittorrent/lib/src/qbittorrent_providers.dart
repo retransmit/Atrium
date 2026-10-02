@@ -292,6 +292,17 @@ bool qbitTrackerMatches(String tracker, QbitTorrent t) {
   return host == tracker;
 }
 
+/// Whether a torrent is private, read from its properties, or null where the
+/// server has not said.
+///
+/// qBittorrent 5.0 onwards answers in `private`, which is null until a
+/// magnet's metadata is in. 4.5.1 to 4.6 answer only in `is_private`, which
+/// reads false for a torrent with no metadata, private or not, so that one
+/// counts once the torrent has pieces to count. Anything older says nothing.
+bool? qbitIsPrivate(QbitTorrentProperties properties) =>
+    properties.private ??
+    (properties.piecesNum > 0 ? properties.isPrivate : null);
+
 /// All torrents for an instance, sorted by the active [qbitSortProvider].
 /// Polls every [qbitListPollInterval] while watched; stops when the screen
 /// goes away (autoDispose).

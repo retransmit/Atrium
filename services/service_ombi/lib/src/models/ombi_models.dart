@@ -25,14 +25,20 @@ class OmbiRequest {
     required this.kind,
     required this.title,
     required this.status,
+    this.tmdbId,
     this.year,
     this.posterUrl,
+    this.backdropUrl,
+    this.overview,
     this.requestedBy,
     this.requestedAt,
     this.deniedReason,
     this.denied = false,
     this.partlyAvailable = false,
     this.has4K = false,
+    this.seasons = const <int>[],
+    this.episodes = 0,
+    this.episodesAvailable = 0,
   });
 
   /// What approve, deny and delete act on. For TV this is the child
@@ -43,8 +49,14 @@ class OmbiRequest {
 
   /// Where the request stands as Ombi's request list puts it.
   final OmbiRequestStatus status;
+
+  /// The title's id on TheMovieDB, which Ombi looks a title page up by.
+  /// Movies and shows only.
+  final int? tmdbId;
   final int? year;
   final String? posterUrl;
+  final String? backdropUrl;
+  final String? overview;
   final String? requestedBy;
   final DateTime? requestedAt;
   final String? deniedReason;
@@ -59,6 +71,32 @@ class OmbiRequest {
 
   /// A 4K copy was requested too, which Ombi tags on the row. Movies only.
   final bool has4K;
+
+  /// The seasons this request asks for, in order. TV only.
+  final List<int> seasons;
+
+  /// How many episodes it asks for, and how many of those Ombi has found.
+  final int episodes;
+  final int episodesAvailable;
+
+  /// The title this request is about, the way search hands one to the title
+  /// sheet. Null for music, which has no title page, and for a request Ombi
+  /// kept no TMDB id for.
+  OmbiSearchHit? get asSearchHit {
+    final int? id = tmdbId;
+    if (id == null || kind == OmbiMediaKind.music) {
+      return null;
+    }
+    return OmbiSearchHit(
+      tmdbId: id,
+      kind: kind,
+      title: title,
+      year: year,
+      posterUrl: posterUrl,
+      backdropUrl: backdropUrl,
+      overview: overview,
+    );
+  }
 
   /// Where the request stands as Ombi's Recently Requested cards put it.
   OmbiRecentStatus get recentStatus {
@@ -109,7 +147,10 @@ class OmbiSearchHit {
     required this.tmdbId,
     required this.kind,
     required this.title,
+    this.year,
+    this.rating,
     this.posterUrl,
+    this.backdropUrl,
     this.overview,
     this.requested = false,
     this.available = false,
@@ -118,7 +159,12 @@ class OmbiSearchHit {
   final int tmdbId;
   final OmbiMediaKind kind;
   final String title;
+  final int? year;
+
+  /// TheMovieDB's score out of ten. Null when the title has none yet.
+  final double? rating;
   final String? posterUrl;
+  final String? backdropUrl;
   final String? overview;
 
   /// What the list said about it. Search results do not say, so these stay
@@ -127,7 +173,7 @@ class OmbiSearchHit {
   final bool available;
 }
 
-/// Where a title stands in Ombi, read from its detail page.
+/// Where a title stands in Ombi and what its detail page says about it.
 class OmbiTitleState {
   const OmbiTitleState({
     this.requested = false,
@@ -136,6 +182,16 @@ class OmbiTitleState {
     this.partlyAvailable = false,
     this.denied = false,
     this.deniedReason,
+    this.posterUrl,
+    this.backdropUrl,
+    this.tagline,
+    this.overview,
+    this.year,
+    this.runtimeMinutes,
+    this.rating,
+    this.genres = const <String>[],
+    this.releaseStatus,
+    this.network,
   });
 
   final bool requested;
@@ -146,6 +202,23 @@ class OmbiTitleState {
   final bool partlyAvailable;
   final bool denied;
   final String? deniedReason;
+
+  final String? posterUrl;
+  final String? backdropUrl;
+  final String? tagline;
+  final String? overview;
+  final int? year;
+  final int? runtimeMinutes;
+
+  /// TheMovieDB's score out of ten. Null when the title has none yet.
+  final double? rating;
+  final List<String> genres;
+
+  /// Where the title is in its own life: Released, Returning Series, Ended.
+  final String? releaseStatus;
+
+  /// Who airs it. Shows only.
+  final String? network;
 
   bool get canRequest => !available && !requested;
 }

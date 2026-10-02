@@ -30,6 +30,15 @@ abstract class QbitTorrentProperties with _$QbitTorrentProperties {
     @JsonKey(name: 'pieces_have') @Default(0) int piecesHave,
     @JsonKey(name: 'piece_size') @Default(0) int pieceSize,
     @Default('') String comment,
+
+    /// Whether the torrent is private, the way qBittorrent 5.0 onwards
+    /// answers: null until a magnet's metadata is in.
+    bool? private,
+
+    /// The answer 4.5.1 to 4.6 give, which 5.0 keeps beside [private]. It
+    /// reads false for any torrent with no metadata, so it only counts once
+    /// [piecesNum] is known. Read both through `qbitIsPrivate`.
+    @JsonKey(name: 'is_private') bool? isPrivate,
   }) = _QbitTorrentProperties;
 
   factory QbitTorrentProperties.fromJson(Map<String, dynamic> json) =>

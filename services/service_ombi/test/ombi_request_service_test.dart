@@ -73,6 +73,82 @@ void main() {
     });
   });
 
+  group('filterCounts', () {
+    test('each filter is counted from its own route, a row at a time',
+        () async {
+      // Ombi's list routes say how many there are in all, whatever the page
+      // size, so a single row each is enough to count them.
+      fake
+        ..on(
+          'GET',
+          '/api/v2/Requests/movie/1/0/requestedDate/desc',
+          pageJson(<Map<String, dynamic>>[movieRequestJson()], total: 9),
+        )
+        ..on(
+          'GET',
+          '/api/v2/Requests/movie/pending/1/0/requestedDate/desc',
+          pageJson(<Map<String, dynamic>>[movieRequestJson()], total: 2),
+        )
+        ..on(
+          'GET',
+          '/api/v2/Requests/movie/processing/1/0/requestedDate/desc',
+          pageJson(<Map<String, dynamic>>[], total: 0),
+        )
+        ..on(
+          'GET',
+          '/api/v2/Requests/movie/available/1/0/requestedDate/desc',
+          pageJson(
+            <Map<String, dynamic>>[
+              movieRequestJson(approved: true, available: true),
+            ],
+            total: 6,
+          ),
+        )
+        ..on(
+          'GET',
+          '/api/v2/Requests/movie/denied/1/0/requestedDate/desc',
+          pageJson(
+            <Map<String, dynamic>>[movieRequestJson(denied: true)],
+            total: 1,
+          ),
+        );
+
+      expect(
+        await requests.filterCounts(OmbiMediaKind.movie),
+        <OmbiRequestFilter, int>{
+          OmbiRequestFilter.all: 9,
+          OmbiRequestFilter.pending: 2,
+          OmbiRequestFilter.processing: 0,
+          OmbiRequestFilter.available: 6,
+          OmbiRequestFilter.denied: 1,
+        },
+      );
+    });
+
+    test('a show is counted on the TV routes', () async {
+      for (final (String route, int total) in <(String, int)>[
+        ('tv', 4),
+        ('tv/pending', 1),
+        ('tv/processing', 3),
+        ('tv/available', 0),
+        ('tv/denied', 0),
+      ]) {
+        fake.on(
+          'GET',
+          '/api/v2/Requests/$route/1/0/requestedDate/desc',
+          pageJson(<Map<String, dynamic>>[], total: total),
+        );
+      }
+
+      final Map<OmbiRequestFilter, int> counts =
+          await requests.filterCounts(OmbiMediaKind.tv);
+
+      expect(counts[OmbiRequestFilter.all], 4);
+      expect(counts[OmbiRequestFilter.pending], 1);
+      expect(counts[OmbiRequestFilter.processing], 3);
+    });
+  });
+
   test('recent mixes movies and TV, newest first', () async {
     fake
       ..on(

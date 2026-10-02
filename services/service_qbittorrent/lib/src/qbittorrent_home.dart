@@ -1153,24 +1153,40 @@ class _TorrentTileState extends ConsumerState<_TorrentTile> {
                           ),
                         ),
                         const SizedBox(height: 6),
-                        Row(
+                        // A Wrap, so that where the pill and the badge leave
+                        // the sizes no room they move down a line rather
+                        // than being cut short.
+                        Wrap(
+                          spacing: Insets.sm,
+                          runSpacing: Insets.xs,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: <Widget>[
-                            _StatePill(
-                              label: friendlyState(torrent.state),
-                              visual: v,
-                            ),
-                            const SizedBox(width: Insets.sm),
-                            Expanded(
-                              child: Text(
-                                '${fmtBytes(torrent.downloaded)} / ${fmtBytes(torrent.size)}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: isSelected
-                                      ? cs.onPrimaryContainer
-                                          .withValues(alpha: 0.8)
-                                      : cs.onSurfaceVariant,
+                            // The pill and the badge keep to each other, and
+                            // part only where one line cannot hold both.
+                            Wrap(
+                              spacing: Insets.xs,
+                              runSpacing: Insets.xs,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: <Widget>[
+                                _StatePill(
+                                  label: friendlyState(torrent.state),
+                                  visual: v,
                                 ),
+                                // Only where the server says which it is: a
+                                // torrent it has not spoken for is not public.
+                                if (torrent.private case final bool isPrivate)
+                                  _PrivacyBadge(isPrivate: isPrivate),
+                              ],
+                            ),
+                            Text(
+                              '${fmtBytes(torrent.downloaded)} / ${fmtBytes(torrent.size)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: isSelected
+                                    ? cs.onPrimaryContainer
+                                        .withValues(alpha: 0.8)
+                                    : cs.onSurfaceVariant,
                               ),
                             ),
                           ],
@@ -1577,6 +1593,49 @@ class _SpeedPill extends StatelessWidget {
                   color: fg,
                   fontWeight: FontWeight.w700,
                 ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Whether a torrent is private or public, for the torrents the server says
+/// that about.
+class _PrivacyBadge extends StatelessWidget {
+  const _PrivacyBadge({required this.isPrivate});
+
+  final bool isPrivate;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: isPrivate
+            ? cs.tertiaryContainer.withValues(alpha: 0.5)
+            : cs.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(
+            isPrivate ? Icons.lock_outline : Icons.public,
+            size: 11,
+            color: isPrivate ? cs.onTertiaryContainer : cs.onSurfaceVariant,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            isPrivate ? 'Private' : 'Public',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: isPrivate ? cs.onTertiaryContainer : cs.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+              fontSize: 10,
+            ),
           ),
         ],
       ),
