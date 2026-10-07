@@ -552,6 +552,30 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('starts at the left edge of the sheet, whatever its width',
+        (WidgetTester tester) async {
+      // An entry with nothing wide in it is as far left as any other:
+      // nothing is centred.
+      await open(
+        tester,
+        const AdguardHomeQueryLogEntry(
+          domain: 'a.io',
+          reason: 'NotFilteredNotFound',
+          type: 'A',
+          status: 'OK',
+        ),
+      );
+
+      final Finder sheet = find.byType(AdguardHomeQueryDetail);
+      double left(String text) => tester
+          .getTopLeft(find.descendant(of: sheet, matching: find.text(text)))
+          .dx;
+
+      expect(left('a.io'), 16);
+      expect(left('Request'), 16);
+      expect(left('OK'), 16);
+    });
+
     testWidgets('names the rule that matched and the list it is on',
         (WidgetTester tester) async {
       await open(tester, blocked);

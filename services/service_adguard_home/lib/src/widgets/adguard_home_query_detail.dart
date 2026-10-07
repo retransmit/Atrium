@@ -105,6 +105,9 @@ class AdguardHomeQueryDetail extends ConsumerWidget {
 
     return Column(
       mainAxisSize: MainAxisSize.min,
+      // The scrolling part is as wide as the sheet, not as its widest line,
+      // so a short entry is not centred.
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Flexible(
           child: SingleChildScrollView(
