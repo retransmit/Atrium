@@ -51,3 +51,4 @@ workspace:
   - services/service_gluetun
   - services/service_navidrome
   - services/service_myspeed
+  - services/service_adguard_home
