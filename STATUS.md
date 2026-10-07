@@ -176,8 +176,10 @@ Atrium is a **controller** app. Video playback was removed by design
   queried domains, blocked domains and upstreams (five of each, the rest
   added up, the whole list one tap away), with block and unblock from a
   domain's row (the same custom rule the web UI writes, and an Undo). An
-  AdGuard Home dashboard widget shows the state, a pause menu and four
-  figures. Signed in with HTTP Basic; a server with no user needs no
+  AdGuard Home dashboard widget shows the state with Pause or Resume, the
+  queries and the blocked ones with their share as a ring, a chart of both
+  over the period, and the rules on the blocklists. Signed in with HTTP
+  Basic; a server with no user needs no
   credentials. AdGuard Home locks an address out after repeated wrong
   sign-ins (15 minutes after five, by default), so the health dot probes
   it with no password and cannot flag a wrong one, requests leave one at a
