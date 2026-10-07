@@ -240,18 +240,54 @@ class _AdguardHomeQueryLogTabState
               ),
       );
     }
+    // An empty list is the one that most wants reading again: the first
+    // query after the log was cleared, or the one just made to test a rule.
     if (state.narrowed) {
-      return EmptyView(
-        icon: Icons.search_off,
-        title: 'Nothing found',
-        message: 'No query in the log matches.',
-        action: TextButton(
-          onPressed: _clearNarrowing,
-          child: const Text('Clear search and filter'),
+      return _Pullable(
+        onRefresh: _log.reload,
+        child: EmptyView(
+          icon: Icons.search_off,
+          title: 'Nothing found',
+          message: 'No query in the log matches.',
+          action: TextButton(
+            onPressed: _clearNarrowing,
+            child: const Text('Clear search and filter'),
+          ),
         ),
       );
     }
-    return _EmptyLog(instance: _instance);
+    return _Pullable(
+      onRefresh: _log.reload,
+      child: _EmptyLog(instance: _instance),
+    );
+  }
+}
+
+/// Lets something that does not scroll be pulled down to refresh: it is
+/// given the height of the space it stands in, inside a list that always
+/// answers a drag.
+class _Pullable extends StatelessWidget {
+  const _Pullable({required this.onRefresh, required this.child});
+
+  final Future<void> Function() onRefresh;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        return EasyRefresh(
+          onRefresh: onRefresh,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: child,
+            ),
+          ),
+        );
+      },
+    );
   }
 }
 

@@ -320,6 +320,35 @@ void main() {
       expect(find.text('Nothing in the query log yet'), findsOneWidget);
     });
 
+    testWidgets('an empty log can be pulled down to read it again',
+        (WidgetTester tester) async {
+      // Found on a real server: after the log was cleared there was no way
+      // to see the first new query short of leaving the tab.
+      final Pumped pumped =
+          await pumpTab(tester, all(const <AdguardHomeQueryLogEntry>[]));
+
+      await tester.drag(
+        find.text('Nothing in the query log yet'),
+        const Offset(0, 320),
+      );
+      await tester.pumpAndSettle();
+
+      expect(pumped.log.calls, <String>['reload']);
+    });
+
+    testWidgets('so can a search that found nothing',
+        (WidgetTester tester) async {
+      final Pumped pumped = await pumpTab(
+        tester,
+        const AdguardHomeQueryLogState(search: 'zzz', reachedEnd: true),
+      );
+
+      await tester.drag(find.text('Nothing found'), const Offset(0, 320));
+      await tester.pumpAndSettle();
+
+      expect(pumped.log.calls, <String>['reload']);
+    });
+
     testWidgets('a server that keeps no log says that instead',
         (WidgetTester tester) async {
       await pumpTab(
