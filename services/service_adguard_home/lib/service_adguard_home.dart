@@ -1,6 +1,8 @@
 export 'src/adguard_home_access_edit.dart';
 export 'src/adguard_home_api.dart';
 export 'src/adguard_home_blocking.dart';
+export 'src/adguard_home_client_edit.dart';
+export 'src/adguard_home_clients_view.dart';
 export 'src/adguard_home_errors.dart';
 export 'src/adguard_home_format.dart';
 export 'src/adguard_home_log_actions.dart';
