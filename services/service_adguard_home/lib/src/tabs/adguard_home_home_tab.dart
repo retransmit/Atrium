@@ -5,12 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../adguard_home_blocking.dart';
 import '../adguard_home_errors.dart';
 import '../adguard_home_format.dart';
 import '../adguard_home_providers.dart';
-import '../adguard_home_rules.dart';
+import '../adguard_home_top_lists.dart';
 import '../models/adguard_home_stats.dart';
 import '../models/adguard_home_status.dart';
+import '../screens/adguard_home_top_list_screen.dart';
 import '../widgets/adguard_home_protection_card.dart';
 import '../widgets/adguard_home_refused_view.dart';
 import '../widgets/adguard_home_stat_tile.dart';
@@ -42,23 +44,11 @@ class _AdguardHomeHomeTabState extends ConsumerState<AdguardHomeHomeTab> {
   AdguardHomeActions get _actions =>
       ref.read(adguardHomeActionsProvider(_instance));
 
-  void _say(String message, {VoidCallback? onUndo}) {
+  void _say(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(
-        onUndo == null
-            ? SnackBar(content: Text(message))
-            : SnackBar(
-                content: Text(message),
-                action: SnackBarAction(label: 'Undo', onPressed: onUndo),
-                // A message with an action would otherwise stay until it is
-                // dismissed. This one leaves by itself, after long enough
-                // to read the rule and reach for Undo.
-                persist: false,
-                duration: const Duration(seconds: 8),
-              ),
-      );
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _setProtection({required bool enabled, Duration? pause}) async {
@@ -70,41 +60,6 @@ class _AdguardHomeHomeTabState extends ConsumerState<AdguardHomeHomeTab> {
       _say(describeAdguardHomeError(error));
     } finally {
       if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  /// Blocks or unblocks [domain] and says what that did to the custom rules.
-  ///
-  /// The lists re-read themselves every half minute and can reorder under a
-  /// finger, and a block reaches everything that uses the server, so the
-  /// message offers to take the change back. Taking it back is the opposite
-  /// tap, which undoes an added rule by removing it and a removed one by
-  /// adding it again. It is not offered when the rule was already there:
-  /// nothing changed, and the opposite tap would remove a rule this one
-  /// never added. [undoable] is false for the taking back itself.
-  Future<void> _toggleBlocking(
-    String domain, {
-    required bool block,
-    bool undoable = true,
-  }) async {
-    try {
-      final AdguardHomeRuleEdit edit =
-          await _actions.toggleBlocking(domain, block: block);
-      _say(
-        switch (edit.change) {
-          AdguardHomeRuleChange.added =>
-            'Added ${edit.rule} to the custom rules',
-          AdguardHomeRuleChange.removed =>
-            'Removed ${edit.rule} from the custom rules',
-          AdguardHomeRuleChange.alreadyThere =>
-            '${edit.rule} is already in the custom rules',
-        },
-        onUndo: undoable && edit.change != AdguardHomeRuleChange.alreadyThere
-            ? () => _toggleBlocking(domain, block: !block, undoable: false)
-            : null,
-      );
-    } on Object catch (error) {
-      _say(describeAdguardHomeError(error));
     }
   }
 
@@ -246,45 +201,34 @@ class _AdguardHomeHomeTabState extends ConsumerState<AdguardHomeHomeTab> {
             color: cs.primary,
           ),
         ),
-        const SizedBox(height: Insets.lg),
-        AdguardHomeTopList(
-          title: 'Top clients',
-          rows: stats.topClients,
-          format: formatAdguardHomeCount,
-        ),
-        const SizedBox(height: Insets.sm),
-        AdguardHomeTopList(
-          title: 'Top queried domains',
-          rows: stats.topQueriedDomains,
-          format: formatAdguardHomeCount,
-          actionIcon: Icons.block,
-          actionLabel: 'Block',
-          onAction: (String domain) => _toggleBlocking(domain, block: true),
-        ),
-        const SizedBox(height: Insets.sm),
-        AdguardHomeTopList(
-          title: 'Top blocked domains',
-          rows: stats.topBlockedDomains,
-          format: formatAdguardHomeCount,
-          actionIcon: Icons.check_circle_outline,
-          actionLabel: 'Unblock',
-          onAction: (String domain) => _toggleBlocking(domain, block: false),
-        ),
-        const SizedBox(height: Insets.sm),
-        AdguardHomeTopList(
-          title: 'Top upstreams',
-          rows: stats.topUpstreams,
-          format: formatAdguardHomeCount,
-        ),
-        if (stats.topUpstreamTimes.isNotEmpty) ...<Widget>[
-          const SizedBox(height: Insets.sm),
-          AdguardHomeTopList(
-            title: 'Average upstream response time',
-            rows: stats.topUpstreamTimes,
-            // Seconds, as a fraction.
-            format: (num seconds) => '${(seconds * 1000).round()} ms',
-          ),
-        ],
+        for (final AdguardHomeTopListKind kind
+            in AdguardHomeTopListKind.values)
+          // The response times have nothing to show until an upstream has
+          // answered, and an empty card for them would only be noise.
+          if (kind != AdguardHomeTopListKind.upstreamTimes ||
+              kind.rows(stats).isNotEmpty) ...<Widget>[
+            SizedBox(
+              height: kind == AdguardHomeTopListKind.values.first
+                  ? Insets.lg
+                  : Insets.sm,
+            ),
+            AdguardHomeTopList(
+              kind: kind,
+              rows: kind.rows(stats),
+              onBlocking: (String domain, {required bool block}) =>
+                  adguardHomeToggleBlocking(
+                context,
+                ref,
+                _instance,
+                domain,
+                block: block,
+              ),
+              onViewAll: () => pushScreen<void>(
+                context,
+                AdguardHomeTopListScreen(instance: _instance, kind: kind),
+              ),
+            ),
+          ],
       ],
     );
   }

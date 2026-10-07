@@ -388,6 +388,40 @@ void main() {
     );
   });
 
+  testWidgets('View all opens the whole list, where a domain can be blocked',
+      (WidgetTester tester) async {
+    final Pumped pumped = await pumpAdguardHome(
+      tester,
+      tab(),
+      status: statusWith(),
+      stats: AdguardHomeStats.fromJson(statsJson()),
+    );
+
+    // Seven queried domains: five on the tab, two added up as Others.
+    expect(find.text('f-droid.org'), findsNothing);
+    expect(find.text('Others'), findsOneWidget);
+    expect(find.text('4'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('View all'));
+    await tester.tap(find.text('View all'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Top queried domains'), findsOneWidget);
+    expect(find.text('f-droid.org'), findsOneWidget);
+    expect(find.text('sonarr.tv'), findsOneWidget);
+    expect(find.text('Others'), findsNothing);
+
+    await tester.tap(find.byTooltip('Block f-droid.org'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 750));
+
+    expect(pumped.actions.calls, <String>['block f-droid.org']);
+    expect(
+      find.text(r'Added ||f-droid.org^$important to the custom rules'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('a block can be taken back from its message',
       (WidgetTester tester) async {
     // The lists re-read themselves every half minute and can reorder under a

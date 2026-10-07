@@ -1,13 +1,16 @@
 export 'src/adguard_home_api.dart';
+export 'src/adguard_home_blocking.dart';
 export 'src/adguard_home_errors.dart';
 export 'src/adguard_home_format.dart';
 export 'src/adguard_home_providers.dart';
 export 'src/adguard_home_rules.dart';
 export 'src/adguard_home_session.dart';
 export 'src/adguard_home_shell.dart';
+export 'src/adguard_home_top_lists.dart';
 export 'src/models/adguard_home_filtering.dart';
 export 'src/models/adguard_home_stats.dart';
 export 'src/models/adguard_home_status.dart';
+export 'src/screens/adguard_home_top_list_screen.dart';
 export 'src/tabs/adguard_home_home_tab.dart';
 export 'src/widgets/adguard_home_countdown.dart';
 export 'src/widgets/adguard_home_protection_card.dart';
