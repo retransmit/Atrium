@@ -2,6 +2,7 @@ import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import 'adguard_home_access_edit.dart';
 import 'adguard_home_api.dart';
@@ -34,6 +35,14 @@ const Duration adguardHomeFilteringInterval = Duration(minutes: 5);
 final adguardHomeSessionProvider = Provider.family<AdguardHomeSession, Instance>(
   (Ref ref, Instance instance) => AdguardHomeSession(),
 );
+
+/// How many times the user has asked to try the sign-in again.
+///
+/// The polled reads are told through an invalidation. What is not a
+/// provider of that kind, the query log, listens to this instead, so that a
+/// try that works from one tab is seen on the other.
+final adguardHomeSignInRetriesProvider =
+    StateProvider.family<int, Instance>((Ref ref, Instance _) => 0);
 
 /// Whether [instance] has a username or password to sign in with.
 ///
@@ -146,6 +155,7 @@ class AdguardHomeActions {
   /// everything again behind it.
   void retrySignIn() {
     _ref.read(adguardHomeSessionProvider(_instance)).retry();
+    _ref.read(adguardHomeSignInRetriesProvider(_instance).notifier).state++;
     refresh();
   }
 
@@ -204,7 +214,9 @@ class AdguardHomeActions {
   /// The lists are read fresh first, as the write replaces all three. A
   /// client that turns out to be the last allowed one is left alone and
   /// [AdguardHomeLastAllowedClient] is thrown, whatever was confirmed
-  /// against an older reading.
+  /// against an older reading. So is one that is only let in by an entry
+  /// covering more than itself, with [AdguardHomeAllowedByWiderEntry]: the
+  /// write would change nothing.
   Future<void> setClientAccess({
     required String address,
     required bool disallowed,
@@ -214,6 +226,13 @@ class AdguardHomeActions {
     final AdguardHomeAccessList list = await api.getAccessList();
     if (adguardHomeIsLastAllowedClient(list, address, disallowed: disallowed)) {
       throw const AdguardHomeLastAllowedClient();
+    }
+    if (adguardHomeIsAllowedByWiderEntry(
+      list,
+      address,
+      disallowed: disallowed,
+    )) {
+      throw const AdguardHomeAllowedByWiderEntry();
     }
     await api.setAccessList(
       adguardHomeClientAccessEdit(

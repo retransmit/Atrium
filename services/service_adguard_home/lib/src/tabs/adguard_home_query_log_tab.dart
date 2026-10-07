@@ -93,10 +93,10 @@ class _AdguardHomeQueryLogTabState
     setState(() {});
   }
 
-  void _retrySignIn() {
-    ref.read(adguardHomeActionsProvider(_instance)).retrySignIn();
-    _log.reload();
-  }
+  /// The log listens for this and reads itself again, as the other reads
+  /// do, so one tap is one request whichever tab it is made on.
+  void _retrySignIn() =>
+      ref.read(adguardHomeActionsProvider(_instance)).retrySignIn();
 
   void _edit() {
     context.pushNamed(
@@ -117,6 +117,7 @@ class _AdguardHomeQueryLogTabState
         onRetry: _retrySignIn,
         onEdit: _edit,
         hasCredentials: adguardHomeHasCredentials(_instance),
+        refusals: ref.read(adguardHomeSessionProvider(_instance)).refusals,
       );
     }
 
@@ -221,25 +222,36 @@ class _AdguardHomeQueryLogTabState
     if (state.loading) {
       return const Center(child: ExpressiveProgressIndicator());
     }
+    // These scroll, like the two below: in the room a keyboard leaves on a
+    // small phone they are taller than the space, and their button would
+    // end up under the keyboard.
     final Object? error = state.error;
     if (error != null) {
-      return ErrorView(
-        message: describeAdguardHomeError(error),
-        onRetry: _log.reload,
+      return _Pullable(
+        onRefresh: _log.reload,
+        child: ErrorView(
+          message: describeAdguardHomeError(error),
+          // A search that got some way back goes on from there. Starting
+          // over would throw away every Keep searching made so far.
+          onRetry: state.searchedBackTo.isEmpty ? _log.reload : _log.loadMore,
+        ),
       );
     }
     // A search that has found nothing so far and has not reached the end.
     if (state.stalled || state.loadingMore) {
-      return MessageView(
-        icon: Icons.manage_search,
-        title: 'Nothing found yet',
-        message: _searchedBackTo(state, now),
-        action: state.loadingMore
-            ? const ExpressiveProgressIndicator()
-            : FilledButton.tonal(
-                onPressed: _log.loadMore,
-                child: const Text('Keep searching'),
-              ),
+      return _Pullable(
+        onRefresh: _log.reload,
+        child: MessageView(
+          icon: Icons.manage_search,
+          title: 'Nothing found yet',
+          message: _searchedBackTo(state, now),
+          action: state.loadingMore
+              ? const ExpressiveProgressIndicator()
+              : FilledButton.tonal(
+                  onPressed: _log.loadMore,
+                  child: const Text('Keep searching'),
+                ),
+        ),
       );
     }
     // An empty list is the one that most wants reading again: the first
@@ -349,7 +361,9 @@ class _Footer extends StatelessWidget {
     final Object? error = state.error;
 
     final Widget child;
-    if (state.wantsMore || state.loadingMore) {
+    // While the list is being read again from the top, what is below is
+    // not known to be the end either.
+    if (state.wantsMore || state.loadingMore || state.loading) {
       if (state.wantsMore) {
         // Being built means the end of the list is in view, or close to it.
         // Asking turns wantsMore off at once, so this asks once.

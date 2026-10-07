@@ -62,6 +62,21 @@ bool adguardHomeIsLastAllowedClient(
     list.allowedClients.length == 1 &&
     list.allowedClients.single == address;
 
+/// Whether the client at [address] is answered only because an entry of the
+/// allowed clients covers more than itself: a range, or a client id.
+///
+/// Shutting it out by taking the address off that list would change
+/// nothing, since the address is not on it, and the web UI then says the
+/// client was blocked all the same. Here it is refused and said so.
+bool adguardHomeIsAllowedByWiderEntry(
+  AdguardHomeAccessList list,
+  String address, {
+  required bool disallowed,
+}) =>
+    !disallowed &&
+    list.allowlistInUse &&
+    !list.allowedClients.contains(address);
+
 List<String> _with(List<String> items, String value) =>
     items.contains(value) ? items : <String>[...items, value];
 

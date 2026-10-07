@@ -4,6 +4,7 @@ import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import '../adguard_home_blocking.dart';
 import '../adguard_home_format.dart';
@@ -47,7 +48,7 @@ enum _ClientAction { blockForClient, access }
 ///
 /// The actions sit under the scrolling part rather than at the end of it,
 /// so Block is in reach however much the entry carries.
-class AdguardHomeQueryDetail extends ConsumerWidget {
+class AdguardHomeQueryDetail extends ConsumerStatefulWidget {
   const AdguardHomeQueryDetail({
     required this.instance,
     required this.entry,
@@ -59,8 +60,23 @@ class AdguardHomeQueryDetail extends ConsumerWidget {
   final AdguardHomeQueryLogEntry entry;
   final VoidCallback? onChanged;
 
+  @override
+  ConsumerState<AdguardHomeQueryDetail> createState() =>
+      _AdguardHomeQueryDetailState();
+}
+
+class _AdguardHomeQueryDetailState
+    extends ConsumerState<AdguardHomeQueryDetail> {
+  /// Whether a change to the client's access is being asked about or
+  /// written. Nothing else can be started from the sheet meanwhile.
+  bool _busy = false;
+
+  Instance get instance => widget.instance;
+
+  AdguardHomeQueryLogEntry get entry => widget.entry;
+
   /// Blocks or unblocks the name, for everyone or for [clientAddress].
-  void _block(BuildContext context, WidgetRef ref, {String? clientAddress}) {
+  void _block({String? clientAddress}) {
     // What the change needs is taken from this context before anything is
     // awaited, so the sheet can close at once and the result is said on the
     // screen behind it.
@@ -77,7 +93,12 @@ class AdguardHomeQueryDetail extends ConsumerWidget {
     Navigator.of(context).pop();
   }
 
-  Future<void> _access(BuildContext context, WidgetRef ref) async {
+  Future<void> _access() async {
+    // Both are taken now. By the time the server has answered the sheet may
+    // have been closed, and then "the route on top" is the screen itself.
+    final ModalRoute<Object?>? sheet = ModalRoute.of(context);
+    final VoidCallback? onChanged = widget.onChanged;
+    setState(() => _busy = true);
     final bool changed = await adguardHomeToggleClientAccess(
       context,
       ref,
@@ -88,13 +109,17 @@ class AdguardHomeQueryDetail extends ConsumerWidget {
       // a client out while the client is shut out.
       disallowedRule: entry.clientDisallowed ? entry.clientDisallowedRule : '',
     );
-    if (!changed) return;
-    if (context.mounted) Navigator.of(context).pop();
-    onChanged?.call();
+    if (changed) {
+      // Only this sheet, and only if it is still what is showing.
+      if (sheet != null && sheet.isCurrent) sheet.navigator?.pop();
+      onChanged?.call();
+    } else if (mounted) {
+      setState(() => _busy = false);
+    }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final AdguardHomeFiltering? filtering =
@@ -102,6 +127,8 @@ class AdguardHomeQueryDetail extends ConsumerWidget {
     final String name =
         entry.clientName.isNotEmpty ? entry.clientName : entry.clientId;
     final String action = entry.isFiltered ? 'Unblock' : 'Block';
+    // A query for the root has no name, and a rule for no name is "||^".
+    final bool named = entry.domain.isNotEmpty;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -190,7 +217,13 @@ class AdguardHomeQueryDetail extends ConsumerWidget {
             ),
           ),
         ),
-        const Divider(height: 1),
+        if (_busy)
+          const LinearProgressIndicatorM3E(
+            size: LinearProgressM3ESize.s,
+            shape: ProgressM3EShape.flat,
+          )
+        else
+          const Divider(height: 1),
         SafeArea(
           top: false,
           child: Padding(
@@ -204,7 +237,7 @@ class AdguardHomeQueryDetail extends ConsumerWidget {
               children: <Widget>[
                 Expanded(
                   child: FilledButton.tonal(
-                    onPressed: () => _block(context, ref),
+                    onPressed: named && !_busy ? _block : null,
                     child: Text(action),
                   ),
                 ),
@@ -214,18 +247,20 @@ class AdguardHomeQueryDetail extends ConsumerWidget {
                   PopupMenuButton<_ClientAction>(
                     tooltip: 'More actions',
                     useRootNavigator: true,
+                    enabled: !_busy,
                     onSelected: (_ClientAction chosen) {
                       switch (chosen) {
                         case _ClientAction.blockForClient:
-                          _block(context, ref, clientAddress: entry.client);
+                          _block(clientAddress: entry.client);
                         case _ClientAction.access:
-                          unawaited(_access(context, ref));
+                          unawaited(_access());
                       }
                     },
                     itemBuilder: (BuildContext _) =>
                         <PopupMenuEntry<_ClientAction>>[
                       PopupMenuItem<_ClientAction>(
                         value: _ClientAction.blockForClient,
+                        enabled: named,
                         child: Text('$action for this client only'),
                       ),
                       PopupMenuItem<_ClientAction>(

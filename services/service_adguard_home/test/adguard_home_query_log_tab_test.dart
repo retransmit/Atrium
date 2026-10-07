@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
@@ -278,6 +280,22 @@ void main() {
       expect(pumped.log.calls, <String>['more']);
     });
 
+    testWidgets('while the list is read again its end does not claim to be '
+        'the end', (WidgetTester tester) async {
+      // Read again after a client was shut out, with more to come below.
+      await pumpTab(
+        tester,
+        AdguardHomeQueryLogState(
+          entries: <AdguardHomeQueryLogEntry>[entry()],
+          loading: true,
+          searchedBackTo: 'c1',
+        ),
+      );
+
+      expect(find.text('End of the query log'), findsNothing);
+      expect(find.byType(ExpressiveProgressIndicator), findsOneWidget);
+    });
+
     testWidgets('pulling down reads the log again',
         (WidgetTester tester) async {
       final Pumped pumped =
@@ -313,6 +331,55 @@ void main() {
 
       expect(pumped.log.calls, <String>['reload']);
     });
+
+    testWidgets('a deep search that failed is taken up where it stopped',
+        (WidgetTester tester) async {
+      // Every Keep searching tap would otherwise have to be made again.
+      final Pumped pumped = await pumpTab(
+        tester,
+        const AdguardHomeQueryLogState(
+          search: 'rare.example',
+          searchedBackTo: 'c5',
+          error: AdguardHomeUnexpectedAnswer(),
+        ),
+      );
+
+      await tester.tap(find.text('Retry'));
+      await tester.pump();
+
+      expect(pumped.log.calls, <String>['more']);
+    });
+
+    for (final (String name, AdguardHomeQueryLogState state)
+        in <(String, AdguardHomeQueryLogState)>[
+      (
+        'a failed read',
+        const AdguardHomeQueryLogState(error: AdguardHomeUnexpectedAnswer()),
+      ),
+      (
+        'a search still under way',
+        AdguardHomeQueryLogState(
+          search: 'rare.example',
+          stalled: true,
+          searchedBackTo:
+              DateTime(2026, 10, 5, 14, 20, 11).toUtc().toIso8601String(),
+        ),
+      ),
+    ]) {
+      testWidgets('$name fits the room a keyboard leaves',
+          (WidgetTester tester) async {
+        // A small phone with the keyboard up, which is when a search is
+        // typed. The button must be reachable, not under the keyboard.
+        await pumpTab(
+          tester,
+          state,
+          size: const Size(360, 360),
+          textScale: 1.3,
+        );
+
+        expect(tester.takeException(), isNull);
+      });
+    }
 
     testWidgets('an empty log says so', (WidgetTester tester) async {
       await pumpTab(tester, all(const <AdguardHomeQueryLogEntry>[]));
@@ -527,8 +594,41 @@ void main() {
       await tester.tap(find.text('Try again'));
       await tester.pump();
 
+      // One call. The log listens for it and reads itself again, as the
+      // other reads do, so nothing is asked for twice.
       expect(pumped.actions.calls, <String>['retry']);
-      expect(pumped.log.calls, <String>['reload']);
+      expect(pumped.log.calls, isEmpty);
+    });
+
+    testWidgets('says how many tries in a row have been refused',
+        (WidgetTester tester) async {
+      // A try that is refused again must not look like no try at all: the
+      // fifth in a row gets the address blocked.
+      await pumpAdguardHome(
+        tester,
+        AdguardHomeQueryLogTab(instance: adguardHomeTestInstance, now: () => now),
+        log: const AdguardHomeQueryLogState(error: AdguardHomeSignInRefused()),
+        session: RefusedSession(3),
+        size: const Size(360, 800),
+      );
+
+      expect(
+        find.text('Refused 3 times in a row from this app.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a first refusal is not counted out loud',
+        (WidgetTester tester) async {
+      await pumpAdguardHome(
+        tester,
+        AdguardHomeQueryLogTab(instance: adguardHomeTestInstance, now: () => now),
+        log: const AdguardHomeQueryLogState(error: AdguardHomeSignInRefused()),
+        session: RefusedSession(1),
+        size: const Size(360, 800),
+      );
+
+      expect(find.textContaining('in a row'), findsNothing);
     });
 
     testWidgets('with no sign-in entered it asks for one',
@@ -922,6 +1022,138 @@ void main() {
       expect(find.text('bad ip, cidr, or clientid'), findsOneWidget);
       // Nothing changed, so the log is not read again.
       expect(pumped.log.calls, isEmpty);
+    });
+
+    testWidgets('a client let in by a range is not said to be shut out',
+        (WidgetTester tester) async {
+      // Taking it off a list it is not on changes nothing. Saying it was
+      // disallowed would be untrue.
+      final Pumped pumped = await pumpTab(
+        tester,
+        all(<AdguardHomeQueryLogEntry>[entry()]),
+        size: const Size(360, 1600),
+      );
+      pumped.actions.accessList = const AdguardHomeAccessList(
+        allowedClients: <String>['172.17.0.0/16'],
+      );
+      await tester.tap(find.byType(AdguardHomeQueryLogRow));
+      await tester.pumpAndSettle();
+
+      await more(tester, 'Disallow this client');
+
+      expect(find.text('Disallow this client?'), findsNothing);
+      expect(find.text(AdguardHomeAllowedByWiderEntry.message), findsOneWidget);
+      expect(pumped.actions.calls, <String>['read access']);
+      expect(find.textContaining('is now disallowed'), findsNothing);
+    });
+
+    testWidgets('while the change is on its way the sheet says so and takes '
+        'no other', (WidgetTester tester) async {
+      final Pumped pumped = await open(tester, entry());
+      pumped.actions.writeHold = Completer<void>();
+
+      await more(tester, 'Disallow this client');
+      await tester.tap(find.widgetWithText(FilledButton, 'Disallow'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, 'Block'))
+            .onPressed,
+        isNull,
+      );
+      expect(
+        tester
+            .widget<PopupMenuButton<Object?>>(
+              find.byWidgetPredicate(
+                (Widget widget) => widget is PopupMenuButton,
+              ),
+            )
+            .enabled,
+        isFalse,
+      );
+
+      pumped.actions.writeHold!.complete();
+      await tester.pumpAndSettle();
+      expect(find.byType(AdguardHomeQueryDetail), findsNothing);
+    });
+
+    testWidgets('closing the sheet while the change is on its way closes '
+        'nothing else', (WidgetTester tester) async {
+      // On a slow connection. The answer used to pop whatever was on top,
+      // which with the sheet gone was the screen itself.
+      final Pumped pumped = await open(tester, entry());
+      pumped.actions.writeHold = Completer<void>();
+      await more(tester, 'Disallow this client');
+      await tester.tap(find.widgetWithText(FilledButton, 'Disallow'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // Back, while the write is still out.
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      pumped.actions.writeHold!.complete();
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(AdguardHomeQueryLogTab), findsOneWidget);
+      expect(find.byType(AdguardHomeQueryDetail), findsNothing);
+      // The change went through, so it is said and the log is read again.
+      expect(find.text('172.17.0.1 is now disallowed'), findsOneWidget);
+      expect(pumped.log.calls, <String>['reload']);
+    });
+
+    testWidgets('a change that fails after the sheet was closed is still '
+        'said', (WidgetTester tester) async {
+      // Silence would leave the client believed to be shut out.
+      final Pumped pumped = await open(tester, entry());
+      pumped.actions
+        ..writeHold = Completer<void>()
+        ..writeFailure =
+            const AdguardHomeRequestRefused('bad ip, cidr, or clientid');
+      await more(tester, 'Disallow this client');
+      await tester.tap(find.widgetWithText(FilledButton, 'Disallow'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      pumped.actions.writeHold!.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.text('bad ip, cidr, or clientid'), findsOneWidget);
+      expect(pumped.log.calls, isEmpty);
+    });
+
+    testWidgets('a query with no name cannot be blocked',
+        (WidgetTester tester) async {
+      // A query for the root has none. The rule for it would be "||^".
+      await open(tester, entry(domain: ''));
+
+      expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, 'Block'))
+            .onPressed,
+        isNull,
+      );
+      await tester.tap(find.byTooltip('More actions'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<PopupMenuItem<Object?>>(
+              find.ancestor(
+                of: find.text('Block for this client only'),
+                matching: find.byWidgetPredicate(
+                  (Widget widget) => widget is PopupMenuItem,
+                ),
+              ),
+            )
+            .enabled,
+        isFalse,
+      );
+      // What is done to the client does not depend on the name.
+      expect(find.text('Disallow this client'), findsOneWidget);
     });
 
     testWidgets('an entry with no client has nothing to do to a client',

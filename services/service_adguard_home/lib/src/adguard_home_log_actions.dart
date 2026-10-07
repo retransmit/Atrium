@@ -29,7 +29,16 @@ Future<bool> adguardHomeToggleClientAccess(
       ref.read(adguardHomeActionsProvider(instance));
 
   Future<void> explain(String title, String message) async {
-    if (!context.mounted) return;
+    if (!context.mounted) {
+      // The sheet this was asked from has been closed. Saying nothing would
+      // leave the change believed to have been made.
+      if (messenger.mounted) {
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(message)));
+      }
+      return;
+    }
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) => AlertDialog(
@@ -51,6 +60,19 @@ Future<bool> adguardHomeToggleClientAccess(
       await explain(
         'This client stays allowed',
         AdguardHomeLastAllowedClient.message,
+      );
+      return false;
+    }
+    // Taking it off a list it is not on would write the lists back as they
+    // are. The web UI does that and reports the client blocked.
+    if (adguardHomeIsAllowedByWiderEntry(
+      list,
+      address,
+      disallowed: disallowed,
+    )) {
+      await explain(
+        'This client stays allowed',
+        AdguardHomeAllowedByWiderEntry.message,
       );
       return false;
     }

@@ -406,16 +406,72 @@ void main() {
       expect(state().error, isA<AdguardHomeSignInRefused>());
     });
 
-    test('trying again costs one request and reads the log', () async {
+    test('trying again from anywhere reads a log that is being shown',
+        () async {
+      // Try again on Home worked, and the Query log went on saying the
+      // sign-in was refused until it was tapped there too.
       server.refusing = true;
       await open();
       server.refusing = false;
       pages.add(page(50, 'c1'));
 
       actions().retrySignIn();
-      await log().reload();
+      await until(() => state().error == null && !state().loading);
 
-      expect(state().error, isNull);
+      expect(state().entries, hasLength(50));
+    });
+
+    test('trying again still costs one request when it is refused again',
+        () async {
+      server.refusing = true;
+      await open();
+      expect(server.requests, hasLength(1));
+
+      actions().retrySignIn();
+      await until(() => server.requests.length == 2);
+      await pumpEventQueue();
+
+      expect(server.requests, hasLength(2));
+      expect(state().error, isA<AdguardHomeSignInRefused>());
+    });
+
+    test('trying again reads no log when none is being shown', () async {
+      server.refusing = true;
+      // Only the status is watched, as on the Home tab.
+      container.listen(
+        adguardHomeStatusProvider(adguardHomeTestInstance),
+        (_, __) {},
+      );
+      await until(
+        () => container
+            .read(adguardHomeStatusProvider(adguardHomeTestInstance))
+            .hasError,
+      );
+      server.refusing = false;
+
+      actions().retrySignIn();
+      await until(
+        () => container
+            .read(adguardHomeStatusProvider(adguardHomeTestInstance))
+            .hasValue,
+      );
+      await pumpEventQueue();
+
+      expect(server.to('GET', 'control/querylog'), isEmpty);
+    });
+
+    test('trying again that works reads the log once, not twice', () async {
+      server.refusing = true;
+      await open();
+      server.refusing = false;
+      pages.add(page(50, 'c1'));
+      final int before = asked().length;
+
+      actions().retrySignIn();
+      await until(() => state().error == null && !state().loading);
+      await pumpEventQueue();
+
+      expect(asked(), hasLength(before + 1));
       expect(state().entries, hasLength(50));
     });
   });
@@ -497,6 +553,27 @@ void main() {
       expect(server.to('POST', 'control/access/set'), isEmpty);
     });
 
+    test('a client let in by a range is not "shut out" by a write that changes '
+        'nothing', () async {
+      // Taking the address off a list it is not on would send the lists
+      // back as they were and call it done.
+      server.on('GET', 'control/access/list', <String, dynamic>{
+        'allowed_clients': <dynamic>['192.168.1.0/24'],
+        'disallowed_clients': <dynamic>[],
+        'blocked_hosts': <dynamic>[],
+      });
+
+      await expectLater(
+        actions().setClientAccess(
+          address: '192.168.1.50',
+          disallowed: false,
+          disallowedRule: '',
+        ),
+        throwsA(isA<AdguardHomeAllowedByWiderEntry>()),
+      );
+      expect(server.to('POST', 'control/access/set'), isEmpty);
+    });
+
     test('reads the access list for the question to ask first', () async {
       final AdguardHomeAccessList list = await actions().readAccessList();
 
@@ -528,6 +605,27 @@ void main() {
     await late.setFilter(AdguardHomeLogFilter.blocked);
     await late.clearNarrowing();
     expect(asked(), hasLength(before));
+  });
+
+  test('a failed read of whether a log is kept is not repeated by itself',
+      () async {
+    // An older server has no such address. Riverpod would ask ten more
+    // times over the next half minute.
+    server.fail('GET', 'control/querylog/config', 404, '404 page not found');
+    container.listen(
+      adguardHomeQueryLogConfigProvider(adguardHomeTestInstance),
+      (_, __) {},
+    );
+    await until(
+      () => container
+          .read(adguardHomeQueryLogConfigProvider(adguardHomeTestInstance))
+          .hasError,
+    );
+
+    // Long enough for the first two of those repeats.
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+
+    expect(server.to('GET', 'control/querylog/config'), hasLength(1));
   });
 
   test('whether a log is kept is read once, when asked', () async {

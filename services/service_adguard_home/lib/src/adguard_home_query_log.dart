@@ -110,6 +110,11 @@ class AdguardHomeQueryLog extends Notifier<AdguardHomeQueryLogState> {
   @override
   AdguardHomeQueryLogState build() {
     ref.onDispose(() => _read++);
+    // Try again was tapped, here or on another tab: read with it.
+    ref.listen<int>(
+      adguardHomeSignInRetriesProvider(instance),
+      (int? _, int __) => reload(),
+    );
     Future<void>.microtask(() => _readFrom(top: true));
     return const AdguardHomeQueryLogState(loading: true);
   }
@@ -214,11 +219,14 @@ class AdguardHomeQueryLog extends Notifier<AdguardHomeQueryLogState> {
 /// Whether the server keeps a query log at all. Read once, and only by
 /// whoever needs to explain an empty one.
 final adguardHomeQueryLogConfigProvider =
-    FutureProvider.autoDispose.family<AdguardHomeQueryLogConfig, Instance>((
-  Ref ref,
-  Instance instance,
-) async {
-  final AdguardHomeApi api =
-      await ref.watch(adguardHomeApiProvider(instance).future);
-  return api.getQueryLogConfig();
-});
+    FutureProvider.autoDispose.family<AdguardHomeQueryLogConfig, Instance>(
+  (Ref ref, Instance instance) async {
+    final AdguardHomeApi api =
+        await ref.watch(adguardHomeApiProvider(instance).future);
+    return api.getQueryLogConfig();
+  },
+  // An older server has no such address. Asking ten more times, as Riverpod
+  // would by itself, does not change that, and an empty log reads as empty
+  // either way.
+  retry: (int _, Object __) => null,
+);

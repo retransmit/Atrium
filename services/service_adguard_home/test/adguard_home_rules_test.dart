@@ -274,6 +274,49 @@ void main() {
       });
     });
 
+    test('a client let in by a wider entry cannot be shut out by taking it off',
+        () {
+      // It is not on the list as itself: a range lets it in, and taking the
+      // address off a list it is not on would change nothing.
+      const AdguardHomeAccessList ranges = AdguardHomeAccessList(
+        allowedClients: <String>['192.168.1.0/24'],
+      );
+
+      expect(
+        adguardHomeIsAllowedByWiderEntry(
+          ranges,
+          '192.168.1.50',
+          disallowed: false,
+        ),
+        isTrue,
+      );
+      // On the list as itself, it can be taken off.
+      expect(
+        adguardHomeIsAllowedByWiderEntry(
+          const AdguardHomeAccessList(
+            allowedClients: <String>['192.168.1.50', '10.0.0.1'],
+          ),
+          '192.168.1.50',
+          disallowed: false,
+        ),
+        isFalse,
+      );
+      // With no allowed clients in use it goes on the disallowed ones.
+      expect(
+        adguardHomeIsAllowedByWiderEntry(
+          const AdguardHomeAccessList(),
+          '192.168.1.50',
+          disallowed: false,
+        ),
+        isFalse,
+      );
+      // Letting a client in is never in the way.
+      expect(
+        adguardHomeIsAllowedByWiderEntry(ranges, '10.9.9.9', disallowed: true),
+        isFalse,
+      );
+    });
+
     test('the last allowed client cannot be shut out this way', () {
       // Taking it off would empty the list, and an empty list allows
       // everyone: the opposite of what was asked.

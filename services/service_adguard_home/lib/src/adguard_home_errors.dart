@@ -45,10 +45,28 @@ class AdguardHomeLastAllowedClient implements Exception {
   String toString() => message;
 }
 
+/// The client is answered because an entry of the allowed clients covers
+/// more than itself, a range or a client id, so there is no entry of its
+/// own to take off.
+class AdguardHomeAllowedByWiderEntry implements Exception {
+  const AdguardHomeAllowedByWiderEntry();
+
+  static const String message =
+      'Only the allowed clients are answered, and this one is let in by an '
+      'entry that covers more than itself, such as a range. It has no entry '
+      'of its own to take off. Change the allowed clients in AdGuard Home '
+      'instead.';
+
+  @override
+  String toString() => message;
+}
+
 /// One sentence for whatever went wrong, fit to show as it is.
 String describeAdguardHomeError(Object error) => switch (error) {
       AdguardHomeSignInRefused() => 'AdGuard Home refused the sign-in.',
       AdguardHomeLastAllowedClient() => AdguardHomeLastAllowedClient.message,
+      AdguardHomeAllowedByWiderEntry() =>
+        AdguardHomeAllowedByWiderEntry.message,
       AdguardHomeRequestRefused(:final String message) => message,
       AdguardHomeUnexpectedAnswer() =>
         'This address answered, but not as AdGuard Home.',
