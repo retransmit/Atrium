@@ -1,4 +1,7 @@
+export 'src/adguard_home_api.dart';
+export 'src/adguard_home_errors.dart';
 export 'src/adguard_home_format.dart';
+export 'src/adguard_home_session.dart';
 export 'src/models/adguard_home_filtering.dart';
 export 'src/models/adguard_home_stats.dart';
 export 'src/models/adguard_home_status.dart';
