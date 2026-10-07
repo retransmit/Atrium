@@ -35,34 +35,43 @@ class AdguardHomeStatTile extends StatelessWidget {
         padding: const EdgeInsets.all(Insets.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          // Beside a taller tile this one is stretched to match, and the
+          // chart then goes to the bottom, so the two charts line up.
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: <Widget>[
-            Text(
-              label,
-              style: theme.textTheme.labelMedium
-                  ?.copyWith(color: cs.onSurfaceVariant),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  label,
+                  style: theme.textTheme.labelMedium
+                      ?.copyWith(color: cs.onSurfaceVariant),
+                ),
+                const SizedBox(height: Insets.xs),
+                // A count in the hundreds of millions has to fit half a
+                // narrow screen at any text size.
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    value,
+                    style: theme.textTheme.headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                if (detail != null)
+                  Text(
+                    detail!,
+                    style: theme.textTheme.labelMedium
+                        ?.copyWith(color: color, fontWeight: FontWeight.w700),
+                  ),
+              ],
             ),
-            const SizedBox(height: Insets.xs),
-            // A count in the hundreds of millions has to fit half a narrow
-            // screen at any text size.
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                value,
-                style: theme.textTheme.headlineSmall
-                    ?.copyWith(fontWeight: FontWeight.w700),
+            if (series.length > 1)
+              Padding(
+                padding: const EdgeInsets.only(top: Insets.sm),
+                child: SizedBox(height: 36, child: _Sparkline(series, color)),
               ),
-            ),
-            if (detail != null)
-              Text(
-                detail!,
-                style: theme.textTheme.labelMedium
-                    ?.copyWith(color: color, fontWeight: FontWeight.w700),
-              ),
-            if (series.length > 1) ...<Widget>[
-              const SizedBox(height: Insets.sm),
-              SizedBox(height: 36, child: _Sparkline(series, color)),
-            ],
           ],
         ),
       ),

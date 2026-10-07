@@ -1,5 +1,6 @@
 import 'package:core_networking/core_networking.dart';
 import 'package:core_ui/core_ui.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:service_adguard_home/service_adguard_home.dart';
@@ -71,6 +72,30 @@ void main() {
     expect(find.text('0 ms'), findsOneWidget);
     expect(find.text('Nothing yet'), findsNWidgets(4));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the charts of two tiles side by side line up',
+      (WidgetTester tester) async {
+    // One label takes more lines than its neighbour's, which used to leave
+    // the two charts at different heights.
+    await pumpAdguardHome(
+      tester,
+      tab(),
+      status: statusWith(),
+      stats: AdguardHomeStats.fromJson(statsJson()),
+    );
+
+    final Finder charts = find.byType(LineChart);
+    expect(charts, findsNWidgets(4));
+    // Queries beside blocked, then malware beside adult websites.
+    expect(
+      tester.getRect(charts.at(0)).bottom,
+      tester.getRect(charts.at(1)).bottom,
+    );
+    expect(
+      tester.getRect(charts.at(2)).bottom,
+      tester.getRect(charts.at(3)).bottom,
+    );
   });
 
   testWidgets('the layout holds on a narrow screen at large text',
