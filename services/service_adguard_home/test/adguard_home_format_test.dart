@@ -143,4 +143,94 @@ void main() {
     expect(adguardHomePeriodLabel(const Duration(hours: 1)), 'Last hour');
     expect(adguardHomePeriodLabel(const Duration(hours: 36)), 'Last 36 hours');
   });
+
+  test('where a runtime client was learned of is said in words', () {
+    expect(adguardHomeClientSourceLabel('ARP'), 'ARP table');
+    expect(adguardHomeClientSourceLabel('DHCP'), 'DHCP');
+    expect(adguardHomeClientSourceLabel('rDNS'), 'Reverse DNS');
+    expect(adguardHomeClientSourceLabel('WHOIS'), 'WHOIS');
+    expect(adguardHomeClientSourceLabel('etc/hosts'), 'Hosts file');
+    // One this app does not know is shown as the server sent it.
+    expect(adguardHomeClientSourceLabel('mDNS'), 'mDNS');
+    expect(adguardHomeClientSourceLabel(''), '');
+  });
+
+  test('a search engine goes by its own name', () {
+    expect(adguardHomeSearchEngineLabel('bing'), 'Bing');
+    expect(adguardHomeSearchEngineLabel('duckduckgo'), 'DuckDuckGo');
+    expect(adguardHomeSearchEngineLabel('youtube'), 'YouTube');
+    expect(adguardHomeSearchEngineLabel('google'), 'Google');
+    // One the server adds later is at least capitalised.
+    expect(adguardHomeSearchEngineLabel('startpage'), 'Startpage');
+    expect(adguardHomeSearchEngineLabel('brave_search'), 'Brave search');
+  });
+
+  test('a group of services goes by a name, not its id', () {
+    expect(adguardHomeServiceGroupLabel('ai'), 'AI');
+    expect(adguardHomeServiceGroupLabel('cdn'), 'CDN');
+    expect(adguardHomeServiceGroupLabel('social_network'), 'Social networks');
+    expect(adguardHomeServiceGroupLabel('messenger'), 'Messengers');
+    expect(adguardHomeServiceGroupLabel('streaming'), 'Streaming');
+    expect(adguardHomeServiceGroupLabel('smart_home'), 'Smart home');
+    expect(adguardHomeServiceGroupLabel(''), 'Other');
+  });
+
+  test('a pause schedule is said in a line', () {
+    expect(
+      formatAdguardHomePauses(
+        const <AdguardHomeServicePause>[
+          AdguardHomeServicePause(
+            day: 'mon',
+            start: Duration.zero,
+            end: Duration(hours: 1),
+          ),
+          AdguardHomeServicePause(
+            day: 'sat',
+            start: Duration(hours: 9),
+            end: Duration(hours: 17, minutes: 30),
+          ),
+        ],
+        'Europe/Berlin',
+      ),
+      'Mon 00:00 to 01:00, Sat 09:00 to 17:30 (Europe/Berlin)',
+    );
+  });
+
+  test('a pause that runs to the end of the day ends at 24:00', () {
+    expect(
+      formatAdguardHomePauses(
+        const <AdguardHomeServicePause>[
+          AdguardHomeServicePause(
+            day: 'sun',
+            start: Duration(hours: 22),
+            end: Duration(hours: 24),
+          ),
+        ],
+        '',
+      ),
+      'Sun 22:00 to 24:00',
+    );
+  });
+
+  test('a day this app does not know is shown as the server names it', () {
+    expect(
+      formatAdguardHomePauses(
+        const <AdguardHomeServicePause>[
+          AdguardHomeServicePause(
+            day: 'xyz',
+            start: Duration(hours: 1),
+            end: Duration(hours: 2),
+          ),
+        ],
+        'UTC',
+      ),
+      'xyz 01:00 to 02:00 (UTC)',
+    );
+  });
+
+  test('how many services are blocked is said with the right word', () {
+    expect(adguardHomeServicesBlockedLabel(0), 'No services blocked');
+    expect(adguardHomeServicesBlockedLabel(1), '1 service blocked');
+    expect(adguardHomeServicesBlockedLabel(12), '12 services blocked');
+  });
 }
