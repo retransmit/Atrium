@@ -17,6 +17,17 @@ String formatAdguardHomePercent(double percent) {
   return '$text%';
 }
 
+/// A share from 0 to 100 for a small space: whole from ten up, `36%`, and
+/// with one decimal below that, `4.2%`.
+String formatAdguardHomeCompactPercent(double percent) {
+  if (percent <= 0) return '0%';
+  // From here up one decimal would round to 10.0.
+  if (percent >= 9.95) return '${percent.round()}%';
+  final String text =
+      percent.toStringAsFixed(1).replaceFirst(RegExp(r'\.0$'), '');
+  return '$text%';
+}
+
 /// A DNS processing time in whole milliseconds, `67 ms`.
 String formatAdguardHomeProcessingTime(Duration time) =>
     '${(time.inMicroseconds / 1000).round()} ms';

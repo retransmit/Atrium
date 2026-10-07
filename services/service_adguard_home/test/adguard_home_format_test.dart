@@ -20,6 +20,19 @@ void main() {
     expect(formatAdguardHomePercent(100), '100%');
   });
 
+  test('a share for a small space is whole, or has one decimal below ten',
+      () {
+    expect(formatAdguardHomeCompactPercent(0), '0%');
+    expect(formatAdguardHomeCompactPercent(0.42), '0.4%');
+    expect(formatAdguardHomeCompactPercent(4), '4%');
+    expect(formatAdguardHomeCompactPercent(9.86), '9.9%');
+    // Would round to 10.0, which is as wide as the space allows nothing of.
+    expect(formatAdguardHomeCompactPercent(9.96), '10%');
+    expect(formatAdguardHomeCompactPercent(13.0123), '13%');
+    expect(formatAdguardHomeCompactPercent(36.5), '37%');
+    expect(formatAdguardHomeCompactPercent(100), '100%');
+  });
+
   test('processing time is in milliseconds', () {
     expect(
       formatAdguardHomeProcessingTime(const Duration(microseconds: 67046)),
