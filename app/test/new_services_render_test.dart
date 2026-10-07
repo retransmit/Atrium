@@ -444,6 +444,9 @@ void main() {
         ),
         adguardHomeStatsPeriodProvider(instance)
             .overrideWith((Ref ref) async => const Duration(hours: 24)),
+        // The tab shows the rules on the blocklists beside the statistics.
+        adguardHomeFilteringProvider(instance)
+            .overrideWith((Ref ref) async => const AdguardHomeFiltering()),
       ],
       AdguardHomeShell(instance: instance),
       pumps: 2,
