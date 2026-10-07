@@ -115,7 +115,10 @@ class _AdguardHomeBlockState extends ConsumerState<_AdguardHomeBlock> {
 
     final Widget body;
     if (status.error is AdguardHomeSignInRefused) {
-      body = _Refused(onRetry: _actions.retrySignIn);
+      body = _Refused(
+        onRetry: _actions.retrySignIn,
+        hasCredentials: adguardHomeHasCredentials(_instance),
+      );
     } else {
       body = status.when(
         skipLoadingOnReload: true,
@@ -425,9 +428,13 @@ class _Figure extends StatelessWidget {
 /// What the block says once the server has refused the sign-in. Nothing is
 /// sent again until Try again is tapped.
 class _Refused extends StatelessWidget {
-  const _Refused({required this.onRetry});
+  const _Refused({required this.onRetry, required this.hasCredentials});
 
   final VoidCallback onRetry;
+
+  /// Whether the instance has a username or password at all. Without them
+  /// the server refused nothing it counts: it only wants a sign-in.
+  final bool hasCredentials;
 
   @override
   Widget build(BuildContext context) {
@@ -442,8 +449,12 @@ class _Refused extends StatelessWidget {
             const SizedBox(width: Insets.sm),
             Expanded(
               child: Text(
-                'AdGuard Home refused the sign-in. By default it blocks an '
-                'address for 15 minutes after five wrong tries.',
+                hasCredentials
+                    ? 'AdGuard Home refused the sign-in. By default it '
+                        'blocks an address for 15 minutes after five wrong '
+                        'tries.'
+                    : 'AdGuard Home asks for a sign-in, and this instance '
+                        'has no username or password.',
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),

@@ -238,6 +238,23 @@ void main() {
     expect(actions.calls, <String>['retry']);
   });
 
+  testWidgets('with no sign-in entered it asks for one',
+      (WidgetTester tester) async {
+    // Nothing was refused that the server counts, so no talk of a lockout.
+    final Instance blank = home.copyWith(
+      auth: const InstanceAuth.userPass(username: '', password: ''),
+    );
+    await pumpWidget(
+      tester,
+      instances: <Instance>[blank],
+      statusError: const AdguardHomeSignInRefused(),
+    );
+
+    expect(find.textContaining('asks for a sign-in'), findsOneWidget);
+    expect(find.textContaining('15 minutes'), findsNothing);
+    expect(find.text('Try again'), findsOneWidget);
+  });
+
   testWidgets('any other failure shows the usual error row of the board',
       (WidgetTester tester) async {
     final _RecordingActions actions = await pumpWidget(
