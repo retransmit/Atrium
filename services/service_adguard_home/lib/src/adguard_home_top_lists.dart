@@ -24,7 +24,8 @@ enum AdguardHomeTopListKind {
 
   /// How a row's figure is written. Response times arrive in seconds.
   String format(num value) => switch (this) {
-        AdguardHomeTopListKind.upstreamTimes => '${(value * 1000).round()} ms',
+        AdguardHomeTopListKind.upstreamTimes =>
+          '${formatAdguardHomeCount((value * 1000).round())} ms',
         _ => formatAdguardHomeCount(value),
       };
 

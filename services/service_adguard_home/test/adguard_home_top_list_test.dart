@@ -109,6 +109,13 @@ void main() {
     expect(find.byType(IconButton), findsNothing);
   });
 
+  test('a slow upstream gets its thousands grouped like every other figure',
+      () {
+    expect(AdguardHomeTopListKind.upstreamTimes.format(1.14394), '1,144 ms');
+    expect(AdguardHomeTopListKind.upstreamTimes.format(0.00531), '5 ms');
+    expect(AdguardHomeTopListKind.queriedDomains.format(17467), '17,467');
+  });
+
   testWidgets('an empty list says so', (WidgetTester tester) async {
     await pump(
       tester,
