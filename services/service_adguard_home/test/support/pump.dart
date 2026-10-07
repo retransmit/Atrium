@@ -136,8 +136,11 @@ class Pumped {
   late RecordingActions actions;
 
   /// The query log the screen is showing. Only there once the screen has
-  /// asked for it.
+  /// asked for it, which [logWatched] tells.
   late RecordingQueryLog log;
+
+  /// Whether anything has asked for the query log yet.
+  bool logWatched = false;
 
   /// How many times the status was read.
   int statusReads = 0;
@@ -190,9 +193,10 @@ Future<Pumped> pumpAdguardHome(
             .overrideWith((Ref ref) async => filtering),
         adguardHomeStatsPeriodProvider(instance)
             .overrideWith((Ref ref) async => period),
-        adguardHomeQueryLogProvider(instance).overrideWith(
-          () => pumped.log = RecordingQueryLog(instance, log),
-        ),
+        adguardHomeQueryLogProvider(instance).overrideWith(() {
+          pumped.logWatched = true;
+          return pumped.log = RecordingQueryLog(instance, log);
+        }),
         adguardHomeQueryLogConfigProvider(instance)
             .overrideWith((Ref ref) async => logConfig),
         adguardHomeActionsProvider(instance).overrideWith(
