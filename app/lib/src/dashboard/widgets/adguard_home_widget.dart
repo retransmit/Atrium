@@ -303,35 +303,74 @@ class _Figures extends StatelessWidget {
   final AdguardHomeStats? stats;
   final AdguardHomeFiltering? filtering;
 
+  /// The least width one figure needs at ordinary text size.
+  static const double _figureWidth = 64;
+
   @override
   Widget build(BuildContext context) {
     final AdguardHomeStats? stats = this.stats;
     final AdguardHomeFiltering? filtering = this.filtering;
+    final List<Widget> figures = <Widget>[
+      _Figure(
+        label: 'Queries',
+        value: stats == null ? '-' : formatAdguardHomeCompact(stats.queries),
+      ),
+      _Figure(
+        label: 'Blocked',
+        value: stats == null
+            ? '-'
+            : formatAdguardHomeCompact(stats.blockedByFilters),
+      ),
+      _Figure(
+        label: 'Blocked %',
+        value: stats == null
+            ? '-'
+            : formatAdguardHomePercent(stats.blockedPercent),
+      ),
+      _Figure(
+        label: 'Rules',
+        value: filtering == null
+            ? '-'
+            : formatAdguardHomeCompact(filtering.rulesOnBlocklists),
+      ),
+    ];
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        // Four across where they fit. At large text on a narrow phone they
+        // would touch each other and lose their labels, so there they take
+        // two rows of two.
+        final double needed =
+            _figureWidth * MediaQuery.textScalerOf(context).scale(1);
+        if (constraints.maxWidth / figures.length >= needed) {
+          return _FigureRow(figures);
+        }
+        return Column(
+          children: <Widget>[
+            _FigureRow(figures.sublist(0, 2)),
+            const SizedBox(height: Insets.sm),
+            _FigureRow(figures.sublist(2)),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Figures side by side, each with an equal share of the width.
+class _FigureRow extends StatelessWidget {
+  const _FigureRow(this.figures);
+
+  final List<Widget> figures;
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        _Figure(
-          label: 'Queries',
-          value: stats == null ? '-' : formatAdguardHomeCompact(stats.queries),
-        ),
-        _Figure(
-          label: 'Blocked',
-          value: stats == null
-              ? '-'
-              : formatAdguardHomeCompact(stats.blockedByFilters),
-        ),
-        _Figure(
-          label: 'Blocked %',
-          value: stats == null
-              ? '-'
-              : formatAdguardHomePercent(stats.blockedPercent),
-        ),
-        _Figure(
-          label: 'Rules',
-          value: filtering == null
-              ? '-'
-              : formatAdguardHomeCompact(filtering.rulesOnBlocklists),
-        ),
+        for (int index = 0; index < figures.length; index++) ...<Widget>[
+          if (index > 0) const SizedBox(width: Insets.sm),
+          Expanded(child: figures[index]),
+        ],
       ],
     );
   }
@@ -346,28 +385,39 @@ class _Figure extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          FittedBox(
+    final TextStyle? valueStyle =
+        theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700);
+    // One line of the figure at the current text size.
+    final double valueHeight = (MediaQuery.textScalerOf(context)
+                .scale(valueStyle?.fontSize ?? 16) *
+            (valueStyle?.height ?? 1.5))
+        .ceilToDouble();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        // A figure too wide for its column shrinks, inside a box that stays
+        // one line tall, so the labels of all four stay level.
+        SizedBox(
+          height: valueHeight,
+          child: FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
               value,
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.w700),
+              maxLines: 1,
+              softWrap: false,
+              style: valueStyle,
             ),
           ),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.labelSmall
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-          ),
-        ],
-      ),
+        ),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.labelSmall
+              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        ),
+      ],
     );
   }
 }

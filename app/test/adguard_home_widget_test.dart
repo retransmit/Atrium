@@ -281,6 +281,33 @@ void main() {
     expect(find.text('PROTECTED'), findsNWidgets(2));
   });
 
+  testWidgets('the four figures share one row at ordinary text sizes',
+      (WidgetTester tester) async {
+    await pumpWidget(tester, status: statusWith(), size: const Size(360, 900));
+
+    double top(String label) => tester.getTopLeft(find.text(label)).dy;
+    expect(top('Blocked'), top('Queries'));
+    expect(top('Blocked %'), top('Queries'));
+    expect(top('Rules'), top('Queries'));
+  });
+
+  testWidgets('the four figures take two rows where one would crowd them',
+      (WidgetTester tester) async {
+    // Four across on a 360 dp phone at twice the text size left the figures
+    // touching each other and their labels cut short.
+    await pumpWidget(
+      tester,
+      status: statusWith(),
+      size: const Size(360, 900),
+      textScale: 2,
+    );
+
+    double top(String label) => tester.getTopLeft(find.text(label)).dy;
+    expect(top('Blocked'), top('Queries'));
+    expect(top('Rules'), top('Blocked %'));
+    expect(top('Blocked %'), greaterThan(top('Queries')));
+  });
+
   testWidgets('the layout holds on a narrow card at large text',
       (WidgetTester tester) async {
     await pumpWidget(
