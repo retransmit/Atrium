@@ -5,21 +5,28 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 
 import 'adguard_home_fixtures.dart';
+import 'adguard_home_query_log_fixtures.dart';
 
 typedef FakeAnswer = Object? Function(RequestOptions request);
 
 /// AdGuard Home's `control/` API, as far as the tests need it.
 ///
-/// Out of the box it answers the four reads with the captured fixtures and
-/// accepts the two writes. Requests are matched on method and path.
+/// Out of the box it answers the reads with the captured fixtures and
+/// accepts the writes. Requests are matched on method and path.
 class FakeAdguardHome implements HttpClientAdapter {
   FakeAdguardHome() {
     on('GET', 'control/status', statusJson());
     on('GET', 'control/stats', statsJson());
     on('GET', 'control/filtering/status', filteringJson());
     on('GET', 'control/stats/config', statsConfigJson());
+    on('GET', 'control/querylog', queryLogJson());
+    on('GET', 'control/querylog/config', queryLogConfigJson());
+    on('GET', 'control/access/list', accessListJson());
+    on('GET', 'control/clients', clientsJson());
     on('POST', 'control/protection', null);
     on('POST', 'control/filtering/set_rules', null);
+    on('POST', 'control/querylog_clear', null);
+    on('POST', 'control/access/set', null);
   }
 
   /// Every request that reached the server, in order.
