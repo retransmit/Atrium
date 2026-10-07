@@ -122,6 +122,7 @@ class _AdguardHomeBlockState extends ConsumerState<_AdguardHomeBlock> {
       body = _Refused(
         onRetry: _actions.retrySignIn,
         hasCredentials: adguardHomeHasCredentials(_instance),
+        refusals: ref.read(adguardHomeSessionProvider(_instance)).refusals,
       );
     } else {
       body = status.when(
@@ -576,13 +577,21 @@ class _Caption extends StatelessWidget {
 /// What the block says once the server has refused the sign-in. Nothing is
 /// sent again until Try again is tapped.
 class _Refused extends StatelessWidget {
-  const _Refused({required this.onRetry, required this.hasCredentials});
+  const _Refused({
+    required this.onRetry,
+    required this.hasCredentials,
+    required this.refusals,
+  });
 
   final VoidCallback onRetry;
 
   /// Whether the instance has a username or password at all. Without them
   /// the server refused nothing it counts: it only wants a sign-in.
   final bool hasCredentials;
+
+  /// How many tries in a row the server has refused. Said from the second
+  /// on, so a try that is refused again does not look like no try at all.
+  final int refusals;
 
   @override
   Widget build(BuildContext context) {
@@ -609,6 +618,17 @@ class _Refused extends StatelessWidget {
             ),
           ],
         ),
+        if (hasCredentials && refusals > 1)
+          Padding(
+            padding: const EdgeInsets.only(top: Insets.xs),
+            child: Text(
+              'Refused $refusals times in a row from this app.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.error,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         Align(
           alignment: Alignment.centerRight,
           child: TextButton(onPressed: onRetry, child: const Text('Try again')),
