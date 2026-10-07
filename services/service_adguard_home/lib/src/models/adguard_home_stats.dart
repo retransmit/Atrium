@@ -90,7 +90,12 @@ class AdguardHomeStats {
 }
 
 /// A top list arrives as a list of objects with one entry each,
-/// `[{"example.com": 12}, {"example.org": 3}]`, in the server's order.
+/// `[{"example.com": 12}, {"example.org": 3}]`, largest first.
+///
+/// The server returns rows of equal amount in a different order on every
+/// read, so those are put in order of name here. Shown as they arrive, tied
+/// rows would swap places at each poll, and a tap could land on the wrong
+/// one.
 List<AdguardHomeCount> _counts(Object? value) {
   if (value is! List) return const <AdguardHomeCount>[];
   return <AdguardHomeCount>[
@@ -100,5 +105,8 @@ List<AdguardHomeCount> _counts(Object? value) {
           if (entry.key case final String name)
             if (entry.value case final num amount)
               AdguardHomeCount(name, amount),
-  ];
+  ]..sort((AdguardHomeCount a, AdguardHomeCount b) {
+      final int byAmount = b.value.compareTo(a.value);
+      return byAmount != 0 ? byAmount : a.name.compareTo(b.name);
+    });
 }

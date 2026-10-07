@@ -75,7 +75,8 @@ void main() {
       expect(stats.blockedSeries.last, 24);
 
       // Each row of a top list arrives as an object with one entry.
-      expect(stats.topQueriedDomains.first.name, 'github.com');
+      // Five domains tie at 8; a tie is settled by name.
+      expect(stats.topQueriedDomains.first.name, 'ads.google.com');
       expect(stats.topQueriedDomains.first.value, 8);
       expect(stats.topQueriedDomains, hasLength(7));
       expect(stats.topClients.single.name, '127.0.0.1');
@@ -121,6 +122,42 @@ void main() {
       expect(stats.queriesSeries, <int>[0, 0, 0]);
       expect(stats.blockedSeries, isEmpty);
       expect(stats.averageProcessingTime, Duration.zero);
+    });
+
+    test('rows the server ties come out in one order, however it sent them',
+        () {
+      // AdGuard Home returns rows of equal count in a different order on
+      // every read. Shown as they come, they would swap places at each poll,
+      // and a tap could land on the wrong domain.
+      List<String> names(List<Map<String, dynamic>> rows) =>
+          AdguardHomeStats.fromJson(<String, dynamic>{
+            'top_queried_domains': rows,
+          }).topQueriedDomains.map((AdguardHomeCount c) => c.name).toList();
+
+      final List<String> once = names(<Map<String, dynamic>>[
+        <String, dynamic>{'big.example': 12},
+        <String, dynamic>{'github.com': 10},
+        <String, dynamic>{'flutter.dev': 10},
+        <String, dynamic>{'example.com': 10},
+        <String, dynamic>{'f-droid.org': 2},
+      ]);
+      final List<String> again = names(<Map<String, dynamic>>[
+        <String, dynamic>{'big.example': 12},
+        <String, dynamic>{'example.com': 10},
+        <String, dynamic>{'github.com': 10},
+        <String, dynamic>{'flutter.dev': 10},
+        <String, dynamic>{'f-droid.org': 2},
+      ]);
+
+      expect(once, again);
+      // Largest first still, and a tie by name.
+      expect(once, <String>[
+        'big.example',
+        'example.com',
+        'flutter.dev',
+        'github.com',
+        'f-droid.org',
+      ]);
     });
 
     test('skips a top list row it cannot read', () {
