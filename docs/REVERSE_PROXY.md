@@ -32,9 +32,9 @@ worth understanding why, which is the next section.
 
 It fails in two separate ways:
 
-- **It gets overwritten.** NZBGet, Transmission, rTorrent, Speedtest Tracker
-  and Tracearr all send their own credentials in that header. For those
-  instances your value never reaches the wire.
+- **It gets overwritten.** NZBGet, Transmission, rTorrent, AdGuard Home,
+  Speedtest Tracker and Tracearr all send their own credentials in that
+  header. For those instances your value never reaches the wire.
 - **It gets rejected.** qBittorrent parses an `Authorization` header it did
   not issue and answers 401 instead of falling back to its session cookie. A
   proxy credential sent that way locks you out of a service that is otherwise
@@ -48,7 +48,7 @@ only name that survives every instance in a profile.
 | --- | --- |
 | `Proxy-Authorization` | Use this for proxy credentials. |
 | `CF-Access-Client-Id`, `CF-Access-Client-Secret` | Safe, nothing touches them. |
-| `Authorization` | Overwritten by five services, refused by qBittorrent. |
+| `Authorization` | Overwritten by six services, refused by qBittorrent. |
 | `X-Api-Key` | Overwritten by every *arr. It is their own key header. |
 | Anything else | Fine unless the app warns you about it. |
 

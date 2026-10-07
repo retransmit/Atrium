@@ -34,6 +34,7 @@ abstract final class ServiceVisuals {
         ServiceKind.navidrome => Icons.queue_music_rounded,
         ServiceKind.ombi => Icons.movie_filter_outlined,
         ServiceKind.myspeed => Icons.network_check_outlined,
+        ServiceKind.adguardHome => Icons.gpp_good_outlined,
       };
 
   static Color accent(ServiceKind kind) => switch (kind) {
@@ -63,6 +64,7 @@ abstract final class ServiceVisuals {
         ServiceKind.navidrome => const Color(0xFF0086D6),
         ServiceKind.ombi => const Color(0xFFDF691A),
         ServiceKind.myspeed => const Color(0xFF06B6D4),
+        ServiceKind.adguardHome => const Color(0xFF68BC71),
       };
 
   /// Human label for a [ServiceRole] section header.

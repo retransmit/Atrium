@@ -74,6 +74,7 @@ body:
         - Beszel
         - dashdot
         - Gluetun
+        - AdGuard Home
         - Unraid
         - Something else
     validations:

@@ -168,6 +168,23 @@ Atrium is a **controller** app. Video playback was removed by design
   dashboard widget. The connection test judges the connection rather than
   the VPN behind it, and the health dot warns when Gluetun reports its VPN
   down. Update Servers on ProtonVPN says what it needs
+- **AdGuard Home** (beta, added 2026-10-07, live-verified against v0.107.79;
+  issue #166): a Home screen with protection on/off and the five timed
+  pauses the web UI offers, a countdown while paused, charts of DNS queries
+  and of blocked queries with their totals, figures for malware, adult
+  sites, safe search and the rules on the blocklists, and the top clients,
+  queried domains, blocked domains and upstreams (five of each, the rest
+  added up, the whole list one tap away), with block and unblock from a
+  domain's row (the same custom rule the web UI writes, and an Undo). An
+  AdGuard Home dashboard widget shows the state with Pause or Resume, the
+  queries and the blocked ones with their share as a ring, a chart of both
+  over the period, and the rules on the blocklists. Signed in with HTTP
+  Basic; a server with no user needs no
+  credentials. AdGuard Home locks an address out after repeated wrong
+  sign-ins (15 minutes after five, by default), so the health dot probes
+  it with no password and cannot flag a wrong one, requests leave one at a
+  time, and after a refusal nothing is sent until Try again is tapped.
+  Query log, filters, clients and settings are not built yet
 - **MySpeed** (added 2026-09-20 by lxBlazarxl, live-verified against 1.0.9):
   execution status with a manual run, the last 24 hours of results, a
   history with averages and a search by test id, the server's config and

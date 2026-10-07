@@ -638,11 +638,13 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
         ];
       case AuthStyle.userPass:
       case AuthStyle.cookieLogin:
-        // Transmission's RPC auth is optional and off in a default install, so
+        // Transmission's RPC auth is optional and off in a default install,
+        // and an AdGuard Home set up without a user answers anyone, so
         // *neither* field may be required there - demanding credentials would
         // lock users out of a perfectly reachable server.
-        final bool authOptional =
-            _kind == ServiceKind.transmission || _kind == ServiceKind.rtorrent;
+        final bool authOptional = _kind == ServiceKind.transmission ||
+            _kind == ServiceKind.rtorrent ||
+            _kind == ServiceKind.adguardHome;
         // Emby/Jellyfin accounts may legitimately have no password; every other
         // username/password service (e.g. qBittorrent) requires one, where an
         // empty submission guarantees a failed login.

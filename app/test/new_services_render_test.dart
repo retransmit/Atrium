@@ -19,6 +19,7 @@ import 'package:service_radarr/service_radarr.dart';
 import 'package:service_sabnzbd/service_sabnzbd.dart';
 import 'package:service_tautulli/service_tautulli.dart';
 import 'package:service_myspeed/service_myspeed.dart';
+import 'package:service_adguard_home/service_adguard_home.dart';
 import 'package:atrium/src/preferences.dart';
 import 'package:atrium/src/screens/calendar_screen.dart';
 
@@ -421,5 +422,38 @@ void main() {
     expect(find.text('Execution status'), findsOneWidget);
     expect(find.text('Idle'), findsOneWidget);
     expect(find.byType(NavigationBar), findsOneWidget);
+  });
+
+  testWidgets('AdguardHomeShell renders protection and the statistics',
+      (WidgetTester tester) async {
+    final Instance instance = _instance(ServiceKind.adguardHome);
+    await _pump(
+      tester,
+      <Override>[
+        adguardHomeStatusProvider(instance).overrideWith(
+          (Ref ref) async => AdguardHomeStatus(
+            version: 'v0.107.79',
+            running: true,
+            protectionEnabled: true,
+            pauseLeft: Duration.zero,
+            readAt: DateTime(2026, 10, 7),
+          ),
+        ),
+        adguardHomeStatsProvider(instance).overrideWith(
+          (Ref ref) async => const AdguardHomeStats(queries: 68),
+        ),
+        adguardHomeStatsPeriodProvider(instance)
+            .overrideWith((Ref ref) async => const Duration(hours: 24)),
+        // The tab shows the rules on the blocklists beside the statistics.
+        adguardHomeFilteringProvider(instance)
+            .overrideWith((Ref ref) async => const AdguardHomeFiltering()),
+      ],
+      AdguardHomeShell(instance: instance),
+      pumps: 2,
+    );
+
+    expect(find.text('Protection is on'), findsOneWidget);
+    expect(find.text('DNS queries'), findsOneWidget);
+    expect(find.text('68'), findsOneWidget);
   });
 }

@@ -7,6 +7,19 @@ import 'package:dio/dio.dart';
 
 import 'service_auth_headers.dart';
 
+/// Marks a request that must leave with no `Authorization` header at all.
+/// Set `options.extra[anonymousRequestExtra] = true`.
+///
+/// [AuthInterceptor] then adds nothing of its own and strips a header of
+/// that name the profile's custom headers put there.
+///
+/// It exists for AdGuard Home's health probe. AdGuard Home counts every
+/// wrong `Authorization: Basic` as a failed sign-in, whatever the path, and
+/// after five it refuses the address for fifteen minutes, right password
+/// included. A probe that fires twice a minute with a mistyped password
+/// would keep the server's owner locked out of their own web UI.
+const String anonymousRequestExtra = 'atrium.anonymous';
+
 /// Adds the auth header(s) appropriate for the [Instance]'s service kind.
 ///
 /// Decoder for the various conventions across the stack:
@@ -21,6 +34,7 @@ import 'service_auth_headers.dart';
 /// | qBittorrent              | `Cookie: SID=...` after `/api/v2/auth/login`    |
 /// | NZBGet                   | HTTP Basic Authorization header             |
 /// | Transmission             | HTTP Basic, and only when configured        |
+/// | AdGuard Home             | HTTP Basic, and only when configured        |
 /// | Deluge                   | `Cookie: _session_id=…` after `auth.login`  |
 /// | Navidrome                | `?u=` + `?t=` salted MD5 + `?s=` query params |
 /// | Ombi                     | `ApiKey` header                             |
@@ -41,6 +55,13 @@ class AuthInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) {
+    if (options.extra[anonymousRequestExtra] == true) {
+      options.headers.removeWhere(
+        (String name, dynamic _) => name.toLowerCase() == 'authorization',
+      );
+      handler.next(options);
+      return;
+    }
     switch (auth) {
       case InstanceAuthApiKey(:final String apiKey):
         switch (kind) {
@@ -80,13 +101,15 @@ class AuthInterceptor extends Interceptor {
           )
           when kind == ServiceKind.nzbget ||
               kind == ServiceKind.transmission ||
-              kind == ServiceKind.rtorrent:
-        // All three use plain HTTP Basic on every request; there is no login
+              kind == ServiceKind.rtorrent ||
+              kind == ServiceKind.adguardHome:
+        // All four use plain HTTP Basic on every request; there is no login
         // flow. Never log this header.
         //
-        // Transmission's RPC auth is optional and off by default, and rTorrent
-        // has no auth of its own at all (only whatever proxy fronts it), so
-        // send nothing when no credentials were entered - an empty `Basic :` is
+        // Transmission's RPC auth is optional and off by default, rTorrent
+        // has no auth of its own at all (only whatever proxy fronts it), and
+        // an AdGuard Home set up without a user answers anyone, so send
+        // nothing when no credentials were entered - an empty `Basic :` is
         // worse than no header.
         if (username.isNotEmpty || password.isNotEmpty) {
           options.headers['Authorization'] =
