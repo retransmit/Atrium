@@ -116,6 +116,45 @@ void main() {
     expect(AdguardHomeTopListKind.queriedDomains.format(17467), '17,467');
   });
 
+  testWidgets('the bars end in one line whatever the length of the figures',
+      (WidgetTester tester) async {
+    // A bar is read against the others, which works only on one scale.
+    await pump(
+      tester,
+      const AdguardHomeTopList(
+        kind: AdguardHomeTopListKind.upstreams,
+        rows: <AdguardHomeCount>[
+          AdguardHomeCount('quad9.example', 9761),
+          AdguardHomeCount('router.example', 2),
+          AdguardHomeCount('google.example', 1),
+        ],
+      ),
+    );
+
+    final Finder bars = find.byType(LinearProgressIndicator);
+    expect(bars, findsNWidgets(3));
+    final double end = tester.getTopRight(bars.first).dx;
+    expect(tester.getTopRight(bars.at(1)).dx, end);
+    expect(tester.getTopRight(bars.at(2)).dx, end);
+  });
+
+  testWidgets('the figures share a right edge, Others among them',
+      (WidgetTester tester) async {
+    await pump(
+      tester,
+      AdguardHomeTopList(
+        kind: AdguardHomeTopListKind.queriedDomains,
+        rows: rows(8),
+        onBlocking: (String domain, {required bool block}) {},
+      ),
+    );
+
+    final double edge = tester.getTopRight(find.text('100')).dx;
+    expect(tester.getTopRight(find.text('96')).dx, edge);
+    // 95 + 94 + 93.
+    expect(tester.getTopRight(find.text('282')).dx, edge);
+  });
+
   testWidgets('an empty list says so', (WidgetTester tester) async {
     await pump(
       tester,

@@ -153,13 +153,24 @@ class AdguardHomeTopRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
-                  row.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium,
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        row.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ),
+                    const SizedBox(width: Insets.md),
+                    _Figure(kind.format(row.value)),
+                  ],
                 ),
                 const SizedBox(height: Insets.xs),
+                // Under the name and the figure both, so that the bars of a
+                // list are all as long and can be read against each other
+                // whatever the length of the figures.
                 LinearProgressIndicator(
                   value: highest <= 0 ? 0 : row.value / highest,
                   minHeight: 4,
@@ -168,8 +179,6 @@ class AdguardHomeTopRow extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: Insets.md),
-          _Figure(kind.format(row.value)),
           if (blocks != null && onBlocking != null)
             IconButton(
               icon: Icon(blocks ? Icons.block : Icons.check_circle_outline),
