@@ -1,8 +1,7 @@
-import 'dart:math' as math;
-
 import 'package:core_ui/core_ui.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+
+import 'adguard_home_series_chart.dart';
 
 /// One figure of the statistics, with its series drawn small beneath it
 /// where the server sends one.
@@ -84,51 +83,13 @@ class AdguardHomeStatTile extends StatelessWidget {
             if (series.length > 1)
               Padding(
                 padding: const EdgeInsets.only(top: Insets.sm),
-                child: SizedBox(height: 36, child: _Sparkline(series, color)),
+                child: SizedBox(
+                  height: 36,
+                  child: AdguardHomeSeriesChart(series: series, color: color),
+                ),
               ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _Sparkline extends StatelessWidget {
-  const _Sparkline(this.series, this.color);
-
-  final List<int> series;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final int highest = series.fold<int>(0, math.max);
-    return LineChart(
-      LineChartData(
-        minX: 0,
-        maxX: (series.length - 1).toDouble(),
-        minY: 0,
-        // A flat line of zeros still needs some height to sit in.
-        maxY: math.max(1, highest).toDouble(),
-        gridData: const FlGridData(show: false),
-        titlesData: const FlTitlesData(show: false),
-        borderData: FlBorderData(show: false),
-        lineTouchData: const LineTouchData(enabled: false),
-        lineBarsData: <LineChartBarData>[
-          LineChartBarData(
-            spots: <FlSpot>[
-              for (int i = 0; i < series.length; i++)
-                FlSpot(i.toDouble(), series[i].toDouble()),
-            ],
-            color: color,
-            isCurved: true,
-            preventCurveOverShooting: true,
-            dotData: const FlDotData(show: false),
-            belowBarData: BarAreaData(
-              show: true,
-              color: color.withValues(alpha: 0.12),
-            ),
-          ),
-        ],
       ),
     );
   }

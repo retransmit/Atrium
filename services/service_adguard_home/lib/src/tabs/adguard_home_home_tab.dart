@@ -10,9 +10,11 @@ import '../adguard_home_errors.dart';
 import '../adguard_home_format.dart';
 import '../adguard_home_providers.dart';
 import '../adguard_home_top_lists.dart';
+import '../models/adguard_home_filtering.dart';
 import '../models/adguard_home_stats.dart';
 import '../models/adguard_home_status.dart';
 import '../screens/adguard_home_top_list_screen.dart';
+import '../widgets/adguard_home_chart_card.dart';
 import '../widgets/adguard_home_protection_card.dart';
 import '../widgets/adguard_home_refused_view.dart';
 import '../widgets/adguard_home_stat_tile.dart';
@@ -89,6 +91,8 @@ class _AdguardHomeHomeTabState extends ConsumerState<AdguardHomeHomeTab> {
         ref.watch(adguardHomeStatsProvider(_instance));
     final Duration? period =
         ref.watch(adguardHomeStatsPeriodProvider(_instance)).value;
+    final AdguardHomeFiltering? filtering =
+        ref.watch(adguardHomeFilteringProvider(_instance)).value;
 
     if (status.error is AdguardHomeSignInRefused) {
       return AdguardHomeRefusedView(
@@ -120,7 +124,7 @@ class _AdguardHomeHomeTabState extends ConsumerState<AdguardHomeHomeTab> {
               now: widget.now,
             ),
             const SizedBox(height: Insets.lg),
-            ..._statistics(context, stats, period),
+            ..._statistics(context, stats, period, filtering),
           ],
         ),
       ),
@@ -131,6 +135,7 @@ class _AdguardHomeHomeTabState extends ConsumerState<AdguardHomeHomeTab> {
     BuildContext context,
     AsyncValue<AdguardHomeStats> stats,
     Duration? period,
+    AdguardHomeFiltering? filtering,
   ) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
@@ -156,20 +161,22 @@ class _AdguardHomeHomeTabState extends ConsumerState<AdguardHomeHomeTab> {
               ?.copyWith(color: cs.onSurfaceVariant),
         ),
         const SizedBox(height: Insets.sm),
-        _TileRow(
-          AdguardHomeStatTile(
-            label: 'DNS queries',
-            value: formatAdguardHomeCount(stats.queries),
-            color: cs.primary,
-            series: stats.queriesSeries,
-          ),
-          AdguardHomeStatTile(
-            label: 'Blocked by filters',
-            value: formatAdguardHomeCount(stats.blockedByFilters),
-            detail: formatAdguardHomePercent(stats.blockedPercent),
-            color: cs.error,
-            series: stats.blockedSeries,
-          ),
+        AdguardHomeChartCard(
+          label: 'DNS queries',
+          value: formatAdguardHomeCount(stats.queries),
+          // The average belongs with the queries it is an average of.
+          detail: 'avg '
+              '${formatAdguardHomeProcessingTime(stats.averageProcessingTime)}',
+          color: cs.primary,
+          series: stats.queriesSeries,
+        ),
+        const SizedBox(height: Insets.sm),
+        AdguardHomeChartCard(
+          label: 'Blocked by filters',
+          value: formatAdguardHomeCount(stats.blockedByFilters),
+          detail: formatAdguardHomePercent(stats.blockedPercent),
+          color: cs.error,
+          series: stats.blockedSeries,
         ),
         const SizedBox(height: Insets.sm),
         _TileRow(
@@ -193,11 +200,13 @@ class _AdguardHomeHomeTabState extends ConsumerState<AdguardHomeHomeTab> {
             value: formatAdguardHomeCount(stats.safeSearchEnforced),
             color: cs.primary,
           ),
+          // Not a figure of the period like the others: how much the
+          // blocklists that are switched on hold right now.
           AdguardHomeStatTile(
-            label: 'Average processing time',
-            value: formatAdguardHomeProcessingTime(
-              stats.averageProcessingTime,
-            ),
+            label: 'Rules on blocklists',
+            value: filtering == null
+                ? '-'
+                : formatAdguardHomeCount(filtering.rulesOnBlocklists),
             color: cs.primary,
           ),
         ),

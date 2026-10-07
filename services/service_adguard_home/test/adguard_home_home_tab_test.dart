@@ -34,13 +34,14 @@ void main() {
         now: now ?? () => readAt,
       );
 
-  testWidgets('shows protection, the six figures and the top lists',
+  testWidgets('shows protection, the figures and the top lists',
       (WidgetTester tester) async {
     await pumpAdguardHome(
       tester,
       tab(),
       status: statusWith(),
       stats: AdguardHomeStats.fromJson(statsJson()),
+      filtering: AdguardHomeFiltering.fromJson(filteringJson()),
     );
 
     expect(find.text('Protection is on'), findsOneWidget);
@@ -54,8 +55,11 @@ void main() {
     expect(find.text('Blocked malware and phishing'), findsOneWidget);
     expect(find.text('Blocked adult websites'), findsOneWidget);
     expect(find.text('Enforced safe search'), findsOneWidget);
-    expect(find.text('Average processing time'), findsOneWidget);
-    expect(find.text('67 ms'), findsOneWidget);
+    // The average processing time sits with the queries it is about.
+    expect(find.text('avg 67 ms'), findsOneWidget);
+    // Only the blocklist that is switched on counts.
+    expect(find.text('Rules on blocklists'), findsOneWidget);
+    expect(find.text('179,185'), findsOneWidget);
 
     expect(find.text('Top clients'), findsOneWidget);
     expect(find.text('127.0.0.1'), findsOneWidget);
@@ -74,7 +78,7 @@ void main() {
     await pumpAdguardHome(tester, tab(), status: statusWith());
 
     expect(find.text('0%'), findsOneWidget);
-    expect(find.text('0 ms'), findsOneWidget);
+    expect(find.text('avg 0 ms'), findsOneWidget);
     expect(find.text('Nothing yet'), findsNWidgets(4));
     expect(tester.takeException(), isNull);
   });
@@ -92,15 +96,35 @@ void main() {
 
     final Finder charts = find.byType(LineChart);
     expect(charts, findsNWidgets(4));
-    // Queries beside blocked, then malware beside adult websites.
-    expect(
-      tester.getRect(charts.at(0)).bottom,
-      tester.getRect(charts.at(1)).bottom,
-    );
+    // Queries and blocked come first, each on a card of its own. Malware
+    // and adult websites share the row after them.
     expect(
       tester.getRect(charts.at(2)).bottom,
       tester.getRect(charts.at(3)).bottom,
     );
+  });
+
+  testWidgets('queries and blocked each get a chart across the tab',
+      (WidgetTester tester) async {
+    await pumpAdguardHome(
+      tester,
+      tab(),
+      status: statusWith(),
+      stats: AdguardHomeStats.fromJson(statsJson()),
+    );
+
+    final Finder charts = find.byType(LineChart);
+    // 360 wide, less the page's padding and the card's.
+    expect(tester.getSize(charts.at(0)), const Size(304, 120));
+    expect(tester.getSize(charts.at(1)), const Size(304, 120));
+    // One above the other, with the total and a second figure beside each
+    // title.
+    expect(
+      tester.getRect(charts.at(1)).top,
+      greaterThan(tester.getRect(charts.at(0)).bottom),
+    );
+    expect(find.text('avg 67 ms'), findsOneWidget);
+    expect(find.text('35.29%'), findsOneWidget);
   });
 
   testWidgets('a long figure leaves no gap above its chart',
@@ -113,18 +137,24 @@ void main() {
       tab(),
       status: statusWith(),
       stats: AdguardHomeStats.fromJson(
-        statsJson()
-          ..['num_dns_queries'] = 123456789
-          ..['num_blocked_filtering'] = 98765432,
+        statsJson()..['num_replaced_safebrowsing'] = 123456789,
       ),
       size: const Size(320, 6000),
       textScale: 2,
     );
 
-    // The taller tile of the first row: its share sits right above its chart.
-    final double shareBottom = tester.getRect(find.text('80%')).bottom;
-    final double chartTop = tester.getRect(find.byType(LineChart).at(1)).top;
-    expect(chartTop - shareBottom, closeTo(Insets.sm, 0.01));
+    // The malware tile is the taller of its row, so its chart sits right
+    // under the box its figure shrinks in.
+    final double figureBottom = tester
+        .getRect(
+          find.ancestor(
+            of: find.text('123,456,789'),
+            matching: find.byType(FittedBox),
+          ),
+        )
+        .bottom;
+    final double chartTop = tester.getRect(find.byType(LineChart).at(2)).top;
+    expect(chartTop - figureBottom, closeTo(Insets.sm, 0.01));
   });
 
   testWidgets('the layout holds on a narrow screen at large text',
