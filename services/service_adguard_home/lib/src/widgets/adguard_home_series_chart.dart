@@ -11,6 +11,8 @@ class AdguardHomeSeriesChart extends StatelessWidget {
   const AdguardHomeSeriesChart({
     required this.series,
     required this.color,
+    this.over = const <int>[],
+    this.overColor,
     super.key,
   });
 
@@ -18,9 +20,16 @@ class AdguardHomeSeriesChart extends StatelessWidget {
   final List<int> series;
   final Color color;
 
+  /// A second series drawn over the first on the same scale, such as the
+  /// blocked queries over all of them. Empty for a chart of one line.
+  final List<int> over;
+
+  /// The colour of [over]. That of the first series when left out.
+  final Color? overColor;
+
   @override
   Widget build(BuildContext context) {
-    final int highest = series.fold<int>(0, math.max);
+    final int highest = <int>[...series, ...over].fold<int>(0, math.max);
     return LineChart(
       LineChartData(
         minX: 0,
@@ -33,21 +42,26 @@ class AdguardHomeSeriesChart extends StatelessWidget {
         borderData: FlBorderData(show: false),
         lineTouchData: const LineTouchData(enabled: false),
         lineBarsData: <LineChartBarData>[
-          LineChartBarData(
-            spots: <FlSpot>[
-              for (int i = 0; i < series.length; i++)
-                FlSpot(i.toDouble(), series[i].toDouble()),
-            ],
-            color: color,
-            isCurved: true,
-            preventCurveOverShooting: true,
-            dotData: const FlDotData(show: false),
-            belowBarData: BarAreaData(
-              show: true,
-              color: color.withValues(alpha: 0.12),
-            ),
-          ),
+          _line(series, color),
+          if (over.isNotEmpty) _line(over, overColor ?? color),
         ],
+      ),
+    );
+  }
+
+  LineChartBarData _line(List<int> points, Color color) {
+    return LineChartBarData(
+      spots: <FlSpot>[
+        for (int i = 0; i < points.length; i++)
+          FlSpot(i.toDouble(), points[i].toDouble()),
+      ],
+      color: color,
+      isCurved: true,
+      preventCurveOverShooting: true,
+      dotData: const FlDotData(show: false),
+      belowBarData: BarAreaData(
+        show: true,
+        color: color.withValues(alpha: 0.12),
       ),
     );
   }
