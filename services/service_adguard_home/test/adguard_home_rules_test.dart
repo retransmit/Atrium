@@ -77,4 +77,279 @@ void main() {
 
     expect(rules, <String>[allow]);
   });
+
+  group('for one client only', () {
+    const String blockFor = r"||ads.example^$client='Laptop'";
+    const String allowFor = r"@@||ads.example^$client='Laptop'";
+
+    test('blocking writes the rule with the client in it', () {
+      // The web UI's rule for one client. It carries no $important.
+      final AdguardHomeRuleEdit edit = adguardHomeBlockingEdit(
+        <String>[block],
+        'ads.example',
+        block: true,
+        client: 'Laptop',
+      );
+
+      expect(edit.change, AdguardHomeRuleChange.added);
+      expect(edit.rule, blockFor);
+      expect(edit.rules, <String>[block, blockFor]);
+    });
+
+    test('unblocking writes the exception with the client in it', () {
+      final AdguardHomeRuleEdit edit = adguardHomeBlockingEdit(
+        const <String>[],
+        'ads.example',
+        block: false,
+        client: 'Laptop',
+      );
+
+      expect(edit.change, AdguardHomeRuleChange.added);
+      expect(edit.rule, allowFor);
+    });
+
+    test('unblocking what was blocked for the client takes that rule away',
+        () {
+      // The rule for everyone is a different line and is left alone.
+      final AdguardHomeRuleEdit edit = adguardHomeBlockingEdit(
+        <String>[block, blockFor],
+        'ads.example',
+        block: false,
+        client: 'Laptop',
+      );
+
+      expect(edit.change, AdguardHomeRuleChange.removed);
+      expect(edit.rule, blockFor);
+      expect(edit.rules, <String>[block]);
+    });
+
+    test('a name with a quote, a comma or a bar in it is escaped', () {
+      // The four characters that would end the name early inside a rule
+      // each get a backslash, as the web UI gives them.
+      final AdguardHomeRuleEdit edit = adguardHomeBlockingEdit(
+        const <String>[],
+        'ads.example',
+        block: true,
+        client: 'Tom\'s "big", box|1',
+      );
+
+      expect(
+        edit.rule,
+        '||ads.example^\$client=\'Tom\\\'s \\"big\\"\\, box\\|1\'',
+      );
+    });
+
+    test('an address is written as it is', () {
+      final AdguardHomeRuleEdit edit = adguardHomeBlockingEdit(
+        const <String>[],
+        'ads.example',
+        block: true,
+        client: '192.168.1.40',
+      );
+
+      expect(edit.rule, r"||ads.example^$client='192.168.1.40'");
+    });
+  });
+
+  group('the name a rule calls a client by', () {
+    const List<AdguardHomeClientRef> clients = <AdguardHomeClientRef>[
+      AdguardHomeClientRef(
+        name: 'Laptop',
+        ids: <String>['aa:bb:cc:dd:ee:ff', '172.17.0.1'],
+      ),
+      AdguardHomeClientRef(name: 'Guests', ids: <String>['192.168.50.0/24']),
+    ];
+
+    test('is the name of the client that has the address among its ids', () {
+      expect(adguardHomeBlockingClientName(clients, '172.17.0.1'), 'Laptop');
+    });
+
+    test('is the address itself for one the server has no settings for', () {
+      expect(
+        adguardHomeBlockingClientName(clients, '192.168.1.40'),
+        '192.168.1.40',
+      );
+      // An address inside a range is not that range, as in the web UI.
+      expect(
+        adguardHomeBlockingClientName(clients, '192.168.50.7'),
+        '192.168.50.7',
+      );
+    });
+  });
+
+  group('shutting a client out or letting it back in', () {
+    const List<String> hosts = <String>['version.bind', 'id.server'];
+
+    test('adds it to the disallowed clients', () {
+      final AdguardHomeAccessList next = adguardHomeClientAccessEdit(
+        const AdguardHomeAccessList(
+          disallowedClients: <String>['10.0.0.9'],
+          blockedHosts: hosts,
+        ),
+        address: '172.17.0.1',
+        disallowed: false,
+        disallowedRule: '172.17.0.1',
+      );
+
+      expect(next.disallowedClients, <String>['10.0.0.9', '172.17.0.1']);
+      expect(next.allowedClients, isEmpty);
+      // The server replaces all three lists, so this one goes back whole.
+      expect(next.blockedHosts, hosts);
+    });
+
+    test('does not add it twice', () {
+      final AdguardHomeAccessList next = adguardHomeClientAccessEdit(
+        const AdguardHomeAccessList(
+          disallowedClients: <String>['172.17.0.1'],
+        ),
+        address: '172.17.0.1',
+        disallowed: false,
+        disallowedRule: '',
+      );
+
+      expect(next.disallowedClients, <String>['172.17.0.1']);
+    });
+
+    test('lets it back in by removing the entry that shut it out', () {
+      // That entry can be a range the address falls in.
+      final AdguardHomeAccessList next = adguardHomeClientAccessEdit(
+        const AdguardHomeAccessList(
+          disallowedClients: <String>['172.17.0.0/16', '10.0.0.9'],
+          blockedHosts: hosts,
+        ),
+        address: '172.17.0.1',
+        disallowed: true,
+        disallowedRule: '172.17.0.0/16',
+      );
+
+      expect(next.disallowedClients, <String>['10.0.0.9']);
+      expect(next.blockedHosts, hosts);
+    });
+
+    test('with no entry named, removes the address itself', () {
+      final AdguardHomeAccessList next = adguardHomeClientAccessEdit(
+        const AdguardHomeAccessList(
+          disallowedClients: <String>['172.17.0.1'],
+        ),
+        address: '172.17.0.1',
+        disallowed: true,
+        disallowedRule: '',
+      );
+
+      expect(next.disallowedClients, isEmpty);
+    });
+
+    group('while only the allowed clients are answered', () {
+      const AdguardHomeAccessList allowlist = AdguardHomeAccessList(
+        allowedClients: <String>['127.0.0.1', '172.17.0.1'],
+        blockedHosts: hosts,
+      );
+
+      test('shutting one out takes it off the allowed clients', () {
+        final AdguardHomeAccessList next = adguardHomeClientAccessEdit(
+          allowlist,
+          address: '172.17.0.1',
+          disallowed: false,
+          disallowedRule: '172.17.0.1',
+        );
+
+        expect(next.allowedClients, <String>['127.0.0.1']);
+        expect(next.disallowedClients, isEmpty);
+        expect(next.blockedHosts, hosts);
+      });
+
+      test('letting one in puts it on the allowed clients', () {
+        final AdguardHomeAccessList next = adguardHomeClientAccessEdit(
+          allowlist,
+          address: '192.168.1.40',
+          disallowed: true,
+          disallowedRule: '',
+        );
+
+        expect(
+          next.allowedClients,
+          <String>['127.0.0.1', '172.17.0.1', '192.168.1.40'],
+        );
+        expect(next.disallowedClients, isEmpty);
+      });
+    });
+
+    test('a client let in by a wider entry cannot be shut out by taking it off',
+        () {
+      // It is not on the list as itself: a range lets it in, and taking the
+      // address off a list it is not on would change nothing.
+      const AdguardHomeAccessList ranges = AdguardHomeAccessList(
+        allowedClients: <String>['192.168.1.0/24'],
+      );
+
+      expect(
+        adguardHomeIsAllowedByWiderEntry(
+          ranges,
+          '192.168.1.50',
+          disallowed: false,
+        ),
+        isTrue,
+      );
+      // On the list as itself, it can be taken off.
+      expect(
+        adguardHomeIsAllowedByWiderEntry(
+          const AdguardHomeAccessList(
+            allowedClients: <String>['192.168.1.50', '10.0.0.1'],
+          ),
+          '192.168.1.50',
+          disallowed: false,
+        ),
+        isFalse,
+      );
+      // With no allowed clients in use it goes on the disallowed ones.
+      expect(
+        adguardHomeIsAllowedByWiderEntry(
+          const AdguardHomeAccessList(),
+          '192.168.1.50',
+          disallowed: false,
+        ),
+        isFalse,
+      );
+      // Letting a client in is never in the way.
+      expect(
+        adguardHomeIsAllowedByWiderEntry(ranges, '10.9.9.9', disallowed: true),
+        isFalse,
+      );
+    });
+
+    test('the last allowed client cannot be shut out this way', () {
+      // Taking it off would empty the list, and an empty list allows
+      // everyone: the opposite of what was asked.
+      const AdguardHomeAccessList only = AdguardHomeAccessList(
+        allowedClients: <String>['172.17.0.1'],
+      );
+
+      expect(
+        adguardHomeIsLastAllowedClient(only, '172.17.0.1', disallowed: false),
+        isTrue,
+      );
+      expect(
+        adguardHomeIsLastAllowedClient(only, '10.0.0.9', disallowed: true),
+        isFalse,
+      );
+      expect(
+        adguardHomeIsLastAllowedClient(
+          const AdguardHomeAccessList(
+            allowedClients: <String>['172.17.0.1', '10.0.0.9'],
+          ),
+          '172.17.0.1',
+          disallowed: false,
+        ),
+        isFalse,
+      );
+      expect(
+        adguardHomeIsLastAllowedClient(
+          const AdguardHomeAccessList(),
+          '172.17.0.1',
+          disallowed: false,
+        ),
+        isFalse,
+      );
+    });
+  });
 }

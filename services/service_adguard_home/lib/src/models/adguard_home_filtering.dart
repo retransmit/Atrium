@@ -78,3 +78,35 @@ List<AdguardHomeFilterList> _lists(Object? value) {
       if (item is Map<Object?, Object?>) AdguardHomeFilterList.fromJson(item),
   ];
 }
+
+/// The name of the list a matched rule is on, given the list's [id].
+///
+/// Zero and the negative ids are the server's own sources and need no
+/// [filtering] to be named. A list that has since been removed, or lists
+/// that were never read, give "Unknown filter" and the id, as the web UI
+/// does.
+String adguardHomeFilterListName(AdguardHomeFiltering? filtering, int id) {
+  switch (id) {
+    case 0:
+      return 'Custom filtering rules';
+    case -1:
+      return 'System hosts files';
+    case -2:
+      return 'Blocked services';
+    case -3:
+      return 'Parental control';
+    case -4:
+      return 'Safe browsing';
+    case -5:
+      return 'Safe search';
+  }
+  if (filtering != null) {
+    for (final AdguardHomeFilterList list in <AdguardHomeFilterList>[
+      ...filtering.blocklists,
+      ...filtering.allowlists,
+    ]) {
+      if (list.id == id) return list.name;
+    }
+  }
+  return 'Unknown filter $id';
+}

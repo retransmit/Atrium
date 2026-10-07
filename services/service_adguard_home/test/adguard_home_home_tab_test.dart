@@ -313,6 +313,57 @@ void main() {
     expect(pumped.actions.calls, <String>['retry']);
   });
 
+  testWidgets('a try that is refused again is counted where it can be seen',
+      (WidgetTester tester) async {
+    // Otherwise it looks like no try at all, and the fifth in a row gets
+    // the address blocked.
+    await pumpAdguardHome(
+      tester,
+      tab(),
+      statusError: const AdguardHomeSignInRefused(),
+      statsError: const AdguardHomeSignInRefused(),
+      session: RefusedSession(2),
+    );
+
+    expect(
+      find.text('Refused 2 times in a row from this app.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('one refusal is not counted out loud',
+      (WidgetTester tester) async {
+    await pumpAdguardHome(
+      tester,
+      tab(),
+      statusError: const AdguardHomeSignInRefused(),
+      statsError: const AdguardHomeSignInRefused(),
+      session: RefusedSession(1),
+    );
+
+    expect(find.textContaining('in a row'), findsNothing);
+  });
+
+  testWidgets('a missing sign-in is not counted either',
+      (WidgetTester tester) async {
+    // With nothing entered nothing was sent that the server counts.
+    await pumpAdguardHome(
+      tester,
+      AdguardHomeHomeTab(
+        instance: adguardHomeTestInstance.copyWith(
+          auth: const InstanceAuth.userPass(username: '', password: ''),
+        ),
+      ),
+      statusError: const AdguardHomeSignInRefused(),
+      statsError: const AdguardHomeSignInRefused(),
+      session: RefusedSession(3),
+      instance: adguardHomeTestInstance.copyWith(
+        auth: const InstanceAuth.userPass(username: '', password: ''),
+      ),
+    );
+    expect(find.textContaining('in a row'), findsNothing);
+  });
+
   testWidgets('with no sign-in entered it asks for one, not for a better one',
       (WidgetTester tester) async {
     // A server that has a user answers an instance with no username or

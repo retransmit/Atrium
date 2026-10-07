@@ -7,7 +7,7 @@ import 'adguard_home_providers.dart';
 import 'adguard_home_rules.dart';
 
 /// Blocks or unblocks [domain] on [instance] and says what that did to the
-/// custom rules.
+/// custom rules. With a [clientAddress] the rule is for that client only.
 ///
 /// A list of domains re-reads itself every half minute and can reorder under
 /// a finger, and a block reaches everything that uses the server, so the
@@ -22,6 +22,7 @@ Future<void> adguardHomeToggleBlocking(
   Instance instance,
   String domain, {
   required bool block,
+  String? clientAddress,
 }) {
   // Both are taken before anything is awaited: the screen that asked may be
   // gone by the time the server answers, and these outlive it.
@@ -30,6 +31,7 @@ Future<void> adguardHomeToggleBlocking(
     ref.read(adguardHomeActionsProvider(instance)),
     domain,
     block: block,
+    clientAddress: clientAddress,
     undoable: true,
   );
 }
@@ -39,6 +41,7 @@ Future<void> _toggle(
   AdguardHomeActions actions,
   String domain, {
   required bool block,
+  required String? clientAddress,
   required bool undoable,
 }) async {
   void say(String message, {VoidCallback? onUndo}) {
@@ -61,8 +64,11 @@ Future<void> _toggle(
   }
 
   try {
-    final AdguardHomeRuleEdit edit =
-        await actions.toggleBlocking(domain, block: block);
+    final AdguardHomeRuleEdit edit = await actions.toggleBlocking(
+      domain,
+      block: block,
+      clientAddress: clientAddress,
+    );
     say(
       switch (edit.change) {
         AdguardHomeRuleChange.added => 'Added ${edit.rule} to the custom rules',
@@ -77,6 +83,7 @@ Future<void> _toggle(
                 actions,
                 domain,
                 block: !block,
+                clientAddress: clientAddress,
                 undoable: false,
               )
           : null,

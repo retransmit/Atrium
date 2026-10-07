@@ -28,6 +28,17 @@ class _RecordingActions extends AdguardHomeActions {
   void refresh() => calls.add('refresh');
 }
 
+/// A session that says it has been refused [_count] times in a row,
+/// without anything having been sent.
+class _RefusedSession extends AdguardHomeSession {
+  _RefusedSession(this._count);
+
+  final int _count;
+
+  @override
+  int get refusals => _count;
+}
+
 void main() {
   const Instance home = Instance(
     id: 'adguard-1',
@@ -90,9 +101,12 @@ void main() {
     Object? statusError,
     Object? statsError,
     Object? periodError,
+    AdguardHomeSession? session,
   }) =>
       <Override>[
         for (final Instance instance in instances) ...<Override>[
+          if (session != null)
+            adguardHomeSessionProvider(instance).overrideWithValue(session),
           adguardHomeStatusProvider(instance).overrideWith((Ref ref) async {
             if (statusError != null) throw statusError;
             return status!;
@@ -122,6 +136,7 @@ void main() {
     Object? statusError,
     Object? statsError,
     Object? periodError,
+    AdguardHomeSession? session,
     Size size = const Size(411, 900),
     double textScale = 1,
   }) async {
@@ -143,6 +158,7 @@ void main() {
           statusError: statusError,
           statsError: statsError,
           periodError: periodError,
+          session: session,
         ),
         child: MaterialApp(
           home: Scaffold(
@@ -311,6 +327,34 @@ void main() {
     await tester.pump();
 
     expect(actions.calls, <String>['retry']);
+  });
+
+  testWidgets('a try that is refused again is counted on the card too',
+      (WidgetTester tester) async {
+    // Try again is here as well, and the fifth wrong try in a row gets the
+    // address blocked wherever it was tapped.
+    await pumpWidget(
+      tester,
+      statusError: const AdguardHomeSignInRefused(),
+      session: _RefusedSession(3),
+    );
+
+    expect(
+      find.text('Refused 3 times in a row from this app.'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a first refusal is not counted on the card',
+      (WidgetTester tester) async {
+    await pumpWidget(
+      tester,
+      statusError: const AdguardHomeSignInRefused(),
+      session: _RefusedSession(1),
+    );
+
+    expect(find.textContaining('in a row'), findsNothing);
   });
 
   testWidgets('with no sign-in entered it asks for one',

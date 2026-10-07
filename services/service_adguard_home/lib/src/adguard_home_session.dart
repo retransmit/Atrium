@@ -20,10 +20,20 @@ import 'adguard_home_errors.dart';
 ///    asks for, and which costs one more request.
 class AdguardHomeSession {
   bool _refused = false;
+  int _refusals = 0;
   Future<void> _tail = Future<void>.value();
 
   /// Whether the server has refused the sign-in, so nothing is being sent.
   bool get refused => _refused;
+
+  /// How many sign-ins the server has refused in a row. Each was a request
+  /// that reached it, so each counted towards its lockout. Back to zero at
+  /// the next answer.
+  ///
+  /// The screens show this beside Try again: without it a try that is
+  /// refused again looks exactly like no try at all, and the fifth one in a
+  /// row is the one that gets the address blocked.
+  int get refusals => _refusals;
 
   /// Lets the next request out. Call it when the user asks to try again.
   void retry() => _refused = false;
@@ -45,10 +55,13 @@ class AdguardHomeSession {
         return;
       }
       try {
-        done.complete(await request());
+        final T answer = await request();
+        _refusals = 0;
+        done.complete(answer);
       } on DioException catch (error, stack) {
         if (error.response?.statusCode == 401) {
           _refused = true;
+          _refusals++;
           done.completeError(const AdguardHomeSignInRefused(), stack);
         } else {
           done.completeError(_failure(error), stack);

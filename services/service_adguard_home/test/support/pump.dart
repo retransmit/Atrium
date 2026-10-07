@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -33,21 +35,140 @@ class RecordingActions extends AdguardHomeActions {
   @override
   void refresh() => calls.add('refresh');
 
+  /// What [readAccessList] hands back.
+  AdguardHomeAccessList accessList = const AdguardHomeAccessList();
+
+  /// When set, [setClientAccess] and [clearQueryLog] fail with it.
+  Object? writeFailure;
+
+  /// While set, [setClientAccess] waits on this before it answers, so a
+  /// test can do things while the write is on its way.
+  Completer<void>? writeHold;
+
   @override
   Future<AdguardHomeRuleEdit> toggleBlocking(
     String domain, {
     required bool block,
+    String? clientAddress,
   }) async {
-    calls.add('${block ? 'block' : 'unblock'} $domain');
-    final String rule =
-        block ? '||$domain^\$important' : '@@||$domain^\$important';
+    calls.add(
+      '${block ? 'block' : 'unblock'} $domain'
+      '${clientAddress == null ? '' : ' for $clientAddress'}',
+    );
+    final String base = clientAddress == null
+        ? '||$domain^\$important'
+        : "||$domain^\$client='$clientAddress'";
+    final String rule = block ? base : '@@$base';
     return AdguardHomeRuleEdit(<String>[rule], change, rule);
   }
+
+  @override
+  Future<AdguardHomeAccessList> readAccessList() async {
+    calls.add('read access');
+    return accessList;
+  }
+
+  @override
+  Future<void> setClientAccess({
+    required String address,
+    required bool disallowed,
+    required String disallowedRule,
+  }) async {
+    calls.add(
+      '${disallowed ? 'allow' : 'disallow'} $address rule=$disallowedRule',
+    );
+    final Completer<void>? held = writeHold;
+    if (held != null) await held.future;
+    final Object? error = writeFailure;
+    if (error != null) throw error;
+  }
+
+  @override
+  Future<void> clearQueryLog() async {
+    calls.add('clear log');
+    final Object? error = writeFailure;
+    if (error != null) throw error;
+  }
+}
+
+/// Stands in for [AdguardHomeQueryLog]: shows the state a test gives it and
+/// notes what the screen asked of it, without reading anything.
+class RecordingQueryLog extends AdguardHomeQueryLog {
+  RecordingQueryLog(super.instance, this._initial);
+
+  final AdguardHomeQueryLogState _initial;
+
+  final List<String> calls = <String>[];
+
+  @override
+  AdguardHomeQueryLogState build() => _initial;
+
+  /// Puts [next] on the screen.
+  void show(AdguardHomeQueryLogState next) => state = next;
+
+  @override
+  Future<void> reload() async => calls.add('reload');
+
+  @override
+  Future<void> loadMore() async {
+    calls.add('more');
+    // As the real one does, so the list stops asking.
+    state = state.copyWith(loadingMore: true, stalled: false, clearError: true);
+  }
+
+  @override
+  Future<void> setSearch(String text) async {
+    calls.add('search $text');
+    state = AdguardHomeQueryLogState(
+      entries: state.entries,
+      search: text.trim(),
+      filter: state.filter,
+      reachedEnd: state.reachedEnd,
+    );
+  }
+
+  @override
+  Future<void> clearNarrowing() async {
+    calls.add('clear');
+    state = AdguardHomeQueryLogState(
+      entries: state.entries,
+      reachedEnd: state.reachedEnd,
+    );
+  }
+
+  @override
+  Future<void> setFilter(AdguardHomeLogFilter filter) async {
+    calls.add('filter ${filter.name}');
+    state = AdguardHomeQueryLogState(
+      entries: state.entries,
+      search: state.search,
+      filter: filter,
+      reachedEnd: state.reachedEnd,
+    );
+  }
+}
+
+/// A session that says it has been refused [refusals] times in a row,
+/// without anything having been sent.
+class RefusedSession extends AdguardHomeSession {
+  RefusedSession(this._count);
+
+  final int _count;
+
+  @override
+  int get refusals => _count;
 }
 
 /// What a pumped screen was built on, for the test to look at.
 class Pumped {
   late RecordingActions actions;
+
+  /// The query log the screen is showing. Only there once the screen has
+  /// asked for it, which [logWatched] tells.
+  late RecordingQueryLog log;
+
+  /// Whether anything has asked for the query log yet.
+  bool logWatched = false;
 
   /// How many times the status was read.
   int statusReads = 0;
@@ -66,11 +187,14 @@ Future<Pumped> pumpAdguardHome(
   AdguardHomeStats stats = const AdguardHomeStats(),
   AdguardHomeFiltering filtering = const AdguardHomeFiltering(),
   Duration period = const Duration(hours: 24),
+  AdguardHomeQueryLogState log = const AdguardHomeQueryLogState(),
+  AdguardHomeQueryLogConfig logConfig = const AdguardHomeQueryLogConfig(),
   Object? statusError,
   Object? statsError,
   Size size = const Size(360, 2400),
   double textScale = 1,
   Instance instance = adguardHomeTestInstance,
+  AdguardHomeSession? session,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -85,6 +209,8 @@ Future<Pumped> pumpAdguardHome(
   await tester.pumpWidget(
     ProviderScope(
       overrides: <Override>[
+        if (session != null)
+          adguardHomeSessionProvider(instance).overrideWithValue(session),
         adguardHomeStatusProvider(instance).overrideWith((Ref ref) async {
           pumped.statusReads++;
           if (statusError != null) throw statusError;
@@ -98,6 +224,12 @@ Future<Pumped> pumpAdguardHome(
             .overrideWith((Ref ref) async => filtering),
         adguardHomeStatsPeriodProvider(instance)
             .overrideWith((Ref ref) async => period),
+        adguardHomeQueryLogProvider(instance).overrideWith(() {
+          pumped.logWatched = true;
+          return pumped.log = RecordingQueryLog(instance, log);
+        }),
+        adguardHomeQueryLogConfigProvider(instance)
+            .overrideWith((Ref ref) async => logConfig),
         adguardHomeActionsProvider(instance).overrideWith(
           (Ref ref) => pumped.actions = RecordingActions(ref, instance),
         ),

@@ -33,6 +33,78 @@ void main() {
     expect(formatAdguardHomeCompactPercent(100), '100%');
   });
 
+  test('how long an answer took is written the way the web UI writes it',
+      () {
+    // Under a millisecond with two decimals, from one up whole and rounded
+    // down.
+    expect(
+      formatAdguardHomeElapsed(const Duration(microseconds: 124)),
+      '0.12 ms',
+    );
+    expect(
+      formatAdguardHomeElapsed(const Duration(microseconds: 44)),
+      '0.04 ms',
+    );
+    expect(formatAdguardHomeElapsed(Duration.zero), '0.00 ms');
+    expect(formatAdguardHomeElapsed(const Duration(milliseconds: 1)), '1 ms');
+    expect(
+      formatAdguardHomeElapsed(const Duration(microseconds: 28702)),
+      '28 ms',
+    );
+    expect(
+      formatAdguardHomeElapsed(const Duration(microseconds: 365871)),
+      '365 ms',
+    );
+    // Grouped like every other figure of the service.
+    expect(formatAdguardHomeElapsed(const Duration(seconds: 2)), '2,000 ms');
+    expect(formatAdguardHomeElapsed(null), '');
+  });
+
+  group('when a query came in', () {
+    // The server sends UTC. These are built in local time and turned into
+    // UTC, so the test reads the same in every time zone.
+    final DateTime now = DateTime(2026, 10, 7, 23);
+
+    test('today is a time of day', () {
+      final DateTime time = DateTime(2026, 10, 7, 20, 29, 32).toUtc();
+
+      expect(formatAdguardHomeLogTime(time, now), '20:29:32');
+    });
+
+    test('another day has its date in front', () {
+      final DateTime time = DateTime(2026, 10, 5, 9, 4, 7).toUtc();
+
+      expect(formatAdguardHomeLogTime(time, now), '5 Oct 09:04:07');
+    });
+
+    test('another year has that too', () {
+      final DateTime time = DateTime(2025, 12, 31, 23, 59, 59).toUtc();
+
+      expect(formatAdguardHomeLogTime(time, now), '31 Dec 2025 23:59:59');
+    });
+
+    test('a time the server did not send reads as nothing', () {
+      expect(formatAdguardHomeLogTime(null, now), '');
+      expect(formatAdguardHomeLogMoment(null), '');
+    });
+
+    test('in full it has the date and the milliseconds', () {
+      final DateTime time = DateTime(2026, 10, 7, 20, 29, 32, 377).toUtc();
+
+      expect(formatAdguardHomeLogMoment(time), '7 Oct 2026, 20:29:32.377');
+    });
+  });
+
+  test('names the way a query arrived as the web UI does', () {
+    expect(adguardHomeProtocolLabel(''), 'Plain DNS');
+    expect(adguardHomeProtocolLabel('doh'), 'DNS-over-HTTPS');
+    expect(adguardHomeProtocolLabel('dot'), 'DNS-over-TLS');
+    expect(adguardHomeProtocolLabel('doq'), 'DNS-over-QUIC');
+    expect(adguardHomeProtocolLabel('dnscrypt'), 'DNSCrypt');
+    // One this app has not heard of is shown as sent.
+    expect(adguardHomeProtocolLabel('carrier-pigeon'), 'carrier-pigeon');
+  });
+
   test('processing time is in milliseconds', () {
     expect(
       formatAdguardHomeProcessingTime(const Duration(microseconds: 67046)),
