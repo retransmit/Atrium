@@ -4,13 +4,14 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 import 'package:service_adguard_home/service_adguard_home.dart';
 
 import '../dashboard_widget_card.dart';
 import '../dashboard_widget_kind.dart';
 
 /// AdGuard Home on the board: whether it is protecting, a way to pause it,
-/// and four figures.
+/// how much it answered and blocked, and when.
 class DashboardAdguardHomeWidget extends StatelessWidget {
   const DashboardAdguardHomeWidget({
     required this.instances,
@@ -106,12 +107,15 @@ class _AdguardHomeBlockState extends ConsumerState<_AdguardHomeBlock> {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
     final AsyncValue<AdguardHomeStatus> status =
         ref.watch(adguardHomeStatusProvider(_instance));
     final AdguardHomeStats? stats =
         ref.watch(adguardHomeStatsProvider(_instance)).value;
     final AdguardHomeFiltering? filtering =
         ref.watch(adguardHomeFilteringProvider(_instance)).value;
+    final Duration? period =
+        ref.watch(adguardHomeStatsPeriodProvider(_instance)).value;
 
     final Widget body;
     if (status.error is AdguardHomeSignInRefused) {
@@ -147,7 +151,25 @@ class _AdguardHomeBlockState extends ConsumerState<_AdguardHomeBlock> {
               now: widget.now,
             ),
             const SizedBox(height: Insets.md),
-            _Figures(stats: stats, filtering: filtering),
+            _Summary(stats: stats),
+            // A server that keeps no statistics, or has none yet, sends no
+            // series to draw.
+            if (stats != null && stats.queriesSeries.length > 1) ...<Widget>[
+              const SizedBox(height: Insets.sm),
+              SizedBox(
+                height: _chartHeight,
+                child: AdguardHomeSeriesChart(
+                  series: stats.queriesSeries,
+                  color: cs.primary,
+                  over: stats.blockedSeries,
+                  overColor: cs.error,
+                ),
+              ),
+            ],
+            if (period != null || filtering != null) ...<Widget>[
+              const SizedBox(height: Insets.sm),
+              _Caption(period: period, filtering: filtering),
+            ],
           ],
         ),
       );
@@ -168,7 +190,7 @@ class _AdguardHomeBlockState extends ConsumerState<_AdguardHomeBlock> {
                   _instance.name,
                   style: theme.textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: theme.colorScheme.onSurfaceVariant,
+                    color: cs.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -180,7 +202,20 @@ class _AdguardHomeBlockState extends ConsumerState<_AdguardHomeBlock> {
   }
 }
 
-/// The state pill, and beside it the pause menu or Resume.
+/// How tall the chart of the period is drawn.
+const double _chartHeight = 48;
+
+/// The compact tonal look of the one button the widget has.
+final ButtonStyle _actionStyle = FilledButton.styleFrom(
+  visualDensity: VisualDensity.compact,
+  padding: const EdgeInsets.symmetric(
+    horizontal: Insets.md,
+    vertical: Insets.xs,
+  ),
+  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+);
+
+/// The state pill, and beside it Pause or Resume.
 class _StateRow extends StatelessWidget {
   const _StateRow({
     required this.status,
@@ -266,140 +301,149 @@ class _StateRow extends StatelessWidget {
         ),
         const SizedBox(width: Insets.sm),
         if (state == AdguardHomeProtection.on)
-          PopupMenuButton<Duration>(
-            tooltip: 'Pause protection',
-            icon: const Icon(Icons.pause_circle_outline),
-            enabled: !busy,
-            useRootNavigator: true,
-            // Zero stands for no timer: off until turned back on.
-            onSelected: (Duration length) => onSet(
-              enabled: false,
-              pause: length == Duration.zero ? null : length,
-            ),
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<Duration>>[
-              for (final AdguardHomePause pause in adguardHomePauses)
-                PopupMenuItem<Duration>(
-                  value: pause.length,
-                  child: Text(pause.label),
-                ),
-              const PopupMenuDivider(),
-              const PopupMenuItem<Duration>(
-                value: Duration.zero,
-                child: Text('Until turned back on'),
-              ),
-            ],
-          )
+          _PauseButton(busy: busy, onSet: onSet)
         else
-          TextButton(
+          FilledButton.tonalIcon(
+            style: _actionStyle,
             onPressed: busy ? null : () => onSet(enabled: true),
-            child: const Text('Resume'),
+            icon: const Icon(Icons.play_arrow_rounded, size: 16),
+            label: const Text('Resume'),
           ),
       ],
     );
   }
 }
 
-/// Queries, blocked, the blocked share and the rules on the blocklists.
-class _Figures extends StatelessWidget {
-  const _Figures({required this.stats, required this.filtering});
+/// Pause, which opens the lengths a pause can have.
+class _PauseButton extends StatelessWidget {
+  const _PauseButton({required this.busy, required this.onSet});
 
-  final AdguardHomeStats? stats;
-  final AdguardHomeFiltering? filtering;
+  final bool busy;
+  final void Function({required bool enabled, Duration? pause}) onSet;
 
-  /// The least width one figure needs at ordinary text size.
-  static const double _figureWidth = 64;
+  Future<void> _choose(BuildContext context) async {
+    final RenderBox button = context.findRenderObject()! as RenderBox;
+    final RenderBox overlay = Navigator.of(context, rootNavigator: true)
+        .overlay!
+        .context
+        .findRenderObject()! as RenderBox;
+    final Duration? length = await showMenu<Duration>(
+      context: context,
+      useRootNavigator: true,
+      // Under the button.
+      position: RelativeRect.fromRect(
+        Rect.fromPoints(
+          button.localToGlobal(
+            button.size.bottomLeft(Offset.zero),
+            ancestor: overlay,
+          ),
+          button.localToGlobal(
+            button.size.bottomRight(Offset.zero),
+            ancestor: overlay,
+          ),
+        ),
+        Offset.zero & overlay.size,
+      ),
+      items: <PopupMenuEntry<Duration>>[
+        for (final AdguardHomePause pause in adguardHomePauses)
+          PopupMenuItem<Duration>(
+            value: pause.length,
+            child: Text(pause.label),
+          ),
+        const PopupMenuDivider(),
+        // Zero stands for no timer: off until turned back on.
+        const PopupMenuItem<Duration>(
+          value: Duration.zero,
+          child: Text('Until turned back on'),
+        ),
+      ],
+    );
+    if (length == null) return;
+    onSet(enabled: false, pause: length == Duration.zero ? null : length);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final AdguardHomeStats? stats = this.stats;
-    final AdguardHomeFiltering? filtering = this.filtering;
-    final List<Widget> figures = <Widget>[
-      _Figure(
-        label: 'Queries',
-        value: stats == null ? '-' : formatAdguardHomeCompact(stats.queries),
-      ),
-      _Figure(
-        label: 'Blocked',
-        value: stats == null
-            ? '-'
-            : formatAdguardHomeCompact(stats.blockedByFilters),
-      ),
-      _Figure(
-        label: 'Blocked %',
-        value: stats == null
-            ? '-'
-            : formatAdguardHomePercent(stats.blockedPercent),
-      ),
-      _Figure(
-        label: 'Rules',
-        value: filtering == null
-            ? '-'
-            : formatAdguardHomeCompact(filtering.rulesOnBlocklists),
-      ),
-    ];
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        // Four across where they fit. At large text on a narrow phone they
-        // would touch each other and lose their labels, so there they take
-        // two rows of two.
-        final double needed =
-            _figureWidth * MediaQuery.textScalerOf(context).scale(1);
-        if (constraints.maxWidth / figures.length >= needed) {
-          return _FigureRow(figures);
-        }
-        return Column(
-          children: <Widget>[
-            _FigureRow(figures.sublist(0, 2)),
-            const SizedBox(height: Insets.sm),
-            _FigureRow(figures.sublist(2)),
-          ],
-        );
-      },
+    return FilledButton.tonalIcon(
+      style: _actionStyle,
+      onPressed: busy ? null : () => _choose(context),
+      icon: const Icon(Icons.pause_rounded, size: 16),
+      label: const Text('Pause'),
     );
   }
 }
 
-/// Figures side by side, each with an equal share of the width.
-class _FigureRow extends StatelessWidget {
-  const _FigureRow(this.figures);
+/// The queries and how many of them were blocked, with that share as a
+/// ring. The two colours are the ones their lines have in the chart.
+class _Summary extends StatelessWidget {
+  const _Summary({required this.stats});
 
-  final List<Widget> figures;
+  final AdguardHomeStats? stats;
 
   @override
   Widget build(BuildContext context) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    final AdguardHomeStats? stats = this.stats;
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        for (int index = 0; index < figures.length; index++) ...<Widget>[
-          if (index > 0) const SizedBox(width: Insets.sm),
-          Expanded(child: figures[index]),
-        ],
+        Expanded(
+          child: _Figure(
+            label: 'Queries',
+            value:
+                stats == null ? '-' : formatAdguardHomeCompact(stats.queries),
+            color: cs.primary,
+          ),
+        ),
+        const SizedBox(width: Insets.sm),
+        Expanded(
+          child: _Figure(
+            label: 'Blocked',
+            value: stats == null
+                ? '-'
+                : formatAdguardHomeCompact(stats.blockedByFilters),
+            color: cs.error,
+          ),
+        ),
+        const SizedBox(width: Insets.sm),
+        _ShareRing(percent: stats?.blockedPercent, color: cs.error),
       ],
     );
   }
 }
 
+/// A figure over its name, the name marked with a dot of its colour.
 class _Figure extends StatelessWidget {
-  const _Figure({required this.label, required this.value});
+  const _Figure({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 
   final String label;
   final String value;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final TextScaler scaler = MediaQuery.textScalerOf(context);
     final TextStyle? valueStyle =
-        theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700);
-    // One line of the figure at the current text size.
-    final double valueHeight = (MediaQuery.textScalerOf(context)
-                .scale(valueStyle?.fontSize ?? 16) *
-            (valueStyle?.height ?? 1.5))
-        .ceilToDouble();
+        theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700);
+    final TextStyle? labelStyle = theme.textTheme.labelMedium
+        ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    // One line of each at the current text size.
+    final double valueHeight =
+        (scaler.scale(valueStyle?.fontSize ?? 22) * (valueStyle?.height ?? 1.27))
+            .ceilToDouble();
+    final double labelHeight =
+        (scaler.scale(labelStyle?.fontSize ?? 12) * (labelStyle?.height ?? 1.33))
+            .ceilToDouble();
+    final double dot = scaler.scale(8);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        // A figure too wide for its column shrinks, inside a box that stays
-        // one line tall, so the labels of all four stay level.
+        // What is too wide for its share of the card shrinks, inside a box
+        // that stays one line tall, so the two figures stay level.
         SizedBox(
           height: valueHeight,
           child: FittedBox(
@@ -413,14 +457,118 @@ class _Figure extends StatelessWidget {
             ),
           ),
         ),
-        Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.labelSmall
-              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+        SizedBox(
+          height: labelHeight,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Container(
+                  width: dot,
+                  height: dot,
+                  decoration:
+                      BoxDecoration(color: color, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 6),
+                Text(label, maxLines: 1, softWrap: false, style: labelStyle),
+              ],
+            ),
+          ),
         ),
       ],
+    );
+  }
+}
+
+/// The share of the queries that were blocked, as a ring with the figure
+/// inside it.
+class _ShareRing extends StatelessWidget {
+  const _ShareRing({required this.percent, required this.color});
+
+  /// From 0 to 100. Null while the statistics are not there.
+  final double? percent;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final double? percent = this.percent;
+    return SizedBox(
+      width: 52,
+      height: 52,
+      child: Stack(
+        alignment: Alignment.center,
+        children: <Widget>[
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(
+              begin: 0,
+              end: ((percent ?? 0) / 100).clamp(0.0, 1.0),
+            ),
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOutCubic,
+            builder: (BuildContext context, double value, Widget? _) {
+              return CircularProgressIndicatorM3E(
+                value: value,
+                shape: ProgressM3EShape.flat,
+                activeColor: color,
+                trackColor: theme.colorScheme.surfaceContainerHighest,
+              );
+            },
+          ),
+          // Kept inside the ring whatever the text size.
+          SizedBox(
+            width: 32,
+            height: 32,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                percent == null
+                    ? '-'
+                    : formatAdguardHomeCompactPercent(percent),
+                style: theme.textTheme.labelLarge
+                    ?.copyWith(fontWeight: FontWeight.w800),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The period the figures cover, and how many rules do the blocking.
+class _Caption extends StatelessWidget {
+  const _Caption({required this.period, required this.filtering});
+
+  final Duration? period;
+  final AdguardHomeFiltering? filtering;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final TextStyle? style = theme.textTheme.labelSmall
+        ?.copyWith(color: theme.colorScheme.onSurfaceVariant);
+    final Duration? period = this.period;
+    final int? rules = filtering?.rulesOnBlocklists;
+    // One line, the two at either end. Where that is too narrow, as at
+    // large text, the second goes under the first.
+    return SizedBox(
+      width: double.infinity,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        spacing: Insets.md,
+        children: <Widget>[
+          if (period != null) Text(adguardHomePeriodLabel(period), style: style),
+          if (rules != null)
+            Text(
+              '${formatAdguardHomeCompact(rules)} '
+              '${rules == 1 ? 'rule' : 'rules'}',
+              style: style,
+            ),
+        ],
+      ),
     );
   }
 }

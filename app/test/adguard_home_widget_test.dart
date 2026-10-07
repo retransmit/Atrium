@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 import 'package:service_adguard_home/service_adguard_home.dart';
 
 /// Stands in for [AdguardHomeActions], noting what the widget asked for
@@ -70,12 +71,25 @@ void main() {
     ],
   );
 
+  const AdguardHomeStats totals =
+      AdguardHomeStats(queries: 5690, blockedByFilters: 740);
+
+  /// The same totals with a point for each of four hours.
+  const AdguardHomeStats hourly = AdguardHomeStats(
+    queries: 5690,
+    blockedByFilters: 740,
+    queriesSeries: <int>[900, 1400, 2100, 1290],
+    blockedSeries: <int>[100, 200, 300, 140],
+  );
+
   /// The reads answered from fixed values, and the actions recorded.
   List<Override> overridesFor(
     List<Instance> instances, {
     AdguardHomeStatus? status,
+    AdguardHomeStats stats = totals,
     Object? statusError,
     Object? statsError,
+    Object? periodError,
   }) =>
       <Override>[
         for (final Instance instance in instances) ...<Override>[
@@ -85,10 +99,15 @@ void main() {
           }),
           adguardHomeStatsProvider(instance).overrideWith((Ref ref) async {
             if (statsError != null) throw statsError;
-            return const AdguardHomeStats(queries: 5690, blockedByFilters: 740);
+            return stats;
           }),
           adguardHomeFilteringProvider(instance)
               .overrideWith((Ref ref) async => filtering),
+          adguardHomeStatsPeriodProvider(instance)
+              .overrideWith((Ref ref) async {
+            if (periodError != null) throw periodError;
+            return const Duration(hours: 24);
+          }),
           adguardHomeActionsProvider(instance)
               .overrideWith((Ref ref) => _RecordingActions(ref, instance)),
         ],
@@ -99,8 +118,10 @@ void main() {
     WidgetTester tester, {
     List<Instance> instances = const <Instance>[home],
     AdguardHomeStatus? status,
+    AdguardHomeStats stats = totals,
     Object? statusError,
     Object? statsError,
+    Object? periodError,
     Size size = const Size(411, 900),
     double textScale = 1,
   }) async {
@@ -118,8 +139,10 @@ void main() {
         overrides: overridesFor(
           instances,
           status: status,
+          stats: stats,
           statusError: statusError,
           statsError: statsError,
+          periodError: periodError,
         ),
         child: MaterialApp(
           home: Scaffold(
@@ -151,11 +174,63 @@ void main() {
     expect(find.text('5.69K'), findsOneWidget);
     expect(find.text('Blocked'), findsOneWidget);
     expect(find.text('740'), findsOneWidget);
-    expect(find.text('Blocked %'), findsOneWidget);
-    expect(find.text('13.01%'), findsOneWidget);
+    // The share of the queries that were blocked, inside its ring.
+    expect(find.text('13%'), findsOneWidget);
     // Only the list that is switched on counts.
-    expect(find.text('Rules'), findsOneWidget);
-    expect(find.text('724K'), findsOneWidget);
+    expect(find.text('724K rules'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the ring fills to the share that was blocked',
+      (WidgetTester tester) async {
+    await pumpWidget(tester, status: statusWith());
+    // It sweeps up to its value.
+    await tester.pump(const Duration(seconds: 1));
+
+    final CircularProgressIndicatorM3E ring = tester.widget(
+      find.byType(CircularProgressIndicatorM3E),
+    );
+    expect(ring.value, closeTo(740 / 5690, 0.0001));
+    expect(ring.shape, ProgressM3EShape.flat);
+  });
+
+  testWidgets('draws the queries with the blocked ones over them',
+      (WidgetTester tester) async {
+    await pumpWidget(tester, status: statusWith(), stats: hourly);
+
+    final AdguardHomeSeriesChart chart =
+        tester.widget(find.byType(AdguardHomeSeriesChart));
+    expect(chart.series, <int>[900, 1400, 2100, 1290]);
+    expect(chart.over, <int>[100, 200, 300, 140]);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a server that sends no series gets no chart',
+      (WidgetTester tester) async {
+    await pumpWidget(tester, status: statusWith());
+
+    expect(find.byType(AdguardHomeSeriesChart), findsNothing);
+    expect(find.text('5.69K'), findsOneWidget);
+  });
+
+  testWidgets('says which period the figures cover',
+      (WidgetTester tester) async {
+    await pumpWidget(tester, status: statusWith());
+
+    expect(find.text('Last 24 hours'), findsOneWidget);
+  });
+
+  testWidgets('a period that cannot be read is left out, nothing else',
+      (WidgetTester tester) async {
+    await pumpWidget(
+      tester,
+      status: statusWith(),
+      periodError: const AdguardHomeUnexpectedAnswer(),
+    );
+
+    expect(find.textContaining('Last'), findsNothing);
+    expect(find.text('5.69K'), findsOneWidget);
+    expect(find.text('724K rules'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -164,7 +239,7 @@ void main() {
     final _RecordingActions actions =
         await pumpWidget(tester, status: statusWith());
 
-    await tester.tap(find.byTooltip('Pause protection'));
+    await tester.tap(find.text('Pause'));
     await tester.pumpAndSettle();
     for (final String label in <String>[
       '30 seconds',
@@ -179,7 +254,7 @@ void main() {
     await tester.tap(find.text('10 minutes'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byTooltip('Pause protection'));
+    await tester.tap(find.text('Pause'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Until turned back on'));
     await tester.pumpAndSettle();
@@ -202,7 +277,7 @@ void main() {
 
     expect(find.text('PAUSED'), findsOneWidget);
     expect(find.text('9:41'), findsOneWidget);
-    expect(find.byTooltip('Pause protection'), findsNothing);
+    expect(find.text('Pause'), findsNothing);
 
     await tester.tap(find.text('Resume'));
     await tester.pump();
@@ -278,9 +353,11 @@ void main() {
     );
 
     expect(find.text('PROTECTED'), findsOneWidget);
-    // Queries, Blocked and Blocked % wait. Rules comes from the filter lists.
+    // Queries, Blocked and the share wait. The rules come from the filter
+    // lists.
     expect(find.text('-'), findsNWidgets(3));
-    expect(find.text('724K'), findsOneWidget);
+    expect(find.text('724K rules'), findsOneWidget);
+    expect(find.byType(AdguardHomeSeriesChart), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -298,31 +375,19 @@ void main() {
     expect(find.text('PROTECTED'), findsNWidgets(2));
   });
 
-  testWidgets('the four figures share one row at ordinary text sizes',
+  testWidgets('the two figures and the ring share a row',
       (WidgetTester tester) async {
     await pumpWidget(tester, status: statusWith(), size: const Size(360, 900));
 
-    double top(String label) => tester.getTopLeft(find.text(label)).dy;
-    expect(top('Blocked'), top('Queries'));
-    expect(top('Blocked %'), top('Queries'));
-    expect(top('Rules'), top('Queries'));
-  });
-
-  testWidgets('the four figures take two rows where one would crowd them',
-      (WidgetTester tester) async {
-    // Four across on a 360 dp phone at twice the text size left the figures
-    // touching each other and their labels cut short.
-    await pumpWidget(
-      tester,
-      status: statusWith(),
-      size: const Size(360, 900),
-      textScale: 2,
-    );
-
-    double top(String label) => tester.getTopLeft(find.text(label)).dy;
-    expect(top('Blocked'), top('Queries'));
-    expect(top('Rules'), top('Blocked %'));
-    expect(top('Blocked %'), greaterThan(top('Queries')));
+    final Rect queries = tester.getRect(find.text('5.69K'));
+    final Rect blocked = tester.getRect(find.text('740'));
+    final Rect ring =
+        tester.getRect(find.byType(CircularProgressIndicatorM3E));
+    expect(blocked.top, queries.top);
+    expect(blocked.left, greaterThan(queries.right));
+    expect(ring.left, greaterThan(blocked.right));
+    expect(ring.top, lessThan(queries.bottom));
+    expect(ring.bottom, greaterThan(queries.top));
   });
 
   testWidgets('the layout holds on a narrow card at large text',
@@ -333,6 +398,7 @@ void main() {
         enabled: false,
         pauseLeft: const Duration(hours: 23, minutes: 59, seconds: 59),
       ),
+      stats: hourly,
       size: const Size(320, 900),
       textScale: 2,
     );
@@ -341,6 +407,7 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('PAUSED'), findsOneWidget);
     expect(find.text('Resume'), findsOneWidget);
+    expect(find.byType(AdguardHomeSeriesChart), findsOneWidget);
   });
 
   testWidgets('a tap opens the service', (WidgetTester tester) async {
@@ -369,14 +436,19 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: overridesFor(const <Instance>[home], status: statusWith()),
+        overrides: overridesFor(
+          const <Instance>[home],
+          status: statusWith(),
+          stats: hourly,
+        ),
         child: MaterialApp.router(routerConfig: router),
       ),
     );
     await tester.pump();
     await tester.pump();
 
-    await tester.tap(find.text('AdGuard Home'));
+    // The chart is part of the card, not a thing of its own to touch.
+    await tester.tap(find.byType(AdguardHomeSeriesChart));
     await tester.pumpAndSettle();
 
     expect(find.text('Opened adguardHome adguard-1'), findsOneWidget);
