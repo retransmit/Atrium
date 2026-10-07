@@ -97,6 +97,9 @@ class FakeAdguardHome implements HttpClientAdapter {
   }) =>
       _failures['$method $path'] = (status, message, contentType);
 
+  /// Answers [method] [path] as before it was made to [fail].
+  void mend(String method, String path) => _failures.remove('$method $path');
+
   List<RequestOptions> to(String method, String path) => <RequestOptions>[
         for (final RequestOptions request in requests)
           if (request.method == method && request.path == path) request,
