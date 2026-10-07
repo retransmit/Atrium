@@ -141,6 +141,16 @@ class ConnectionTester {
         'Connected',
       );
     } on AdguardHomeSignInRefused {
+      if (!adguardHomeHasCredentials(candidate)) {
+        // No username or password went out, so the server counted nothing:
+        // there is no lockout to warn about, and nothing to hold back from
+        // the next address.
+        return const ConnectionTestResult(
+          ConnectionOutcome.authFailed,
+          'This AdGuard Home asks for a sign-in. Enter its username and '
+          'password',
+        );
+      }
       _adguardHomeRefused = candidate;
       _adguardHomeRefusedAt = _now();
       return const ConnectionTestResult(

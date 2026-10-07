@@ -199,6 +199,31 @@ void main() {
       expect(server.requests, 2);
     });
 
+    test('no sign-in entered on a server that wants one says so', () async {
+      // Nothing was sent that the server counts as a wrong try, so there is
+      // no lockout to warn about and nothing to hold back: both addresses
+      // are tried.
+      final (ConnectionTester tester, _CountingDioFactory server) =
+          testerAnswering(401, '');
+      final Instance blank = adguard.copyWith(
+        auth: const InstanceAuth.userPass(username: '', password: ''),
+      );
+
+      final ConnectionTestResult local =
+          await tester.test(candidate: blank, url: UrlMode.forceLocal);
+      final ConnectionTestResult external =
+          await tester.test(candidate: blank, url: UrlMode.forceExternal);
+
+      expect(local.outcome, ConnectionOutcome.authFailed);
+      expect(
+        local.message,
+        'This AdGuard Home asks for a sign-in. Enter its username and '
+        'password',
+      );
+      expect(external.message, local.message);
+      expect(server.requests, 2);
+    });
+
     test('a web page at that address is not AdGuard Home', () async {
       // A proxy's sign-in page, or some other server altogether.
       final (ConnectionTester tester, _) = testerAnswering(
