@@ -1,5 +1,6 @@
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import '../adguard_home_top_lists.dart';
 import '../models/adguard_home_stats.dart';
@@ -171,10 +172,12 @@ class AdguardHomeTopRow extends StatelessWidget {
                 // Under the name and the figure both, so that the bars of a
                 // list are all as long and can be read against each other
                 // whatever the length of the figures.
-                LinearProgressIndicator(
+                LinearProgressIndicatorM3E(
                   value: highest <= 0 ? 0 : row.value / highest,
-                  minHeight: 4,
-                  borderRadius: BorderRadius.circular(2),
+                  size: LinearProgressM3ESize.s,
+                  shape: ProgressM3EShape.flat,
+                  activeColor: theme.colorScheme.primary,
+                  trackColor: theme.colorScheme.surfaceContainerHighest,
                 ),
               ],
             ),

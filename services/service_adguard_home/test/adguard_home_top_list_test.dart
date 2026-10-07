@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 import 'package:service_adguard_home/service_adguard_home.dart';
 
 void main() {
@@ -131,11 +132,41 @@ void main() {
       ),
     );
 
-    final Finder bars = find.byType(LinearProgressIndicator);
+    final Finder bars = find.byType(LinearProgressIndicatorM3E);
     expect(bars, findsNWidgets(3));
     final double end = tester.getTopRight(bars.first).dx;
     expect(tester.getTopRight(bars.at(1)).dx, end);
     expect(tester.getTopRight(bars.at(2)).dx, end);
+  });
+
+  testWidgets('a bar is as full as its figure is of the largest',
+      (WidgetTester tester) async {
+    await pump(
+      tester,
+      const AdguardHomeTopList(
+        kind: AdguardHomeTopListKind.clients,
+        rows: <AdguardHomeCount>[
+          AdguardHomeCount('laptop.example', 200),
+          AdguardHomeCount('phone.example', 50),
+          AdguardHomeCount('idle.example', 0),
+        ],
+      ),
+    );
+
+    // The bar the rest of the app draws, in its small flat form.
+    final List<LinearProgressIndicatorM3E> bars = tester
+        .widgetList<LinearProgressIndicatorM3E>(
+          find.byType(LinearProgressIndicatorM3E),
+        )
+        .toList();
+    expect(
+      bars.map((LinearProgressIndicatorM3E bar) => bar.value),
+      <double>[1, 0.25, 0],
+    );
+    for (final LinearProgressIndicatorM3E bar in bars) {
+      expect(bar.size, LinearProgressM3ESize.s);
+      expect(bar.shape, ProgressM3EShape.flat);
+    }
   });
 
   testWidgets('the figures share a right edge, Others among them',
