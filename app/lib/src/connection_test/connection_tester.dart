@@ -2,6 +2,7 @@ import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:service_adguard_home/service_adguard_home.dart';
 import 'package:service_beszel/service_beszel.dart';
 import 'package:service_emby/service_emby.dart';
 import 'package:service_jellyfin/service_jellyfin.dart';
@@ -28,10 +29,30 @@ import 'connection_test_result.dart';
 /// PocketBase's auth-with-password: its `api/health` endpoint is public (a
 /// lightweight probe would pass with any password), so it must attempt the real
 /// login, where a rejected email or password comes back as HTTP 400.
+///
+/// AdGuard Home is asked once, signed. Its health probe carries no password,
+/// because AdGuard Home locks an address out after a few wrong ones, so the
+/// probe proves nothing about the credentials.
 class ConnectionTester {
-  ConnectionTester(this._ref);
+  ConnectionTester(this._ref, {DateTime Function()? now})
+      : _now = now ?? DateTime.now;
 
   final Ref _ref;
+
+  /// The clock. Tests hand in their own.
+  final DateTime Function() _now;
+
+  /// How long a refused AdGuard Home sign-in is remembered.
+  static const Duration _adguardHomeRefusalMemory = Duration(seconds: 30);
+
+  /// The AdGuard Home candidate whose sign-in was last refused, and when.
+  ///
+  /// The form tests the local address and then the external one. AdGuard
+  /// Home counts every wrong password towards a lockout, so the second
+  /// address must not send what the first was just refused with. Anything
+  /// changed on the form makes a different candidate, and that is tried.
+  Instance? _adguardHomeRefused;
+  DateTime? _adguardHomeRefusedAt;
 
   Future<ConnectionTestResult> test({
     required Instance candidate,
@@ -82,6 +103,8 @@ class ConnectionTester {
             dio.close(force: true);
           }
         });
+      case ServiceKind.adguardHome:
+        return _testAdguardHome(candidate, forced);
       default:
         final HealthProbe probe =
             HealthProbe(dioFactory: _ref.read(dioFactoryProvider));
@@ -91,6 +114,54 @@ class ConnectionTester {
         return connectionResultFromHealth(
           await probe.check(forced, connectionOnly: true),
         );
+    }
+  }
+
+  /// One signed request, unless this exact [candidate] was refused a moment
+  /// ago. [forced] is the candidate pinned to the address under test.
+  Future<ConnectionTestResult> _testAdguardHome(
+    Instance candidate,
+    Instance forced,
+  ) async {
+    final DateTime? refusedAt = _adguardHomeRefusedAt;
+    if (candidate == _adguardHomeRefused &&
+        refusedAt != null &&
+        _now().difference(refusedAt) < _adguardHomeRefusalMemory) {
+      return const ConnectionTestResult(
+        ConnectionOutcome.authFailed,
+        'Not tried, because this sign-in was refused a moment ago',
+      );
+    }
+    Dio? dio;
+    try {
+      dio = await _ref.read(dioFactoryProvider).create(forced);
+      await AdguardHomeApi(dio, AdguardHomeSession()).getStatus();
+      return const ConnectionTestResult(
+        ConnectionOutcome.connected,
+        'Connected',
+      );
+    } on AdguardHomeSignInRefused {
+      _adguardHomeRefused = candidate;
+      _adguardHomeRefusedAt = _now();
+      return const ConnectionTestResult(
+        ConnectionOutcome.authFailed,
+        'Sign-in refused. By default AdGuard Home blocks an address for 15 '
+        'minutes after five wrong tries',
+      );
+    } on Object catch (error) {
+      if (error is AdguardHomeUnexpectedAnswer ||
+          error is AdguardHomeRequestRefused ||
+          error is NetworkNotFoundException) {
+        // Something answered, but not AdGuard Home's API: another server, a
+        // proxy's sign-in page, or a wrong base path.
+        return const ConnectionTestResult(
+          ConnectionOutcome.authFailed,
+          'Reachable, but AdGuard Home did not answer at this address',
+        );
+      }
+      return connectionResultFromError(error);
+    } finally {
+      dio?.close(force: true);
     }
   }
 
