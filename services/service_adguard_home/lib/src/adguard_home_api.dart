@@ -3,9 +3,11 @@ import 'package:dio/dio.dart';
 import 'adguard_home_errors.dart';
 import 'adguard_home_session.dart';
 import 'models/adguard_home_access.dart';
+import 'models/adguard_home_clients.dart';
 import 'models/adguard_home_filtering.dart';
 import 'models/adguard_home_json.dart';
 import 'models/adguard_home_query_log.dart';
+import 'models/adguard_home_services.dart';
 import 'models/adguard_home_stats.dart';
 import 'models/adguard_home_status.dart';
 
@@ -108,6 +110,63 @@ class AdguardHomeApi {
   /// The clients the server has settings for, from `GET control/clients`.
   Future<List<AdguardHomeClientRef>> getPersistentClients() async =>
       AdguardHomeClientRef.listFromJson(await _get('control/clients'));
+
+  /// `GET control/clients`: the clients with settings, the devices the
+  /// server has seen, and the tags a client can be given.
+  Future<AdguardHomeClientList> getClients() async =>
+      AdguardHomeClientList.fromJson(await _get('control/clients'));
+
+  /// `POST control/clients/search`: whose each of [ids] is, an id being an
+  /// address, a MAC address or a ClientID. Keyed by the id asked about.
+  ///
+  /// Servers older than v0.107.56 have no such path and turn it down.
+  Future<Map<String, AdguardHomeFoundClient>> searchClients(
+    List<String> ids,
+  ) async {
+    if (ids.isEmpty) return const <String, AdguardHomeFoundClient>{};
+    final Object? answer = await _session.run(() async {
+      final Response<dynamic> response = await _dio.post<dynamic>(
+        'control/clients/search',
+        data: <String, dynamic>{
+          'clients': <Map<String, dynamic>>[
+            for (final String id in ids) <String, dynamic>{'id': id},
+          ],
+        },
+      );
+      return response.data as Object?;
+    });
+    if (answer is! List) throw const AdguardHomeUnexpectedAnswer();
+    return AdguardHomeFoundClient.mapFromJson(answer);
+  }
+
+  /// `POST control/clients/add`. [client] has to spell out every setting:
+  /// what it leaves out the server takes as off.
+  Future<void> addClient(Map<String, dynamic> client) =>
+      _post('control/clients/add', client);
+
+  /// `POST control/clients/update`: replaces the client now called [name]
+  /// with [client], which may carry another name. What [client] leaves out
+  /// the server resets.
+  Future<void> updateClient(String name, Map<String, dynamic> client) =>
+      _post(
+        'control/clients/update',
+        <String, dynamic>{'name': name, 'data': client},
+      );
+
+  /// `POST control/clients/delete`.
+  Future<void> deleteClient(String name) =>
+      _post('control/clients/delete', <String, dynamic>{'name': name});
+
+  /// `GET control/blocked_services/all`: every service the server can
+  /// block, with its icon. A few hundred kilobytes.
+  Future<AdguardHomeServiceCatalogue> getBlockedServices() async =>
+      AdguardHomeServiceCatalogue.fromJson(
+        await _get('control/blocked_services/all'),
+      );
+
+  /// `GET control/safesearch/status`: the server's own safe search.
+  Future<AdguardHomeSafeSearch> getSafeSearch() async =>
+      AdguardHomeSafeSearch.fromJson(await _get('control/safesearch/status'));
 
   Future<Map<String, dynamic>> _get(
     String path, [
