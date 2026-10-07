@@ -81,7 +81,7 @@ each one covers:
 | Beszel                 | systems list, live metrics, per-system detail screen                  |
 | dashdot                | live CPU, memory, disk, and GPU usage with a system-info tab, dashboard widget |
 | Gluetun                | VPN status, forwarded port, reconnect, dashboard widget               |
-| AdGuard Home           | protection switch and timed pause, statistics, top clients and domains, dashboard widget (beta) |
+| AdGuard Home           | protection switch and timed pause, statistics, top clients and domains, query log with block and unblock, dashboard widget (beta) |
 | Unraid                 | array and disk health, system with per-core load, Docker, VM control  |
 
 ## Install

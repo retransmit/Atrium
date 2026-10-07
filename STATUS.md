@@ -175,7 +175,14 @@ Atrium is a **controller** app. Video playback was removed by design
   sites, safe search and the rules on the blocklists, and the top clients,
   queried domains, blocked domains and upstreams (five of each, the rest
   added up, the whole list one tap away), with block and unblock from a
-  domain's row (the same custom rule the web UI writes, and an Undo). An
+  domain's row (the same custom rule the web UI writes, and an Undo). A
+  Query log tab (added 2026-10-08) lists the queries newest first, read a
+  page at a time as it is scrolled, searched by domain or client and
+  narrowed with the web UI's ten filters; a row opens the query in full
+  (request, response, the rule that matched and its list, the client),
+  from where the name can be blocked or unblocked, for everyone or for
+  that client only, and the client disallowed or allowed again behind a
+  confirmation; the log can be cleared from the menu. An
   AdGuard Home dashboard widget shows the state with Pause or Resume, the
   queries and the blocked ones with their share as a ring, a chart of both
   over the period, and the rules on the blocklists. Signed in with HTTP
@@ -184,7 +191,7 @@ Atrium is a **controller** app. Video playback was removed by design
   sign-ins (15 minutes after five, by default), so the health dot probes
   it with no password and cannot flag a wrong one, requests leave one at a
   time, and after a refusal nothing is sent until Try again is tapped.
-  Query log, filters, clients and settings are not built yet
+  Filters, clients and settings are not built yet
 - **MySpeed** (added 2026-09-20 by lxBlazarxl, live-verified against 1.0.9):
   execution status with a manual run, the last 24 hours of results, a
   history with averages and a search by test id, the server's config and
