@@ -14,6 +14,7 @@ enum DashboardWidgetKind {
   speedtestResults,
   gluetunStatus,
   myspeed,
+  adguardHome,
   wakeOnLan,
 }
 
@@ -30,6 +31,7 @@ extension DashboardWidgetKindX on DashboardWidgetKind {
         DashboardWidgetKind.speedtestResults => 'Speedtest results',
         DashboardWidgetKind.gluetunStatus => 'Gluetun VPN',
         DashboardWidgetKind.myspeed => 'MySpeed',
+        DashboardWidgetKind.adguardHome => 'AdGuard Home',
         DashboardWidgetKind.wakeOnLan => 'Wake on LAN',
       };
 
@@ -45,6 +47,7 @@ extension DashboardWidgetKindX on DashboardWidgetKind {
         DashboardWidgetKind.speedtestResults => Icons.speed_outlined,
         DashboardWidgetKind.gluetunStatus => Icons.shield_outlined,
         DashboardWidgetKind.myspeed => Icons.network_check_outlined,
+        DashboardWidgetKind.adguardHome => Icons.gpp_good_outlined,
         DashboardWidgetKind.wakeOnLan => Icons.power_settings_new_rounded,
       };
 
@@ -93,6 +96,9 @@ extension DashboardWidgetKindX on DashboardWidgetKind {
           ],
         DashboardWidgetKind.myspeed => const <ServiceKind>[
             ServiceKind.myspeed
+          ],
+        DashboardWidgetKind.adguardHome => const <ServiceKind>[
+            ServiceKind.adguardHome
           ],
         // Wake-on-LAN answers to no service. Its targets are machines on the
         // network, kept on the profile beside the instances, so there is no
