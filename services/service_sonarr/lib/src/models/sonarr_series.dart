@@ -27,10 +27,38 @@ abstract class SonarrSeries with _$SonarrSeries {
     int? tvdbId,
     String? titleSlug,
     String? added,
+    int? qualityProfileId,
+    String? rootFolderPath,
+    @Default(<int>[]) List<int> tags,
+    bool? useSceneNumbering,
+    SonarrRatings? ratings,
+    SonarrLanguage? originalLanguage,
   }) = _SonarrSeries;
 
   factory SonarrSeries.fromJson(Map<String, dynamic> json) =>
       _$SonarrSeriesFromJson(json);
+}
+
+@freezed
+abstract class SonarrRatings with _$SonarrRatings {
+  const factory SonarrRatings({
+    @Default(0) int votes,
+    @Default(0) double value,
+  }) = _SonarrRatings;
+
+  factory SonarrRatings.fromJson(Map<String, dynamic> json) =>
+      _$SonarrRatingsFromJson(json);
+}
+
+@freezed
+abstract class SonarrLanguage with _$SonarrLanguage {
+  const factory SonarrLanguage({
+    @Default(0) int id,
+    String? name,
+  }) = _SonarrLanguage;
+
+  factory SonarrLanguage.fromJson(Map<String, dynamic> json) =>
+      _$SonarrLanguageFromJson(json);
 }
 
 @freezed
@@ -78,6 +106,7 @@ abstract class SonarrSeriesStatistics with _$SonarrSeriesStatistics {
     @Default(0) int episodeCount,
     @Default(0) int totalEpisodeCount,
     @Default(0) int sizeOnDisk,
+    @Default(<String>[]) List<String> releaseGroups,
   }) = _SonarrSeriesStatistics;
 
   factory SonarrSeriesStatistics.fromJson(Map<String, dynamic> json) =>

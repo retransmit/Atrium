@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/legacy.dart';
 export 'src/add_movie_screen.dart';
 export 'src/home/radarr_rename_dialog.dart';
 export 'src/models/radarr_blocklist_item.dart';
+export 'src/models/radarr_custom_filter.dart';
 export 'src/models/radarr_history_item.dart';
 export 'src/models/radarr_movie.dart';
 export 'src/models/radarr_queue_item.dart';

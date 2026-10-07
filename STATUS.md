@@ -1,6 +1,6 @@
 # Atrium - Status
 
-> Snapshot of what genuinely works and what is left, as of 2026-10-05.
+> Snapshot of what genuinely works and what is left, as of 2026-10-07.
 > Atrium is published on F-Droid and on the GitHub releases page. It is
 > still in early development and every module is work in progress; nothing
 > here is a release promise.
@@ -58,14 +58,18 @@ Atrium is a **controller** app. Video playback was removed by design
   screen from 4.5.1, and nowhere while a magnet has no metadata
 - **Sonarr** (the canonical *arr module): poster/banner grid with
   client-side sort & filter (status, network, airing, added, size on
-  disk) and per-series disk sizes, series detail (fanart backdrop,
-  season monitor/search), search-and-add (the list's search query carries
-  over to the Add screen, contributed by Bhavyashah94 in PR #160),
+  disk) and per-series disk sizes, the custom filters saved on the
+  server for its series list, judged rule for rule the way Sonarr's own
+  page judges them (contributed by Bhavyashah94 in PR #179), series
+  detail (fanart backdrop, season monitor/search), search-and-add (the
+  list's search query carries over to the Add screen, contributed by
+  Bhavyashah94 in PR #160),
   queue/wanted/history/blocklist/system tabs, and a full Settings editor
   (17 panels) - settings writes live-verified
 - **Radarr**: same depth as Sonarr, movie flavored, plus collection
   monitoring when adding a movie and from its detail screen (contributed by
-  Bhavyashah94 in PR #173)
+  Bhavyashah94 in PR #173); the custom filters saved on the server for its
+  movie list sit beside the built-in ones, as in Sonarr (PR #179)
 - **Lidarr** (added in 1.5.0, out of beta since 2026-10-01): artists and
   discography with grid and
   list views and bulk actions, artist detail with release-type filters,

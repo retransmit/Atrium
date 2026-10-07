@@ -1,6 +1,7 @@
 import 'package:core_networking/core_networking.dart';
 import 'package:dio/dio.dart';
 
+import 'generated/models/custom_filter_resource.dart';
 import 'models/sonarr_blocklist_item.dart';
 import 'models/sonarr_episode.dart';
 import 'models/sonarr_history_item.dart';
@@ -22,6 +23,21 @@ class SonarrApi {
       return (resp.data as List<dynamic>)
           .map(
             (dynamic e) => SonarrSeries.fromJson(e as Map<String, dynamic>),
+          )
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<List<CustomFilterResource>> getCustomFilters() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/customfilter');
+      return (resp.data as List<dynamic>)
+          .map(
+            (dynamic e) =>
+                CustomFilterResource.fromJson(e as Map<String, dynamic>),
           )
           .toList();
     } on DioException catch (e) {

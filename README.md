@@ -56,7 +56,7 @@ each one covers:
 
 | Service                | What works today                                                      |
 | ---------------------- | --------------------------------------------------------------------- |
-| Sonarr                 | 7 tabs incl. full Settings editor, sort/filter, calendar              |
+| Sonarr                 | 7 tabs incl. full Settings editor, sort/filter with the server's custom filters, calendar |
 | Radarr                 | same depth as Sonarr, movie flavored, with collection monitoring      |
 | Lidarr                 | artists, albums and tracks, wanted, activity, settings, log reader    |
 | Prowlarr               | indexers, search + grab, history, settings, system                    |

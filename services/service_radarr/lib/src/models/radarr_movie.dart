@@ -33,10 +33,44 @@ abstract class RadarrMovie with _$RadarrMovie {
     String? certification,
     RadarrCollection? collection,
     RadarrLanguage? originalLanguage,
+    String? originalTitle,
+    bool? isAvailable,
+    String? minimumAvailability,
+    int? qualityProfileId,
+    List<String>? keywords,
+    double? popularity,
+    @Default(<int>[]) List<int> tags,
+    RadarrMovieStatistics? statistics,
   }) = _RadarrMovie;
 
   factory RadarrMovie.fromJson(Map<String, dynamic> json) =>
       _$RadarrMovieFromJson(json);
+}
+
+@freezed
+abstract class RadarrMovieStatistics with _$RadarrMovieStatistics {
+  const factory RadarrMovieStatistics({
+    @Default(0) int movieFileCount,
+    @Default(0) int sizeOnDisk,
+    @Default(<String>[]) List<String> releaseGroups,
+    @Default(<RadarrMovieFileQuality>[])
+    List<RadarrMovieFileQuality> movieFileQualities,
+  }) = _RadarrMovieStatistics;
+
+  factory RadarrMovieStatistics.fromJson(Map<String, dynamic> json) =>
+      _$RadarrMovieStatisticsFromJson(json);
+}
+
+/// A quality one of a movie's files is in, as its statistics list them.
+@freezed
+abstract class RadarrMovieFileQuality with _$RadarrMovieFileQuality {
+  const factory RadarrMovieFileQuality({
+    @Default(0) int id,
+    String? name,
+  }) = _RadarrMovieFileQuality;
+
+  factory RadarrMovieFileQuality.fromJson(Map<String, dynamic> json) =>
+      _$RadarrMovieFileQualityFromJson(json);
 }
 
 @freezed
@@ -45,6 +79,7 @@ abstract class RadarrRatings with _$RadarrRatings {
     RadarrRatingValue? imdb,
     RadarrRatingValue? tmdb,
     RadarrRatingValue? rottenTomatoes,
+    RadarrRatingValue? trakt,
   }) = _RadarrRatings;
 
   factory RadarrRatings.fromJson(Map<String, dynamic> json) =>
