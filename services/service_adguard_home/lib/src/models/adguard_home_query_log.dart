@@ -28,6 +28,7 @@ enum AdguardHomeQueryResult {
   blockedParental(
     'Blocked by parental control',
     AdguardHomeResultTone.restricted,
+    short: 'Parental control',
   ),
   safeSearch('Safe search', AdguardHomeResultTone.restricted),
   rewritten('Rewritten', AdguardHomeResultTone.rewritten),
@@ -35,9 +36,14 @@ enum AdguardHomeQueryResult {
   /// A reason this app has no name for. It is shown as the server wrote it.
   other('', AdguardHomeResultTone.plain);
 
-  const AdguardHomeQueryResult(this.label, this.tone);
+  const AdguardHomeQueryResult(this.label, this.tone, {String? short})
+      : shortLabel = short ?? label;
 
   final String label;
+
+  /// [label], or a shorter word for it where it would not fit a row of the
+  /// list beside the client.
+  final String shortLabel;
   final AdguardHomeResultTone tone;
 
   /// The result the server's [reason] stands for.
@@ -267,6 +273,12 @@ class AdguardHomeQueryLogEntry {
     // The name passed, and something in the answer was on a list.
     if (blocked && originalAnswers.isNotEmpty) return 'Blocked by CNAME or IP';
     return result == AdguardHomeQueryResult.other ? reason : result.label;
+  }
+
+  /// The result in as few words as say it, for a row of the list.
+  String get chipLabel {
+    final AdguardHomeQueryResult result = this.result;
+    return result == AdguardHomeQueryResult.other ? reason : result.shortLabel;
   }
 }
 

@@ -75,7 +75,7 @@ class AdguardHomeQueryLogRow extends StatelessWidget {
                     ConstrainedBox(
                       constraints: BoxConstraints(maxWidth: width * 0.5),
                       child: AdguardHomeResultChip(
-                        label: entry.resultLabel,
+                        label: entry.chipLabel,
                         tone: entry.result.tone,
                       ),
                     ),
