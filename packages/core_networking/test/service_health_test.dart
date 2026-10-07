@@ -3,6 +3,7 @@ import 'package:core_networking/core_networking.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  group('AdGuard Home anonymous health', _adguardHomeTests);
   group('proxy interception', _interceptionTests);
   group('Navidrome Subsonic health', _navidromeTests);
   group('Gluetun VPN health', _gluetunTests);
@@ -366,5 +367,61 @@ void _gluetunTests() {
   test('a refused key is a warning and no answer is offline', () {
     expect(gluetun(401, 'Unauthorized'), Health.warning);
     expect(gluetun(0, null), Health.error);
+  });
+}
+
+/// AdGuard Home is probed with no credentials, so the answer a healthy,
+/// password-protected server gives is a bare 401.
+void _adguardHomeTests() {
+  Health health(int status, {Object? data, String? contentType}) =>
+      interpretServiceHealthResponse(
+        ServiceKind.adguardHome,
+        status,
+        data,
+        contentType: contentType,
+      );
+
+  test('it is the only kind probed without credentials', () {
+    for (final ServiceKind kind in ServiceKind.values) {
+      expect(
+        probesAnonymously(kind),
+        kind == ServiceKind.adguardHome,
+        reason: kind.name,
+      );
+    }
+  });
+
+  test('a protected server refusing the probe is online', () {
+    expect(health(401), Health.ok);
+    expect(health(403), Health.ok);
+  });
+
+  test('a server with no users answering the probe is online', () {
+    expect(
+      health(
+        200,
+        data: <String, dynamic>{'version': 'v0.107.79', 'running': true},
+        contentType: 'application/json',
+      ),
+      Health.ok,
+    );
+  });
+
+  test('anything else that answers is a warning', () {
+    // Some other server on that address, or AdGuard Home in trouble.
+    expect(health(404), Health.warning);
+    expect(health(500), Health.warning);
+    expect(health(502), Health.warning);
+  });
+
+  test('a web page where the API should be is a warning', () {
+    expect(
+      health(200, data: '<html>Sign in</html>', contentType: 'text/html'),
+      Health.warning,
+    );
+  });
+
+  test('no answer at all is offline', () {
+    expect(health(0), Health.error);
   });
 }

@@ -7,7 +7,7 @@ import 'package:core_models/core_models.dart';
 /// client defaults, so it overwrites them. That matters for reverse-proxy
 /// auth, where the whole point of the header is to be seen by something in
 /// front of the service. `Authorization` is the one that collides in
-/// practice, because five kinds spend it on their own credentials.
+/// practice, because six kinds spend it on their own credentials.
 ///
 /// Kept beside the interceptor so the two cannot drift; a test asserts this
 /// agrees with what the interceptor actually sends for every kind.
@@ -38,9 +38,11 @@ Set<String> serviceAuthHeaderNames(ServiceKind kind, InstanceAuth auth) {
         )
         when kind == ServiceKind.nzbget ||
             kind == ServiceKind.transmission ||
-            kind == ServiceKind.rtorrent:
-      // Transmission's auth is optional and rTorrent has none of its own, so
-      // with no credentials entered the interceptor sends no header at all.
+            kind == ServiceKind.rtorrent ||
+            kind == ServiceKind.adguardHome:
+      // Transmission's auth is optional, rTorrent has none of its own and an
+      // AdGuard Home may have no user, so with no credentials entered the
+      // interceptor sends no header at all.
       return username.isEmpty && password.isEmpty
           ? const <String>{}
           : const <String>{'Authorization'};

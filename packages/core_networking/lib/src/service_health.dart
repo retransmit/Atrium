@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:core_models/core_models.dart';
 import 'package:dio/dio.dart';
 
+import 'auth_interceptor.dart';
 import 'dio_factory.dart';
 
 /// How a service's health endpoint should be interpreted.
@@ -18,6 +19,13 @@ enum _HealthMode {
   /// services), so any HTTP response - including 401/403 - proves the host is
   /// up. Only a transport failure is an error.
   reachable,
+
+  /// The probe leaves with no `Authorization` header at all (see
+  /// [anonymousRequestExtra]), because for this service a wrong password
+  /// costs the user more than an unknown one: AdGuard Home locks an address
+  /// out after five. A 2xx means a server with no users, a 401 or 403 means
+  /// one that wants a sign-in; both are up. Anything else is a warning.
+  anonymous,
 }
 
 /// Per-[ServiceKind] health endpoint + interpretation mode.
@@ -115,6 +123,11 @@ enum _HealthMode {
       return (path: 'rest/ping.view', mode: _HealthMode.authed);
     case ServiceKind.myspeed:
       return (path: 'api/speedtests', mode: _HealthMode.authed);
+    case ServiceKind.adguardHome:
+      // Any signed route would do for a liveness check, but this one must
+      // not be signed: see [_HealthMode.anonymous]. So the dot cannot tell a
+      // wrong password from a right one, by design.
+      return (path: 'control/status', mode: _HealthMode.anonymous);
   }
 }
 
@@ -142,6 +155,12 @@ String _probeContentType(ServiceKind kind) => switch (kind) {
       _ => 'text/xml',
     };
 
+/// Whether [kind] is probed with no `Authorization` header.
+///
+/// Public for a test that pins it to the one kind that needs it.
+bool probesAnonymously(ServiceKind kind) =>
+    _config(kind).mode == _HealthMode.anonymous;
+
 /// Probes the real health of a configured [Instance].
 ///
 /// Unlike a blind `GET /` (which treats a 404 or a login page as "up"), this
@@ -168,6 +187,9 @@ class HealthProbe {
       final String? body = _probeBody(instance.kind);
       final Options options = Options(
         validateStatus: (_) => true,
+        extra: cfg.mode == _HealthMode.anonymous
+            ? <String, dynamic>{anonymousRequestExtra: true}
+            : null,
         receiveTimeout: const Duration(seconds: 8),
         contentType:
             body == null ? null : _probeContentType(instance.kind),
@@ -288,6 +310,10 @@ Health interpretServiceHealthResponse(
       return (status >= 200 && status < 300) ? Health.ok : Health.error;
     case _HealthMode.reachable:
       return Health.ok;
+    case _HealthMode.anonymous:
+      final bool answeredAsItself =
+          (status >= 200 && status < 300) || status == 401 || status == 403;
+      return answeredAsItself ? Health.ok : Health.warning;
   }
 }
 
