@@ -42,11 +42,23 @@ class _AdguardHomeHomeTabState extends ConsumerState<AdguardHomeHomeTab> {
   AdguardHomeActions get _actions =>
       ref.read(adguardHomeActionsProvider(_instance));
 
-  void _say(String message) {
+  void _say(String message, {VoidCallback? onUndo}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(message)));
+      ..showSnackBar(
+        onUndo == null
+            ? SnackBar(content: Text(message))
+            : SnackBar(
+                content: Text(message),
+                action: SnackBarAction(label: 'Undo', onPressed: onUndo),
+                // A message with an action would otherwise stay until it is
+                // dismissed. This one leaves by itself, after long enough
+                // to read the rule and reach for Undo.
+                persist: false,
+                duration: const Duration(seconds: 8),
+              ),
+      );
   }
 
   Future<void> _setProtection({required bool enabled, Duration? pause}) async {
@@ -61,7 +73,20 @@ class _AdguardHomeHomeTabState extends ConsumerState<AdguardHomeHomeTab> {
     }
   }
 
-  Future<void> _toggleBlocking(String domain, {required bool block}) async {
+  /// Blocks or unblocks [domain] and says what that did to the custom rules.
+  ///
+  /// The lists re-read themselves every half minute and can reorder under a
+  /// finger, and a block reaches everything that uses the server, so the
+  /// message offers to take the change back. Taking it back is the opposite
+  /// tap, which undoes an added rule by removing it and a removed one by
+  /// adding it again. It is not offered when the rule was already there:
+  /// nothing changed, and the opposite tap would remove a rule this one
+  /// never added. [undoable] is false for the taking back itself.
+  Future<void> _toggleBlocking(
+    String domain, {
+    required bool block,
+    bool undoable = true,
+  }) async {
     try {
       final AdguardHomeRuleEdit edit =
           await _actions.toggleBlocking(domain, block: block);
@@ -74,6 +99,9 @@ class _AdguardHomeHomeTabState extends ConsumerState<AdguardHomeHomeTab> {
           AdguardHomeRuleChange.alreadyThere =>
             '${edit.rule} is already in the custom rules',
         },
+        onUndo: undoable && edit.change != AdguardHomeRuleChange.alreadyThere
+            ? () => _toggleBlocking(domain, block: !block, undoable: false)
+            : null,
       );
     } on Object catch (error) {
       _say(describeAdguardHomeError(error));

@@ -361,6 +361,57 @@ void main() {
     );
   });
 
+  testWidgets('a block can be taken back from its message',
+      (WidgetTester tester) async {
+    // The lists re-read themselves every half minute and can reorder under a
+    // finger, and a block reaches everything that uses the server.
+    final Pumped pumped = await pumpAdguardHome(
+      tester,
+      tab(),
+      status: statusWith(),
+      stats: AdguardHomeStats.fromJson(statsJson()),
+    );
+
+    await tester.ensureVisible(find.byTooltip('Block github.com'));
+    await tester.tap(find.byTooltip('Block github.com'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 750));
+    expect(find.text('Undo'), findsOneWidget);
+
+    await tester.tap(find.text('Undo'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 750));
+
+    expect(pumped.actions.calls, <String>[
+      'block github.com',
+      'unblock github.com',
+    ]);
+    // Taking it back is itself said, and is not offered to be taken back.
+    expect(find.textContaining('@@||github.com'), findsOneWidget);
+    expect(find.text('Undo'), findsNothing);
+  });
+
+  testWidgets('a rule that was already there offers nothing to take back',
+      (WidgetTester tester) async {
+    // Nothing was changed, so undoing would remove a rule this tap never
+    // added.
+    final Pumped pumped = await pumpAdguardHome(
+      tester,
+      tab(),
+      status: statusWith(),
+      stats: AdguardHomeStats.fromJson(statsJson()),
+    );
+    pumped.actions.change = AdguardHomeRuleChange.alreadyThere;
+
+    await tester.ensureVisible(find.byTooltip('Block github.com'));
+    await tester.tap(find.byTooltip('Block github.com'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 750));
+
+    expect(find.textContaining('is already in the custom rules'), findsOneWidget);
+    expect(find.text('Undo'), findsNothing);
+  });
+
   testWidgets('the shell names the instance and marks it beta',
       (WidgetTester tester) async {
     await pumpAdguardHome(
