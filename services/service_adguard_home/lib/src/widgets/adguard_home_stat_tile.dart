@@ -28,6 +28,13 @@ class AdguardHomeStatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
+    final TextStyle? valueStyle = theme.textTheme.headlineSmall
+        ?.copyWith(fontWeight: FontWeight.w700);
+    // One line of the figure at the current text size.
+    final double valueHeight = (MediaQuery.textScalerOf(context)
+                .scale(valueStyle?.fontSize ?? 24) *
+            (valueStyle?.height ?? 1.33))
+        .ceilToDouble();
     return Material(
       color: cs.surfaceContainerHigh,
       borderRadius: BorderRadius.circular(20),
@@ -49,14 +56,21 @@ class AdguardHomeStatTile extends StatelessWidget {
                 ),
                 const SizedBox(height: Insets.xs),
                 // A count in the hundreds of millions has to fit half a
-                // narrow screen at any text size.
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    value,
-                    style: theme.textTheme.headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.w700),
+                // narrow screen at any text size, so it shrinks to fit. The
+                // box keeps the height of one full-size line whatever the
+                // figure shrinks to: a row sizes its tiles before the
+                // shrinking, and would otherwise leave a gap above the chart.
+                SizedBox(
+                  height: valueHeight,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      value,
+                      maxLines: 1,
+                      softWrap: false,
+                      style: valueStyle,
+                    ),
                   ),
                 ),
                 if (detail != null)

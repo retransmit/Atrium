@@ -98,6 +98,30 @@ void main() {
     );
   });
 
+  testWidgets('a long figure leaves no gap above its chart',
+      (WidgetTester tester) async {
+    // A nine-digit count at twice the text size is shrunk to fit one line.
+    // The tile must be measured as that one line too, or the row grows as
+    // if the figure had wrapped and the chart drifts away from it.
+    await pumpAdguardHome(
+      tester,
+      tab(),
+      status: statusWith(),
+      stats: AdguardHomeStats.fromJson(
+        statsJson()
+          ..['num_dns_queries'] = 123456789
+          ..['num_blocked_filtering'] = 98765432,
+      ),
+      size: const Size(320, 6000),
+      textScale: 2,
+    );
+
+    // The taller tile of the first row: its share sits right above its chart.
+    final double shareBottom = tester.getRect(find.text('80%')).bottom;
+    final double chartTop = tester.getRect(find.byType(LineChart).at(1)).top;
+    expect(chartTop - shareBottom, closeTo(Insets.sm, 0.01));
+  });
+
   testWidgets('the layout holds on a narrow screen at large text',
       (WidgetTester tester) async {
     await pumpAdguardHome(
