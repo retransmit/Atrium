@@ -297,6 +297,23 @@ void main() {
     expect(query.elapsed, isNull);
   });
 
+  test('a duration that is no finite number reads as none, and the page stays',
+      () {
+    // Any of these would otherwise fail the whole page it came in.
+    for (final String odd in <String>[
+      'NaN',
+      'Infinity',
+      '-Infinity',
+      '1e999',
+    ]) {
+      expect(
+        parse(<String, dynamic>{'elapsedMs': odd}).elapsed,
+        isNull,
+        reason: odd,
+      );
+    }
+  });
+
   test('the ten filters carry the values the server takes', () {
     expect(
       AdguardHomeLogFilter.values

@@ -185,7 +185,8 @@ class AdguardHomeQueryLogEntry {
       upstream: readString(json['upstream']),
       cached: readBool(json['cached']),
       dnssec: readBool(json['answer_dnssec']),
-      elapsed: elapsedMs == null
+      // "NaN" and "Infinity" parse as numbers and cannot be rounded.
+      elapsed: elapsedMs == null || !elapsedMs.isFinite
           ? null
           : Duration(microseconds: (elapsedMs * 1000).round()),
     );
