@@ -1,3 +1,5 @@
+import 'models/adguard_home_access.dart';
+
 /// What blocking or unblocking a domain did to the custom rules.
 enum AdguardHomeRuleChange {
   /// A rule was appended.
@@ -34,12 +36,19 @@ class AdguardHomeRuleEdit {
 ///
 /// A rule only counts when the whole line matches. [userRules] is not
 /// changed.
+///
+/// With a [client], the rule is the one the web UI writes for "this client
+/// only" (`toggleBlockingForClient`): it names the client and carries no
+/// `$important`. [client] is a name from [adguardHomeBlockingClientName].
 AdguardHomeRuleEdit adguardHomeBlockingEdit(
   List<String> userRules,
   String domain, {
   required bool block,
+  String? client,
 }) {
-  final String blockRule = '||$domain^\$important';
+  final String blockRule = client == null
+      ? '||$domain^\$important'
+      : "||$domain^\$client='${_escapedClient(client)}'";
   final String allowRule = '@@$blockRule';
   final String wanted = block ? blockRule : allowRule;
   final String opposite = block ? allowRule : blockRule;
@@ -63,4 +72,28 @@ AdguardHomeRuleEdit adguardHomeBlockingEdit(
     AdguardHomeRuleChange.added,
     wanted,
   );
+}
+
+/// [name] as it has to be written inside `$client='...'`: the four
+/// characters that would end it early each get a backslash.
+String _escapedClient(String name) => name
+    .replaceAll("'", r"\'")
+    .replaceAll('"', r'\"')
+    .replaceAll(',', r'\,')
+    .replaceAll('|', r'\|');
+
+/// What a rule for one client calls the client at [address]: the name of
+/// the client the server has settings for, where one of [clients] has the
+/// address among its ids, and otherwise the address.
+///
+/// The address has to be listed as it is. One that only falls inside a
+/// listed range is not that client, here as in the web UI.
+String adguardHomeBlockingClientName(
+  List<AdguardHomeClientRef> clients,
+  String address,
+) {
+  for (final AdguardHomeClientRef client in clients) {
+    if (client.ids.contains(address)) return client.name;
+  }
+  return address;
 }

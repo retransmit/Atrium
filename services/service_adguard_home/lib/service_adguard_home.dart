@@ -1,3 +1,4 @@
+export 'src/adguard_home_access_edit.dart';
 export 'src/adguard_home_api.dart';
 export 'src/adguard_home_blocking.dart';
 export 'src/adguard_home_errors.dart';
