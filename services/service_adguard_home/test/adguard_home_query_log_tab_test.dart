@@ -179,6 +179,7 @@ void main() {
           entry(domain: 'en.wikipedia.org', reason: 'NotFilteredWhiteList'),
           entry(domain: 'nas.home.example', reason: 'Rewrite'),
           entry(domain: 'www.youtube.com', reason: 'FilteredSafeSearch'),
+          entry(domain: 'adult.example', reason: 'FilteredParental'),
           entry(domain: 'new.example', reason: 'FilteredSomethingNew'),
         ]),
       );
@@ -199,6 +200,8 @@ void main() {
       expect(chip('en.wikipedia.org').tone, AdguardHomeResultTone.allowed);
       expect(chip('nas.home.example').tone, AdguardHomeResultTone.rewritten);
       expect(chip('www.youtube.com').tone, AdguardHomeResultTone.restricted);
+      // Shortened, so it is not cut off beside the client.
+      expect(chip('adult.example').label, 'Parental control');
       // One this app has no name for reads as the server wrote it.
       expect(chip('new.example').label, 'FilteredSomethingNew');
       expect(chip('new.example').tone, AdguardHomeResultTone.plain);
@@ -630,6 +633,44 @@ void main() {
       return pumped;
     }
 
+    /// Opens the menu beside the main action and picks [item] from it.
+    Future<void> more(WidgetTester tester, String item) async {
+      await tester.tap(find.byTooltip('More actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(item));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the main action stays in reach however long the entry is',
+        (WidgetTester tester) async {
+      await pumpTab(
+        tester,
+        all(<AdguardHomeQueryLogEntry>[
+          entry(
+            rules: <AdguardHomeMatchedRule>[
+              for (int i = 0; i < 20; i++)
+                AdguardHomeMatchedRule(listId: 1, text: '||rule$i.example^'),
+            ],
+          ),
+        ]),
+        size: const Size(360, 640),
+      );
+      await tester.tap(find.byType(AdguardHomeQueryLogRow));
+      await tester.pumpAndSettle();
+
+      // Not at the end of a scroll: on the screen as the sheet opens.
+      final Rect button =
+          tester.getRect(find.widgetWithText(FilledButton, 'Block'));
+      expect(button.bottom, lessThanOrEqualTo(640));
+      expect(button.top, greaterThan(0));
+      // And the last rule is there to scroll to.
+      expect(
+        find.text('||rule19.example^', skipOffstage: false),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('an answered query can be blocked, and the sheet closes',
         (WidgetTester tester) async {
       final Pumped pumped = await open(tester, entry());
@@ -672,8 +713,7 @@ void main() {
         (WidgetTester tester) async {
       final Pumped pumped = await open(tester, entry());
 
-      await tester.tap(find.text('Block for this client only'));
-      await tester.pumpAndSettle();
+      await more(tester, 'Block for this client only');
 
       expect(
         pumped.actions.calls,
@@ -685,8 +725,7 @@ void main() {
         (WidgetTester tester) async {
       final Pumped pumped = await open(tester, blocked);
 
-      await tester.tap(find.text('Unblock for this client only'));
-      await tester.pumpAndSettle();
+      await more(tester, 'Unblock for this client only');
 
       expect(
         pumped.actions.calls,
@@ -698,8 +737,7 @@ void main() {
         (WidgetTester tester) async {
       final Pumped pumped = await open(tester, entry());
 
-      await tester.tap(find.text('Disallow this client'));
-      await tester.pumpAndSettle();
+      await more(tester, 'Disallow this client');
 
       expect(find.text('Disallow this client?'), findsOneWidget);
       expect(
@@ -719,8 +757,7 @@ void main() {
         (WidgetTester tester) async {
       final Pumped pumped = await open(tester, entry());
 
-      await tester.tap(find.text('Disallow this client'));
-      await tester.pumpAndSettle();
+      await more(tester, 'Disallow this client');
       await tester.tap(find.widgetWithText(FilledButton, 'Disallow'));
       await tester.pumpAndSettle();
 
@@ -742,6 +779,8 @@ void main() {
         entry(clientDisallowed: true, clientDisallowedRule: '172.17.0.0/16'),
       );
 
+      await tester.tap(find.byTooltip('More actions'));
+      await tester.pumpAndSettle();
       expect(find.text('Disallow this client'), findsNothing);
       await tester.tap(find.text('Allow this client'));
       await tester.pumpAndSettle();
@@ -774,8 +813,7 @@ void main() {
       await tester.tap(find.byType(AdguardHomeQueryLogRow));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Disallow this client'));
-      await tester.pumpAndSettle();
+      await more(tester, 'Disallow this client');
 
       expect(
         find.textContaining('takes 172.17.0.1 off the allowed clients'),
@@ -796,8 +834,7 @@ void main() {
       await tester.tap(find.byType(AdguardHomeQueryLogRow));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Disallow this client'));
-      await tester.pumpAndSettle();
+      await more(tester, 'Disallow this client');
 
       expect(find.text('Disallow this client?'), findsNothing);
       expect(find.text(AdguardHomeLastAllowedClient.message), findsOneWidget);
@@ -816,8 +853,7 @@ void main() {
       await tester.tap(find.byType(AdguardHomeQueryLogRow));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Disallow this client'));
-      await tester.pumpAndSettle();
+      await more(tester, 'Disallow this client');
       await tester.tap(find.widgetWithText(FilledButton, 'Disallow'));
       await tester.pumpAndSettle();
 
@@ -831,8 +867,7 @@ void main() {
       await open(tester, entry(client: '', clientName: ''));
 
       expect(find.widgetWithText(FilledButton, 'Block'), findsOneWidget);
-      expect(find.text('Block for this client only'), findsNothing);
-      expect(find.text('Disallow this client'), findsNothing);
+      expect(find.byTooltip('More actions'), findsNothing);
     });
   });
 

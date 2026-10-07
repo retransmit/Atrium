@@ -39,8 +39,14 @@ Future<void> showAdguardHomeQueryDetail(
   );
 }
 
-/// One query in full: the request, the response, the client, and the web
-/// UI's three actions.
+/// What the menu beside the main action offers for the entry's client.
+enum _ClientAction { blockForClient, access }
+
+/// One query in full: the request, the response and the client, over the
+/// web UI's three actions.
+///
+/// The actions sit under the scrolling part rather than at the end of it,
+/// so Block is in reach however much the entry carries.
 class AdguardHomeQueryDetail extends ConsumerWidget {
   const AdguardHomeQueryDetail({
     required this.instance,
@@ -93,115 +99,148 @@ class AdguardHomeQueryDetail extends ConsumerWidget {
     final ColorScheme cs = theme.colorScheme;
     final AdguardHomeFiltering? filtering =
         ref.watch(adguardHomeFilteringProvider(instance)).value;
-    final String name = entry.clientName.isNotEmpty
-        ? entry.clientName
-        : entry.clientId;
-    final String elapsed = formatAdguardHomeElapsed(entry.elapsed);
+    final String name =
+        entry.clientName.isNotEmpty ? entry.clientName : entry.clientId;
     final String action = entry.isFiltered ? 'Unblock' : 'Block';
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(Insets.lg, 0, Insets.lg, Insets.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Text(
-            entry.displayName,
-            style: theme.textTheme.titleMedium
-                ?.copyWith(fontWeight: FontWeight.w700),
-          ),
-          if (entry.unicodeName.isNotEmpty)
-            Text(
-              entry.domain,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: cs.onSurfaceVariant),
-            ),
-          const SizedBox(height: Insets.sm),
-          AdguardHomeResultChip(
-            label: entry.resultLabel,
-            tone: entry.result.tone,
-          ),
-          const _Heading('Request'),
-          _Field('Time', formatAdguardHomeLogMoment(entry.time)),
-          _Field('Type', entry.type),
-          _Field('Protocol', adguardHomeProtocolLabel(entry.protocol)),
-          const _Heading('Response'),
-          _Field('Response code', entry.status),
-          _Field('Blocked service', entry.serviceName),
-          _Field('DNS server', entry.upstream),
-          if (entry.cached) const _Field('Served from cache', 'Yes'),
-          if (entry.dnssec) const _Field('Validated with DNSSEC', 'Yes'),
-          _Field('Elapsed', elapsed),
-          if (entry.rules.isNotEmpty)
-            _Block(
-              entry.rules.length == 1 ? 'Rule' : 'Rules',
-              <Widget>[
-                for (final AdguardHomeMatchedRule rule in entry.rules) ...<Widget>[
-                  Text(rule.text, style: _mono(theme)),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        Flexible(
+          child: SingleChildScrollView(
+            padding:
+                const EdgeInsets.fromLTRB(Insets.lg, 0, Insets.lg, Insets.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(
+                  entry.displayName,
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                if (entry.unicodeName.isNotEmpty)
                   Text(
-                    adguardHomeFilterListName(filtering, rule.listId),
+                    entry.domain,
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: cs.onSurfaceVariant),
                   ),
+                const SizedBox(height: Insets.sm),
+                AdguardHomeResultChip(
+                  label: entry.resultLabel,
+                  tone: entry.result.tone,
+                ),
+                const _Heading('Request'),
+                _Field('Time', formatAdguardHomeLogMoment(entry.time)),
+                _Field('Type', entry.type),
+                _Field('Protocol', adguardHomeProtocolLabel(entry.protocol)),
+                const _Heading('Response'),
+                _Field('Response code', entry.status),
+                _Field('Blocked service', entry.serviceName),
+                _Field('DNS server', entry.upstream),
+                if (entry.cached) const _Field('Served from cache', 'Yes'),
+                if (entry.dnssec)
+                  const _Field('Validated with DNSSEC', 'Yes'),
+                _Field('Elapsed', formatAdguardHomeElapsed(entry.elapsed)),
+                if (entry.rules.isNotEmpty)
+                  _Block(
+                    entry.rules.length == 1 ? 'Rule' : 'Rules',
+                    <Widget>[
+                      for (final AdguardHomeMatchedRule rule
+                          in entry.rules) ...<Widget>[
+                        Text(rule.text, style: _mono(theme)),
+                        Text(
+                          adguardHomeFilterListName(filtering, rule.listId),
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: cs.onSurfaceVariant),
+                        ),
+                      ],
+                    ],
+                  ),
+                if (entry.answers.isNotEmpty)
+                  _Block('Response', _records(theme, entry.answers)),
+                if (entry.originalAnswers.isNotEmpty)
+                  _Block(
+                    'Original response',
+                    _records(theme, entry.originalAnswers),
+                  ),
+                if (entry.client.isNotEmpty || name.isNotEmpty) ...<Widget>[
+                  const _Heading('Client'),
+                  _Field('IP address', entry.client),
+                  _Field('Name', name),
+                  _Field('Country', entry.clientCountry),
+                  _Field('City', entry.clientCity),
+                  _Field('Network', entry.clientNetwork),
+                  if (entry.clientDisallowed)
+                    Padding(
+                      padding: const EdgeInsets.only(top: Insets.sm),
+                      child: Text(
+                        entry.clientDisallowedRule.isEmpty
+                            ? 'Not among the allowed clients'
+                            : 'Disallowed by ${entry.clientDisallowedRule}',
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(color: cs.error),
+                      ),
+                    ),
                 ],
               ],
             ),
-          if (entry.answers.isNotEmpty)
-            _Block('Response', _records(theme, entry.answers)),
-          if (entry.originalAnswers.isNotEmpty)
-            _Block('Original response', _records(theme, entry.originalAnswers)),
-          if (entry.client.isNotEmpty || name.isNotEmpty) ...<Widget>[
-            const _Heading('Client'),
-            _Field('IP address', entry.client),
-            _Field('Name', name),
-            _Field('Country', entry.clientCountry),
-            _Field('City', entry.clientCity),
-            _Field('Network', entry.clientNetwork),
-            if (entry.clientDisallowed)
-              Padding(
-                padding: const EdgeInsets.only(top: Insets.sm),
-                child: Text(
-                  entry.clientDisallowedRule.isEmpty
-                      ? 'Not among the allowed clients'
-                      : 'Disallowed by ${entry.clientDisallowedRule}',
-                  style: theme.textTheme.bodyMedium?.copyWith(color: cs.error),
+          ),
+        ),
+        const Divider(height: 1),
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              Insets.lg,
+              Insets.md,
+              Insets.sm,
+              Insets.md,
+            ),
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: FilledButton.tonal(
+                    onPressed: () => _block(context, ref),
+                    child: Text(action),
+                  ),
                 ),
-              ),
-          ],
-          const SizedBox(height: Insets.lg),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.tonal(
-              onPressed: () => _block(context, ref),
-              child: Text(action),
+                if (entry.client.isEmpty)
+                  const SizedBox(width: Insets.sm)
+                else
+                  PopupMenuButton<_ClientAction>(
+                    tooltip: 'More actions',
+                    useRootNavigator: true,
+                    onSelected: (_ClientAction chosen) {
+                      switch (chosen) {
+                        case _ClientAction.blockForClient:
+                          _block(context, ref, clientAddress: entry.client);
+                        case _ClientAction.access:
+                          unawaited(_access(context, ref));
+                      }
+                    },
+                    itemBuilder: (BuildContext _) =>
+                        <PopupMenuEntry<_ClientAction>>[
+                      PopupMenuItem<_ClientAction>(
+                        value: _ClientAction.blockForClient,
+                        child: Text('$action for this client only'),
+                      ),
+                      PopupMenuItem<_ClientAction>(
+                        value: _ClientAction.access,
+                        child: Text(
+                          entry.clientDisallowed
+                              ? 'Allow this client'
+                              : 'Disallow this client',
+                          style: TextStyle(color: cs.error),
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
             ),
           ),
-          if (entry.client.isNotEmpty) ...<Widget>[
-            const SizedBox(height: Insets.xs),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () =>
-                    _block(context, ref, clientAddress: entry.client),
-                child: Text('$action for this client only'),
-              ),
-            ),
-            const SizedBox(height: Insets.xs),
-            SizedBox(
-              width: double.infinity,
-              child: TextButton(
-                style: TextButton.styleFrom(foregroundColor: cs.error),
-                onPressed: () => _access(context, ref),
-                child: Text(
-                  entry.clientDisallowed
-                      ? 'Allow this client'
-                      : 'Disallow this client',
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
+        ),
+      ],
     );
   }
 
