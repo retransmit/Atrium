@@ -4,6 +4,7 @@ export 'src/adguard_home_blocking.dart';
 export 'src/adguard_home_errors.dart';
 export 'src/adguard_home_format.dart';
 export 'src/adguard_home_providers.dart';
+export 'src/adguard_home_query_log.dart';
 export 'src/adguard_home_rules.dart';
 export 'src/adguard_home_session.dart';
 export 'src/adguard_home_shell.dart';

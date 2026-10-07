@@ -31,9 +31,24 @@ class AdguardHomeUnexpectedAnswer implements Exception {
   String toString() => 'This address answered, but not as AdGuard Home.';
 }
 
+/// The client is the only entry of the allowed clients, so it cannot be
+/// shut out by taking it off: an empty list of allowed clients answers
+/// everyone, which is the opposite of what was asked.
+class AdguardHomeLastAllowedClient implements Exception {
+  const AdguardHomeLastAllowedClient();
+
+  static const String message =
+      'This is the only allowed client. Taking it off the list would let '
+      'every client in. Change the access settings in AdGuard Home instead.';
+
+  @override
+  String toString() => message;
+}
+
 /// One sentence for whatever went wrong, fit to show as it is.
 String describeAdguardHomeError(Object error) => switch (error) {
       AdguardHomeSignInRefused() => 'AdGuard Home refused the sign-in.',
+      AdguardHomeLastAllowedClient() => AdguardHomeLastAllowedClient.message,
       AdguardHomeRequestRefused(:final String message) => message,
       AdguardHomeUnexpectedAnswer() =>
         'This address answered, but not as AdGuard Home.',

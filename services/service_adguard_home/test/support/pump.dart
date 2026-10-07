@@ -33,15 +33,53 @@ class RecordingActions extends AdguardHomeActions {
   @override
   void refresh() => calls.add('refresh');
 
+  /// What [readAccessList] hands back.
+  AdguardHomeAccessList accessList = const AdguardHomeAccessList();
+
+  /// When set, [setClientAccess] and [clearQueryLog] fail with it.
+  Object? writeFailure;
+
   @override
   Future<AdguardHomeRuleEdit> toggleBlocking(
     String domain, {
     required bool block,
+    String? clientAddress,
   }) async {
-    calls.add('${block ? 'block' : 'unblock'} $domain');
-    final String rule =
-        block ? '||$domain^\$important' : '@@||$domain^\$important';
+    calls.add(
+      '${block ? 'block' : 'unblock'} $domain'
+      '${clientAddress == null ? '' : ' for $clientAddress'}',
+    );
+    final String base = clientAddress == null
+        ? '||$domain^\$important'
+        : "||$domain^\$client='$clientAddress'";
+    final String rule = block ? base : '@@$base';
     return AdguardHomeRuleEdit(<String>[rule], change, rule);
+  }
+
+  @override
+  Future<AdguardHomeAccessList> readAccessList() async {
+    calls.add('read access');
+    return accessList;
+  }
+
+  @override
+  Future<void> setClientAccess({
+    required String address,
+    required bool disallowed,
+    required String disallowedRule,
+  }) async {
+    calls.add(
+      '${disallowed ? 'allow' : 'disallow'} $address rule=$disallowedRule',
+    );
+    final Object? error = writeFailure;
+    if (error != null) throw error;
+  }
+
+  @override
+  Future<void> clearQueryLog() async {
+    calls.add('clear log');
+    final Object? error = writeFailure;
+    if (error != null) throw error;
   }
 }
 

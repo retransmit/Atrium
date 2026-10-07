@@ -3,9 +3,12 @@ import 'package:core_networking/core_networking.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'adguard_home_access_edit.dart';
 import 'adguard_home_api.dart';
+import 'adguard_home_errors.dart';
 import 'adguard_home_rules.dart';
 import 'adguard_home_session.dart';
+import 'models/adguard_home_access.dart';
 import 'models/adguard_home_filtering.dart';
 import 'models/adguard_home_stats.dart';
 import 'models/adguard_home_status.dart';
@@ -159,18 +162,69 @@ class AdguardHomeActions {
   ///
   /// The rules are read fresh first: the list may have been edited
   /// elsewhere since it was last shown, and the write replaces all of it.
+  ///
+  /// With a [clientAddress] the rule is for that client only. It names the
+  /// client the way the server knows it, so the named clients are read
+  /// first.
   Future<AdguardHomeRuleEdit> toggleBlocking(
     String domain, {
     required bool block,
+    String? clientAddress,
   }) async {
     final AdguardHomeApi api = await _api;
+    final String? client = clientAddress == null
+        ? null
+        : adguardHomeBlockingClientName(
+            await api.getPersistentClients(),
+            clientAddress,
+          );
     final AdguardHomeFiltering filtering = await api.getFiltering();
-    final AdguardHomeRuleEdit edit =
-        adguardHomeBlockingEdit(filtering.userRules, domain, block: block);
+    final AdguardHomeRuleEdit edit = adguardHomeBlockingEdit(
+      filtering.userRules,
+      domain,
+      block: block,
+      client: client,
+    );
     if (edit.change != AdguardHomeRuleChange.alreadyThere) {
       await api.setUserRules(edit.rules);
       _ref.invalidate(adguardHomeFilteringProvider(_instance));
     }
     return edit;
   }
+
+  /// Who may use the server, read now. For the question that is asked
+  /// before a client is shut out.
+  Future<AdguardHomeAccessList> readAccessList() async =>
+      (await _api).getAccessList();
+
+  /// Shuts the client at [address] out, or lets it back in when it is
+  /// [disallowed] now, the way the web UI does (see
+  /// [adguardHomeClientAccessEdit]).
+  ///
+  /// The lists are read fresh first, as the write replaces all three. A
+  /// client that turns out to be the last allowed one is left alone and
+  /// [AdguardHomeLastAllowedClient] is thrown, whatever was confirmed
+  /// against an older reading.
+  Future<void> setClientAccess({
+    required String address,
+    required bool disallowed,
+    required String disallowedRule,
+  }) async {
+    final AdguardHomeApi api = await _api;
+    final AdguardHomeAccessList list = await api.getAccessList();
+    if (adguardHomeIsLastAllowedClient(list, address, disallowed: disallowed)) {
+      throw const AdguardHomeLastAllowedClient();
+    }
+    await api.setAccessList(
+      adguardHomeClientAccessEdit(
+        list,
+        address: address,
+        disallowed: disallowed,
+        disallowedRule: disallowedRule,
+      ),
+    );
+  }
+
+  /// Throws the whole query log away.
+  Future<void> clearQueryLog() async => (await _api).clearQueryLog();
 }
