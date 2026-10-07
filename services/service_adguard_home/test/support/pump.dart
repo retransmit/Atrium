@@ -70,6 +70,7 @@ Future<Pumped> pumpAdguardHome(
   Object? statsError,
   Size size = const Size(360, 2400),
   double textScale = 1,
+  Instance instance = adguardHomeTestInstance,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -81,7 +82,6 @@ Future<Pumped> pumpAdguardHome(
   });
 
   final Pumped pumped = Pumped();
-  const Instance instance = adguardHomeTestInstance;
   await tester.pumpWidget(
     ProviderScope(
       overrides: <Override>[

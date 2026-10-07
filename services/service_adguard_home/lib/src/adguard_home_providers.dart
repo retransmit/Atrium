@@ -32,6 +32,16 @@ final adguardHomeSessionProvider = Provider.family<AdguardHomeSession, Instance>
   (Ref ref, Instance instance) => AdguardHomeSession(),
 );
 
+/// Whether [instance] has a username or password to sign in with.
+///
+/// Without either, nothing is sent that AdGuard Home counts as a wrong try.
+/// A 401 then means the server wants a sign-in, not that one was wrong.
+bool adguardHomeHasCredentials(Instance instance) => switch (instance.auth) {
+      InstanceAuthUserPass(:final String username, :final String password) =>
+        username.isNotEmpty || password.isNotEmpty,
+      _ => false,
+    };
+
 /// The API client of an instance.
 final adguardHomeApiProvider =
     FutureProvider.family<AdguardHomeApi, Instance>((

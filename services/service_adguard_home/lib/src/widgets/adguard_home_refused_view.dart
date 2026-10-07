@@ -8,6 +8,7 @@ class AdguardHomeRefusedView extends StatelessWidget {
   const AdguardHomeRefusedView({
     required this.onRetry,
     this.onEdit,
+    this.hasCredentials = true,
     super.key,
   });
 
@@ -17,12 +18,22 @@ class AdguardHomeRefusedView extends StatelessWidget {
   /// Opens the instance's settings, where the password can be corrected.
   final VoidCallback? onEdit;
 
+  /// Whether the instance has a username or password at all. Without them
+  /// the server refused nothing it counts: it only wants a sign-in, and the
+  /// talk of a lockout would mislead.
+  final bool hasCredentials;
+
   /// The two numbers are AdGuard Home's defaults (`auth_attempts` and
   /// `block_auth_min` in its config), hence "by default".
   static const String explanation =
       'The username or password was not accepted. By default AdGuard Home '
       'blocks an address for 15 minutes after five wrong tries, and while '
       'it does, it refuses the right password too.';
+
+  /// What is said instead of [explanation] when nothing was entered.
+  static const String noCredentials =
+      'This AdGuard Home has a user, and this instance has no username or '
+      'password. Add them under Edit instance.';
 
   @override
   Widget build(BuildContext context) {
@@ -37,13 +48,15 @@ class AdguardHomeRefusedView extends StatelessWidget {
             Icon(Icons.lock_outline, size: 48, color: cs.error),
             const SizedBox(height: Insets.lg),
             Text(
-              'AdGuard Home refused the sign-in',
+              hasCredentials
+                  ? 'AdGuard Home refused the sign-in'
+                  : 'AdGuard Home asks for a sign-in',
               style: theme.textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: Insets.sm),
             Text(
-              explanation,
+              hasCredentials ? explanation : noCredentials,
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: cs.onSurfaceVariant),
               textAlign: TextAlign.center,

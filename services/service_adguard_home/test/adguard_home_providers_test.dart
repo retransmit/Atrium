@@ -265,6 +265,19 @@ void main() {
     expect(server.to('POST', 'control/filtering/set_rules'), isEmpty);
   });
 
+  test('tells an instance with a sign-in from one without', () {
+    Instance withAuth(String username, String password) =>
+        adguardHomeTestInstance.copyWith(
+          auth: InstanceAuth.userPass(username: username, password: password),
+        );
+
+    expect(adguardHomeHasCredentials(adguardHomeTestInstance), isTrue);
+    expect(adguardHomeHasCredentials(withAuth('', '')), isFalse);
+    // Either half alone is still sent, so it counts.
+    expect(adguardHomeHasCredentials(withAuth('admin', '')), isTrue);
+    expect(adguardHomeHasCredentials(withAuth('', 'secret')), isTrue);
+  });
+
   test('the pauses are the five the web UI offers, in its order', () {
     expect(
       adguardHomePauses.map((AdguardHomePause p) => p.label),

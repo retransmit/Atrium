@@ -1,3 +1,4 @@
+import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -24,8 +25,12 @@ void main() {
         readAt: readAt,
       );
 
-  Widget tab({DateTime Function()? now}) => AdguardHomeHomeTab(
-        instance: adguardHomeTestInstance,
+  Widget tab({
+    DateTime Function()? now,
+    Instance instance = adguardHomeTestInstance,
+  }) =>
+      AdguardHomeHomeTab(
+        instance: instance,
         now: now ?? () => readAt,
       );
 
@@ -276,6 +281,28 @@ void main() {
     await tester.pump();
 
     expect(pumped.actions.calls, <String>['retry']);
+  });
+
+  testWidgets('with no sign-in entered it asks for one, not for a better one',
+      (WidgetTester tester) async {
+    // A server that has a user answers an instance with no username or
+    // password with the same 401. Nothing was sent that it counts as a wrong
+    // try, so the talk of a lockout would only mislead.
+    final Instance blank = adguardHomeTestInstance.copyWith(
+      auth: const InstanceAuth.userPass(username: '', password: ''),
+    );
+    await pumpAdguardHome(
+      tester,
+      tab(instance: blank),
+      instance: blank,
+      statusError: const AdguardHomeSignInRefused(),
+    );
+
+    expect(find.text('AdGuard Home asks for a sign-in'), findsOneWidget);
+    expect(find.text(AdguardHomeRefusedView.noCredentials), findsOneWidget);
+    expect(find.textContaining('15 minutes'), findsNothing);
+    expect(find.text('Edit instance'), findsOneWidget);
+    expect(find.text('Try again'), findsOneWidget);
   });
 
   testWidgets('any other failure shows its message and a retry',

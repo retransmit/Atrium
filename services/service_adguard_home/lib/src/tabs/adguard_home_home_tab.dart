@@ -139,6 +139,7 @@ class _AdguardHomeHomeTabState extends ConsumerState<AdguardHomeHomeTab> {
       return AdguardHomeRefusedView(
         onRetry: _actions.retrySignIn,
         onEdit: _edit,
+        hasCredentials: adguardHomeHasCredentials(_instance),
       );
     }
 
