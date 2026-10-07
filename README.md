@@ -4,9 +4,9 @@ The central courtyard for your self-hosted media stack.
 One Android app that fronts Sonarr, Radarr, Lidarr, Prowlarr, Bazarr,
 Seerr, Ombi, Tautulli, Tracearr, Jellyfin, Emby, Plex, Navidrome,
 qBittorrent, Deluge, Transmission, rTorrent, SABnzbd, NZBGet, Glances,
-Speedtest Tracker, MySpeed, Beszel, dashdot, Gluetun and Unraid - and routes
-every request through the right URL whether you're on the home Wi-Fi or out
-in the world.
+Speedtest Tracker, MySpeed, Beszel, dashdot, Gluetun, AdGuard Home and
+Unraid - and routes every request through the right URL whether you're on
+the home Wi-Fi or out in the world.
 
 **[Website][site]** - screenshots and a tour, no install needed.
 
@@ -81,6 +81,7 @@ each one covers:
 | Beszel                 | systems list, live metrics, per-system detail screen                  |
 | dashdot                | live CPU, memory, disk, and GPU usage with a system-info tab, dashboard widget |
 | Gluetun                | VPN status, forwarded port, reconnect, dashboard widget               |
+| AdGuard Home           | protection switch and timed pause, statistics, top clients and domains, dashboard widget (beta) |
 | Unraid                 | array and disk health, system with per-core load, Docker, VM control  |
 
 ## Install
