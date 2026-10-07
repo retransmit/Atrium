@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:core_models/core_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,6 +41,10 @@ class RecordingActions extends AdguardHomeActions {
   /// When set, [setClientAccess] and [clearQueryLog] fail with it.
   Object? writeFailure;
 
+  /// While set, [setClientAccess] waits on this before it answers, so a
+  /// test can do things while the write is on its way.
+  Completer<void>? writeHold;
+
   @override
   Future<AdguardHomeRuleEdit> toggleBlocking(
     String domain, {
@@ -71,6 +77,8 @@ class RecordingActions extends AdguardHomeActions {
     calls.add(
       '${disallowed ? 'allow' : 'disallow'} $address rule=$disallowedRule',
     );
+    final Completer<void>? held = writeHold;
+    if (held != null) await held.future;
     final Object? error = writeFailure;
     if (error != null) throw error;
   }
@@ -140,6 +148,17 @@ class RecordingQueryLog extends AdguardHomeQueryLog {
   }
 }
 
+/// A session that says it has been refused [refusals] times in a row,
+/// without anything having been sent.
+class RefusedSession extends AdguardHomeSession {
+  RefusedSession(this._count);
+
+  final int _count;
+
+  @override
+  int get refusals => _count;
+}
+
 /// What a pumped screen was built on, for the test to look at.
 class Pumped {
   late RecordingActions actions;
@@ -175,6 +194,7 @@ Future<Pumped> pumpAdguardHome(
   Size size = const Size(360, 2400),
   double textScale = 1,
   Instance instance = adguardHomeTestInstance,
+  AdguardHomeSession? session,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -189,6 +209,8 @@ Future<Pumped> pumpAdguardHome(
   await tester.pumpWidget(
     ProviderScope(
       overrides: <Override>[
+        if (session != null)
+          adguardHomeSessionProvider(instance).overrideWithValue(session),
         adguardHomeStatusProvider(instance).overrideWith((Ref ref) async {
           pumped.statusReads++;
           if (statusError != null) throw statusError;

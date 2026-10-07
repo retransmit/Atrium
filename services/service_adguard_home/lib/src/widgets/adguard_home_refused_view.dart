@@ -9,6 +9,7 @@ class AdguardHomeRefusedView extends StatelessWidget {
     required this.onRetry,
     this.onEdit,
     this.hasCredentials = true,
+    this.refusals = 0,
     super.key,
   });
 
@@ -22,6 +23,12 @@ class AdguardHomeRefusedView extends StatelessWidget {
   /// the server refused nothing it counts: it only wants a sign-in, and the
   /// talk of a lockout would mislead.
   final bool hasCredentials;
+
+  /// How many tries in a row the server has refused, from the session. Said
+  /// from the second on: a try that is refused again would otherwise look
+  /// like no try at all, and the fifth is the one that gets the address
+  /// blocked.
+  final int refusals;
 
   /// The two numbers are AdGuard Home's defaults (`auth_attempts` and
   /// `block_auth_min` in its config), hence "by default".
@@ -61,6 +68,17 @@ class AdguardHomeRefusedView extends StatelessWidget {
                   ?.copyWith(color: cs.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
+            if (hasCredentials && refusals > 1) ...<Widget>[
+              const SizedBox(height: Insets.sm),
+              Text(
+                'Refused $refusals times in a row from this app.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: cs.error,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
             const SizedBox(height: Insets.lg),
             FilledButton.tonalIcon(
               onPressed: onRetry,

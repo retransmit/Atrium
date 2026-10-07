@@ -25,6 +25,42 @@ void main() {
   Future<Object?> errorOf(Future<Object?> call) =>
       call.then<Object?>((Object? _) => null, onError: (Object e) => e);
 
+  test('counts the refusals in a row, and an answer wipes the count',
+      () async {
+    expect(session.refusals, 0);
+    server.refusing = true;
+
+    await errorOf(ask('control/status'));
+    expect(session.refusals, 1);
+
+    // Held back by the latch: never sent, so the server never counted it.
+    await errorOf(ask('control/stats'));
+    expect(session.refusals, 1);
+
+    session.retry();
+    await errorOf(ask('control/status'));
+    expect(session.refusals, 2);
+
+    server.refusing = false;
+    session.retry();
+    await ask('control/status');
+    expect(session.refusals, 0);
+  });
+
+  test('a failure that is not a refusal leaves the count as it was',
+      () async {
+    server.refusing = true;
+    await errorOf(ask('control/status'));
+    server.refusing = false;
+    session.retry();
+    server.fail('GET', 'control/status', 502, 'bad gateway');
+
+    await errorOf(ask('control/status'));
+
+    // Nothing was learned about the sign-in either way.
+    expect(session.refusals, 1);
+  });
+
   test('lets one request out at a time', () async {
     server.hold = Completer<void>();
     final Future<Response<dynamic>> first = ask('control/status');
