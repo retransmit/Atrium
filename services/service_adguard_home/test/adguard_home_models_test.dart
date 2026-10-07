@@ -232,5 +232,52 @@ void main() {
       expect(filtering.userRules, isEmpty);
       expect(filtering.rulesOnBlocklists, 0);
     });
+
+    group('the name of the list a rule is on', () {
+      const AdguardHomeFiltering filtering = AdguardHomeFiltering(
+        blocklists: <AdguardHomeFilterList>[
+          AdguardHomeFilterList(
+            id: 1,
+            name: 'AdGuard DNS filter',
+            url: 'https://lists.example/1.txt',
+            enabled: true,
+            rulesCount: 10,
+          ),
+        ],
+        allowlists: <AdguardHomeFilterList>[
+          AdguardHomeFilterList(
+            id: 1759000000,
+            name: 'Work exceptions',
+            url: 'https://lists.example/allow.txt',
+            enabled: true,
+            rulesCount: 3,
+          ),
+        ],
+      );
+
+      test('is the list\'s own, on either side', () {
+        expect(adguardHomeFilterListName(filtering, 1), 'AdGuard DNS filter');
+        expect(
+          adguardHomeFilterListName(filtering, 1759000000),
+          'Work exceptions',
+        );
+      });
+
+      test('is the web UI\'s for the sources the server has built in', () {
+        expect(adguardHomeFilterListName(filtering, 0), 'Custom filtering rules');
+        expect(adguardHomeFilterListName(filtering, -1), 'System hosts files');
+        expect(adguardHomeFilterListName(filtering, -2), 'Blocked services');
+        expect(adguardHomeFilterListName(filtering, -3), 'Parental control');
+        expect(adguardHomeFilterListName(filtering, -4), 'Safe browsing');
+        expect(adguardHomeFilterListName(filtering, -5), 'Safe search');
+        // These need no lists to have been read.
+        expect(adguardHomeFilterListName(null, 0), 'Custom filtering rules');
+      });
+
+      test('says so when the list is gone or was never read', () {
+        expect(adguardHomeFilterListName(filtering, 99), 'Unknown filter 99');
+        expect(adguardHomeFilterListName(null, 1), 'Unknown filter 1');
+      });
+    });
   });
 }
