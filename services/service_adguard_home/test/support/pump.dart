@@ -83,9 +83,61 @@ class RecordingActions extends AdguardHomeActions {
   }
 }
 
+/// Stands in for [AdguardHomeQueryLog]: shows the state a test gives it and
+/// notes what the screen asked of it, without reading anything.
+class RecordingQueryLog extends AdguardHomeQueryLog {
+  RecordingQueryLog(super.instance, this._initial);
+
+  final AdguardHomeQueryLogState _initial;
+
+  final List<String> calls = <String>[];
+
+  @override
+  AdguardHomeQueryLogState build() => _initial;
+
+  /// Puts [next] on the screen.
+  void show(AdguardHomeQueryLogState next) => state = next;
+
+  @override
+  Future<void> reload() async => calls.add('reload');
+
+  @override
+  Future<void> loadMore() async {
+    calls.add('more');
+    // As the real one does, so the list stops asking.
+    state = state.copyWith(loadingMore: true, stalled: false, clearError: true);
+  }
+
+  @override
+  Future<void> setSearch(String text) async {
+    calls.add('search $text');
+    state = AdguardHomeQueryLogState(
+      entries: state.entries,
+      search: text.trim(),
+      filter: state.filter,
+      reachedEnd: state.reachedEnd,
+    );
+  }
+
+  @override
+  Future<void> setFilter(AdguardHomeLogFilter filter) async {
+    calls.add('filter ${filter.name}');
+    state = AdguardHomeQueryLogState(
+      entries: state.entries,
+      search: state.search,
+      filter: filter,
+      reachedEnd: state.reachedEnd,
+    );
+  }
+}
+
 /// What a pumped screen was built on, for the test to look at.
 class Pumped {
   late RecordingActions actions;
+
+  /// The query log the screen is showing. Only there once the screen has
+  /// asked for it.
+  late RecordingQueryLog log;
 
   /// How many times the status was read.
   int statusReads = 0;
@@ -104,6 +156,8 @@ Future<Pumped> pumpAdguardHome(
   AdguardHomeStats stats = const AdguardHomeStats(),
   AdguardHomeFiltering filtering = const AdguardHomeFiltering(),
   Duration period = const Duration(hours: 24),
+  AdguardHomeQueryLogState log = const AdguardHomeQueryLogState(),
+  AdguardHomeQueryLogConfig logConfig = const AdguardHomeQueryLogConfig(),
   Object? statusError,
   Object? statsError,
   Size size = const Size(360, 2400),
@@ -136,6 +190,11 @@ Future<Pumped> pumpAdguardHome(
             .overrideWith((Ref ref) async => filtering),
         adguardHomeStatsPeriodProvider(instance)
             .overrideWith((Ref ref) async => period),
+        adguardHomeQueryLogProvider(instance).overrideWith(
+          () => pumped.log = RecordingQueryLog(instance, log),
+        ),
+        adguardHomeQueryLogConfigProvider(instance)
+            .overrideWith((Ref ref) async => logConfig),
         adguardHomeActionsProvider(instance).overrideWith(
           (Ref ref) => pumped.actions = RecordingActions(ref, instance),
         ),
