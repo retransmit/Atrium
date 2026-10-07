@@ -102,6 +102,11 @@ class AdguardHomeQueryLog extends Notifier<AdguardHomeQueryLogState> {
   /// is thrown away: the search or the filter has changed under it.
   int _read = 0;
 
+  /// Whether the screen that watched this list is gone. The end of the list
+  /// asks for more a frame after it is drawn, and the search box a moment
+  /// after the typing, so a call can arrive after that. It is then dropped.
+  bool get _gone => !ref.mounted;
+
   @override
   AdguardHomeQueryLogState build() {
     ref.onDispose(() => _read++);
@@ -112,13 +117,14 @@ class AdguardHomeQueryLog extends Notifier<AdguardHomeQueryLogState> {
   /// Reads the newest entries again under the same search and filter. What
   /// is shown stays until the answer is in.
   Future<void> reload() {
+    if (_gone) return Future<void>.value();
     state = state.copyWith(loading: true, loadingMore: false);
     return _readFrom(top: true);
   }
 
   /// Reads the entries older than the ones held.
   Future<void> loadMore() {
-    if (state.loading || state.loadingMore || state.reachedEnd) {
+    if (_gone || state.loading || state.loadingMore || state.reachedEnd) {
       return Future<void>.value();
     }
     state = state.copyWith(loadingMore: true, stalled: false, clearError: true);
@@ -129,13 +135,19 @@ class AdguardHomeQueryLog extends Notifier<AdguardHomeQueryLogState> {
   /// it has to match whole.
   Future<void> setSearch(String text) {
     final String search = text.trim();
-    if (search == state.search) return Future<void>.value();
+    if (_gone || search == state.search) return Future<void>.value();
     return _narrow(search, state.filter);
   }
 
   Future<void> setFilter(AdguardHomeLogFilter filter) {
-    if (filter == state.filter) return Future<void>.value();
+    if (_gone || filter == state.filter) return Future<void>.value();
     return _narrow(state.search, filter);
+  }
+
+  /// Drops the search and the filter at once, as one read.
+  Future<void> clearNarrowing() {
+    if (_gone || !state.narrowed) return Future<void>.value();
+    return _narrow('', AdguardHomeLogFilter.all);
   }
 
   /// What was shown answered another question, so it goes at once.
@@ -149,7 +161,7 @@ class AdguardHomeQueryLog extends Notifier<AdguardHomeQueryLogState> {
   }
 
   Future<void> _readFrom({required bool top}) async {
-    if (!ref.mounted) return;
+    if (_gone) return;
     final int read = ++_read;
     final String search = state.search;
     final AdguardHomeLogFilter filter = state.filter;

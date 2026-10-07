@@ -258,6 +258,28 @@ void main() {
       });
     });
 
+    test('clearing the search and the filter together is one read', () async {
+      await open();
+      await log().setSearch('google');
+      await log().setFilter(AdguardHomeLogFilter.blocked);
+      final int before = asked().length;
+
+      await log().clearNarrowing();
+
+      expect(asked(), hasLength(before + 1));
+      expect(asked().last, <String, dynamic>{'limit': 50});
+      expect(state().narrowed, isFalse);
+    });
+
+    test('clearing when nothing narrows the list sends nothing', () async {
+      await open();
+      final int before = asked().length;
+
+      await log().clearNarrowing();
+
+      expect(asked(), hasLength(before));
+    });
+
     test('an answer to a question no longer asked is thrown away', () async {
       // The first read is still on its way when the search changes.
       pages
@@ -487,6 +509,25 @@ void main() {
 
       expect(server.single('POST', 'control/querylog_clear'), isNotNull);
     });
+  });
+
+  test('a list that has gone away takes a late call without complaint',
+      () async {
+    // The end of the list asks for more a frame after it is drawn, and a
+    // search a moment after the typing. The screen can be left in between.
+    pages.add(page(50, 'c1'));
+    await open();
+    final AdguardHomeQueryLog late = log();
+    final int before = asked().length;
+
+    container.dispose();
+
+    await late.loadMore();
+    await late.reload();
+    await late.setSearch('late');
+    await late.setFilter(AdguardHomeLogFilter.blocked);
+    await late.clearNarrowing();
+    expect(asked(), hasLength(before));
   });
 
   test('whether a log is kept is read once, when asked', () async {

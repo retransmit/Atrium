@@ -120,6 +120,15 @@ class RecordingQueryLog extends AdguardHomeQueryLog {
   }
 
   @override
+  Future<void> clearNarrowing() async {
+    calls.add('clear');
+    state = AdguardHomeQueryLogState(
+      entries: state.entries,
+      reachedEnd: state.reachedEnd,
+    );
+  }
+
+  @override
   Future<void> setFilter(AdguardHomeLogFilter filter) async {
     calls.add('filter ${filter.name}');
     state = AdguardHomeQueryLogState(

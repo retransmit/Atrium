@@ -373,10 +373,19 @@ void main() {
       );
 
       expect(find.text('Nothing found'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        'zzz',
+      );
       await tester.tap(find.text('Clear search and filter'));
       await tester.pump();
 
-      expect(pumped.log.calls, <String>['search ', 'filter all']);
+      // Both at once, as one read, and the box is emptied with them.
+      expect(pumped.log.calls, <String>['clear']);
+      expect(
+        tester.widget<TextField>(find.byType(TextField)).controller!.text,
+        isEmpty,
+      );
     });
 
     testWidgets('a search that has not reached the end yet says how far '

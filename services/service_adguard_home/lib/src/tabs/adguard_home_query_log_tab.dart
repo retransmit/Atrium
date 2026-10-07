@@ -87,8 +87,10 @@ class _AdguardHomeQueryLogTabState
   }
 
   void _clearNarrowing() {
-    _clearSearch();
-    _log.setFilter(AdguardHomeLogFilter.all);
+    _typing?.cancel();
+    _search.clear();
+    _log.clearNarrowing();
+    setState(() {});
   }
 
   void _retrySignIn() {
