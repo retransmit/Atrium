@@ -12,6 +12,7 @@ import '../adguard_home_log_actions.dart';
 import '../adguard_home_providers.dart';
 import '../models/adguard_home_filtering.dart';
 import '../models/adguard_home_query_log.dart';
+import 'adguard_home_client_sheet.dart';
 import 'adguard_home_fields.dart';
 import 'adguard_home_result_chip.dart';
 
@@ -42,7 +43,7 @@ Future<void> showAdguardHomeQueryDetail(
 }
 
 /// What the menu beside the main action offers for the entry's client.
-enum _ClientAction { blockForClient, access }
+enum _ClientAction { show, blockForClient, access }
 
 /// One query in full: the request, the response and the client, over the
 /// web UI's three actions.
@@ -261,6 +262,17 @@ class _AdguardHomeQueryDetailState
                     enabled: !_busy,
                     onSelected: (_ClientAction chosen) {
                       switch (chosen) {
+                        case _ClientAction.show:
+                          // Over this sheet, which is there to come back
+                          // to: who the client is, and a way to its
+                          // settings or to making it a persistent one.
+                          unawaited(
+                            showAdguardHomeClientSheet(
+                              context,
+                              instance: instance,
+                              address: entry.client,
+                            ),
+                          );
                         case _ClientAction.blockForClient:
                           _block(clientAddress: entry.client);
                         case _ClientAction.access:
@@ -269,6 +281,10 @@ class _AdguardHomeQueryDetailState
                     },
                     itemBuilder: (BuildContext _) =>
                         <PopupMenuEntry<_ClientAction>>[
+                      const PopupMenuItem<_ClientAction>(
+                        value: _ClientAction.show,
+                        child: Text('Show client'),
+                      ),
                       PopupMenuItem<_ClientAction>(
                         value: _ClientAction.blockForClient,
                         enabled: named,

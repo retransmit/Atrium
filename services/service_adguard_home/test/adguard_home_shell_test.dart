@@ -29,11 +29,13 @@ void main() {
     reachedEnd: true,
   );
 
-  Future<Pumped> pumpShell(WidgetTester tester) => pumpAdguardHome(
+  Future<Pumped> pumpShell(WidgetTester tester, {Object? clientsError}) =>
+      pumpAdguardHome(
         tester,
         const AdguardHomeShell(instance: adguardHomeTestInstance),
         status: status,
         log: log,
+        clientsError: clientsError,
         size: const Size(360, 900),
       );
 
@@ -52,14 +54,113 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('opens on Home, with Home and Query log in the bar',
+  Future<void> openClients(WidgetTester tester) async {
+    await tester.tap(destination('Clients'));
+    await tester.pump();
+    await tester.pump();
+  }
+
+  final Finder addClient =
+      find.widgetWithText(FloatingActionButton, 'Add client');
+
+  testWidgets('opens on Home, with Home, Query log and Clients in the bar',
       (WidgetTester tester) async {
     await pumpShell(tester);
 
     expect(destination('Home'), findsOneWidget);
     expect(destination('Query log'), findsOneWidget);
+    expect(destination('Clients'), findsOneWidget);
     expect(selected(tester), 0);
     expect(find.text('Protection is on'), findsOneWidget);
+  });
+
+  group('the clients', () {
+    testWidgets('are not asked for until their tab is opened',
+        (WidgetTester tester) async {
+      // Three requests nobody is waiting for, otherwise.
+      final Pumped pumped = await pumpShell(tester);
+      await openLog(tester);
+      expect(pumped.clientReads, 0);
+
+      await openClients(tester);
+
+      expect(pumped.clientReads, 1);
+      expect(selected(tester), 2);
+      expect(find.text('Persistent (3)'), findsOneWidget);
+    });
+
+    testWidgets('keep their place while another tab is shown',
+        (WidgetTester tester) async {
+      final Pumped pumped = await pumpShell(tester);
+      await openClients(tester);
+
+      await tester.tap(destination('Home'));
+      await tester.pump();
+      await openClients(tester);
+
+      expect(pumped.clientReads, 1);
+      expect(
+        find.byType(AdguardHomeClientsTab, skipOffstage: false),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('can be added to from their tab, and from no other',
+        (WidgetTester tester) async {
+      await pumpShell(tester);
+      expect(addClient, findsNothing);
+      await openLog(tester);
+      expect(addClient, findsNothing);
+
+      await openClients(tester);
+
+      expect(addClient, findsOneWidget);
+    });
+
+    testWidgets('the add button opens the form for a new client, with the '
+        'tags the server offers', (WidgetTester tester) async {
+      await pumpShell(tester);
+      await openClients(tester);
+      // The button grows in, and cannot be tapped until it has.
+      await tester.pump(const Duration(milliseconds: 500));
+
+      await tester.tap(addClient);
+      await tester.pumpAndSettle();
+
+      expect(find.text('New client'), findsOneWidget);
+      expect(find.byType(FilterChip, skipOffstage: false), findsNWidgets(21));
+    });
+
+    testWidgets('cannot be added to while they cannot be read',
+        (WidgetTester tester) async {
+      // There would be no tags to offer, and after a refused sign-in
+      // nothing could be saved.
+      await pumpShell(tester, clientsError: const AdguardHomeSignInRefused());
+      await openClients(tester);
+
+      expect(find.byType(AdguardHomeRefusedView), findsOneWidget);
+      expect(addClient, findsNothing);
+    });
+
+    testWidgets('back on their tab goes to Home before it leaves',
+        (WidgetTester tester) async {
+      await pumpShell(tester);
+      await openClients(tester);
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+
+      expect(selected(tester), 0);
+      expect(find.text('Protection is on'), findsOneWidget);
+    });
+
+    testWidgets('have no menu for the query log over them',
+        (WidgetTester tester) async {
+      await pumpShell(tester);
+      await openClients(tester);
+
+      expect(find.byTooltip('More'), findsNothing);
+    });
   });
 
   testWidgets('the query log is not asked for until its tab is opened',

@@ -18,6 +18,7 @@ class AdguardHomeTopList extends StatelessWidget {
     required this.kind,
     required this.rows,
     this.onBlocking,
+    this.onOpen,
     this.onViewAll,
     this.limit = 5,
     super.key,
@@ -28,6 +29,9 @@ class AdguardHomeTopList extends StatelessWidget {
 
   /// Blocks or unblocks a row's domain. Only the lists of domains use it.
   final void Function(String domain, {required bool block})? onBlocking;
+
+  /// Opens what a row stands for. The list of clients uses it.
+  final void Function(AdguardHomeCount row)? onOpen;
 
   /// Opens the whole list. Offered only when there are more rows than the
   /// card shows.
@@ -44,6 +48,7 @@ class AdguardHomeTopList extends StatelessWidget {
     final List<AdguardHomeCount> rest = rows.skip(limit).toList();
     final num highest = adguardHomeHighest(rows);
     final bool hasButtons = kind.blocks != null && onBlocking != null;
+    final void Function(AdguardHomeCount row)? onOpen = this.onOpen;
 
     return Material(
       color: cs.surfaceContainerHigh,
@@ -71,6 +76,7 @@ class AdguardHomeTopList extends StatelessWidget {
                 row: row,
                 highest: highest,
                 onBlocking: onBlocking,
+                onOpen: onOpen == null ? null : () => onOpen(row),
               ),
             if (rest.isNotEmpty && kind.addsUp)
               Padding(
@@ -128,6 +134,7 @@ class AdguardHomeTopRow extends StatelessWidget {
     required this.row,
     required this.highest,
     this.onBlocking,
+    this.onOpen,
     super.key,
   });
 
@@ -140,8 +147,22 @@ class AdguardHomeTopRow extends StatelessWidget {
   /// Blocks or unblocks the row's domain. Only the lists of domains use it.
   final void Function(String domain, {required bool block})? onBlocking;
 
+  /// Opens what the row stands for. Without it the row is nothing to tap.
+  final VoidCallback? onOpen;
+
   @override
   Widget build(BuildContext context) {
+    final VoidCallback? onOpen = this.onOpen;
+    final Widget content = _content(context);
+    if (onOpen == null) return content;
+    return InkWell(
+      onTap: onOpen,
+      borderRadius: BorderRadius.circular(8),
+      child: content,
+    );
+  }
+
+  Widget _content(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final bool? blocks = kind.blocks;
     final void Function(String domain, {required bool block})? onBlocking =

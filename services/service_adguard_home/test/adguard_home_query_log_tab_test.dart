@@ -1163,6 +1163,21 @@ void main() {
       expect(find.widgetWithText(FilledButton, 'Block'), findsOneWidget);
       expect(find.byTooltip('More actions'), findsNothing);
     });
+
+    testWidgets('Show client opens the client behind the query, over the '
+        'query', (WidgetTester tester) async {
+      final Pumped pumped = await open(tester, entry());
+
+      await more(tester, 'Show client');
+
+      expect(pumped.actions.calls, <String>['find 172.17.0.1']);
+      expect(find.byType(AdguardHomeClientSheet), findsOneWidget);
+      // The query is still there underneath, to come back to.
+      expect(
+        find.byType(AdguardHomeQueryDetail, skipOffstage: false),
+        findsOneWidget,
+      );
+    });
   });
 
   group('layout', () {
