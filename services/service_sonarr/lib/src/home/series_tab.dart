@@ -1365,6 +1365,10 @@ class _SortFilterBottomSheet extends ConsumerWidget {
     final sortAscending =
         ref.watch(sonarrSeriesSortAscendingProvider(instance));
     final filter = ref.watch(sonarrSeriesFilterProvider(instance));
+    final activeCustomFilter =
+        ref.watch(sonarrActiveCustomFilterProvider(instance));
+    final customFiltersAsync =
+        ref.watch(sonarrCustomFiltersProvider(instance));
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -1384,28 +1388,70 @@ class _SortFilterBottomSheet extends ConsumerWidget {
               Wrap(
                 spacing: 8,
                 runSpacing: 4,
-                children: SonarrSeriesFilter.values.map((f) {
-                  final label = switch (f) {
-                    SonarrSeriesFilter.all => 'All',
-                    SonarrSeriesFilter.monitoredOnly => 'Monitored Only',
-                    SonarrSeriesFilter.unmonitoredOnly => 'Unmonitored Only',
-                    SonarrSeriesFilter.continuingOnly => 'Continuing Only',
-                    SonarrSeriesFilter.endedOnly => 'Ended Only',
-                    SonarrSeriesFilter.missingEpisodes => 'Missing Episodes',
-                  };
-                  final selected = filter == f;
-                  return ChoiceChip(
-                    label: Text(label),
-                    selected: selected,
-                    onSelected: (val) {
-                      if (val) {
-                        ref
-                            .read(sonarrSeriesFilterProvider(instance).notifier)
-                            .state = f;
-                      }
-                    },
-                  );
-                }).toList(),
+                children: [
+                  ...SonarrSeriesFilter.values.map((f) {
+                    final label = switch (f) {
+                      SonarrSeriesFilter.all => 'All',
+                      SonarrSeriesFilter.monitoredOnly => 'Monitored Only',
+                      SonarrSeriesFilter.unmonitoredOnly => 'Unmonitored Only',
+                      SonarrSeriesFilter.continuingOnly => 'Continuing Only',
+                      SonarrSeriesFilter.endedOnly => 'Ended Only',
+                      SonarrSeriesFilter.missingEpisodes => 'Missing Episodes',
+                    };
+                    final selected = activeCustomFilter == null && filter == f;
+                    return ChoiceChip(
+                      label: Text(label),
+                      selected: selected,
+                      onSelected: (val) {
+                        if (val) {
+                          ref
+                              .read(
+                                sonarrActiveCustomFilterProvider(instance)
+                                    .notifier,
+                              )
+                              .state = null;
+                          ref
+                              .read(
+                                sonarrSeriesFilterProvider(instance).notifier,
+                              )
+                              .state = f;
+                        }
+                      },
+                    );
+                  }),
+                  ...customFiltersAsync.maybeWhen(
+                    data: (customFilters) => customFilters.map((cf) {
+                      final selected = activeCustomFilter?.id == cf.id;
+                      return ChoiceChip(
+                        label: Text(cf.label!),
+                        selected: selected,
+                        onSelected: (val) {
+                          if (val) {
+                            ref
+                                .read(
+                                  sonarrActiveCustomFilterProvider(instance)
+                                      .notifier,
+                                )
+                                .state = cf;
+                          } else {
+                            ref
+                                .read(
+                                  sonarrActiveCustomFilterProvider(instance)
+                                      .notifier,
+                                )
+                                .state = null;
+                            ref
+                                .read(
+                                  sonarrSeriesFilterProvider(instance).notifier,
+                                )
+                                .state = SonarrSeriesFilter.all;
+                          }
+                        },
+                      );
+                    }),
+                    orElse: () => const <Widget>[],
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               Text(

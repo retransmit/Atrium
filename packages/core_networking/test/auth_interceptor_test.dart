@@ -115,6 +115,69 @@ void main() {
     expect(request.headers.containsKey('X-Api-Key'), isFalse);
     expect(request.headers.containsKey('Authorization'), isFalse);
   });
+
+  group('AdGuard Home', () {
+    Dio dioFor(InstanceAuth auth, _RecordingAdapter adapter) =>
+        Dio(BaseOptions(baseUrl: 'http://adguard.example.test/'))
+          ..httpClientAdapter = adapter
+          ..interceptors.add(
+            AuthInterceptor(kind: ServiceKind.adguardHome, auth: auth),
+          );
+
+    test('is signed with HTTP Basic', () async {
+      final _RecordingAdapter adapter = _RecordingAdapter();
+      final Dio dio = dioFor(
+        const InstanceAuth.userPass(username: 'admin', password: 'p:ss word'),
+        adapter,
+      );
+
+      await dio.get<dynamic>('control/status');
+
+      expect(
+        adapter.request!.headers['Authorization'],
+        'Basic ${base64Encode(utf8.encode('admin:p:ss word'))}',
+      );
+    });
+
+    test('sends no Authorization when no credentials were entered', () async {
+      // A server set up without a user answers anyone.
+      final _RecordingAdapter adapter = _RecordingAdapter();
+      final Dio dio = dioFor(
+        const InstanceAuth.userPass(username: '', password: ''),
+        adapter,
+      );
+
+      await dio.get<dynamic>('control/status');
+
+      expect(adapter.request!.headers.containsKey('Authorization'), isFalse);
+    });
+
+    test('an anonymous request carries no Authorization of any kind', () async {
+      // Five wrong Basic headers lock the server's owner out for fifteen
+      // minutes, so the health probe must not carry the password, nor a
+      // header of that name the profile set for a reverse proxy.
+      final _RecordingAdapter adapter = _RecordingAdapter();
+      final Dio dio = dioFor(
+        const InstanceAuth.userPass(username: 'admin', password: 'wrong'),
+        adapter,
+      );
+      dio.options.headers['authorization'] = 'Basic cHJveHk6cHJveHk=';
+      dio.options.headers['X-Forwarded-User'] = 'someone';
+
+      await dio.get<dynamic>(
+        'control/status',
+        options: Options(
+          extra: <String, dynamic>{anonymousRequestExtra: true},
+        ),
+      );
+
+      final Iterable<String> sent = adapter.request!.headers.keys
+          .map((String name) => name.toLowerCase());
+      expect(sent, isNot(contains('authorization')));
+      // Every other configured header still goes.
+      expect(adapter.request!.headers['X-Forwarded-User'], 'someone');
+    });
+  });
 }
 
 class _RecordingAdapter implements HttpClientAdapter {

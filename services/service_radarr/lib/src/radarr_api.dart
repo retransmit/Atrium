@@ -2,6 +2,7 @@ import 'package:core_networking/core_networking.dart';
 import 'package:dio/dio.dart';
 
 import 'models/radarr_blocklist_item.dart';
+import 'models/radarr_custom_filter.dart';
 import 'models/radarr_history_item.dart';
 import 'models/radarr_movie.dart';
 import 'models/radarr_queue_item.dart';
@@ -25,6 +26,21 @@ class RadarrApi {
       return (resp.data as List<dynamic>)
           .map(
             (dynamic e) => RadarrMovie.fromJson(e as Map<String, dynamic>),
+          )
+          .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<List<RadarrCustomFilter>> getCustomFilters() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/customfilter');
+      return (resp.data as List<dynamic>)
+          .map(
+            (dynamic e) =>
+                RadarrCustomFilter.fromJson(e as Map<String, dynamic>),
           )
           .toList();
     } on DioException catch (e) {

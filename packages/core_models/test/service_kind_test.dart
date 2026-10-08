@@ -35,14 +35,15 @@ void main() {
         'gluetun',
         'ombi',
         'myspeed',
+        'adguardHome',
       ],
     );
   });
 
-  test('Ombi is registered as a beta apiKey request service', () {
+  test('Ombi is registered as an apiKey request service', () {
     expect(ServiceKind.ombi.displayName, 'Ombi');
     expect(ServiceKind.ombi.tagline, 'Requests');
-    expect(ServiceKind.ombi.isBeta, isTrue);
+    expect(ServiceKind.ombi.isBeta, isFalse);
     expect(ServiceKind.ombi.defaultPort, 3579);
     expect(ServiceKind.ombi.authStyle, AuthStyle.apiKey);
     expect(ServiceKind.ombi.role, ServiceRole.requests);
@@ -120,6 +121,16 @@ void main() {
     expect(ServiceKind.gluetun.authStyle, AuthStyle.apiKey);
     expect(ServiceKind.gluetun.defaultPort, 8000);
     expect(ServiceKind.gluetun.isBeta, isFalse);
+  });
+
+  test('AdGuard Home is registered as a beta userPass analytics service', () {
+    expect(ServiceKind.adguardHome.displayName, 'AdGuard Home');
+    expect(ServiceKind.adguardHome.tagline, 'Network-wide blocking');
+    expect(ServiceKind.adguardHome.isBeta, isTrue);
+    expect(ServiceKind.adguardHome.defaultPort, 80);
+    expect(ServiceKind.adguardHome.authStyle, AuthStyle.userPass);
+    expect(ServiceKind.adguardHome.role, ServiceRole.analytics);
+    expect(ServiceKind.adguardHome.acceptsTorrents, isFalse);
   });
 
   test('existing services retain their default ports', () {

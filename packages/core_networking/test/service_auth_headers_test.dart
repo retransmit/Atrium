@@ -63,7 +63,7 @@ void main() {
     );
   });
 
-  test('the five kinds that spend Authorization on themselves are named', () {
+  test('the six kinds that spend Authorization on themselves are named', () {
     // These are the ones where a user's own Authorization header never
     // reaches the wire, which is the whole reason the warning exists.
     final Set<ServiceKind> owners = <ServiceKind>{
@@ -79,6 +79,7 @@ void main() {
       ServiceKind.nzbget,
       ServiceKind.transmission,
       ServiceKind.rtorrent,
+      ServiceKind.adguardHome,
     });
   });
 
@@ -91,6 +92,10 @@ void main() {
     );
     expect(
       serviceAuthHeaderNames(ServiceKind.rtorrent, blankUserPass),
+      isEmpty,
+    );
+    expect(
+      serviceAuthHeaderNames(ServiceKind.adguardHome, blankUserPass),
       isEmpty,
     );
   });

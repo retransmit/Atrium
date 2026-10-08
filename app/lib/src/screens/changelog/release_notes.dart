@@ -27,6 +27,20 @@ class ReleaseNote {
 /// Newest first. Update alongside appVersion and the pubspec at each release.
 const List<ReleaseNote> releaseNotes = <ReleaseNote>[
   ReleaseNote(
+    version: '1.9.0',
+    date: '2026-10-08',
+    groups: <ChangeGroup>[
+      ChangeGroup(ChangeCategory.added, <String>[
+        'AdGuard Home is a supported service, in beta. Home turns protection on or off, or pauses it for a time, and shows the DNS statistics with the top clients, domains and upstreams, where a domain can be blocked or unblocked from its row. The Query log is searched and filtered the way the web UI does it, and a query opens in full, to block or unblock its name for everyone or for one client, or to disallow the client. Clients lists the persistent and runtime clients, and a persistent client can be added, changed or deleted, with its own protection settings, blocked services and upstream servers. A dashboard widget shows the state, with Pause and Resume. The filter lists and the settings of the server are still to come.',
+        'AdGuard Home locks an address out after a few wrong sign-ins, so a wrong password is tried once and nothing more is sent until you tap Try again.',
+        'Sonarr and Radarr offer the custom filters saved on your server in the sort and filter sheet.',
+      ]),
+      ChangeGroup(ChangeCategory.improved, <String>[
+        'Ombi is out of beta.',
+      ]),
+    ],
+  ),
+  ReleaseNote(
     version: '1.8.0',
     date: '2026-10-03',
     groups: <ChangeGroup>[

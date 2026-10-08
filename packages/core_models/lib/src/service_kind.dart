@@ -30,6 +30,7 @@ enum ServiceKind {
   gluetun,
   ombi,
   myspeed,
+  adguardHome,
 }
 
 /// Static metadata about a [ServiceKind] - display name, default port, the
@@ -65,6 +66,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.navidrome => 'Navidrome',
         ServiceKind.ombi => 'Ombi',
         ServiceKind.myspeed => 'MySpeed',
+        ServiceKind.adguardHome => 'AdGuard Home',
       };
 
   /// One-line role description.
@@ -95,6 +97,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.navidrome => 'Music server',
         ServiceKind.ombi => 'Requests',
         ServiceKind.myspeed => 'Internet speed',
+        ServiceKind.adguardHome => 'Network-wide blocking',
       };
 
   /// Whether this service's integration is still in beta. Surfaced as a
@@ -103,7 +106,7 @@ extension ServiceKindX on ServiceKind {
   bool get isBeta => switch (this) {
         ServiceKind.deluge ||
         ServiceKind.rtorrent ||
-        ServiceKind.ombi =>
+        ServiceKind.adguardHome =>
           true,
         _ => false,
       };
@@ -143,6 +146,9 @@ extension ServiceKindX on ServiceKind {
         // is 5000.
         ServiceKind.ombi => 3579,
         ServiceKind.myspeed => 5216,
+        // Where the admin page listens once the setup wizard has run. Port
+        // 3000 is only the wizard's.
+        ServiceKind.adguardHome => 80,
       };
 
   /// What auth flow the service uses by default. Some services (Jellyfin) can
@@ -181,6 +187,9 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.speedtestTracker => AuthStyle.bearerToken,
         ServiceKind.beszel => AuthStyle.userPass,
         ServiceKind.dashdot => AuthStyle.none,
+        // HTTP Basic on every request. A server set up without a user
+        // answers anyone, so the form must not demand credentials.
+        ServiceKind.adguardHome => AuthStyle.userPass,
       };
 
   /// Broad role of the service in the stack - used for grouping in the
@@ -213,6 +222,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.unraid => ServiceRole.analytics,
         ServiceKind.gluetun => ServiceRole.analytics,
         ServiceKind.myspeed => ServiceRole.analytics,
+        ServiceKind.adguardHome => ServiceRole.analytics,
       };
 
   /// Whether this service can be handed a torrent - a magnet URI, a link to a

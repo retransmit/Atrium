@@ -1,6 +1,6 @@
 # Atrium - Status
 
-> Snapshot of what genuinely works and what is left, as of 2026-10-03 (release 1.8.0).
+> Snapshot of what genuinely works and what is left, as of 2026-10-08.
 > Atrium is published on F-Droid and on the GitHub releases page. It is
 > still in early development and every module is work in progress; nothing
 > here is a release promise.
@@ -58,14 +58,18 @@ Atrium is a **controller** app. Video playback was removed by design
   screen from 4.5.1, and nowhere while a magnet has no metadata
 - **Sonarr** (the canonical *arr module): poster/banner grid with
   client-side sort & filter (status, network, airing, added, size on
-  disk) and per-series disk sizes, series detail (fanart backdrop,
-  season monitor/search), search-and-add (the list's search query carries
-  over to the Add screen, contributed by Bhavyashah94 in PR #160),
+  disk) and per-series disk sizes, the custom filters saved on the
+  server for its series list, judged rule for rule the way Sonarr's own
+  page judges them (contributed by Bhavyashah94 in PR #179), series
+  detail (fanart backdrop, season monitor/search), search-and-add (the
+  list's search query carries over to the Add screen, contributed by
+  Bhavyashah94 in PR #160),
   queue/wanted/history/blocklist/system tabs, and a full Settings editor
   (17 panels) - settings writes live-verified
 - **Radarr**: same depth as Sonarr, movie flavored, plus collection
   monitoring when adding a movie and from its detail screen (contributed by
-  Bhavyashah94 in PR #173)
+  Bhavyashah94 in PR #173); the custom filters saved on the server for its
+  movie list sit beside the built-in ones, as in Sonarr (PR #179)
 - **Lidarr** (added in 1.5.0, out of beta since 2026-10-01): artists and
   discography with grid and
   list views and bulk actions, artist detail with release-type filters,
@@ -84,8 +88,8 @@ Atrium is a **controller** app. Video playback was removed by design
 - **Seerr** (Jellyseerr / Overseerr): discover (trending/upcoming/genres),
   search, item detail with request submission (profile/folder/server
   selection), requests management (approve/decline/delete/retry)
-- **Ombi** (beta, added 2026-09-19, live-verified against 4.53, restyled
-  2026-10-02): its own screen with a bottom bar for Requests and Discover
+- **Ombi** (added 2026-09-19, out of beta since 2026-10-05, live-verified
+  against 4.53, restyled 2026-10-02): its own screen with a bottom bar for Requests and Discover
   and search in the app bar. Requests for movies, TV and, where Lidarr is
   set up, music, filtered as Ombi's own Requests page filters them, each
   filter showing its count, as cards with approve / deny (with a reason) /
@@ -164,6 +168,42 @@ Atrium is a **controller** app. Video playback was removed by design
   dashboard widget. The connection test judges the connection rather than
   the VPN behind it, and the health dot warns when Gluetun reports its VPN
   down. Update Servers on ProtonVPN says what it needs
+- **AdGuard Home** (beta, added 2026-10-07, live-verified against v0.107.79;
+  issue #166): a Home screen with protection on/off and the five timed
+  pauses the web UI offers, a countdown while paused, charts of DNS queries
+  and of blocked queries with their totals, figures for malware, adult
+  sites, safe search and the rules on the blocklists, and the top clients,
+  queried domains, blocked domains and upstreams (five of each, the rest
+  added up, the whole list one tap away), with block and unblock from a
+  domain's row (the same custom rule the web UI writes, and an Undo). A
+  Query log tab (added 2026-10-08) lists the queries newest first, read a
+  page at a time as it is scrolled, searched by domain or client and
+  narrowed with the web UI's ten filters; a row opens the query in full
+  (request, response, the rule that matched and its list, the client),
+  from where the name can be blocked or unblocked, for everyone or for
+  that client only, and the client disallowed or allowed again behind a
+  confirmation; the log can be cleared from the menu. A Clients tab (added
+  2026-10-08) lists the persistent clients with their identifiers, tags
+  and queries, and the runtime clients with where the server learned of
+  them; a persistent client is added, changed or deleted in a form
+  (identifiers, tags, its own protection and safe search per engine, its
+  own blocked services picked from the server's catalogue, upstream
+  servers and their cache, leaving it out of the log or the statistics),
+  and a runtime client can be made persistent with its name and address
+  filled in. A change is written over the client as the server has it at
+  that moment, so what the form does not show, such as a pause schedule,
+  is kept. A top client on Home and the client of a query open the same
+  sheet. An
+  AdGuard Home dashboard widget shows the state with Pause or Resume, the
+  queries and the blocked ones with their share as a ring, a chart of both
+  over the period, and the rules on the blocklists. Signed in with HTTP
+  Basic; a server with no user needs no
+  credentials. AdGuard Home locks an address out after repeated wrong
+  sign-ins (15 minutes after five, by default), so the health dot probes
+  it with no password and cannot flag a wrong one, requests leave one at a
+  time, and after a refusal nothing is sent until Try again is tapped.
+  Filters and settings are not built yet, nor the editor of a client's
+  pause schedule, which comes with the filters
 - **MySpeed** (added 2026-09-20 by lxBlazarxl, live-verified against 1.0.9):
   execution status with a manual run, the last 24 hours of results, a
   history with averages and a search by test id, the server's config and

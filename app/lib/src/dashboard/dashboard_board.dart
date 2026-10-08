@@ -4,6 +4,7 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:service_adguard_home/service_adguard_home.dart';
 import 'package:service_dashdot/service_dashdot.dart';
 import 'package:service_emby/service_emby.dart' as emby;
 import 'package:service_glances/service_glances.dart';
@@ -28,6 +29,7 @@ import '../health_providers.dart';
 import '../screens/calendar_screen.dart';
 import 'dashboard_layout.dart';
 import 'dashboard_widget_kind.dart';
+import 'widgets/adguard_home_widget.dart';
 import 'widgets/dashdot_widget.dart';
 import 'widgets/downloads_widget.dart';
 import 'widgets/gluetun_status_widget.dart';
@@ -202,6 +204,10 @@ class DashboardBoard extends ConsumerWidget {
         return DashboardMySpeedWidget(
           instances: _byKind(instances, ServiceKind.myspeed),
         );
+      case DashboardWidgetKind.adguardHome:
+        return DashboardAdguardHomeWidget(
+          instances: _byKind(instances, ServiceKind.adguardHome),
+        );
       case DashboardWidgetKind.wakeOnLan:
         return const DashboardWakeOnLanWidget();
     }
@@ -265,6 +271,12 @@ class DashboardBoard extends ConsumerWidget {
         case ServiceKind.myspeed:
           ref.invalidate(myspeedStatusProvider(i));
           ref.invalidate(myspeedRecentTestsProvider(i));
+        case ServiceKind.adguardHome:
+          // After a refused sign-in these send nothing: the instance's
+          // session answers them itself until Try again is tapped.
+          ref.invalidate(adguardHomeStatusProvider(i));
+          ref.invalidate(adguardHomeStatsProvider(i));
+          ref.invalidate(adguardHomeFilteringProvider(i));
         default:
           break;
       }

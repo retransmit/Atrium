@@ -31,6 +31,7 @@ import 'package:service_gluetun/service_gluetun.dart';
 import 'package:service_navidrome/service_navidrome.dart';
 import 'package:service_ombi/service_ombi.dart';
 import 'package:service_myspeed/service_myspeed.dart';
+import 'package:service_adguard_home/service_adguard_home.dart';
 
 import 'dashboard_screen.dart';
 
@@ -144,6 +145,15 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
     }
     if (instance.kind == ServiceKind.ombi) {
       return OmbiHome(
+        instance: instance,
+        drawer: ServicesDrawer(
+          instances: ref.watch(activeInstancesProvider),
+          profile: ref.watch(activeProfileProvider),
+        ),
+      );
+    }
+    if (instance.kind == ServiceKind.adguardHome) {
+      return AdguardHomeShell(
         instance: instance,
         drawer: ServicesDrawer(
           instances: ref.watch(activeInstancesProvider),
@@ -364,6 +374,8 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
       // Owns its own scaffold, handled above.
       ServiceKind.ombi => const SizedBox.shrink(),
       ServiceKind.myspeed => const SizedBox.shrink(),
+      // Owns its own scaffold, handled above.
+      ServiceKind.adguardHome => const SizedBox.shrink(),
     };
   }
 }

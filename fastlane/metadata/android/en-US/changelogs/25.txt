@@ -1,0 +1,9 @@
+A new service: AdGuard Home, in beta. Turn protection on or off or pause it
+for a time, see the DNS statistics and the top clients and domains, search the
+query log and block or unblock from it, and give a client its own settings. A
+dashboard widget shows the state. Filter lists and settings are still to come.
+
+Sonarr and Radarr offer the custom filters saved on your server in the sort
+and filter sheet.
+
+Ombi is out of beta.
