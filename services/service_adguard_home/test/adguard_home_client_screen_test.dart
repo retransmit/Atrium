@@ -668,6 +668,184 @@ void main() {
     });
   });
 
+  group('on a phone, where the form is longer than the screen', () {
+    const Size phone = Size(360, 780);
+
+    Rect screen(WidgetTester tester) =>
+        Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
+
+    testWidgets('Save at the bottom of a form with no name brings the '
+        'complaint into view', (WidgetTester tester) async {
+      // The way it is reached from a runtime client the server has no name
+      // for: the address is filled in, the name is not.
+      final ({
+        Pumped pumped,
+        List<AdguardHomeClientOutcome?> outcomes
+      }) form = await open(tester, id: '10.0.0.4', size: phone);
+      await tester.drag(find.byKey(idField(0)), const Offset(0, -5000));
+      await tester.pumpAndSettle();
+      expect(find.byKey(nameField).hitTestable(), findsNothing);
+
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(form.pumped.actions.saved, isEmpty);
+      final Finder complaint = find.text('Give the client a name.');
+      expect(complaint, findsOneWidget);
+      expect(
+        screen(tester).contains(tester.getCenter(complaint)),
+        isTrue,
+        reason: 'the complaint is somewhere the user cannot see',
+      );
+    });
+
+    testWidgets('Save at the top with a cache size the server cannot hold '
+        'brings that complaint into view', (WidgetTester tester) async {
+      final ({
+        Pumped pumped,
+        List<AdguardHomeClientOutcome?> outcomes
+      }) form = await open(
+        tester,
+        client: capturedClient('Work phone'),
+        size: phone,
+      );
+      await tester.scrollUntilVisible(
+        find.byKey(cacheField),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.enterText(find.byKey(cacheField), '4294967296');
+      await tester.pump();
+      // The keyboard is put away, as it is by a tap elsewhere. A field
+      // that is being typed in is kept alive however far it is scrolled.
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pump();
+      await tester.drag(
+        find.byType(Scrollable).first,
+        const Offset(0, 5000),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(form.pumped.actions.saved, isEmpty);
+      final Finder complaint =
+          find.text('A whole number from 0 to 4294967295.');
+      expect(complaint, findsOneWidget);
+      expect(
+        screen(tester).contains(tester.getCenter(complaint)),
+        isTrue,
+        reason: 'the complaint is somewhere the user cannot see',
+      );
+    });
+
+    testWidgets('a complaint may run over more than one line',
+        (WidgetTester tester) async {
+      // At a large text size the longest of them, with the bound in it, is
+      // wider than the field.
+      await open(tester, client: capturedClient('Work phone'));
+
+      for (final Key field in <Key>[nameField, idField(0), cacheField]) {
+        expect(
+          tester.widget<TextField>(find.byKey(field)).decoration!.errorMaxLines,
+          greaterThanOrEqualTo(3),
+          reason: '$field',
+        );
+      }
+    });
+  });
+
+  group('while it writes', () {
+    testWidgets('nothing in the form can be tapped',
+        (WidgetTester tester) async {
+      final ({
+        Pumped pumped,
+        List<AdguardHomeClientOutcome?> outcomes
+      }) form = await open(tester, client: capturedClient('Kids tablet'));
+      form.pumped.actions.writeHold = Completer<void>();
+      await flip(tester, 'Ignore in the query log');
+      await tester.tap(save);
+      await tester.pump();
+
+      // The picker would put a screen over a form that is about to close.
+      await tester.tap(
+        find.text('Blocked for this client'),
+        warnIfMissed: false,
+      );
+      // Several frames: a screen that is pushed is not there on the first.
+      for (int frame = 0; frame < 4; frame++) {
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+      expect(find.byType(AdguardHomeServicesScreen), findsNothing);
+      // And a switch flipped now would not be in what was sent.
+      await tester.tap(find.text('Parental control'), warnIfMissed: false);
+      await tester.pump();
+      expect(switchOf(tester, 'Parental control').value, isTrue);
+
+      form.pumped.actions.writeHold!.complete();
+      await tester.pumpAndSettle();
+
+      expect(form.outcomes, <AdguardHomeClientOutcome?>[
+        AdguardHomeClientOutcome.saved,
+      ]);
+      expect(find.text('Edit client'), findsNothing);
+    });
+
+    for (final String what in <String>['save', 'delete']) {
+      testWidgets('a $what that comes back under another screen closes the '
+          'form, not just what is on top', (WidgetTester tester) async {
+        final ({
+          Pumped pumped,
+          List<AdguardHomeClientOutcome?> outcomes
+        }) form = await open(tester, client: capturedClient('Kids tablet'));
+        form.pumped.actions.writeHold = Completer<void>();
+        if (what == 'save') {
+          await flip(tester, 'Ignore in the query log');
+          await tester.tap(save);
+        } else {
+          await tester.tap(find.byTooltip('Delete client'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+        }
+        await tester.pump(const Duration(milliseconds: 500));
+
+        // Whatever gets over the form meanwhile, however it got there.
+        final NavigatorState navigator = Navigator.of(
+          tester.element(find.byType(AdguardHomeClientScreen)),
+          rootNavigator: true,
+        );
+        unawaited(
+          navigator.push<int>(
+            MaterialPageRoute<int>(
+              builder: (BuildContext _) =>
+                  const Scaffold(body: Center(child: Text('On top'))),
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(find.text('On top'), findsOneWidget);
+
+        form.pumped.actions.writeHold!.complete();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(const Duration(milliseconds: 500));
+
+        expect(tester.takeException(), isNull);
+        expect(form.outcomes, <AdguardHomeClientOutcome?>[
+          if (what == 'save')
+            AdguardHomeClientOutcome.saved
+          else
+            AdguardHomeClientOutcome.deleted,
+        ]);
+        expect(find.text('On top'), findsNothing);
+        expect(find.text('Edit client'), findsNothing);
+        expect(find.text('Open'), findsOneWidget);
+      });
+    }
+  });
+
   group('deleting', () {
     testWidgets('asks first, and Cancel sends nothing',
         (WidgetTester tester) async {
@@ -808,13 +986,18 @@ void main() {
           size: Size(width, 9000),
           textScale: scale,
         );
-        // With the complaints showing too.
+        // With the complaints showing too. The cache size takes digits
+        // only, so a letter would leave it empty and uncomplained of.
         await tester.enterText(find.byKey(nameField), '');
-        await tester.enterText(find.byKey(cacheField), 'x');
+        await tester.enterText(find.byKey(cacheField), '4294967296');
         await tester.tap(save);
         await tester.pumpAndSettle();
 
         expect(find.text('Give the client a name.'), findsOneWidget);
+        expect(
+          find.text('A whole number from 0 to 4294967295.'),
+          findsOneWidget,
+        );
         expect(tester.takeException(), isNull);
       });
     }

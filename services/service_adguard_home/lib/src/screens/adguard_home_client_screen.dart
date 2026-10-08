@@ -295,6 +295,7 @@ class _ClientFormState extends ConsumerState<_ClientForm> {
     }
 
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final ModalRoute<Object?>? form = ModalRoute.of(context);
     setState(() => _busy = true);
     try {
       await ref.read(adguardHomeActionsProvider(_instance)).saveClient(
@@ -309,7 +310,7 @@ class _ClientFormState extends ConsumerState<_ClientForm> {
       return;
     }
     if (!mounted) return;
-    Navigator.of(context).pop(AdguardHomeClientOutcome.saved);
+    _close(form, AdguardHomeClientOutcome.saved);
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -348,6 +349,7 @@ class _ClientFormState extends ConsumerState<_ClientForm> {
     if (confirmed != true || !mounted || _busy) return;
 
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    final ModalRoute<Object?>? form = ModalRoute.of(context);
     setState(() => _busy = true);
     try {
       await ref.read(adguardHomeActionsProvider(_instance)).deleteClient(name);
@@ -358,10 +360,24 @@ class _ClientFormState extends ConsumerState<_ClientForm> {
       return;
     }
     if (!mounted) return;
-    Navigator.of(context).pop(AdguardHomeClientOutcome.deleted);
+    _close(form, AdguardHomeClientOutcome.deleted);
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text('Client "$name" deleted')));
+  }
+
+  /// Closes the form once its client was written, handing back [outcome].
+  ///
+  /// [form] is the form's own route, taken before the write was awaited.
+  /// "The route on top" will not do: by the time the server has answered,
+  /// something else may stand over the form, and popping that with a
+  /// client's outcome leaves both it and the form stuck. Whatever is over
+  /// the form goes first, then the form.
+  void _close(ModalRoute<Object?>? form, AdguardHomeClientOutcome outcome) {
+    if (form == null || !form.isActive) return;
+    Navigator.of(context)
+      ..popUntil((Route<Object?> route) => route == form)
+      ..pop(outcome);
   }
 
   /// Asked when the form is left with something changed.
@@ -450,260 +466,284 @@ class _ClientFormState extends ConsumerState<_ClientForm> {
                 : const SizedBox(height: 4),
           ),
         ),
-        body: ListView(
-          padding: const EdgeInsets.only(bottom: Insets.xl),
-          children: <Widget>[
-            _Inset(
-              key: _nameKey,
-              top: Insets.lg,
-              child: TextField(
-                key: const Key('adguard-client-name'),
-                controller: _name,
-                onChanged: _typed,
-                textCapitalization: TextCapitalization.words,
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(
-                  labelText: 'Name',
-                  border: const OutlineInputBorder(),
-                  errorText: problems.name,
-                ),
-              ),
-            ),
-            _Inset(
-              key: _idsKey,
-              child: const AdguardHomeHeading('Identifiers'),
-            ),
-            _Inset(
-              top: Insets.xs,
-              child: Text(
-                'An IP address, a range such as 192.168.1.0/24, a MAC '
-                'address, or a ClientID.',
-                style: note,
-              ),
-            ),
-            for (int row = 0; row < _ids.length; row++)
-              _Inset(
-                top: Insets.sm,
-                child: TextField(
-                  key: Key('adguard-client-id-$row'),
-                  controller: _ids[row],
-                  onChanged: _typed,
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  textInputAction: TextInputAction.next,
-                  decoration: InputDecoration(
-                    hintText: 'Identifier',
-                    border: const OutlineInputBorder(),
-                    isDense: true,
-                    errorText: row == 0 ? problems.ids : null,
-                    suffixIcon: _ids.length < 2
-                        ? null
-                        : IconButton(
-                            icon: const Icon(Icons.remove_circle_outline),
-                            tooltip: 'Remove identifier',
-                            onPressed: () => _removeId(row),
-                          ),
+        // Nothing in the form can be touched while it is being written:
+        // what was changed now would not be in what was sent, and a screen
+        // opened now would stand over a form that is about to close.
+        body: AbsorbPointer(
+          absorbing: _busy,
+          // The whole form is built, not only what is on screen. Save can
+          // complain about a field at the other end of it, and has to be
+          // able to bring that field into view.
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.only(bottom: Insets.xl),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                _Inset(
+                  key: _nameKey,
+                  top: Insets.lg,
+                  child: TextField(
+                    key: const Key('adguard-client-name'),
+                    controller: _name,
+                    onChanged: _typed,
+                    textCapitalization: TextCapitalization.words,
+                    textInputAction: TextInputAction.next,
+                    decoration: InputDecoration(
+                      labelText: 'Name',
+                      border: const OutlineInputBorder(),
+                      errorText: problems.name,
+                      errorMaxLines: 3,
+                    ),
                   ),
                 ),
-              ),
-            _Inset(
-              top: Insets.xs,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: _addId,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add identifier'),
+                _Inset(
+                  key: _idsKey,
+                  child: const AdguardHomeHeading('Identifiers'),
                 ),
-              ),
-            ),
-            const _Inset(child: AdguardHomeHeading('Protection')),
-            SwitchListTile(
-              title: const Text('Use global settings'),
-              subtitle: const Text('The settings of the server apply'),
-              value: settings.useGlobalSettings,
-              onChanged: (bool on) =>
-                  _set(settings.copyWith(useGlobalSettings: on)),
-            ),
-            SwitchListTile(
-              title: const Text('Block domains using filters and hosts files'),
-              value: settings.filteringEnabled,
-              onChanged: ownSettings
-                  ? (bool on) => _set(settings.copyWith(filteringEnabled: on))
-                  : null,
-            ),
-            SwitchListTile(
-              title: const Text('Browsing security'),
-              subtitle: const Text('Blocks malware and phishing domains'),
-              value: settings.safeBrowsingEnabled,
-              onChanged: ownSettings
-                  ? (bool on) =>
-                      _set(settings.copyWith(safeBrowsingEnabled: on))
-                  : null,
-            ),
-            SwitchListTile(
-              title: const Text('Parental control'),
-              subtitle: const Text('Blocks adult websites'),
-              value: settings.parentalEnabled,
-              onChanged: ownSettings
-                  ? (bool on) => _set(settings.copyWith(parentalEnabled: on))
-                  : null,
-            ),
-            SwitchListTile(
-              title: const Text('Safe search'),
-              subtitle: const Text('Hides explicit results on the search '
-                  'engines below'),
-              value: settings.safeSearch.enabled,
-              onChanged: ownSettings
-                  ? (bool on) => _set(
-                        settings.copyWith(
-                          safeSearch: settings.safeSearch.copyWith(enabled: on),
-                        ),
-                      )
-                  : null,
-            ),
-            for (final MapEntry<String, bool> engine
-                in settings.safeSearch.engines.entries)
-              SwitchListTile(
-                dense: true,
-                contentPadding: const EdgeInsets.only(
-                  left: Insets.xl,
-                  right: Insets.lg,
+                _Inset(
+                  top: Insets.xs,
+                  child: Text(
+                    'An IP address, a range such as 192.168.1.0/24, a MAC '
+                    'address, or a ClientID.',
+                    style: note,
+                  ),
                 ),
-                title: Text(adguardHomeSearchEngineLabel(engine.key)),
-                value: engine.value,
-                onChanged: ownSettings && settings.safeSearch.enabled
-                    ? (bool on) => _set(
-                          settings.copyWith(
-                            safeSearch: settings.safeSearch
-                                .withEngine(engine.key, on: on),
-                          ),
-                        )
-                    : null,
-              ),
-            const _Inset(child: AdguardHomeHeading('Blocked services')),
-            SwitchListTile(
-              title: const Text('Use global blocked services'),
-              subtitle: const Text('The list of the server applies'),
-              value: settings.useGlobalBlockedServices,
-              onChanged: (bool on) =>
-                  _set(settings.copyWith(useGlobalBlockedServices: on)),
-            ),
-            ListTile(
-              enabled: ownServices,
-              title: const Text('Blocked for this client'),
-              subtitle: Text(
-                settings.blockedServices.isEmpty
-                    ? 'None'
-                    : <String>[
-                        for (final String id in settings.blockedServices)
-                          catalogue?.nameOf(id) ?? id,
-                      ].join(', '),
-              ),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: _pickServices,
-            ),
-            if (pauses != null)
-              _Inset(
-                top: Insets.xs,
-                child: Text(
-                  'Blocking pauses $pauses. This schedule is kept as it is. '
-                  'It can be changed in AdGuard Home.',
-                  style: note,
-                ),
-              ),
-            const _Inset(child: AdguardHomeHeading('Upstream DNS servers')),
-            _Inset(
-              top: Insets.sm,
-              child: TextField(
-                key: const Key('adguard-client-upstreams'),
-                controller: _upstreams,
-                onChanged: _typed,
-                autocorrect: false,
-                enableSuggestions: false,
-                keyboardType: TextInputType.multiline,
-                minLines: 3,
-                maxLines: 8,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(fontFamily: 'monospace'),
-                decoration: const InputDecoration(
-                  hintText: 'One server per line',
-                  helperText: 'Leave empty to use the servers of the DNS '
-                      'settings.',
-                  helperMaxLines: 3,
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ),
-            SwitchListTile(
-              title: const Text('Cache the answers of these servers'),
-              value: settings.upstreamsCacheEnabled,
-              onChanged: (bool on) =>
-                  _set(settings.copyWith(upstreamsCacheEnabled: on)),
-            ),
-            _Inset(
-              key: _cacheKey,
-              top: Insets.xs,
-              child: TextField(
-                key: const Key('adguard-client-cache-size'),
-                controller: _cacheSize,
-                onChanged: _typed,
-                keyboardType: TextInputType.number,
-                inputFormatters: <TextInputFormatter>[
-                  FilteringTextInputFormatter.digitsOnly,
-                ],
-                decoration: InputDecoration(
-                  labelText: 'Cache size, in bytes',
-                  border: const OutlineInputBorder(),
-                  errorText: problems.cacheSize,
-                ),
-              ),
-            ),
-            const _Inset(
-              child: AdguardHomeHeading('Query log and statistics'),
-            ),
-            SwitchListTile(
-              title: const Text('Ignore in the query log'),
-              subtitle: const Text('Its queries are not written to the log'),
-              value: settings.ignoreQueryLog,
-              onChanged: (bool on) =>
-                  _set(settings.copyWith(ignoreQueryLog: on)),
-            ),
-            SwitchListTile(
-              title: const Text('Ignore in statistics'),
-              subtitle: const Text('Its queries are not counted'),
-              value: settings.ignoreStatistics,
-              onChanged: (bool on) =>
-                  _set(settings.copyWith(ignoreStatistics: on)),
-            ),
-            // Last: there are some twenty of them, they are the least used
-            // part of a client, and anywhere higher they would stand
-            // between the identifiers and the settings on every visit.
-            const _Inset(child: AdguardHomeHeading('Tags')),
-            _Inset(
-              top: Insets.xs,
-              child: Text(
-                'A filtering rule can be written for a tag instead of a '
-                'client.',
-                style: note,
-              ),
-            ),
-            _Inset(
-              top: Insets.sm,
-              child: Wrap(
-                spacing: Insets.sm,
-                runSpacing: Insets.xs,
-                children: <Widget>[
-                  for (final String tag in tags)
-                    FilterChip(
-                      label: Text(tag),
-                      selected: settings.tags.contains(tag),
-                      onSelected: (bool on) => _toggleTag(tag, on: on),
+                for (int row = 0; row < _ids.length; row++)
+                  _Inset(
+                    top: Insets.sm,
+                    child: TextField(
+                      key: Key('adguard-client-id-$row'),
+                      controller: _ids[row],
+                      onChanged: _typed,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      textInputAction: TextInputAction.next,
+                      decoration: InputDecoration(
+                        hintText: 'Identifier',
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                        errorText: row == 0 ? problems.ids : null,
+                        errorMaxLines: 3,
+                        suffixIcon: _ids.length < 2
+                            ? null
+                            : IconButton(
+                                icon: const Icon(Icons.remove_circle_outline),
+                                tooltip: 'Remove identifier',
+                                onPressed: () => _removeId(row),
+                              ),
+                      ),
                     ),
-                ],
-              ),
+                  ),
+                _Inset(
+                  top: Insets.xs,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: _addId,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add identifier'),
+                    ),
+                  ),
+                ),
+                const _Inset(child: AdguardHomeHeading('Protection')),
+                SwitchListTile(
+                  title: const Text('Use global settings'),
+                  subtitle: const Text('The settings of the server apply'),
+                  value: settings.useGlobalSettings,
+                  onChanged: (bool on) =>
+                      _set(settings.copyWith(useGlobalSettings: on)),
+                ),
+                SwitchListTile(
+                  title: const Text(
+                    'Block domains using filters and hosts files',
+                  ),
+                  value: settings.filteringEnabled,
+                  onChanged: ownSettings
+                      ? (bool on) =>
+                          _set(settings.copyWith(filteringEnabled: on))
+                      : null,
+                ),
+                SwitchListTile(
+                  title: const Text('Browsing security'),
+                  subtitle: const Text('Blocks malware and phishing domains'),
+                  value: settings.safeBrowsingEnabled,
+                  onChanged: ownSettings
+                      ? (bool on) =>
+                          _set(settings.copyWith(safeBrowsingEnabled: on))
+                      : null,
+                ),
+                SwitchListTile(
+                  title: const Text('Parental control'),
+                  subtitle: const Text('Blocks adult websites'),
+                  value: settings.parentalEnabled,
+                  onChanged: ownSettings
+                      ? (bool on) =>
+                          _set(settings.copyWith(parentalEnabled: on))
+                      : null,
+                ),
+                SwitchListTile(
+                  title: const Text('Safe search'),
+                  subtitle: const Text('Hides explicit results on the search '
+                      'engines below'),
+                  value: settings.safeSearch.enabled,
+                  onChanged: ownSettings
+                      ? (bool on) => _set(
+                            settings.copyWith(
+                              safeSearch:
+                                  settings.safeSearch.copyWith(enabled: on),
+                            ),
+                          )
+                      : null,
+                ),
+                for (final MapEntry<String, bool> engine
+                    in settings.safeSearch.engines.entries)
+                  SwitchListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.only(
+                      left: Insets.xl,
+                      right: Insets.lg,
+                    ),
+                    title: Text(adguardHomeSearchEngineLabel(engine.key)),
+                    value: engine.value,
+                    onChanged: ownSettings && settings.safeSearch.enabled
+                        ? (bool on) => _set(
+                              settings.copyWith(
+                                safeSearch: settings.safeSearch
+                                    .withEngine(engine.key, on: on),
+                              ),
+                            )
+                        : null,
+                  ),
+                const _Inset(child: AdguardHomeHeading('Blocked services')),
+                SwitchListTile(
+                  title: const Text('Use global blocked services'),
+                  subtitle: const Text('The list of the server applies'),
+                  value: settings.useGlobalBlockedServices,
+                  onChanged: (bool on) =>
+                      _set(settings.copyWith(useGlobalBlockedServices: on)),
+                ),
+                ListTile(
+                  enabled: ownServices,
+                  title: const Text('Blocked for this client'),
+                  subtitle: Text(
+                    settings.blockedServices.isEmpty
+                        ? 'None'
+                        : <String>[
+                            for (final String id in settings.blockedServices)
+                              catalogue?.nameOf(id) ?? id,
+                          ].join(', '),
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: _pickServices,
+                ),
+                if (pauses != null)
+                  _Inset(
+                    top: Insets.xs,
+                    child: Text(
+                      'Blocking pauses $pauses. This schedule is kept as it '
+                      'is. It can be changed in AdGuard Home.',
+                      style: note,
+                    ),
+                  ),
+                const _Inset(child: AdguardHomeHeading('Upstream DNS servers')),
+                _Inset(
+                  top: Insets.sm,
+                  child: TextField(
+                    key: const Key('adguard-client-upstreams'),
+                    controller: _upstreams,
+                    onChanged: _typed,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    keyboardType: TextInputType.multiline,
+                    minLines: 3,
+                    maxLines: 8,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(fontFamily: 'monospace'),
+                    decoration: const InputDecoration(
+                      hintText: 'One server per line',
+                      helperText: 'Leave empty to use the servers of the DNS '
+                          'settings.',
+                      helperMaxLines: 3,
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                SwitchListTile(
+                  title: const Text('Cache the answers of these servers'),
+                  value: settings.upstreamsCacheEnabled,
+                  onChanged: (bool on) =>
+                      _set(settings.copyWith(upstreamsCacheEnabled: on)),
+                ),
+                _Inset(
+                  key: _cacheKey,
+                  top: Insets.xs,
+                  child: TextField(
+                    key: const Key('adguard-client-cache-size'),
+                    controller: _cacheSize,
+                    onChanged: _typed,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: <TextInputFormatter>[
+                      FilteringTextInputFormatter.digitsOnly,
+                    ],
+                    decoration: InputDecoration(
+                      labelText: 'Cache size, in bytes',
+                      border: const OutlineInputBorder(),
+                      errorText: problems.cacheSize,
+                      // The longest complaint, with the bound in it, is wider
+                      // than the field at a large text size.
+                      errorMaxLines: 3,
+                    ),
+                  ),
+                ),
+                const _Inset(
+                  child: AdguardHomeHeading('Query log and statistics'),
+                ),
+                SwitchListTile(
+                  title: const Text('Ignore in the query log'),
+                  subtitle: const Text(
+                    'Its queries are not written to the log',
+                  ),
+                  value: settings.ignoreQueryLog,
+                  onChanged: (bool on) =>
+                      _set(settings.copyWith(ignoreQueryLog: on)),
+                ),
+                SwitchListTile(
+                  title: const Text('Ignore in statistics'),
+                  subtitle: const Text('Its queries are not counted'),
+                  value: settings.ignoreStatistics,
+                  onChanged: (bool on) =>
+                      _set(settings.copyWith(ignoreStatistics: on)),
+                ),
+                // Last: there are some twenty of them, they are the least used
+                // part of a client, and anywhere higher they would stand
+                // between the identifiers and the settings on every visit.
+                const _Inset(child: AdguardHomeHeading('Tags')),
+                _Inset(
+                  top: Insets.xs,
+                  child: Text(
+                    'A filtering rule can be written for a tag instead of a '
+                    'client.',
+                    style: note,
+                  ),
+                ),
+                _Inset(
+                  top: Insets.sm,
+                  child: Wrap(
+                    spacing: Insets.sm,
+                    runSpacing: Insets.xs,
+                    children: <Widget>[
+                      for (final String tag in tags)
+                        FilterChip(
+                          label: Text(tag),
+                          selected: settings.tags.contains(tag),
+                          onSelected: (bool on) => _toggleTag(tag, on: on),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
