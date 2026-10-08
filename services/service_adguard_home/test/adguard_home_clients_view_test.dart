@@ -247,6 +247,23 @@ void main() {
       expect(lookup.title, '10.9.9.9');
     });
 
+    test('notes whether the server was the one to say', () {
+      // Matched here, a device a client names by its MAC address is not
+      // found by its address, so "nobody's" is only as good as its source.
+      expect(
+        AdguardHomeClientLookup.of(address: '10.9.9.9', list: list).serverSaid,
+        isFalse,
+      );
+      expect(
+        AdguardHomeClientLookup.of(
+          address: '203.0.113.9',
+          list: list,
+          found: found['203.0.113.9'],
+        ).serverSaid,
+        isTrue,
+      );
+    });
+
     test('found by its MAC address or inside its range', () {
       expect(
         AdguardHomeClientLookup.of(

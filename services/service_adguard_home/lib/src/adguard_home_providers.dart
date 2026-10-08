@@ -148,8 +148,10 @@ final adguardHomeClientsProvider =
 /// Whose each of [ids] is, as far as the server says.
 ///
 /// A server from before v0.107.56 cannot say: it has no such address and
-/// turns the request down. That reads as nothing found, and the caller
-/// matches the ids itself. Any other failure is the caller's to show.
+/// turns the request down, in its own words or, behind a proxy, with the
+/// proxy's page for a missing one. Either reads as nothing found, and the
+/// caller matches the ids itself. Any other failure is the caller's to
+/// show.
 Future<Map<String, AdguardHomeFoundClient>> adguardHomeFindClients(
   AdguardHomeApi api,
   List<String> ids,
@@ -157,6 +159,8 @@ Future<Map<String, AdguardHomeFoundClient>> adguardHomeFindClients(
   try {
     return await api.searchClients(ids);
   } on AdguardHomeRequestRefused {
+    return const <String, AdguardHomeFoundClient>{};
+  } on NetworkNotFoundException {
     return const <String, AdguardHomeFoundClient>{};
   }
 }

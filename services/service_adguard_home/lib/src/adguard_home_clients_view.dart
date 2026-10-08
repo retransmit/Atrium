@@ -116,6 +116,7 @@ class AdguardHomeClientLookup {
     this.runtime,
     this.supportedTags = const <String>[],
     this.queries,
+    this.serverSaid = false,
   });
 
   /// From the clients as read and, where the server was asked, what it
@@ -150,6 +151,7 @@ class AdguardHomeClientLookup {
       runtime: runtime,
       supportedTags: list.supportedTags,
       queries: queries,
+      serverSaid: found != null,
     );
   }
 
@@ -167,6 +169,13 @@ class AdguardHomeClientLookup {
 
   /// Its queries, where the caller knows them.
   final int? queries;
+
+  /// Whether the server itself was asked whose [address] is.
+  ///
+  /// It matters when there is no [persistent] client: matched here, a
+  /// device that a client names by its MAC address is not found by its IP
+  /// address, so without the server's word "nobody's" cannot be claimed.
+  final bool serverSaid;
 
   /// What to call it: the persistent client's name, else the name the
   /// server found, else the address.

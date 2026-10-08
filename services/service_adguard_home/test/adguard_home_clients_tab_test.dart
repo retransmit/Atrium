@@ -136,6 +136,51 @@ void main() {
     });
   });
 
+  group('pulling down reads the clients again', () {
+    // A phone's height: the pull has to cover a quarter of the list's own
+    // height before it counts.
+    const Size phone = Size(360, 800);
+
+    testWidgets('on the persistent list', (WidgetTester tester) async {
+      final Pumped pumped = await pumpAdguardHome(tester, tab, size: phone);
+      expect(pumped.clientReads, 1);
+
+      await tester.drag(find.text('Laptop'), const Offset(0, 320));
+      await tester.pumpAndSettle();
+
+      expect(pumped.clientReads, 2);
+    });
+
+    testWidgets('on the runtime list', (WidgetTester tester) async {
+      final Pumped pumped = await pumpAdguardHome(tester, tab, size: phone);
+      await showRuntime(tester);
+
+      await tester.drag(find.text('127.0.0.1'), const Offset(0, 320));
+      await tester.pumpAndSettle();
+
+      expect(pumped.clientReads, 2);
+    });
+
+    testWidgets('on a list with nothing in it', (WidgetTester tester) async {
+      // The one that most wants reading again: a client was just added
+      // elsewhere.
+      final Pumped pumped = await pumpAdguardHome(
+        tester,
+        tab,
+        clients: const AdguardHomeClientsView(),
+        size: phone,
+      );
+
+      await tester.drag(
+        find.text('No persistent clients'),
+        const Offset(0, 320),
+      );
+      await tester.pumpAndSettle();
+
+      expect(pumped.clientReads, 2);
+    });
+  });
+
   testWidgets('the two lists say how many each holds',
       (WidgetTester tester) async {
     await pumpAdguardHome(tester, tab);
@@ -208,8 +253,12 @@ void main() {
       expect(find.text('No runtime clients'), findsOneWidget);
     });
 
-    testWidgets('a row opens what the server knows of it, without asking '
-        'again', (WidgetTester tester) async {
+    testWidgets('a row whose owner the list does not know asks the server '
+        'whose it is', (WidgetTester tester) async {
+      // The list knows the owners of the top clients, and of an address a
+      // client lists. A device a client names by its MAC address, which
+      // made no query the statistics kept, it cannot tell: only the server
+      // can, and an offer to add it would make a second client of it.
       final Pumped pumped = await pumpAdguardHome(tester, tab);
       await showRuntime(tester);
 
@@ -217,19 +266,43 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(AdguardHomeClientSheet), findsOneWidget);
-      expect(find.text('Add as persistent client'), findsOneWidget);
-      // Everything it shows was in the list already.
-      expect(pumped.actions.calls, isEmpty);
+      expect(pumped.actions.calls, <String>['find 127.0.0.1']);
+    });
+
+    testWidgets('and shows the client the server says it is',
+        (WidgetTester tester) async {
+      final Pumped pumped = await pumpAdguardHome(tester, tab);
+      pumped.actions.lookup = AdguardHomeClientLookup(
+        address: '127.0.0.1',
+        persistent: capturedClient('Kids tablet'),
+        serverSaid: true,
+      );
+      await showRuntime(tester);
+
+      await tester.tap(find.text('127.0.0.1'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: find.byType(AdguardHomeClientSheet),
+          matching: find.text('Kids tablet'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Edit client'), findsOneWidget);
+      expect(find.text('Add as persistent client'), findsNothing);
     });
 
     testWidgets('a row of a persistent client\'s address offers to edit that '
-        'client', (WidgetTester tester) async {
-      await pumpAdguardHome(tester, tab);
+        'client, without asking again', (WidgetTester tester) async {
+      final Pumped pumped = await pumpAdguardHome(tester, tab);
       await showRuntime(tester);
 
       await tester.tap(find.text('172.17.0.1'));
       await tester.pumpAndSettle();
 
+      // Whose it is was in the list already.
+      expect(pumped.actions.calls, isEmpty);
       expect(find.text('Add as persistent client'), findsNothing);
       await tester.tap(find.text('Edit client'));
       await tester.pumpAndSettle();
@@ -363,10 +436,19 @@ void main() {
       return pumped;
     }
 
-    AdguardHomeClientLookup lookupOf(String address, {int? queries}) =>
+    /// What a lookup of [address] comes to. With [said], on the server's
+    /// word that it is nobody's; without, only on matching done here.
+    AdguardHomeClientLookup lookupOf(
+      String address, {
+      int? queries,
+      bool said = true,
+    }) =>
         AdguardHomeClientLookup.of(
           address: address,
           list: list,
+          found: said
+              ? AdguardHomeFoundClient(id: address, ids: <String>[address])
+              : null,
           queries: queries,
         );
 
@@ -442,6 +524,28 @@ void main() {
       expect(find.text('Its own'), findsOneWidget);
       expect(find.text('3 services blocked'), findsOneWidget);
       expect(find.text('Edit client'), findsOneWidget);
+    });
+
+    testWidgets('does not say the server has no settings for an address it '
+        'was not asked about', (WidgetTester tester) async {
+      // A server from before the lookup cannot say whose an address is. A
+      // device a client names by its MAC address then looks like nobody's.
+      await openSheet(
+        tester,
+        '10.9.9.9',
+        lookup: lookupOf('10.9.9.9', said: false),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('AdGuard Home has no settings for it'),
+        findsNothing,
+      );
+      expect(
+        find.textContaining('No persistent client lists it'),
+        findsOneWidget,
+      );
+      expect(find.text('Add as persistent client'), findsOneWidget);
     });
 
     testWidgets('of an address nobody knows says so and offers to add it',

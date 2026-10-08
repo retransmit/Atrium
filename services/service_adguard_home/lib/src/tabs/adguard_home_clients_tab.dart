@@ -68,14 +68,23 @@ class _AdguardHomeClientsTabState extends ConsumerState<AdguardHomeClientsTab> {
       context,
       instance: _instance,
       address: row.client.address,
-      // Everything the sheet shows is in the list already.
-      lookup: AdguardHomeClientLookup(
-        address: row.client.address,
-        persistent: owner,
-        runtime: row.client,
-        supportedTags: view.supportedTags,
-        queries: row.queries,
-      ),
+      queries: row.queries,
+      // When the list knows whose the address is, everything the sheet
+      // shows is in the list already. When it does not, the sheet asks: the
+      // list has the server's word only for the top clients, and matched
+      // here a device that a client names by its MAC address looks like
+      // nobody's. Offered as a new client, it would become a second one,
+      // and the server goes by an address before it goes by a MAC address.
+      lookup: owner == null
+          ? null
+          : AdguardHomeClientLookup(
+              address: row.client.address,
+              persistent: owner,
+              runtime: row.client,
+              supportedTags: view.supportedTags,
+              queries: row.queries,
+              serverSaid: true,
+            ),
     );
   }
 

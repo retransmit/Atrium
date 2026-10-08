@@ -237,11 +237,17 @@ class _AdguardHomeClientSheetState
         Padding(
           padding: const EdgeInsets.only(top: Insets.lg),
           child: Text(
-            seen == null
-                ? 'AdGuard Home has no settings for it and has not seen it '
-                    'under a name.'
-                : 'AdGuard Home has no settings for it. As a persistent '
-                    'client it can have its own.',
+            // Only on the server's word. A server too old to be asked
+            // leaves the matching to this app, which cannot tell a device
+            // that a client names by its MAC address.
+            !lookup.serverSaid
+                ? 'No persistent client lists it. This server cannot say '
+                    'whether one that goes by a MAC address is this device.'
+                : seen == null
+                    ? 'AdGuard Home has no settings for it and has not seen '
+                        'it under a name.'
+                    : 'AdGuard Home has no settings for it. As a persistent '
+                        'client it can have its own.',
             style: theme.textTheme.bodyMedium
                 ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
           ),

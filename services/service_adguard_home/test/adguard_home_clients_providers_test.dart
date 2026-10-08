@@ -147,6 +147,25 @@ void main() {
       expect(row(view, 'Work phone').queries, 7);
     });
 
+    test('are listed behind a proxy that answers for the missing lookup '
+        'with a page of its own', () async {
+      // The clients and the statistics have just come through the same
+      // proxy. Only the counts and the owners depend on this one answer.
+      server.fail(
+        'POST',
+        'control/clients/search',
+        404,
+        '<html>Not found</html>',
+        contentType: 'text/html',
+      );
+
+      final Object? view = await settle(adguardHomeClientsProvider(instance));
+
+      view as AdguardHomeClientsView;
+      expect(view.persistent, hasLength(3));
+      expect(row(view, 'Laptop').queries, 150);
+    });
+
     test('fail as a whole when the server cannot be reached part way',
         () async {
       server.fail(
@@ -310,6 +329,35 @@ void main() {
       });
     });
 
+    test('keeps the days of a pause schedule the form never showed', () async {
+      final AdguardHomeClient kids = captured.persistent.firstWhere(
+        (AdguardHomeClient client) => client.name == 'Kids tablet',
+      );
+      final AdguardHomeClientDraft before = AdguardHomeClientDraft.of(kids);
+
+      await actions().saveClient(
+        originalName: 'Kids tablet',
+        before: before,
+        after: before.copyWith(ignoreStatistics: true),
+      );
+
+      final Map<String, dynamic> body = server
+          .single('POST', 'control/clients/update')
+          .data as Map<String, dynamic>;
+      final Map<String, dynamic> data = body['data'] as Map<String, dynamic>;
+      expect(data['ignore_statistics'], isTrue);
+      // Left out of the write, the server would empty it.
+      expect(data['blocked_services_schedule'], <String, dynamic>{
+        'sun': <String, dynamic>{'start': 32400000, 'end': 61200000},
+        'sat': <String, dynamic>{'start': 32400000, 'end': 61200000},
+        'time_zone': 'Europe/Berlin',
+      });
+      expect(
+        data['blocked_services'],
+        <String>['tiktok', 'roblox', 'youtube'],
+      );
+    });
+
     test('that is gone meanwhile writes nothing and says so', () async {
       final AdguardHomeClientDraft before = AdguardHomeClientDraft.of(laptop);
 
@@ -429,6 +477,8 @@ void main() {
       expect(lookup.persistent, isNull);
       expect(lookup.runtime, isNull);
       expect(lookup.title, '10.9.9.9');
+      // On the server's word.
+      expect(lookup.serverSaid, isTrue);
     });
 
     test('matches here on a server that cannot say', () async {
@@ -438,6 +488,17 @@ void main() {
           await actions().findClient('172.17.0.1');
 
       expect(lookup.persistent?.name, 'Laptop');
+    });
+
+    test('and then does not pass its own guess off as the server\'s word',
+        () async {
+      server.fail('POST', 'control/clients/search', 404, '404 page not found');
+
+      final AdguardHomeClientLookup lookup =
+          await actions().findClient('10.9.9.9');
+
+      expect(lookup.persistent, isNull);
+      expect(lookup.serverSaid, isFalse);
     });
   });
 
