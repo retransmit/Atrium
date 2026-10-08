@@ -359,6 +359,59 @@ void main() {
     expect(find.text('Roblox, YouTube, Netflix'), findsOneWidget);
   });
 
+  group('the catalogue of services', () {
+    testWidgets('is not asked for by a client that blocks none of its own',
+        (WidgetTester tester) async {
+      // A few hundred kilobytes, for nothing to name.
+      final ({
+        Pumped pumped,
+        List<AdguardHomeClientOutcome?> outcomes
+      }) form = await open(tester, client: capturedClient('Laptop'));
+
+      expect(find.text('None'), findsOneWidget);
+      expect(form.pumped.servicesReads, 0);
+    });
+
+    testWidgets('is not asked for by a new client either',
+        (WidgetTester tester) async {
+      final ({
+        Pumped pumped,
+        List<AdguardHomeClientOutcome?> outcomes
+      }) form = await open(tester);
+
+      expect(form.pumped.servicesReads, 0);
+    });
+
+    testWidgets('is asked for by a client that blocks some, to name them',
+        (WidgetTester tester) async {
+      final ({
+        Pumped pumped,
+        List<AdguardHomeClientOutcome?> outcomes
+      }) form = await open(tester, client: capturedClient('Kids tablet'));
+
+      expect(find.text('TikTok, Roblox, YouTube'), findsOneWidget);
+      expect(form.pumped.servicesReads, 1);
+    });
+
+    testWidgets('names what was picked for a client that had none, in the '
+        'catalogue\'s order', (WidgetTester tester) async {
+      await open(tester, client: capturedClient('Laptop'));
+
+      await flip(tester, 'Use global blocked services');
+      await tester.tap(find.text('Blocked for this client'));
+      await tester.pumpAndSettle();
+      // Picked the other way round.
+      await tester.tap(find.text('Netflix'));
+      await tester.pump();
+      await tester.tap(find.text('TikTok'));
+      await tester.pump();
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('TikTok, Netflix'), findsOneWidget);
+    });
+  });
+
   group('saving', () {
     testWidgets('a new client sends what was typed and closes',
         (WidgetTester tester) async {

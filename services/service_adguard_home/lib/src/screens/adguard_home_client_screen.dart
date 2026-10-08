@@ -211,7 +211,7 @@ class _ClientFormState extends ConsumerState<_ClientForm> {
         ),
       );
 
-  Future<void> _pickServices(AdguardHomeServiceCatalogue? catalogue) async {
+  Future<void> _pickServices() async {
     final String name = _name.text.trim();
     final Set<String>? picked = await pushScreen<Set<String>>(
       context,
@@ -222,6 +222,9 @@ class _ClientFormState extends ConsumerState<_ClientForm> {
       ),
     );
     if (picked == null || !mounted) return;
+    // The picker has read the catalogue by now, and it is kept.
+    final AdguardHomeServiceCatalogue? catalogue =
+        ref.read(adguardHomeServicesProvider(_instance)).value;
     final List<String> kept = <String>[
       for (final String id in _settings.blockedServices)
         if (picked.contains(id)) id,
@@ -392,8 +395,12 @@ class _ClientFormState extends ConsumerState<_ClientForm> {
     final AdguardHomeClientProblems problems = _checked
         ? _draft.problems
         : const AdguardHomeClientProblems();
+    // Only wanted for the names of what is blocked. A client that blocks
+    // nothing of its own does not cost the few hundred kilobytes of it.
     final AdguardHomeServiceCatalogue? catalogue =
-        ref.watch(adguardHomeServicesProvider(_instance)).value;
+        settings.blockedServices.isEmpty
+            ? null
+            : ref.watch(adguardHomeServicesProvider(_instance)).value;
     final bool ownSettings = !settings.useGlobalSettings;
     final bool ownServices = !settings.useGlobalBlockedServices;
     final TextStyle? note =
@@ -594,7 +601,7 @@ class _ClientFormState extends ConsumerState<_ClientForm> {
                       ].join(', '),
               ),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => _pickServices(catalogue),
+              onTap: _pickServices,
             ),
             if (pauses != null)
               _Inset(

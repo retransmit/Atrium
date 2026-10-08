@@ -256,6 +256,9 @@ class Pumped {
 
   /// How many times the server's own safe search was read.
   int safeSearchReads = 0;
+
+  /// How many times the catalogue of services was read.
+  int servicesReads = 0;
 }
 
 /// Pumps [child] with the four reads answered from fixed values and the
@@ -332,11 +335,11 @@ Future<Pumped> pumpAdguardHome(
           }
           return safeSearch ?? AdguardHomeSafeSearch.fromJson(safeSearchJson());
         }),
-        adguardHomeServicesProvider(instance).overrideWith(
-          (Ref ref) async =>
-              services ??
-              AdguardHomeServiceCatalogue.fromJson(blockedServicesJson()),
-        ),
+        adguardHomeServicesProvider(instance).overrideWith((Ref ref) async {
+          pumped.servicesReads++;
+          return services ??
+              AdguardHomeServiceCatalogue.fromJson(blockedServicesJson());
+        }),
         adguardHomeActionsProvider(instance).overrideWith(
           (Ref ref) => pumped.actions = RecordingActions(ref, instance),
         ),
