@@ -128,7 +128,14 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('New client'), findsOneWidget);
-      expect(find.byType(FilterChip, skipOffstage: false), findsNWidgets(21));
+      expect(
+        tester
+            .widget<AdguardHomeClientScreen>(
+              find.byType(AdguardHomeClientScreen),
+            )
+            .supportedTags,
+        hasLength(21),
+      );
     });
 
     testWidgets('cannot be added to while they cannot be read',

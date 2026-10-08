@@ -510,30 +510,6 @@ class _ClientFormState extends ConsumerState<_ClientForm> {
                 ),
               ),
             ),
-            const _Inset(child: AdguardHomeHeading('Tags')),
-            _Inset(
-              top: Insets.xs,
-              child: Text(
-                'A filtering rule can be written for a tag instead of a '
-                'client.',
-                style: note,
-              ),
-            ),
-            _Inset(
-              top: Insets.sm,
-              child: Wrap(
-                spacing: Insets.sm,
-                runSpacing: Insets.xs,
-                children: <Widget>[
-                  for (final String tag in tags)
-                    FilterChip(
-                      label: Text(tag),
-                      selected: settings.tags.contains(tag),
-                      onSelected: (bool on) => _toggleTag(tag, on: on),
-                    ),
-                ],
-              ),
-            ),
             const _Inset(child: AdguardHomeHeading('Protection')),
             SwitchListTile(
               title: const Text('Use global settings'),
@@ -692,6 +668,33 @@ class _ClientFormState extends ConsumerState<_ClientForm> {
               value: settings.ignoreStatistics,
               onChanged: (bool on) =>
                   _set(settings.copyWith(ignoreStatistics: on)),
+            ),
+            // Last: there are some twenty of them, they are the least used
+            // part of a client, and anywhere higher they would stand
+            // between the identifiers and the settings on every visit.
+            const _Inset(child: AdguardHomeHeading('Tags')),
+            _Inset(
+              top: Insets.xs,
+              child: Text(
+                'A filtering rule can be written for a tag instead of a '
+                'client.',
+                style: note,
+              ),
+            ),
+            _Inset(
+              top: Insets.sm,
+              child: Wrap(
+                spacing: Insets.sm,
+                runSpacing: Insets.xs,
+                children: <Widget>[
+                  for (final String tag in tags)
+                    FilterChip(
+                      label: Text(tag),
+                      selected: settings.tags.contains(tag),
+                      onSelected: (bool on) => _toggleTag(tag, on: on),
+                    ),
+                ],
+              ),
             ),
           ],
         ),
