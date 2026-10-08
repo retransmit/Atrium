@@ -270,7 +270,13 @@ class _AdguardHomeQueryDetailState
                             showAdguardHomeClientSheet(
                               context,
                               instance: instance,
-                              address: entry.client,
+                              // A query that came under a ClientID has the
+                              // address it happened to come from, a
+                              // carrier's for a phone. The ClientID is
+                              // what a persistent client lists.
+                              address: entry.clientId.isEmpty
+                                  ? entry.client
+                                  : entry.clientId,
                             ),
                           );
                         case _ClientAction.blockForClient:
