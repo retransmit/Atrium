@@ -27,7 +27,8 @@ Supported services:
 * Unraid - array and disk health, per-core system load, Docker containers and
   virtual machine control
 * Gluetun - VPN status, the forwarded port and a one-tap reconnect
-* AdGuard Home - protection on, off or paused for a while, DNS statistics, the query log and per-client settings
+* AdGuard Home - protection on, off or paused for a while, DNS statistics,
+  the query log and per-client settings
 
 Features:
 
@@ -36,7 +37,7 @@ Features:
   one for the network you are on
 * A dashboard of at-a-glance widgets you can reorder: active downloads, now
   streaming, upcoming releases, recently added, recently downloaded, requests,
-  server vitals, speedtest results, VPN status and Wake-on-LAN
+  server vitals, speedtest results, VPN status, DNS protection and Wake-on-LAN
 * Custom HTTP headers, for the whole profile or one instance, so services
   behind a reverse proxy keep working
 * Profile import and export

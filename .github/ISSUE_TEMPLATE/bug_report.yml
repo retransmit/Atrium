@@ -23,7 +23,7 @@ body:
     attributes:
       label: Atrium version
       description: Settings, then About.
-      placeholder: "1.8.0"
+      placeholder: "1.9.0"
     validations:
       required: true
 
