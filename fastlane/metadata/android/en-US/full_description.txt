@@ -27,7 +27,7 @@ Supported services:
 * Unraid - array and disk health, per-core system load, Docker containers and
   virtual machine control
 * Gluetun - VPN status, the forwarded port and a one-tap reconnect
-* AdGuard Home - protection on, off or paused for a while, DNS statistics and the query log
+* AdGuard Home - protection on, off or paused for a while, DNS statistics, the query log and per-client settings
 
 Features:
 

@@ -182,7 +182,18 @@ Atrium is a **controller** app. Video playback was removed by design
   (request, response, the rule that matched and its list, the client),
   from where the name can be blocked or unblocked, for everyone or for
   that client only, and the client disallowed or allowed again behind a
-  confirmation; the log can be cleared from the menu. An
+  confirmation; the log can be cleared from the menu. A Clients tab (added
+  2026-10-08) lists the persistent clients with their identifiers, tags
+  and queries, and the runtime clients with where the server learned of
+  them; a persistent client is added, changed or deleted in a form
+  (identifiers, tags, its own protection and safe search per engine, its
+  own blocked services picked from the server's catalogue, upstream
+  servers and their cache, leaving it out of the log or the statistics),
+  and a runtime client can be made persistent with its name and address
+  filled in. A change is written over the client as the server has it at
+  that moment, so what the form does not show, such as a pause schedule,
+  is kept. A top client on Home and the client of a query open the same
+  sheet. An
   AdGuard Home dashboard widget shows the state with Pause or Resume, the
   queries and the blocked ones with their share as a ring, a chart of both
   over the period, and the rules on the blocklists. Signed in with HTTP
@@ -191,7 +202,8 @@ Atrium is a **controller** app. Video playback was removed by design
   sign-ins (15 minutes after five, by default), so the health dot probes
   it with no password and cannot flag a wrong one, requests leave one at a
   time, and after a refusal nothing is sent until Try again is tapped.
-  Filters, clients and settings are not built yet
+  Filters and settings are not built yet, nor the editor of a client's
+  pause schedule, which comes with the filters
 - **MySpeed** (added 2026-09-20 by lxBlazarxl, live-verified against 1.0.9):
   execution status with a manual run, the last 24 hours of results, a
   history with averages and a search by test id, the server's config and
