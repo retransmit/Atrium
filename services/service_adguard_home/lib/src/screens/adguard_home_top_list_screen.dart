@@ -8,6 +8,7 @@ import '../adguard_home_errors.dart';
 import '../adguard_home_providers.dart';
 import '../adguard_home_top_lists.dart';
 import '../models/adguard_home_stats.dart';
+import '../widgets/adguard_home_client_sheet.dart';
 import '../widgets/adguard_home_top_list.dart';
 
 /// Every row of one of the "top" lists.
@@ -58,6 +59,14 @@ class AdguardHomeTopListScreen extends ConsumerWidget {
                 domain,
                 block: block,
               ),
+              onOpen: kind == AdguardHomeTopListKind.clients
+                  ? () => showAdguardHomeClientSheet(
+                        context,
+                        instance: instance,
+                        address: rows[index].name,
+                        queries: rows[index].value.toInt(),
+                      )
+                  : null,
             ),
           );
         },

@@ -61,9 +61,29 @@ class AdguardHomeAllowedByWiderEntry implements Exception {
   String toString() => message;
 }
 
+/// The client that was to be changed is not on the server under the name it
+/// had when it was read: someone renamed or removed it in the meantime.
+///
+/// Nothing is written then. An update names the client it replaces, and
+/// sent under a name that is gone the server would turn it down anyway.
+class AdguardHomeClientGone implements Exception {
+  const AdguardHomeClientGone(this.name);
+
+  /// The name the client had.
+  final String name;
+
+  String get message =>
+      'The client "$name" is no longer on the server. It was renamed or '
+      'removed somewhere else.';
+
+  @override
+  String toString() => message;
+}
+
 /// One sentence for whatever went wrong, fit to show as it is.
 String describeAdguardHomeError(Object error) => switch (error) {
       AdguardHomeSignInRefused() => 'AdGuard Home refused the sign-in.',
+      AdguardHomeClientGone(:final String message) => message,
       AdguardHomeLastAllowedClient() => AdguardHomeLastAllowedClient.message,
       AdguardHomeAllowedByWiderEntry() =>
         AdguardHomeAllowedByWiderEntry.message,

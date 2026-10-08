@@ -15,6 +15,7 @@ import '../models/adguard_home_stats.dart';
 import '../models/adguard_home_status.dart';
 import '../screens/adguard_home_top_list_screen.dart';
 import '../widgets/adguard_home_chart_card.dart';
+import '../widgets/adguard_home_client_sheet.dart';
 import '../widgets/adguard_home_protection_card.dart';
 import '../widgets/adguard_home_refused_view.dart';
 import '../widgets/adguard_home_stat_tile.dart';
@@ -233,6 +234,16 @@ class _AdguardHomeHomeTabState extends ConsumerState<AdguardHomeHomeTab> {
                 domain,
                 block: block,
               ),
+              // A client's row opens the client: who is behind the address,
+              // and a way to its settings.
+              onOpen: kind == AdguardHomeTopListKind.clients
+                  ? (AdguardHomeCount row) => showAdguardHomeClientSheet(
+                        context,
+                        instance: _instance,
+                        address: row.name,
+                        queries: row.value.toInt(),
+                      )
+                  : null,
               onViewAll: () => pushScreen<void>(
                 context,
                 AdguardHomeTopListScreen(instance: _instance, kind: kind),

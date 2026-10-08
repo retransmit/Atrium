@@ -6,12 +6,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:go_router/go_router.dart';
 
+import 'adguard_home_clients_view.dart';
 import 'adguard_home_log_actions.dart';
+import 'adguard_home_providers.dart';
+import 'screens/adguard_home_client_screen.dart';
+import 'tabs/adguard_home_clients_tab.dart';
 import 'tabs/adguard_home_home_tab.dart';
 import 'tabs/adguard_home_query_log_tab.dart';
 
-/// Which of the screen's tabs is showing: 0 Home, 1 Query log. Kept for the
-/// session, so the service opens where it was left.
+/// Which of the screen's tabs is showing: 0 Home, 1 Query log, 2 Clients.
+/// Kept for the session, so the service opens where it was left.
 final adguardHomeTabProvider =
     StateProvider.family<int, Instance>((Ref ref, Instance _) => 0);
 
@@ -38,12 +42,13 @@ class AdguardHomeShell extends ConsumerStatefulWidget {
 
 class _AdguardHomeShellState extends ConsumerState<AdguardHomeShell> {
   static const int _queryLog = 1;
+  static const int _clients = 2;
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   /// The tabs that have been shown. A tab is built when it is first shown
-  /// and then kept: opening the service must not read a query log nobody
-  /// is looking at.
+  /// and then kept: opening the service must not read a query log, or a
+  /// list of clients, that nobody is looking at.
   final Set<int> _shown = <int>{0};
 
   Instance get _instance => widget.instance;
@@ -55,6 +60,15 @@ class _AdguardHomeShellState extends ConsumerState<AdguardHomeShell> {
   Widget build(BuildContext context) {
     final int tab = ref.watch(adguardHomeTabProvider(_instance));
     _shown.add(tab);
+    // Watched only on its tab, where the tab itself has asked for it. A
+    // client can be added once the list is there: the form needs the tags
+    // the server offers, and after a refused sign-in nothing could be
+    // saved anyway.
+    final AsyncValue<AdguardHomeClientsView>? clients = tab == _clients
+        ? ref.watch(adguardHomeClientsProvider(_instance))
+        : null;
+    final AdguardHomeClientsView? addTo =
+        clients == null || clients.hasError ? null : clients.value;
 
     return PopScope<Object?>(
       canPop: false,
@@ -120,8 +134,24 @@ class _AdguardHomeShellState extends ConsumerState<AdguardHomeShell> {
               AdguardHomeQueryLogTab(instance: _instance)
             else
               const SizedBox.shrink(),
+            if (_shown.contains(_clients))
+              AdguardHomeClientsTab(instance: _instance)
+            else
+              const SizedBox.shrink(),
           ],
         ),
+        floatingActionButton: addTo == null
+            ? null
+            : FloatingActionButton.extended(
+                heroTag: 'adguard-home-add-client',
+                onPressed: () => adguardHomeEditClient(
+                  context,
+                  instance: _instance,
+                  supportedTags: addTo.supportedTags,
+                ),
+                icon: const Icon(Icons.add),
+                label: const Text('Add client'),
+              ),
         bottomNavigationBar: AtriumBottomNav(
           visible: true,
           selectedIndex: tab,
@@ -136,6 +166,11 @@ class _AdguardHomeShellState extends ConsumerState<AdguardHomeShell> {
               icon: Icon(Icons.receipt_long_outlined),
               selectedIcon: Icon(Icons.receipt_long),
               label: 'Query log',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.devices_outlined),
+              selectedIcon: Icon(Icons.devices),
+              label: 'Clients',
             ),
           ],
         ),

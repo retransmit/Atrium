@@ -1,5 +1,7 @@
 import 'package:intl/intl.dart';
 
+import 'models/adguard_home_clients.dart';
+
 final NumberFormat _whole = NumberFormat.decimalPattern('en_US');
 final NumberFormat _compact = NumberFormat.compact(locale: 'en_US');
 
@@ -91,6 +93,79 @@ String adguardHomeProtocolLabel(String protocol) => switch (protocol) {
       'dnscrypt' => 'DNSCrypt',
       _ => protocol,
     };
+
+/// Where the server learned of a runtime client, in words. A source this
+/// app does not know is shown as the server sent it.
+String adguardHomeClientSourceLabel(String source) => switch (source) {
+      'ARP' => 'ARP table',
+      'rDNS' => 'Reverse DNS',
+      'etc/hosts' => 'Hosts file',
+      _ => source,
+    };
+
+/// A search engine by the name it goes by. The server sends a key, such as
+/// `duckduckgo`; one it adds later is at least capitalised.
+String adguardHomeSearchEngineLabel(String key) => switch (key) {
+      'duckduckgo' => 'DuckDuckGo',
+      'youtube' => 'YouTube',
+      _ => _sentence(key),
+    };
+
+/// A group of blockable services by name. The server sends only an id, such
+/// as `social_network`.
+String adguardHomeServiceGroupLabel(String id) => switch (id) {
+      '' => 'Other',
+      'ai' => 'AI',
+      'cdn' => 'CDN',
+      'messenger' => 'Messengers',
+      'social_network' => 'Social networks',
+      _ => _sentence(id),
+    };
+
+/// How many services a client has blocked for itself.
+String adguardHomeServicesBlockedLabel(int count) => switch (count) {
+      0 => 'No services blocked',
+      1 => '1 service blocked',
+      _ => '$count services blocked',
+    };
+
+/// When service blocking pauses, in a line: `Sat 09:00 to 17:00, Sun 09:00
+/// to 17:00 (Europe/Berlin)`.
+String formatAdguardHomePauses(
+  List<AdguardHomeServicePause> pauses,
+  String timeZone,
+) {
+  final String days = <String>[
+    for (final AdguardHomeServicePause pause in pauses)
+      '${_dayLabel(pause.day)} ${_clock(pause.start)} to ${_clock(pause.end)}',
+  ].join(', ');
+  return timeZone.isEmpty ? days : '$days ($timeZone)';
+}
+
+String _dayLabel(String day) => switch (day) {
+      'mon' => 'Mon',
+      'tue' => 'Tue',
+      'wed' => 'Wed',
+      'thu' => 'Thu',
+      'fri' => 'Fri',
+      'sat' => 'Sat',
+      'sun' => 'Sun',
+      _ => day,
+    };
+
+/// A time of day from midnight. The end of the day is 24:00.
+String _clock(Duration fromMidnight) {
+  final int minutes = fromMidnight.inMinutes;
+  return '${(minutes ~/ 60).toString().padLeft(2, '0')}:'
+      '${(minutes % 60).toString().padLeft(2, '0')}';
+}
+
+/// `social_network` as `Social network`.
+String _sentence(String key) {
+  final String words = key.replaceAll('_', ' ').trim();
+  if (words.isEmpty) return words;
+  return words[0].toUpperCase() + words.substring(1);
+}
 
 /// The period the statistics cover, the way the web UI names it.
 String adguardHomePeriodLabel(Duration period) {

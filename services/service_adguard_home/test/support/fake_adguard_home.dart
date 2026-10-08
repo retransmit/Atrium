@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
+import 'adguard_home_clients_fixtures.dart';
 import 'adguard_home_fixtures.dart';
 import 'adguard_home_query_log_fixtures.dart';
 
@@ -22,11 +23,44 @@ class FakeAdguardHome implements HttpClientAdapter {
     on('GET', 'control/querylog', queryLogJson());
     on('GET', 'control/querylog/config', queryLogConfigJson());
     on('GET', 'control/access/list', accessListJson());
-    on('GET', 'control/clients', clientsJson());
+    on('GET', 'control/clients', clientListJson());
+    on('GET', 'control/blocked_services/all', blockedServicesJson());
+    on('GET', 'control/safesearch/status', safeSearchJson());
+    onCall('POST', 'control/clients/search', _search);
     on('POST', 'control/protection', null);
     on('POST', 'control/filtering/set_rules', null);
     on('POST', 'control/querylog_clear', null);
     on('POST', 'control/access/set', null);
+    on('POST', 'control/clients/add', null);
+    on('POST', 'control/clients/update', null);
+    on('POST', 'control/clients/delete', null);
+  }
+
+  /// What the server says of each id it is asked about: the captured answer
+  /// where there is one, and otherwise what it says of an address it knows
+  /// nothing of.
+  static Object? _search(RequestOptions request) {
+    final Object? body = request.data;
+    final Object? asked =
+        body is Map<Object?, Object?> ? body['clients'] : null;
+    final Map<Object?, Object?> known = <Object?, Object?>{
+      for (final Object? row in clientSearchJson())
+        if (row is Map<Object?, Object?>) ...row,
+    };
+    return <dynamic>[
+      if (asked is List)
+        for (final Object? one in asked)
+          if (one is Map<Object?, Object?>)
+            <String, dynamic>{
+              '${one['id']}': known[one['id']] ??
+                  <String, dynamic>{
+                    'disallowed': false,
+                    'whois_info': <String, dynamic>{},
+                    'name': '',
+                    'ids': <dynamic>[one['id']],
+                  },
+            },
+    ];
   }
 
   /// Every request that reached the server, in order.
@@ -62,6 +96,9 @@ class FakeAdguardHome implements HttpClientAdapter {
     String contentType = 'text/plain; charset=utf-8',
   }) =>
       _failures['$method $path'] = (status, message, contentType);
+
+  /// Answers [method] [path] as before it was made to [fail].
+  void mend(String method, String path) => _failures.remove('$method $path');
 
   List<RequestOptions> to(String method, String path) => <RequestOptions>[
         for (final RequestOptions request in requests)

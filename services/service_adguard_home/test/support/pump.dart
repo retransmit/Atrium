@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:service_adguard_home/service_adguard_home.dart';
 
+import 'adguard_home_clients_fixtures.dart';
 import 'adguard_home_test_instance.dart';
 
 /// Stands in for [AdguardHomeActions], noting what the screen asked for
@@ -89,7 +90,84 @@ class RecordingActions extends AdguardHomeActions {
     final Object? error = writeFailure;
     if (error != null) throw error;
   }
+
+  /// Every client the form asked to save: the name it had, null for a new
+  /// one, with what the form started from and what it held.
+  final List<SavedClient> saved = <SavedClient>[];
+
+  /// What [findClient] hands back. Without one it knows nothing of the
+  /// address.
+  AdguardHomeClientLookup? lookup;
+
+  /// When set, [findClient] fails with it.
+  Object? lookupFailure;
+
+  /// While set, [findClient] waits on this before it answers.
+  Completer<void>? lookupHold;
+
+  /// Waits and fails as [writeHold] and [writeFailure] say.
+  Future<void> _write() async {
+    final Completer<void>? held = writeHold;
+    if (held != null) await held.future;
+    final Object? error = writeFailure;
+    if (error != null) throw error;
+  }
+
+  @override
+  Future<void> saveClient({
+    required AdguardHomeClientDraft before,
+    required AdguardHomeClientDraft after,
+    String? originalName,
+  }) async {
+    calls.add('save ${originalName ?? '(new)'} as ${after.name.trim()}');
+    saved.add((originalName: originalName, before: before, after: after));
+    await _write();
+  }
+
+  @override
+  Future<void> deleteClient(String name) async {
+    calls.add('delete client $name');
+    await _write();
+  }
+
+  @override
+  Future<AdguardHomeClientLookup> findClient(
+    String address, {
+    int? queries,
+  }) async {
+    calls.add('find $address');
+    final Completer<void>? held = lookupHold;
+    if (held != null) await held.future;
+    final Object? error = lookupFailure;
+    if (error != null) throw error;
+    return lookup ?? AdguardHomeClientLookup(address: address, queries: queries);
+  }
 }
+
+/// One call to save a client, as [RecordingActions] noted it.
+typedef SavedClient = ({
+  String? originalName,
+  AdguardHomeClientDraft before,
+  AdguardHomeClientDraft after,
+});
+
+/// The clients of the captured fixtures, as the Clients tab lists them: the
+/// top clients are the two the test server had, plus the ClientID.
+AdguardHomeClientsView capturedClients() => AdguardHomeClientsView.build(
+      list: AdguardHomeClientList.fromJson(clientListJson()),
+      topClients: const <AdguardHomeCount>[
+        AdguardHomeCount('172.17.0.1', 150),
+        AdguardHomeCount('127.0.0.1', 122),
+        AdguardHomeCount('work-phone', 7),
+      ],
+      found: AdguardHomeFoundClient.mapFromJson(clientSearchJson()),
+    );
+
+/// One of the captured persistent clients.
+AdguardHomeClient capturedClient(String name) =>
+    AdguardHomeClientList.fromJson(clientListJson())
+        .persistent
+        .firstWhere((AdguardHomeClient client) => client.name == name);
 
 /// Stands in for [AdguardHomeQueryLog]: shows the state a test gives it and
 /// notes what the screen asked of it, without reading anything.
@@ -172,6 +250,15 @@ class Pumped {
 
   /// How many times the status was read.
   int statusReads = 0;
+
+  /// How many times the clients were read.
+  int clientReads = 0;
+
+  /// How many times the server's own safe search was read.
+  int safeSearchReads = 0;
+
+  /// How many times the catalogue of services was read.
+  int servicesReads = 0;
 }
 
 /// Pumps [child] with the four reads answered from fixed values and the
@@ -191,6 +278,11 @@ Future<Pumped> pumpAdguardHome(
   AdguardHomeQueryLogConfig logConfig = const AdguardHomeQueryLogConfig(),
   Object? statusError,
   Object? statsError,
+  AdguardHomeClientsView? clients,
+  Object? clientsError,
+  AdguardHomeSafeSearch? safeSearch,
+  Object? safeSearchError,
+  AdguardHomeServiceCatalogue? services,
   Size size = const Size(360, 2400),
   double textScale = 1,
   Instance instance = adguardHomeTestInstance,
@@ -230,6 +322,24 @@ Future<Pumped> pumpAdguardHome(
         }),
         adguardHomeQueryLogConfigProvider(instance)
             .overrideWith((Ref ref) async => logConfig),
+        adguardHomeClientsProvider(instance).overrideWith((Ref ref) async {
+          pumped.clientReads++;
+          if (clientsError != null) throw clientsError;
+          return clients ?? capturedClients();
+        }),
+        adguardHomeSafeSearchProvider(instance).overrideWith((Ref ref) async {
+          pumped.safeSearchReads++;
+          // Only the first read fails, so a test can try again.
+          if (safeSearchError != null && pumped.safeSearchReads == 1) {
+            throw safeSearchError;
+          }
+          return safeSearch ?? AdguardHomeSafeSearch.fromJson(safeSearchJson());
+        }),
+        adguardHomeServicesProvider(instance).overrideWith((Ref ref) async {
+          pumped.servicesReads++;
+          return services ??
+              AdguardHomeServiceCatalogue.fromJson(blockedServicesJson());
+        }),
         adguardHomeActionsProvider(instance).overrideWith(
           (Ref ref) => pumped.actions = RecordingActions(ref, instance),
         ),

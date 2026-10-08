@@ -22,6 +22,7 @@ void main() {
     DateTime? at,
     String type = 'A',
     String client = '172.17.0.1',
+    String clientId = '',
     String clientName = 'Laptop',
     bool clientDisallowed = false,
     String clientDisallowedRule = '172.17.0.1',
@@ -43,6 +44,7 @@ void main() {
         rules: rules,
         serviceName: serviceName,
         client: client,
+        clientId: clientId,
         clientName: clientName,
         clientDisallowed: clientDisallowed,
         clientDisallowedRule: clientDisallowedRule,
@@ -1162,6 +1164,39 @@ void main() {
 
       expect(find.widgetWithText(FilledButton, 'Block'), findsOneWidget);
       expect(find.byTooltip('More actions'), findsNothing);
+    });
+
+    testWidgets('Show client opens the client behind the query, over the '
+        'query', (WidgetTester tester) async {
+      final Pumped pumped = await open(tester, entry());
+
+      await more(tester, 'Show client');
+
+      expect(pumped.actions.calls, <String>['find 172.17.0.1']);
+      expect(find.byType(AdguardHomeClientSheet), findsOneWidget);
+      // The query is still there underneath, to come back to.
+      expect(
+        find.byType(AdguardHomeQueryDetail, skipOffstage: false),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('Show client asks about the ClientID when the query came '
+        'under one', (WidgetTester tester) async {
+      // A phone on DNS-over-TLS: the address is the carrier's and changes,
+      // the ClientID is what a persistent client lists.
+      final Pumped pumped = await open(
+        tester,
+        entry(
+          client: '203.0.113.9',
+          clientId: 'work-phone',
+          clientName: 'Work phone',
+        ),
+      );
+
+      await more(tester, 'Show client');
+
+      expect(pumped.actions.calls, <String>['find work-phone']);
     });
   });
 

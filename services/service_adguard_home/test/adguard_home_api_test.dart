@@ -189,7 +189,139 @@ void main() {
     final List<AdguardHomeClientRef> clients = await api.getPersistentClients();
 
     expect(server.single('GET', 'control/clients'), isNotNull);
-    expect(clients.single.name, 'Laptop');
+    expect(
+      clients.map((AdguardHomeClientRef client) => client.name),
+      <String>['Kids tablet', 'Laptop', 'Work phone'],
+    );
+  });
+
+  group('clients', () {
+    test('reads the persistent and the runtime clients', () async {
+      final AdguardHomeClientList list = await api.getClients();
+
+      expect(server.single('GET', 'control/clients'), isNotNull);
+      expect(list.persistent, hasLength(3));
+      expect(list.runtime, hasLength(9));
+      expect(list.supportedTags, hasLength(21));
+    });
+
+    test('asks whose a list of addresses and ids are', () async {
+      final Map<String, AdguardHomeFoundClient> found =
+          await api.searchClients(<String>['172.17.0.1', 'work-phone']);
+
+      expect(
+        server.single('POST', 'control/clients/search').data,
+        <String, dynamic>{
+          'clients': <Map<String, dynamic>>[
+            <String, dynamic>{'id': '172.17.0.1'},
+            <String, dynamic>{'id': 'work-phone'},
+          ],
+        },
+      );
+      expect(found.keys, <String>['172.17.0.1', 'work-phone']);
+      expect(found['172.17.0.1']!.name, 'Laptop');
+      expect(found['work-phone']!.name, 'Work phone');
+    });
+
+    test('asks nothing when there is nothing to ask about', () async {
+      expect(await api.searchClients(const <String>[]), isEmpty);
+      expect(server.requests, isEmpty);
+    });
+
+    test('a lookup that answers with no list is not AdGuard Home', () async {
+      server.on(
+        'POST',
+        'control/clients/search',
+        <String, dynamic>{'message': 'sign in'},
+      );
+
+      await expectLater(
+        api.searchClients(<String>['172.17.0.1']),
+        throwsA(isA<AdguardHomeUnexpectedAnswer>()),
+      );
+    });
+
+    test('a server from before the lookup turns it down', () async {
+      // What v0.107.55 and older answer: they have no such path.
+      server.fail('POST', 'control/clients/search', 404, '404 page not found');
+
+      await expectLater(
+        api.searchClients(<String>['172.17.0.1']),
+        throwsA(isA<AdguardHomeRequestRefused>()),
+      );
+    });
+
+    test('adds a client as it is given', () async {
+      final Map<String, dynamic> client = <String, dynamic>{
+        'name': 'Kitchen',
+        'ids': <String>['10.0.0.4'],
+        'use_global_settings': true,
+      };
+
+      await api.addClient(client);
+
+      expect(server.single('POST', 'control/clients/add').data, client);
+    });
+
+    test('updates a client under the name it has now', () async {
+      final Map<String, dynamic> client = <String, dynamic>{
+        'name': 'Old laptop',
+        'ids': <String>['172.17.0.1'],
+      };
+
+      await api.updateClient('Laptop', client);
+
+      expect(
+        server.single('POST', 'control/clients/update').data,
+        <String, dynamic>{'name': 'Laptop', 'data': client},
+      );
+    });
+
+    test('deletes a client by its name', () async {
+      await api.deleteClient('Laptop');
+
+      expect(
+        server.single('POST', 'control/clients/delete').data,
+        <String, dynamic>{'name': 'Laptop'},
+      );
+    });
+
+    test('says why the server turned a client down', () async {
+      server.fail(
+        'POST',
+        'control/clients/add',
+        400,
+        'adding client: another client uses the same name "Laptop"',
+      );
+
+      await expectLater(
+        api.addClient(<String, dynamic>{'name': 'Laptop'}),
+        throwsA(
+          isA<AdguardHomeRequestRefused>().having(
+            (AdguardHomeRequestRefused error) => error.message,
+            'message',
+            'adding client: another client uses the same name "Laptop"',
+          ),
+        ),
+      );
+    });
+  });
+
+  test('reads the services the server can block', () async {
+    final AdguardHomeServiceCatalogue catalogue =
+        await api.getBlockedServices();
+
+    expect(server.single('GET', 'control/blocked_services/all'), isNotNull);
+    expect(catalogue.services, hasLength(6));
+    expect(catalogue.nameOf('tiktok'), 'TikTok');
+  });
+
+  test('reads the safe search of the server itself', () async {
+    final AdguardHomeSafeSearch safe = await api.getSafeSearch();
+
+    expect(server.single('GET', 'control/safesearch/status'), isNotNull);
+    expect(safe.enabled, isTrue);
+    expect(safe.engines, hasLength(7));
   });
 
   test('an answer that is not a JSON object is not AdGuard Home', () async {

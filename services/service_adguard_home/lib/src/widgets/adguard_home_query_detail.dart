@@ -12,6 +12,8 @@ import '../adguard_home_log_actions.dart';
 import '../adguard_home_providers.dart';
 import '../models/adguard_home_filtering.dart';
 import '../models/adguard_home_query_log.dart';
+import 'adguard_home_client_sheet.dart';
+import 'adguard_home_fields.dart';
 import 'adguard_home_result_chip.dart';
 
 /// Opens everything [entry] carries in a sheet, with what can be done about
@@ -41,7 +43,7 @@ Future<void> showAdguardHomeQueryDetail(
 }
 
 /// What the menu beside the main action offers for the entry's client.
-enum _ClientAction { blockForClient, access }
+enum _ClientAction { show, blockForClient, access }
 
 /// One query in full: the request, the response and the client, over the
 /// web UI's three actions.
@@ -160,20 +162,30 @@ class _AdguardHomeQueryDetailState
                   label: entry.resultLabel,
                   tone: entry.result.tone,
                 ),
-                const _Heading('Request'),
-                _Field('Time', formatAdguardHomeLogMoment(entry.time)),
-                _Field('Type', entry.type),
-                _Field('Protocol', adguardHomeProtocolLabel(entry.protocol)),
-                const _Heading('Response'),
-                _Field('Response code', entry.status),
-                _Field('Blocked service', entry.serviceName),
-                _Field('DNS server', entry.upstream),
-                if (entry.cached) const _Field('Served from cache', 'Yes'),
+                const AdguardHomeHeading('Request'),
+                AdguardHomeField(
+                  'Time',
+                  formatAdguardHomeLogMoment(entry.time),
+                ),
+                AdguardHomeField('Type', entry.type),
+                AdguardHomeField(
+                  'Protocol',
+                  adguardHomeProtocolLabel(entry.protocol),
+                ),
+                const AdguardHomeHeading('Response'),
+                AdguardHomeField('Response code', entry.status),
+                AdguardHomeField('Blocked service', entry.serviceName),
+                AdguardHomeField('DNS server', entry.upstream),
+                if (entry.cached)
+                  const AdguardHomeField('Served from cache', 'Yes'),
                 if (entry.dnssec)
-                  const _Field('Validated with DNSSEC', 'Yes'),
-                _Field('Elapsed', formatAdguardHomeElapsed(entry.elapsed)),
+                  const AdguardHomeField('Validated with DNSSEC', 'Yes'),
+                AdguardHomeField(
+                  'Elapsed',
+                  formatAdguardHomeElapsed(entry.elapsed),
+                ),
                 if (entry.rules.isNotEmpty)
-                  _Block(
+                  AdguardHomeBlock(
                     entry.rules.length == 1 ? 'Rule' : 'Rules',
                     <Widget>[
                       for (final AdguardHomeMatchedRule rule
@@ -188,19 +200,19 @@ class _AdguardHomeQueryDetailState
                     ],
                   ),
                 if (entry.answers.isNotEmpty)
-                  _Block('Response', _records(theme, entry.answers)),
+                  AdguardHomeBlock('Response', _records(theme, entry.answers)),
                 if (entry.originalAnswers.isNotEmpty)
-                  _Block(
+                  AdguardHomeBlock(
                     'Original response',
                     _records(theme, entry.originalAnswers),
                   ),
                 if (entry.client.isNotEmpty || name.isNotEmpty) ...<Widget>[
-                  const _Heading('Client'),
-                  _Field('IP address', entry.client),
-                  _Field('Name', name),
-                  _Field('Country', entry.clientCountry),
-                  _Field('City', entry.clientCity),
-                  _Field('Network', entry.clientNetwork),
+                  const AdguardHomeHeading('Client'),
+                  AdguardHomeField('IP address', entry.client),
+                  AdguardHomeField('Name', name),
+                  AdguardHomeField('Country', entry.clientCountry),
+                  AdguardHomeField('City', entry.clientCity),
+                  AdguardHomeField('Network', entry.clientNetwork),
                   if (entry.clientDisallowed)
                     Padding(
                       padding: const EdgeInsets.only(top: Insets.sm),
@@ -250,6 +262,23 @@ class _AdguardHomeQueryDetailState
                     enabled: !_busy,
                     onSelected: (_ClientAction chosen) {
                       switch (chosen) {
+                        case _ClientAction.show:
+                          // Over this sheet, which is there to come back
+                          // to: who the client is, and a way to its
+                          // settings or to making it a persistent one.
+                          unawaited(
+                            showAdguardHomeClientSheet(
+                              context,
+                              instance: instance,
+                              // A query that came under a ClientID has the
+                              // address it happened to come from, a
+                              // carrier's for a phone. The ClientID is
+                              // what a persistent client lists.
+                              address: entry.clientId.isEmpty
+                                  ? entry.client
+                                  : entry.clientId,
+                            ),
+                          );
                         case _ClientAction.blockForClient:
                           _block(clientAddress: entry.client);
                         case _ClientAction.access:
@@ -258,6 +287,10 @@ class _AdguardHomeQueryDetailState
                     },
                     itemBuilder: (BuildContext _) =>
                         <PopupMenuEntry<_ClientAction>>[
+                      const PopupMenuItem<_ClientAction>(
+                        value: _ClientAction.show,
+                        child: Text('Show client'),
+                      ),
                       PopupMenuItem<_ClientAction>(
                         value: _ClientAction.blockForClient,
                         enabled: named,
@@ -297,72 +330,4 @@ class _AdguardHomeQueryDetailState
             style: _mono(theme),
           ),
       ];
-}
-
-class _Heading extends StatelessWidget {
-  const _Heading(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(top: Insets.lg),
-      child: Text(
-        text,
-        style: theme.textTheme.titleSmall?.copyWith(
-          fontWeight: FontWeight.w700,
-          color: theme.colorScheme.primary,
-        ),
-      ),
-    );
-  }
-}
-
-/// A name with what belongs to it underneath. One over the other rather
-/// than side by side, so a long value has the width of the sheet at any
-/// text size.
-class _Block extends StatelessWidget {
-  const _Block(this.label, this.children);
-
-  final String label;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(top: Insets.sm),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            label,
-            style: theme.textTheme.labelMedium
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: Insets.xxs),
-          ...children,
-        ],
-      ),
-    );
-  }
-}
-
-/// A name and one value. Leaves itself out when there is no value.
-class _Field extends StatelessWidget {
-  const _Field(this.label, this.value);
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    if (value.isEmpty) return const SizedBox.shrink();
-    return _Block(
-      label,
-      <Widget>[Text(value, style: Theme.of(context).textTheme.bodyMedium)],
-    );
-  }
 }

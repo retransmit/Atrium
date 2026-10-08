@@ -554,6 +554,68 @@ void main() {
     expect(find.text('Undo'), findsNothing);
   });
 
+  testWidgets('a top client opens the client behind the address',
+      (WidgetTester tester) async {
+    final Pumped pumped = await pumpAdguardHome(
+      tester,
+      tab(),
+      status: statusWith(),
+      stats: AdguardHomeStats.fromJson(statsJson()),
+    );
+
+    await tester.ensureVisible(find.text('127.0.0.1'));
+    await tester.tap(find.text('127.0.0.1'));
+    await tester.pumpAndSettle();
+
+    // The sheet asks whose the address is, and is told how much it asked.
+    expect(pumped.actions.calls, <String>['find 127.0.0.1']);
+    expect(find.byType(AdguardHomeClientSheet), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(AdguardHomeClientSheet),
+        matching: find.text('68'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Add as persistent client'), findsOneWidget);
+  });
+
+  testWidgets('a top domain is not something that opens',
+      (WidgetTester tester) async {
+    final Pumped pumped = await pumpAdguardHome(
+      tester,
+      tab(),
+      status: statusWith(),
+      stats: AdguardHomeStats.fromJson(statsJson()),
+    );
+
+    await tester.ensureVisible(find.text('github.com'));
+    await tester.tap(find.text('github.com'));
+    await tester.pumpAndSettle();
+
+    expect(pumped.actions.calls, isEmpty);
+    expect(find.byType(AdguardHomeClientSheet), findsNothing);
+  });
+
+  testWidgets('the whole list of top clients opens them too',
+      (WidgetTester tester) async {
+    final Pumped pumped = await pumpAdguardHome(
+      tester,
+      const AdguardHomeTopListScreen(
+        instance: adguardHomeTestInstance,
+        kind: AdguardHomeTopListKind.clients,
+      ),
+      status: statusWith(),
+      stats: AdguardHomeStats.fromJson(statsJson()),
+    );
+
+    await tester.tap(find.text('127.0.0.1'));
+    await tester.pumpAndSettle();
+
+    expect(pumped.actions.calls, <String>['find 127.0.0.1']);
+    expect(find.byType(AdguardHomeClientSheet), findsOneWidget);
+  });
+
   testWidgets('the shell names the instance and marks it beta',
       (WidgetTester tester) async {
     await pumpAdguardHome(

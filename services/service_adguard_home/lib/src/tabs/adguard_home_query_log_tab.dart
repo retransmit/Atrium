@@ -12,6 +12,7 @@ import '../adguard_home_format.dart';
 import '../adguard_home_providers.dart';
 import '../adguard_home_query_log.dart';
 import '../models/adguard_home_query_log.dart';
+import '../widgets/adguard_home_pullable.dart';
 import '../widgets/adguard_home_query_detail.dart';
 import '../widgets/adguard_home_query_log_row.dart';
 import '../widgets/adguard_home_refused_view.dart';
@@ -227,7 +228,7 @@ class _AdguardHomeQueryLogTabState
     // end up under the keyboard.
     final Object? error = state.error;
     if (error != null) {
-      return _Pullable(
+      return AdguardHomePullable(
         onRefresh: _log.reload,
         child: ErrorView(
           message: describeAdguardHomeError(error),
@@ -239,7 +240,7 @@ class _AdguardHomeQueryLogTabState
     }
     // A search that has found nothing so far and has not reached the end.
     if (state.stalled || state.loadingMore) {
-      return _Pullable(
+      return AdguardHomePullable(
         onRefresh: _log.reload,
         child: MessageView(
           icon: Icons.manage_search,
@@ -257,7 +258,7 @@ class _AdguardHomeQueryLogTabState
     // An empty list is the one that most wants reading again: the first
     // query after the log was cleared, or the one just made to test a rule.
     if (state.narrowed) {
-      return _Pullable(
+      return AdguardHomePullable(
         onRefresh: _log.reload,
         child: EmptyView(
           icon: Icons.search_off,
@@ -270,37 +271,9 @@ class _AdguardHomeQueryLogTabState
         ),
       );
     }
-    return _Pullable(
+    return AdguardHomePullable(
       onRefresh: _log.reload,
       child: _EmptyLog(instance: _instance),
-    );
-  }
-}
-
-/// Lets something that does not scroll be pulled down to refresh: it is
-/// given the height of the space it stands in, inside a list that always
-/// answers a drag.
-class _Pullable extends StatelessWidget {
-  const _Pullable({required this.onRefresh, required this.child});
-
-  final Future<void> Function() onRefresh;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        return EasyRefresh(
-          onRefresh: onRefresh,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-              child: child,
-            ),
-          ),
-        );
-      },
     );
   }
 }

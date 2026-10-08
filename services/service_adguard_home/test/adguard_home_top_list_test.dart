@@ -198,4 +198,38 @@ void main() {
     expect(find.text('Nothing yet'), findsOneWidget);
     expect(find.text('Others'), findsNothing);
   });
+
+  testWidgets('a row that can be opened says which one was tapped',
+      (WidgetTester tester) async {
+    final List<String> opened = <String>[];
+    await pump(
+      tester,
+      AdguardHomeTopList(
+        kind: AdguardHomeTopListKind.clients,
+        rows: const <AdguardHomeCount>[
+          AdguardHomeCount('172.17.0.1', 150),
+          AdguardHomeCount('127.0.0.1', 122),
+        ],
+        onOpen: (AdguardHomeCount row) => opened.add('${row.name} ${row.value}'),
+      ),
+    );
+
+    await tester.tap(find.text('127.0.0.1'));
+    await tester.pump();
+
+    expect(opened, <String>['127.0.0.1 122']);
+  });
+
+  testWidgets('a row that cannot be opened is not something to tap',
+      (WidgetTester tester) async {
+    await pump(
+      tester,
+      AdguardHomeTopList(
+        kind: AdguardHomeTopListKind.upstreams,
+        rows: rows(2),
+      ),
+    );
+
+    expect(find.byType(InkWell), findsNothing);
+  });
 }
