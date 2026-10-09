@@ -3,7 +3,10 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cookie_jar/cookie_jar.dart';
+import 'package:core_models/core_models.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:service_qbittorrent/service_qbittorrent.dart';
 
@@ -243,4 +246,56 @@ void main() {
     expect(adapter.rids, <Object?>[0, 0]);
     expect(list.single.hash, a);
   });
+
+  test('re-opening the list resumes the delta instead of starting over',
+      () async {
+    final _MaindataAdapter adapter = _MaindataAdapter();
+    adapter.replies
+      ..add(
+        () => Future<Map<String, dynamic>>.value(<String, dynamic>{
+          'rid': 1,
+          'full_update': true,
+          'torrents': <String, dynamic>{a: _entry(a)},
+        }),
+      )
+      ..add(
+        () => Future<Map<String, dynamic>>.value(<String, dynamic>{'rid': 2}),
+      );
+    final QbittorrentClient client = _clientFor(adapter);
+    final ProviderContainer container = ProviderContainer(
+      overrides: <Override>[
+        qbittorrentClientProvider(_instance)
+            .overrideWith((Ref ref) async => client),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    Future<List<QbitTorrent>> open() async {
+      final ProviderSubscription<AsyncValue<List<QbitTorrent>>> sub =
+          container.listen(qbitRawTorrentsProvider(_instance), (_, __) {});
+      final List<QbitTorrent> list =
+          await container.read(qbitRawTorrentsProvider(_instance).future);
+      sub.close();
+      await pumpEventQueue();
+      return list;
+    }
+
+    await open();
+    // Leaving the screen dropped the list itself.
+    expect(container.exists(qbitRawTorrentsProvider(_instance)), isFalse);
+    final List<QbitTorrent> list = await open();
+
+    expect(adapter.rids, <Object?>[0, 1]);
+    expect(list.single.hash, a);
+  });
 }
+
+const Instance _instance = Instance(
+  id: 'test-qbit',
+  name: 'Test qBittorrent',
+  kind: ServiceKind.qbittorrent,
+  localUrl: 'http://localhost',
+  externalUrl: '',
+  urlMode: UrlMode.auto,
+  auth: InstanceAuth.apiKey(apiKey: 'k'),
+);
