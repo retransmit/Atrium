@@ -89,8 +89,12 @@ void main() {
     });
 
     expect(store.rid, 2);
-    expect(list.single.name, 'kept');
-    expect(list.single.dlspeed, 99);
+    // The whole model, so the fields kept under a snake_case key (added on,
+    // seeds, the magnet link) are checked to survive the merge as well.
+    expect(
+      list.single,
+      QbitTorrent.fromJson(torrentRowJson(hash: a, name: 'kept', dlspeed: 99)),
+    );
   });
 
   test('a removed torrent leaves the list', () {
