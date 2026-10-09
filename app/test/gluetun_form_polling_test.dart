@@ -9,6 +9,9 @@ import 'package:flutter_test/flutter_test.dart';
 /// Its screen and dashboard card already polled on the instance's own
 /// interval, but the form only offered the field for Glances and Dashdot, so
 /// every Gluetun instance was stuck on the five second default.
+///
+/// qBittorrent's torrent list and global speeds poll on the same interval,
+/// so its form offers the field too.
 void main() {
   Future<void> openFormFor(WidgetTester tester, String serviceLabel) async {
     tester.view.physicalSize = const Size(900, 1400);
