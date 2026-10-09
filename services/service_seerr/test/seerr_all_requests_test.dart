@@ -8,10 +8,13 @@ import 'package:service_seerr/service_seerr.dart';
 /// A Seerr holding [requests] requests, newest first, that answers
 /// `/request/count` and pages of `/request` the way the server does.
 class _FakeSeerr implements HttpClientAdapter {
-  _FakeSeerr(this.requests, {this.countStatus = 200});
+  _FakeSeerr(this.requests, {this.countStatus = 200, this.countBody});
 
   final int requests;
   final int countStatus;
+
+  /// What `/request/count` answers with, when not the plain `total`.
+  final Map<String, dynamic>? countBody;
   final List<RequestOptions> asked = <RequestOptions>[];
 
   List<int> get skips => <int>[
@@ -27,7 +30,10 @@ class _FakeSeerr implements HttpClientAdapter {
   ) async {
     asked.add(options);
     if (options.path.endsWith('/request/count')) {
-      return _json(<String, dynamic>{'total': requests}, countStatus);
+      return _json(
+        countBody ?? <String, dynamic>{'total': requests},
+        countStatus,
+      );
     }
     final int take = options.queryParameters['take'] as int;
     final int skip = options.queryParameters['skip'] as int;
@@ -57,8 +63,13 @@ class _FakeSeerr implements HttpClientAdapter {
 ({SeerrApi api, _FakeSeerr server}) _build(
   int requests, {
   int countStatus = 200,
+  Map<String, dynamic>? countBody,
 }) {
-  final _FakeSeerr server = _FakeSeerr(requests, countStatus: countStatus);
+  final _FakeSeerr server = _FakeSeerr(
+    requests,
+    countStatus: countStatus,
+    countBody: countBody,
+  );
   final Dio dio = Dio(BaseOptions(baseUrl: 'http://seerr.test/'))
     ..httpClientAdapter = server;
   return (api: SeerrApi(dio), server: server);
@@ -80,11 +91,20 @@ void main() {
       },
     );
 
-    test('asks for no page when the count is zero', () async {
+    test('asks for one page when the count is zero', () async {
       final r = _build(0);
 
       expect(await r.api.getAllRequests(), isEmpty);
-      expect(r.server.skips, isEmpty);
+      expect(r.server.skips, <int>[0]);
+    });
+
+    test('pages one at a time when the count has no total', () async {
+      final r = _build(150, countBody: <String, dynamic>{});
+
+      final List<SeerrRequest> all = await r.api.getAllRequests();
+
+      expect(r.server.skips, <int>[0, 100]);
+      expect(all, hasLength(150));
     });
 
     test('stops at the safety cap on a very large instance', () async {
