@@ -337,9 +337,10 @@ class QbitSyncStore {
   /// for as long as the app runs.
   ///
   /// A response that fails to merge part way resets [rid] to 0 before
-  /// rethrowing: the server counts the reply as delivered and would never
-  /// resend what was skipped, so the next sync asks for the full list again
-  /// instead of building on a half-merged one.
+  /// rethrowing. Left alone, [rid] would still name the last reply that
+  /// merged, so the server would send the same changes again: on top of a
+  /// half-merged list, and most likely failing on the same entry every time.
+  /// Asking with 0 gets the full list instead, which starts the store over.
   List<QbitTorrent> apply(Map<String, dynamic> data) {
     try {
       if (data['full_update'] == true) {
