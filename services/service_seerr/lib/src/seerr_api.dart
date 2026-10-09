@@ -113,9 +113,10 @@ class SeerrApi {
   }
 
   /// The total from `/request/count`, or null when the server answered
-  /// without a usable one (no count endpoint, a 5xx, an odd body, a 0).
-  /// A server that cannot be reached throws instead: falling back would send
-  /// the first page after it and wait out the same timeout a second time.
+  /// without a usable one (no count endpoint, a refusal, a 5xx, an odd body,
+  /// a 0). A count that gets no answer at all - a timeout, no connection, an
+  /// untrusted certificate, a cancel - throws instead: every page would fail
+  /// the same way, and after a timeout only at the end of a second full wait.
   Future<int?> _requestTotal() async {
     try {
       final int total = (await getRequestCounts()).total;

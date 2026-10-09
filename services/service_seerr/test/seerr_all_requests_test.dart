@@ -7,9 +7,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:service_seerr/service_seerr.dart';
 
-/// A Seerr holding [requests] requests, newest first. It slices pages of
-/// `/request` by `take` and `skip` like the server, but ignores `sort` and
-/// `filter`, and sends only the fields the client reads.
+/// A Seerr holding [requests] requests, whose ids are their places in the
+/// list. It slices pages of `/request` by `take` and `skip` like the server,
+/// but ignores `sort` and `filter`, and sends only the fields the client
+/// reads.
 class _FakeSeerr implements HttpClientAdapter {
   _FakeSeerr(
     this.requests, {
@@ -67,7 +68,6 @@ class _FakeSeerr implements HttpClientAdapter {
       return _json(<String, dynamic>{}, 500);
     }
     final Map<String, dynamic> page = <String, dynamic>{
-      'pageInfo': <String, dynamic>{'results': requests},
       'results': <Map<String, dynamic>>[
         for (int id = skip; id < requests && id < skip + take; id++)
           <String, dynamic>{'id': id},
