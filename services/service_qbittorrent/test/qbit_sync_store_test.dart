@@ -74,11 +74,27 @@ void main() {
   });
 
   test('a delta changes only the fields it names', () {
+    // Every modeled field off its default: a field the merge dropped would
+    // otherwise come back as its default and still match.
+    Map<String, dynamic> row({required int dl}) =>
+        torrentRowJson(hash: a, name: 'kept', dlspeed: dl, upspeed: 4, eta: 60)
+          ..addAll(<String, dynamic>{
+            'uploaded': 3,
+            'ratio': 0.5,
+            'num_seeds': 7,
+            'num_leechs': 6,
+            'priority': 2,
+            'downloaded_session': 11,
+            'uploaded_session': 13,
+            'category': 'linux',
+            'tags': 'iso',
+            'tracker': 'udp://tracker.example.test:1337',
+          });
     final QbitSyncStore store = QbitSyncStore()
       ..apply(<String, dynamic>{
         'rid': 1,
         'full_update': true,
-        'torrents': <String, dynamic>{a: _entry(a, name: 'kept', dl: 5)},
+        'torrents': <String, dynamic>{a: row(dl: 5)..remove('hash')},
       });
 
     final List<QbitTorrent> list = store.apply(<String, dynamic>{
@@ -91,10 +107,7 @@ void main() {
     expect(store.rid, 2);
     // The whole model, so the fields kept under a snake_case key (added on,
     // seeds, the magnet link) are checked to survive the merge as well.
-    expect(
-      list.single,
-      QbitTorrent.fromJson(torrentRowJson(hash: a, name: 'kept', dlspeed: 99)),
-    );
+    expect(list.single, QbitTorrent.fromJson(row(dl: 99)));
   });
 
   test('a removed torrent leaves the list', () {
