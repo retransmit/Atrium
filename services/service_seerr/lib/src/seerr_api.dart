@@ -70,11 +70,12 @@ class SeerrApi {
   /// Unfiltered calls read the total from `/request/count` first and fetch
   /// every page concurrently - on large instances (~1500 requests = 15 pages)
   /// serial paging took long enough that refresh cycles could lap it.
-  /// Filtered calls, and unfiltered ones whose count cannot be read, keep the
-  /// serial short-page loop: the counts endpoint has no per-filter total for
-  /// every filter value, and without a total the page count is unknown. A
-  /// count of 0 takes the loop too - a reply without `total` reads as 0, and
-  /// the loop settles a truly empty server in one request.
+  /// Filtered calls, and unfiltered ones whose count the server answers
+  /// without a usable total, keep the serial short-page loop: the counts
+  /// endpoint has no per-filter total for every filter value, and without a
+  /// total the page count is unknown. A count of 0 takes the loop too - a
+  /// reply without `total` reads as 0, and the loop settles a truly empty
+  /// server in one request. A count that cannot reach the server throws.
   Future<List<SeerrRequest>> getAllRequests({
     String sort = 'added',
     String? filter,
