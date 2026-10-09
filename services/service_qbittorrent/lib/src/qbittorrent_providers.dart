@@ -306,13 +306,11 @@ bool? qbitIsPrivate(QbitTorrentProperties properties) =>
     (properties.piecesNum > 0 ? properties.isPrivate : null);
 
 /// Mutable per-instance `/sync/maindata` state: the response id plus the
-/// merged raw JSON and parsed model per torrent. Deliberately NOT autoDispose
+/// parsed model per torrent. Deliberately NOT autoDispose
 /// so re-entering the screen resumes delta sync - its first fetch is a small
 /// delta rather than the full list again.
 class QbitSyncStore {
   int rid = 0;
-  final Map<String, Map<String, dynamic>> _raw =
-      <String, Map<String, dynamic>>{};
   final Map<String, QbitTorrent> _models = <String, QbitTorrent>{};
   Future<void> _tail = Future<void>.value();
 
@@ -329,27 +327,29 @@ class QbitSyncStore {
   }
 
   /// Merges one maindata response and returns the resulting torrent list.
-  /// Only torrents present in the delta are re-parsed.
+  /// Only torrents present in the delta are re-parsed. A patch is merged over
+  /// the stored model's own JSON rather than over the server's raw row, so
+  /// the store holds only the fields the model keeps - not the ~60 keys
+  /// (paths, info hashes) qBittorrent sends per torrent, for every torrent,
+  /// for as long as the app runs.
   List<QbitTorrent> apply(Map<String, dynamic> data) {
     if (data['full_update'] == true) {
-      _raw.clear();
       _models.clear();
     }
     rid = (data['rid'] as num?)?.toInt() ?? rid;
     final Map<String, dynamic> patches =
         (data['torrents'] as Map<String, dynamic>?) ?? <String, dynamic>{};
     for (final MapEntry<String, dynamic> e in patches.entries) {
-      final Map<String, dynamic> merged = _raw.putIfAbsent(
-        e.key,
-        () => <String, dynamic>{'hash': e.key},
-      )..addAll(e.value as Map<String, dynamic>);
-      _models[e.key] = QbitTorrent.fromJson(merged);
+      _models[e.key] = QbitTorrent.fromJson(<String, dynamic>{
+        ...?_models[e.key]?.toJson(),
+        'hash': e.key,
+        ...e.value as Map<String, dynamic>,
+      });
     }
     final List<dynamic> removed =
         (data['torrents_removed'] as List<dynamic>?) ?? <dynamic>[];
     for (final dynamic hash in removed) {
-      _raw.remove(hash as String);
-      _models.remove(hash);
+      _models.remove(hash as String);
     }
     return _models.values.toList();
   }
