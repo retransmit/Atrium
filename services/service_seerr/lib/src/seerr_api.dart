@@ -69,7 +69,7 @@ class SeerrApi {
   ///
   /// Unfiltered calls read the total from `/request/count` first and fetch
   /// every page concurrently - on large instances (~1500 requests = 15 pages)
-  /// serial paging took long enough that refresh cycles could lap it.
+  /// serial paging made every load and refresh wait out 15 round trips.
   /// Filtered calls, and unfiltered ones whose count the server answers
   /// without a usable total, keep the serial short-page loop: the counts
   /// endpoint has no per-filter total for every filter value, and without a
