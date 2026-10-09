@@ -306,6 +306,13 @@ void main() {
     expect(list.single.hash, a);
   });
 
+  test('the list polls on the interval set for the instance', () {
+    expect(
+      qbitListPollInterval(_instance.copyWith(pollingIntervalSeconds: 7)),
+      const Duration(seconds: 7),
+    );
+  });
+
   test('an imported zero poll interval still waits a second', () {
     expect(
       qbitListPollInterval(_instance.copyWith(pollingIntervalSeconds: 0)),
