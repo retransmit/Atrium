@@ -332,24 +332,34 @@ class QbitSyncStore {
   /// the store holds only the fields the model keeps - not the ~60 keys
   /// (paths, info hashes) qBittorrent sends per torrent, for every torrent,
   /// for as long as the app runs.
+  ///
+  /// A response that fails to merge part way resets [rid] to 0 before
+  /// rethrowing: the server counts the reply as delivered and would never
+  /// resend what was skipped, so the next sync asks for the full list again
+  /// instead of building on a half-merged one.
   List<QbitTorrent> apply(Map<String, dynamic> data) {
-    if (data['full_update'] == true) {
-      _models.clear();
-    }
-    rid = (data['rid'] as num?)?.toInt() ?? rid;
-    final Map<String, dynamic> patches =
-        (data['torrents'] as Map<String, dynamic>?) ?? <String, dynamic>{};
-    for (final MapEntry<String, dynamic> e in patches.entries) {
-      _models[e.key] = QbitTorrent.fromJson(<String, dynamic>{
-        ...?_models[e.key]?.toJson(),
-        'hash': e.key,
-        ...e.value as Map<String, dynamic>,
-      });
-    }
-    final List<dynamic> removed =
-        (data['torrents_removed'] as List<dynamic>?) ?? <dynamic>[];
-    for (final dynamic hash in removed) {
-      _models.remove(hash as String);
+    try {
+      if (data['full_update'] == true) {
+        _models.clear();
+      }
+      final Map<String, dynamic> patches =
+          (data['torrents'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+      for (final MapEntry<String, dynamic> e in patches.entries) {
+        _models[e.key] = QbitTorrent.fromJson(<String, dynamic>{
+          ...?_models[e.key]?.toJson(),
+          'hash': e.key,
+          ...e.value as Map<String, dynamic>,
+        });
+      }
+      final List<dynamic> removed =
+          (data['torrents_removed'] as List<dynamic>?) ?? <dynamic>[];
+      for (final dynamic hash in removed) {
+        _models.remove(hash as String);
+      }
+      rid = (data['rid'] as num?)?.toInt() ?? rid;
+    } catch (_) {
+      rid = 0;
+      rethrow;
     }
     return _models.values.toList();
   }

@@ -106,6 +106,68 @@ void main() {
     expect(list.map((QbitTorrent t) => t.hash), <String>[b]);
   });
 
+  test('a torrent added between polls joins the list with its hash', () {
+    final QbitSyncStore store = QbitSyncStore()
+      ..apply(<String, dynamic>{
+        'rid': 1,
+        'full_update': true,
+        'torrents': <String, dynamic>{a: _entry(a)},
+      });
+
+    final List<QbitTorrent> list = store.apply(<String, dynamic>{
+      'rid': 2,
+      'torrents': <String, dynamic>{b: _entry(b, name: 'new')},
+    });
+
+    expect(store.rid, 2);
+    expect(
+      list.map((QbitTorrent t) => t.hash),
+      unorderedEquals(<String>[a, b]),
+    );
+    expect(list.firstWhere((QbitTorrent t) => t.hash == b).name, 'new');
+  });
+
+  test(
+      'a reply without a rid, or removing an unknown torrent, changes '
+      'nothing', () {
+    final QbitSyncStore store = QbitSyncStore()
+      ..apply(<String, dynamic>{
+        'rid': 3,
+        'full_update': true,
+        'torrents': <String, dynamic>{a: _entry(a)},
+      });
+
+    final List<QbitTorrent> list = store.apply(<String, dynamic>{
+      'torrents_removed': <String>[b],
+    });
+
+    expect(store.rid, 3);
+    expect(list.single.hash, a);
+  });
+
+  test('a reply that fails to merge makes the next sync ask for everything',
+      () {
+    final QbitSyncStore store = QbitSyncStore()
+      ..apply(<String, dynamic>{
+        'rid': 4,
+        'full_update': true,
+        'torrents': <String, dynamic>{a: _entry(a)},
+      });
+
+    // A patch for a torrent the store has never seen, missing its name.
+    expect(
+      () => store.apply(<String, dynamic>{
+        'rid': 5,
+        'torrents': <String, dynamic>{
+          b: <String, dynamic>{'dlspeed': 1},
+        },
+      }),
+      throwsA(anything),
+    );
+
+    expect(store.rid, 0);
+  });
+
   test('a full update drops torrents it no longer lists', () {
     final QbitSyncStore store = QbitSyncStore()
       ..apply(<String, dynamic>{
