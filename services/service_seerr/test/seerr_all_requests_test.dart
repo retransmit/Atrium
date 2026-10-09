@@ -190,5 +190,15 @@ void main() {
       );
       expect(r.server.skips, isEmpty);
     });
+
+    test('gives up without paging when the server cannot be reached', () async {
+      final r = _build(150, countError: DioExceptionType.connectionError);
+
+      await expectLater(
+        r.api.getAllRequests(),
+        throwsA(isA<NetworkUnreachableException>()),
+      );
+      expect(r.server.skips, isEmpty);
+    });
   });
 }
