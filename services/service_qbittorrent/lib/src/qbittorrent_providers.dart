@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
 import 'package:core_storage/core_storage.dart';
@@ -18,7 +20,9 @@ export 'models/qbit_log_entry.dart';
 /// UI polls at 1.5s). Each tick is a cheap `/sync/maindata` delta for the
 /// torrent list plus a small `/transfer/info` call for the global speeds.
 Duration qbitListPollInterval(Instance instance) =>
-    Duration(seconds: instance.pollingIntervalSeconds);
+    // The form allows no less than 1s, but an imported profile is not checked
+    // and 0 would poll back to back.
+    Duration(seconds: max(1, instance.pollingIntervalSeconds));
 
 /// How often detail-level data (properties, files, trackers) refreshes.
 const Duration qbitDetailPollInterval = Duration(seconds: 10);

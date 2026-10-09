@@ -288,6 +288,13 @@ void main() {
     expect(adapter.rids, <Object?>[0, 1]);
     expect(list.single.hash, a);
   });
+
+  test('an imported zero poll interval still waits a second', () {
+    expect(
+      qbitListPollInterval(_instance.copyWith(pollingIntervalSeconds: 0)),
+      const Duration(seconds: 1),
+    );
+  });
 }
 
 const Instance _instance = Instance(
