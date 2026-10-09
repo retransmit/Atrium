@@ -307,13 +307,26 @@ bool? qbitIsPrivate(QbitTorrentProperties properties) =>
 
 /// Mutable per-instance `/sync/maindata` state: the response id plus the
 /// merged raw JSON and parsed model per torrent. Deliberately NOT autoDispose
-/// so re-entering the screen resumes delta sync (and paints instantly from
-/// the parsed models) instead of re-downloading the full list.
+/// so re-entering the screen resumes delta sync - its first fetch is a small
+/// delta rather than the full list again.
 class QbitSyncStore {
   int rid = 0;
   final Map<String, Map<String, dynamic>> _raw =
       <String, Map<String, dynamic>>{};
   final Map<String, QbitTorrent> _models = <String, QbitTorrent>{};
+  Future<void> _tail = Future<void>.value();
+
+  /// Fetches the delta since [rid] and merges it. Calls run one after
+  /// another: a refresh fired while a fetch is in flight (pull-to-refresh, the
+  /// invalidate after an action) would otherwise go out with the same [rid],
+  /// and a reply landing out of order would overwrite newer fields with older
+  /// ones and wind [rid] back.
+  Future<List<QbitTorrent>> sync(QbittorrentClient client) {
+    final Future<List<QbitTorrent>> run =
+        _tail.then((_) async => apply(await client.getMainData(rid)));
+    _tail = run.then<void>((_) {}, onError: (Object _) {});
+    return run;
+  }
 
   /// Merges one maindata response and returns the resulting torrent list.
   /// Only torrents present in the delta are re-parsed.
@@ -360,7 +373,7 @@ final qbitRawTorrentsProvider =
   return ref.polled(qbitListPollInterval(instance), () async {
     final QbittorrentClient client =
         await ref.watch(qbittorrentClientProvider(instance).future);
-    return store.apply(await client.getMainData(store.rid));
+    return store.sync(client);
   });
 });
 
@@ -666,8 +679,8 @@ final qbitNetworkInterfaceAddressesProvider =
 });
 
 /// qBittorrent main log messages provider.
-final qbitLogsProvider = FutureProvider.family
-    .autoDispose<List<QbitLogEntry>, Instance>((
+final qbitLogsProvider =
+    FutureProvider.family.autoDispose<List<QbitLogEntry>, Instance>((
   Ref ref,
   Instance instance,
 ) async {
