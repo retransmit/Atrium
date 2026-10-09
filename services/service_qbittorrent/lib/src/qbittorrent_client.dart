@@ -157,6 +157,20 @@ class QbittorrentClient {
             .toList();
       });
 
+  /// Delta sync (`/sync/maindata`). With the `rid` from the previous response
+  /// the server sends only what changed since: new torrents in full, changed
+  /// fields of existing ones, and removed hashes in `torrents_removed`. With
+  /// `rid=0`, or a `rid` it no longer recognizes (e.g. after a qBittorrent
+  /// restart), it sends the full torrent list instead, flagged
+  /// `full_update: true`.
+  Future<Map<String, dynamic>> getMainData(int rid) => _guarded(() async {
+        final Response<dynamic> resp = await _dio.get<dynamic>(
+          'api/v2/sync/maindata',
+          queryParameters: <String, dynamic>{'rid': rid},
+        );
+        return resp.data as Map<String, dynamic>;
+      });
+
   Future<QbitTransferInfo> getTransferInfo() => _guarded(() async {
         final Response<dynamic> resp =
             await _dio.get<dynamic>('api/v2/transfer/info');
@@ -186,8 +200,8 @@ class QbittorrentClient {
   /// [urlsOrMagnets] may contain multiple entries (qBittorrent accepts them
   /// newline-separated). Optional [category], [savePath], [paused],
   /// [sequential] and [skipHashCheck] map to the matching `/torrents/add`
-  /// form fields. Returns nothing - call `getTorrents()` afterwards to
-  /// refresh.
+  /// form fields. Returns nothing - invalidate `qbitRawTorrentsProvider`
+  /// afterwards to refresh.
   Future<void> addUrls(
     List<String> urlsOrMagnets, {
     String? category,

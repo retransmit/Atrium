@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
 import 'package:core_storage/core_storage.dart';
@@ -13,9 +15,14 @@ import 'qbittorrent_client.dart';
 export 'models/qbit_log_entry.dart';
 
 /// How often list-level data (torrents, global speeds) refreshes while a
-/// qBittorrent screen is visible. qBit's own web UI polls at 1.5s; 3s is a
-/// good mobile compromise.
-const Duration qbitListPollInterval = Duration(seconds: 3);
+/// qBittorrent screen is visible. User-configurable per instance via the
+/// "Polling Interval" field on the instance form (default 5s; qBit's own web
+/// UI polls at 1.5s). Each tick is a cheap `/sync/maindata` delta for the
+/// torrent list plus a small `/transfer/info` call for the global speeds.
+Duration qbitListPollInterval(Instance instance) =>
+    // The form allows no less than 1s, but an imported profile is not checked
+    // and 0 would poll back to back.
+    Duration(seconds: max(1, instance.pollingIntervalSeconds));
 
 /// How often detail-level data (properties, files, trackers) refreshes.
 const Duration qbitDetailPollInterval = Duration(seconds: 10);
@@ -303,18 +310,87 @@ bool? qbitIsPrivate(QbitTorrentProperties properties) =>
     properties.private ??
     (properties.piecesNum > 0 ? properties.isPrivate : null);
 
-/// All torrents for an instance, sorted by the active [qbitSortProvider].
-/// Polls every [qbitListPollInterval] while watched; stops when the screen
-/// goes away (autoDispose).
+/// Mutable per-instance `/sync/maindata` state: the response id plus the
+/// parsed model per torrent.
+class QbitSyncStore {
+  int rid = 0;
+  final Map<String, QbitTorrent> _models = <String, QbitTorrent>{};
+  Future<void> _tail = Future<void>.value();
+
+  /// Fetches the delta since [rid] and merges it. Calls run one after
+  /// another: a refresh fired while a fetch is in flight (pull-to-refresh, the
+  /// invalidate after an action) would otherwise go out with the same [rid],
+  /// and a reply landing out of order would overwrite newer fields with older
+  /// ones and wind [rid] back.
+  Future<List<QbitTorrent>> sync(QbittorrentClient client) {
+    final Future<List<QbitTorrent>> run =
+        _tail.then((_) async => apply(await client.getMainData(rid)));
+    _tail = run.then<void>((_) {}, onError: (Object _) {});
+    return run;
+  }
+
+  /// Merges one maindata response and returns the resulting torrent list.
+  /// Only torrents present in the delta are re-parsed. A patch is merged over
+  /// the stored model's own JSON rather than over the server's raw row, so
+  /// the store holds only the fields the model keeps - not the ~60 keys
+  /// (paths, info hashes) qBittorrent sends per torrent, for every torrent,
+  /// for as long as the app runs.
+  ///
+  /// A response that fails to merge part way resets [rid] to 0 before
+  /// rethrowing. Left alone, [rid] would still name the last reply that
+  /// merged, so the server would send the same changes again: on top of a
+  /// half-merged list, and most likely failing on the same entry every time.
+  /// Asking with 0 gets the full list instead, which starts the store over.
+  List<QbitTorrent> apply(Map<String, dynamic> data) {
+    try {
+      if (data['full_update'] == true) {
+        _models.clear();
+      }
+      final Map<String, dynamic> patches =
+          (data['torrents'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+      for (final MapEntry<String, dynamic> e in patches.entries) {
+        _models[e.key] = QbitTorrent.fromJson(<String, dynamic>{
+          ...?_models[e.key]?.toJson(),
+          'hash': e.key,
+          ...e.value as Map<String, dynamic>,
+        });
+      }
+      final List<dynamic> removed =
+          (data['torrents_removed'] as List<dynamic>?) ?? <dynamic>[];
+      for (final dynamic hash in removed) {
+        _models.remove(hash as String);
+      }
+      rid = (data['rid'] as num?)?.toInt() ?? rid;
+    } catch (_) {
+      rid = 0;
+      rethrow;
+    }
+    return _models.values.toList();
+  }
+}
+
+/// Deliberately NOT autoDispose, so re-entering the screen resumes delta
+/// sync - its first fetch is a small delta rather than the full list again.
+final qbitSyncStoreProvider =
+    Provider.family<QbitSyncStore, Instance>((ref, instance) {
+  return QbitSyncStore();
+});
+
+/// All torrents for an instance. Polls every [qbitListPollInterval] while
+/// watched (autoDispose); each poll fetches only the delta since the last one
+/// via `/sync/maindata`, so large instances don't re-download the full list
+/// every tick.
 final qbitRawTorrentsProvider =
     FutureProvider.autoDispose.family<List<QbitTorrent>, Instance>((
   Ref ref,
   Instance instance,
-) async {
-  ref.pollEvery(qbitListPollInterval);
-  final QbittorrentClient client =
-      await ref.watch(qbittorrentClientProvider(instance).future);
-  return client.getTorrents();
+) {
+  final QbitSyncStore store = ref.watch(qbitSyncStoreProvider(instance));
+  return ref.polled(qbitListPollInterval(instance), () async {
+    final QbittorrentClient client =
+        await ref.watch(qbittorrentClientProvider(instance).future);
+    return store.sync(client);
+  });
 });
 
 final qbitSearchProvider =
@@ -435,11 +511,12 @@ final qbitTransferProvider =
     FutureProvider.autoDispose.family<QbitTransferInfo, Instance>((
   Ref ref,
   Instance instance,
-) async {
-  ref.pollEvery(qbitListPollInterval);
-  final QbittorrentClient client =
-      await ref.watch(qbittorrentClientProvider(instance).future);
-  return client.getTransferInfo();
+) {
+  return ref.polled(qbitListPollInterval(instance), () async {
+    final QbittorrentClient client =
+        await ref.watch(qbittorrentClientProvider(instance).future);
+    return client.getTransferInfo();
+  });
 });
 
 /// Categories on an instance mapped to the save path each defines, empty
@@ -485,12 +562,13 @@ final qbitPropertiesProvider = FutureProvider.autoDispose
     .family<QbitTorrentProperties, (Instance, String)>((
   Ref ref,
   (Instance, String) key,
-) async {
-  ref.pollEvery(qbitDetailPollInterval);
-  final (Instance instance, String hash) = key;
-  final QbittorrentClient client =
-      await ref.watch(qbittorrentClientProvider(instance).future);
-  return client.getProperties(hash);
+) {
+  return ref.polled(qbitDetailPollInterval, () async {
+    final (Instance instance, String hash) = key;
+    final QbittorrentClient client =
+        await ref.watch(qbittorrentClientProvider(instance).future);
+    return client.getProperties(hash);
+  });
 });
 
 /// File list for one torrent, keyed by (instance, hash).
@@ -498,12 +576,13 @@ final qbitFilesProvider =
     FutureProvider.autoDispose.family<List<QbitFile>, (Instance, String)>((
   Ref ref,
   (Instance, String) key,
-) async {
-  ref.pollEvery(qbitDetailPollInterval);
-  final (Instance instance, String hash) = key;
-  final QbittorrentClient client =
-      await ref.watch(qbittorrentClientProvider(instance).future);
-  return client.getFiles(hash);
+) {
+  return ref.polled(qbitDetailPollInterval, () async {
+    final (Instance instance, String hash) = key;
+    final QbittorrentClient client =
+        await ref.watch(qbittorrentClientProvider(instance).future);
+    return client.getFiles(hash);
+  });
 });
 
 /// Tracker list for one torrent, keyed by (instance, hash).
@@ -511,12 +590,13 @@ final qbitTrackersProvider =
     FutureProvider.autoDispose.family<List<QbitTracker>, (Instance, String)>((
   Ref ref,
   (Instance, String) key,
-) async {
-  ref.pollEvery(qbitDetailPollInterval);
-  final (Instance instance, String hash) = key;
-  final QbittorrentClient client =
-      await ref.watch(qbittorrentClientProvider(instance).future);
-  return client.getTrackers(hash);
+) {
+  return ref.polled(qbitDetailPollInterval, () async {
+    final (Instance instance, String hash) = key;
+    final QbittorrentClient client =
+        await ref.watch(qbittorrentClientProvider(instance).future);
+    return client.getTrackers(hash);
+  });
 });
 
 /// Holds the set of currently selected torrent hashes for multi-select actions.
@@ -533,12 +613,13 @@ final qbitPeersProvider =
     FutureProvider.autoDispose.family<List<QbitPeer>, (Instance, String)>((
   Ref ref,
   (Instance, String) key,
-) async {
-  ref.pollEvery(qbitDetailPollInterval);
-  final (Instance instance, String hash) = key;
-  final QbittorrentClient client =
-      await ref.watch(qbittorrentClientProvider(instance).future);
-  return client.getPeers(hash);
+) {
+  return ref.polled(qbitDetailPollInterval, () async {
+    final (Instance instance, String hash) = key;
+    final QbittorrentClient client =
+        await ref.watch(qbittorrentClientProvider(instance).future);
+    return client.getPeers(hash);
+  });
 });
 
 /// Active bottom tab index for qBittorrent home (0: Home, 1: Settings).
@@ -614,8 +695,8 @@ final qbitNetworkInterfaceAddressesProvider =
 });
 
 /// qBittorrent main log messages provider.
-final qbitLogsProvider = FutureProvider.family
-    .autoDispose<List<QbitLogEntry>, Instance>((
+final qbitLogsProvider =
+    FutureProvider.family.autoDispose<List<QbitLogEntry>, Instance>((
   Ref ref,
   Instance instance,
 ) async {

@@ -41,8 +41,9 @@ Atrium is a **controller** app. Video playback was removed by design
 
 - Core foundation: profiles, multi-instance, dual-URL routing, secure
   key storage, import/export, per-service health dots, theming
-- **qBittorrent**: cookie login (qBit 5.x 204 fix), 3s realtime polling,
-  add magnet/file (with skip hash check), categories, tag and tracker
+- **qBittorrent**: cookie login (qBit 5.x 204 fix), realtime polling of
+  only what changed (per-instance interval, default 5s), add
+  magnet/file (with skip hash check), categories, tag and tracker
   filters, pause/resume/delete/recheck, queue moves and reordering
   (top/up/down/bottom) with sort by queue position, torrent detail
   (overview/files/trackers), per-file priority, and a settings screen

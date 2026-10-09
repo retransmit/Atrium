@@ -3,7 +3,9 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'qbit_torrent.freezed.dart';
 part 'qbit_torrent.g.dart';
 
-/// A torrent as returned by `GET /api/v2/torrents/info`.
+/// A torrent as returned by `GET /api/v2/torrents/info`, or rebuilt from
+/// `/sync/maindata` patches merged over `toJson` (see `QbitSyncStore`), so
+/// `toJson` must keep the server's own keys.
 ///
 /// Only the fields Atrium renders are modeled. qBittorrent returns snake_case
 /// keys; the snake_case ones are mapped with [JsonKey].
