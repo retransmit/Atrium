@@ -72,7 +72,9 @@ class SeerrApi {
   /// serial paging took long enough that refresh cycles could lap it.
   /// Filtered calls, and unfiltered ones whose count cannot be read, keep the
   /// serial short-page loop: the counts endpoint has no per-filter total for
-  /// every filter value, and without a total the page count is unknown.
+  /// every filter value, and without a total the page count is unknown. A
+  /// count of 0 takes the loop too - a reply without `total` reads as 0, and
+  /// the loop settles a truly empty server in one request.
   Future<List<SeerrRequest>> getAllRequests({
     String sort = 'added',
     String? filter,
@@ -82,8 +84,8 @@ class SeerrApi {
     final int? total = filter != null
         ? null
         : await getRequestCounts()
-              .then<int?>((SeerrCounts c) => c.total)
-              .catchError((_) => null);
+            .then<int?>((SeerrCounts c) => c.total > 0 ? c.total : null)
+            .catchError((_) => null);
     if (total != null) {
       final List<List<SeerrRequest>> pages = await Future.wait(
         <Future<List<SeerrRequest>>>[
