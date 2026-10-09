@@ -70,18 +70,21 @@ class SeerrApi {
   /// Unfiltered calls read the total from `/request/count` first and fetch
   /// every page concurrently - on large instances (~1500 requests = 15 pages)
   /// serial paging took long enough that refresh cycles could lap it.
-  /// Filtered calls keep the serial short-page loop because the counts
-  /// endpoint has no per-filter total for every filter value.
+  /// Filtered calls, and unfiltered ones whose count cannot be read, keep the
+  /// serial short-page loop: the counts endpoint has no per-filter total for
+  /// every filter value, and without a total the page count is unknown.
   Future<List<SeerrRequest>> getAllRequests({
     String sort = 'added',
     String? filter,
   }) async {
     const int pageSize = 100;
     const int maxItems = 2000;
-    if (filter == null) {
-      final int total = await getRequestCounts()
-          .then((SeerrCounts c) => c.total)
-          .catchError((_) => maxItems);
+    final int? total = filter != null
+        ? null
+        : await getRequestCounts()
+              .then<int?>((SeerrCounts c) => c.total)
+              .catchError((_) => null);
+    if (total != null) {
       final List<List<SeerrRequest>> pages = await Future.wait(
         <Future<List<SeerrRequest>>>[
           for (int skip = 0;
