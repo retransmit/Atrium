@@ -41,4 +41,16 @@ void main() {
 
     expect(find.text('Polling Interval (seconds)'), findsOneWidget);
   });
+
+  testWidgets('qBittorrent offers the polling interval',
+      (WidgetTester tester) async {
+    await openFormFor(tester, 'qBittorrent - Torrent client');
+    await tester.scrollUntilVisible(
+      find.text('Polling Interval (seconds)'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(find.text('Polling Interval (seconds)'), findsOneWidget);
+  });
 }
