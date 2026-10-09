@@ -198,8 +198,8 @@ class QbittorrentClient {
   /// [urlsOrMagnets] may contain multiple entries (qBittorrent accepts them
   /// newline-separated). Optional [category], [savePath], [paused],
   /// [sequential] and [skipHashCheck] map to the matching `/torrents/add`
-  /// form fields. Returns nothing - call `getTorrents()` afterwards to
-  /// refresh.
+  /// form fields. Returns nothing - invalidate `qbitRawTorrentsProvider`
+  /// afterwards to refresh.
   Future<void> addUrls(
     List<String> urlsOrMagnets, {
     String? category,

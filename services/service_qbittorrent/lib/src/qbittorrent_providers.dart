@@ -307,9 +307,7 @@ bool? qbitIsPrivate(QbitTorrentProperties properties) =>
     (properties.piecesNum > 0 ? properties.isPrivate : null);
 
 /// Mutable per-instance `/sync/maindata` state: the response id plus the
-/// parsed model per torrent. Deliberately NOT autoDispose
-/// so re-entering the screen resumes delta sync - its first fetch is a small
-/// delta rather than the full list again.
+/// parsed model per torrent.
 class QbitSyncStore {
   int rid = 0;
   final Map<String, QbitTorrent> _models = <String, QbitTorrent>{};
@@ -366,6 +364,8 @@ class QbitSyncStore {
   }
 }
 
+/// Deliberately NOT autoDispose, so re-entering the screen resumes delta
+/// sync - its first fetch is a small delta rather than the full list again.
 final qbitSyncStoreProvider =
     Provider.family<QbitSyncStore, Instance>((ref, instance) {
   return QbitSyncStore();
