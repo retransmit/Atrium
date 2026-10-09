@@ -63,15 +63,37 @@ class SeerrApi {
     }
   }
 
-  /// All requests, paged in until a short page is returned (the `/request`
-  /// endpoint caps each page, so a single call would only ever return one
-  /// page). A safety cap stops runaway paging on very large libraries.
+  /// All requests (the `/request` endpoint caps each page, so a single call
+  /// would only ever return one page). A safety cap stops runaway paging on
+  /// very large libraries.
+  ///
+  /// Unfiltered calls read the total from `/request/count` first and fetch
+  /// every page concurrently - on large instances (~1500 requests = 15 pages)
+  /// serial paging made every load and refresh wait out 15 round trips.
+  /// Filtered calls, and unfiltered ones whose count the server answers
+  /// without a usable total, keep the serial short-page loop: the counts
+  /// endpoint has no per-filter total for every filter value, and without a
+  /// total the page count is unknown. A count of 0 takes the loop too - a
+  /// reply without `total` reads as 0, and the loop settles a truly empty
+  /// server in one request. A count that cannot reach the server throws.
   Future<List<SeerrRequest>> getAllRequests({
     String sort = 'added',
     String? filter,
   }) async {
     const int pageSize = 100;
     const int maxItems = 2000;
+    final int? total = filter != null ? null : await _requestTotal();
+    if (total != null) {
+      final List<List<SeerrRequest>> pages = await Future.wait(
+        <Future<List<SeerrRequest>>>[
+          for (int skip = 0;
+              skip < total && skip < maxItems;
+              skip += pageSize)
+            getRequests(take: pageSize, skip: skip, sort: sort),
+        ],
+      );
+      return <SeerrRequest>[for (final List<SeerrRequest> p in pages) ...p];
+    }
     final List<SeerrRequest> all = <SeerrRequest>[];
     int skip = 0;
     while (true) {
@@ -88,6 +110,26 @@ class SeerrApi {
       skip += pageSize;
     }
     return all;
+  }
+
+  /// The total from `/request/count`, or null when the server answered
+  /// without a usable one (no count endpoint, a 401/403, a 5xx, an odd body,
+  /// a 0). A count that times out or cannot connect throws instead: every
+  /// page would fail the same way, and after a timeout only at the end of a
+  /// second full wait.
+  Future<int?> _requestTotal() async {
+    try {
+      final int total = (await getRequestCounts()).total;
+      return total > 0 ? total : null;
+    } catch (e) {
+      if (e is NetworkTimeoutException ||
+          e is NetworkUnreachableException ||
+          e is NetworkTlsException ||
+          e is NetworkCancelledException) {
+        rethrow;
+      }
+      return null;
+    }
   }
 
   Future<SeerrCounts> getRequestCounts() async {
