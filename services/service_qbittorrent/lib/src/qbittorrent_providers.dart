@@ -15,7 +15,8 @@ export 'models/qbit_log_entry.dart';
 /// How often list-level data (torrents, global speeds) refreshes while a
 /// qBittorrent screen is visible. User-configurable per instance via the
 /// "Polling Interval" field on the instance form (default 5s; qBit's own web
-/// UI polls at 1.5s). Each tick is a cheap `/sync/maindata` delta.
+/// UI polls at 1.5s). Each tick is a cheap `/sync/maindata` delta for the
+/// torrent list plus a small `/transfer/info` call for the global speeds.
 Duration qbitListPollInterval(Instance instance) =>
     Duration(seconds: instance.pollingIntervalSeconds);
 
