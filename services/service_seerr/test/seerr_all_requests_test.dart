@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:core_networking/core_networking.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:service_seerr/service_seerr.dart';
@@ -8,13 +9,21 @@ import 'package:service_seerr/service_seerr.dart';
 /// A Seerr holding [requests] requests, newest first, that answers
 /// `/request/count` and pages of `/request` the way the server does.
 class _FakeSeerr implements HttpClientAdapter {
-  _FakeSeerr(this.requests, {this.countStatus = 200, this.countBody});
+  _FakeSeerr(
+    this.requests, {
+    this.countStatus = 200,
+    this.countBody,
+    this.countError,
+  });
 
   final int requests;
   final int countStatus;
 
   /// What `/request/count` answers with, when not the plain `total`.
   final Map<String, dynamic>? countBody;
+
+  /// How `/request/count` fails without an answer, if it does.
+  final DioExceptionType? countError;
   final List<RequestOptions> asked = <RequestOptions>[];
 
   List<int> get skips => <int>[
@@ -30,6 +39,9 @@ class _FakeSeerr implements HttpClientAdapter {
   ) async {
     asked.add(options);
     if (options.path.endsWith('/request/count')) {
+      if (countError != null) {
+        throw DioException(requestOptions: options, type: countError!);
+      }
       return _json(
         countBody ?? <String, dynamic>{'total': requests},
         countStatus,
@@ -64,11 +76,13 @@ class _FakeSeerr implements HttpClientAdapter {
   int requests, {
   int countStatus = 200,
   Map<String, dynamic>? countBody,
+  DioExceptionType? countError,
 }) {
   final _FakeSeerr server = _FakeSeerr(
     requests,
     countStatus: countStatus,
     countBody: countBody,
+    countError: countError,
   );
   final Dio dio = Dio(BaseOptions(baseUrl: 'http://seerr.test/'))
     ..httpClientAdapter = server;
@@ -127,5 +141,15 @@ void main() {
         expect(all, hasLength(150));
       },
     );
+
+    test('gives up without paging when the count times out', () async {
+      final r = _build(150, countError: DioExceptionType.receiveTimeout);
+
+      await expectLater(
+        r.api.getAllRequests(),
+        throwsA(isA<NetworkTimeoutException>()),
+      );
+      expect(r.server.skips, isEmpty);
+    });
   });
 }

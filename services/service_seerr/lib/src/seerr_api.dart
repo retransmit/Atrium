@@ -81,11 +81,7 @@ class SeerrApi {
   }) async {
     const int pageSize = 100;
     const int maxItems = 2000;
-    final int? total = filter != null
-        ? null
-        : await getRequestCounts()
-            .then<int?>((SeerrCounts c) => c.total > 0 ? c.total : null)
-            .catchError((_) => null);
+    final int? total = filter != null ? null : await _requestTotal();
     if (total != null) {
       final List<List<SeerrRequest>> pages = await Future.wait(
         <Future<List<SeerrRequest>>>[
@@ -113,6 +109,25 @@ class SeerrApi {
       skip += pageSize;
     }
     return all;
+  }
+
+  /// The total from `/request/count`, or null when the server answered
+  /// without a usable one (no count endpoint, a 5xx, an odd body, a 0).
+  /// A server that cannot be reached throws instead: falling back would send
+  /// the first page after it and wait out the same timeout a second time.
+  Future<int?> _requestTotal() async {
+    try {
+      final int total = (await getRequestCounts()).total;
+      return total > 0 ? total : null;
+    } catch (e) {
+      if (e is NetworkTimeoutException ||
+          e is NetworkUnreachableException ||
+          e is NetworkTlsException ||
+          e is NetworkCancelledException) {
+        rethrow;
+      }
+      return null;
+    }
   }
 
   Future<SeerrCounts> getRequestCounts() async {
