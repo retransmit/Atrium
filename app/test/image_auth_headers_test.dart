@@ -1,6 +1,7 @@
 import 'package:atrium/src/dashboard/widgets/recently_added_widget.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:core_models/core_models.dart';
+import 'package:core_networking/core_networking.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -105,4 +106,75 @@ void main() {
           'blank behind Authelia while everything else works',
     );
   });
+
+  testWidgets(
+      'a poster from a self-signed instance is registered in SelfSignedCertTrust',
+      (WidgetTester tester) async {
+    const String base = 'https://sonarr.selfsigned.test:8989';
+    final Instance sonarr = Instance(
+      id: 'sonarr-selfsigned',
+      name: 'Sonarr',
+      kind: ServiceKind.sonarr,
+      localUrl: base,
+      externalUrl: '',
+      urlMode: UrlMode.auto,
+      auth: const InstanceAuth.apiKey(apiKey: 'k'),
+      allowSelfSignedCerts: true,
+    );
+
+    final SonarrApi api = SonarrApi(
+      Dio(BaseOptions(baseUrl: '$base/')),
+      apiKey: 'k',
+    );
+
+    addTearDown(() {
+      ArtworkHeaders.reset();
+      SelfSignedCertTrust.reset();
+    });
+    ArtworkHeaders.update(
+      instances: <Instance>[sonarr],
+      global: const <String, String>{},
+    );
+    SelfSignedCertTrust.update(<Instance>[sonarr]);
+
+    await pumpBody(
+      tester,
+      <Override>[
+        sonarrApiProvider(sonarr).overrideWith((Ref ref) async => api),
+        sonarrSeriesProvider(sonarr).overrideWith(
+          (Ref ref) async => const <SonarrSeries>[
+            SonarrSeries(
+              title: 'Self-Signed Poster Test',
+              year: 2026,
+              added: '2026-09-09T00:00:00Z',
+              images: <SonarrImage>[
+                SonarrImage(
+                  coverType: 'poster',
+                  url: '/MediaCover/1/poster.jpg',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+      DashboardRecentlyAddedWidget(
+        sonarrInstances: <Instance>[sonarr],
+        radarrInstances: const <Instance>[],
+      ),
+      pumps: 5,
+    );
+
+    final Finder posters = find.byType(CachedNetworkImage);
+    expect(posters, findsOneWidget);
+
+    final CachedNetworkImage poster =
+        tester.widget<CachedNetworkImage>(posters);
+    expect(
+      SelfSignedCertTrust.allowsUrl(poster.imageUrl),
+      isTrue,
+      reason: 'the poster URL must be permitted by SelfSignedCertTrust so '
+          'it does not get blocked by TLS handshake verification',
+    );
+  });
 }
+

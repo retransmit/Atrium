@@ -36,13 +36,16 @@ class AtriumApp extends ConsumerWidget {
       if (!mapEquals(ref.read(globalHeadersProvider), next)) {
         ref.read(globalHeadersProvider.notifier).state = next;
       }
-      // Artwork does not go through Dio, so it needs the same headers by a
-      // second route. Rebuilt unconditionally rather than under the compare
-      // above: an instance's own headers or its URL can change while the
-      // profile-wide map stays identical.
+      // Artwork does not go through Dio, so it needs the same headers and TLS
+      // exceptions by a second route. Rebuilt unconditionally rather than under
+      // the compare above: an instance's own headers, its URLs, or its TLS
+      // settings can change while the profile-wide map stays identical.
       ArtworkHeaders.update(
         instances: profile?.instances ?? const <Instance>[],
         global: next,
+      );
+      SelfSignedCertTrust.update(
+        profile?.instances ?? const <Instance>[],
       );
     }
 

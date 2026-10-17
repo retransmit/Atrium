@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:core_networking/core_networking.dart';
 import 'package:core_profile/core_profile.dart';
@@ -11,6 +13,7 @@ import 'preferences.dart';
 /// Initializes storage and networking, then returns the Riverpod overrides the
 /// root [ProviderScope] needs. Call once from `main()` before `runApp`.
 Future<List<Override>> bootstrap() async {
+  HttpOverrides.global = AtriumHttpOverrides();
   await initAtriumHive();
   final List<Box<String>> boxes = await Future.wait(<Future<Box<String>>>[
     Hive.openBox<String>(AtriumBoxes.settings),
