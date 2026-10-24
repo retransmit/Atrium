@@ -397,7 +397,7 @@ class _TransferPanel extends ConsumerWidget {
                       : '${stats.pausedTorrentCount} paused',
                 ),
               ),
-              const SizedBox(width: Insets.xs),
+              const SizedBox(width: Insets.sm),
               Expanded(
                 child: TransmissionStatBadge(
                   label: 'Down',
@@ -407,7 +407,7 @@ class _TransferPanel extends ConsumerWidget {
                   detail: trFmtRate(stats.downloadSpeed),
                 ),
               ),
-              const SizedBox(width: Insets.xs),
+              const SizedBox(width: Insets.sm),
               Expanded(
                 child: TransmissionStatBadge(
                   label: 'Up',
@@ -423,7 +423,7 @@ class _TransferPanel extends ConsumerWidget {
           Row(
             children: <Widget>[
               Expanded(child: _SearchRow(instance: instance)),
-              const SizedBox(width: Insets.xs),
+              const SizedBox(width: Insets.sm),
               // Turtle mode overrides both caps while on, so it is a mode
               // switch rather than another limit value.
               IconButton.filledTonal(
@@ -443,7 +443,6 @@ class _TransferPanel extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: Insets.sm),
           // Caps are status, not furniture: a pill appears only while a limit
           // is actually in force. Two "Unlimited" badges said nothing and took
           // the room the bulk controls needed. Setting either cap, and turning
