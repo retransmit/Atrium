@@ -49,20 +49,22 @@ class TransmissionTorrentRow extends StatelessWidget {
         ? cs.onPrimaryContainer.withValues(alpha: 0.8)
         : cs.onSurfaceVariant;
 
-    final String etaSuffix = (torrent.hasEta && !torrent.isDone)
-        ? ' • ${trFmtEta(torrent.eta)} left'
-        : '';
     final String sizeText = torrent.needsMetadata
         ? ''
         : (torrent.isDone
             ? trFmtBytes(torrent.totalSize)
-            : '${trFmtBytes(torrent.doneBytes)} / ${trFmtBytes(torrent.sizeWhenDone)}$etaSuffix');
+            : '${trFmtBytes(torrent.doneBytes)} / ${trFmtBytes(torrent.sizeWhenDone)}');
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: Insets.sm),
+      padding: const EdgeInsets.fromLTRB(
+        Insets.md,
+        Insets.xs,
+        Insets.md,
+        Insets.xs,
+      ),
       child: Material(
         color: selected ? cs.primaryContainer : cs.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(TransmissionPanel.radius),
+        borderRadius: BorderRadius.circular(20),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
@@ -179,7 +181,7 @@ class TransmissionTorrentRow extends StatelessWidget {
                     ),
                     const SizedBox(width: Insets.sm),
                     Text(
-                      '${trPct(trBarValue(torrent))}%',
+                      '${(trBarValue(torrent) * 100).toStringAsFixed(0)}%',
                       style: text.labelMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: selected ? cs.onPrimaryContainer : v.color,
@@ -224,39 +226,78 @@ class TransmissionTorrentRow extends StatelessWidget {
                     ),
                   ],
                   const SizedBox(height: Insets.md),
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: TransmissionSpeedPill(
-                          icon: Icons.south,
-                          label: trFmtRate(torrent.downloadRate),
-                          color: cs.primary,
-                          active: torrent.downloadRate > 0,
-                          selected: selected,
+                  SizedBox(
+                    width: double.infinity,
+                    child: Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      runSpacing: Insets.xs,
+                      children: <Widget>[
+                        Wrap(
+                          spacing: Insets.sm,
+                          runSpacing: Insets.xs,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: <Widget>[
+                            TransmissionSpeedPill(
+                              icon: Icons.south,
+                              label: trFmtRate(torrent.downloadRate),
+                              color: cs.primary,
+                              active: torrent.downloadRate > 0,
+                              selected: selected,
+                            ),
+                            TransmissionSpeedPill(
+                              icon: Icons.north,
+                              label: trFmtRate(torrent.uploadRate),
+                              color: cs.tertiary,
+                              active: torrent.uploadRate > 0,
+                              selected: selected,
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: Insets.sm),
-                      Expanded(
-                        child: TransmissionSpeedPill(
-                          icon: Icons.north,
-                          label: trFmtRate(torrent.uploadRate),
-                          color: cs.tertiary,
-                          active: torrent.uploadRate > 0,
-                          selected: selected,
+                        Wrap(
+                          spacing: Insets.sm,
+                          runSpacing: Insets.xs,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: <Widget>[
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                Icon(
+                                  Icons.swap_vert,
+                                  size: 14,
+                                  color: onTileQuiet,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  trRatioString(torrent.uploadRatio),
+                                  style: text.labelSmall?.copyWith(
+                                    color: onTileQuiet,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (torrent.hasEta && !torrent.isDone)
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Icon(
+                                    Icons.schedule,
+                                    size: 14,
+                                    color: onTileQuiet,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    trFmtEta(torrent.eta),
+                                    style: text.labelSmall?.copyWith(
+                                      color: onTileQuiet,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(width: Insets.sm),
-                      Expanded(
-                        child: TransmissionPill(
-                          icon: Icons.swap_vert,
-                          label: trRatioString(torrent.uploadRatio),
-                          foreground: onTileQuiet,
-                          background: selected
-                              ? cs.onPrimaryContainer.withValues(alpha: 0.12)
-                              : cs.surfaceContainerHighest,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ],

@@ -367,7 +367,7 @@ void main() {
   });
 
   testWidgets(
-      'torrent card badges for down speed, up speed, and ratio are evenly spaced',
+      'torrent card matches qbittorrent bottom row with speeds left and ratio right',
       (WidgetTester tester) async {
     await open(tester);
 
@@ -384,31 +384,23 @@ void main() {
         (Widget w) => w is TransmissionSpeedPill && w.icon == Icons.north,
       ),
     );
-    final Finder ratioBadge = find.descendant(
+    final Finder ratioIcon = find.descendant(
       of: firstTile,
-      matching: find.byWidgetPredicate(
-        (Widget w) => w is TransmissionPill && w.icon == Icons.swap_vert,
-      ),
+      matching: find.byIcon(Icons.swap_vert),
     );
 
     expect(downBadge, findsOneWidget);
     expect(upBadge, findsOneWidget);
-    expect(ratioBadge, findsOneWidget);
+    expect(ratioIcon, findsOneWidget);
 
-    final double downWidth = tester.getSize(downBadge).width;
-    final double upWidth = tester.getSize(upBadge).width;
-    final double ratioWidth = tester.getSize(ratioBadge).width;
-
-    expect(downWidth, equals(upWidth));
-    expect(upWidth, equals(ratioWidth));
-
+    // Speed pills are separated by Insets.sm (8 px)
     expect(
       tester.getTopLeft(upBadge).dx - tester.getTopRight(downBadge).dx,
       equals(8.0),
     );
-    expect(
-      tester.getTopLeft(ratioBadge).dx - tester.getTopRight(upBadge).dx,
-      equals(8.0),
-    );
+
+    // Spacer pushes ratio to the right side of the card, past the middle
+    final double cardCenterX = tester.getCenter(firstTile).dx;
+    expect(tester.getTopLeft(ratioIcon).dx, greaterThan(cardCenterX));
   });
 }

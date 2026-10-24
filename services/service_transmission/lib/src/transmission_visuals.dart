@@ -195,15 +195,13 @@ class TransmissionPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           if (icon != null) ...<Widget>[
             Icon(icon, size: 14, color: foreground),
@@ -219,7 +217,7 @@ class TransmissionPill extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: foreground,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                     fontFamily: monospace ? 'monospace' : null,
                   ),
             ),
@@ -236,7 +234,7 @@ class TransmissionSpeedPill extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.color,
-    required this.active,
+    this.active = true,
     this.selected = false,
     super.key,
   });
@@ -256,12 +254,29 @@ class TransmissionSpeedPill extends StatelessWidget {
     final Color quietBackground = selected
         ? cs.onPrimaryContainer.withValues(alpha: 0.12)
         : cs.surfaceContainerHighest;
-    return TransmissionPill(
-      icon: icon,
-      label: label,
-      foreground: active ? color : quietForeground,
-      background:
-          active ? color.withValues(alpha: 0.12) : quietBackground,
+    final Color fg = active ? color : quietForeground;
+    final Color bg =
+        active ? color.withValues(alpha: 0.12) : quietBackground;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 14, color: fg),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: fg,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+        ],
+      ),
     );
   }
 }
