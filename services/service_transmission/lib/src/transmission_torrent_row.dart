@@ -10,10 +10,11 @@ import 'transmission_visuals.dart';
 
 /// One torrent in the list, full or compact, selectable.
 ///
-/// The tile the other torrent clients use: a tinted block for the state, a
-/// state pill and label chips under the name, the bar with its percentage,
-/// then the two lines the web UI shows. The wave on the bar is the one
-/// flourish, and only while bytes move.
+/// Styled similarly to qBittorrent's clean, modern cards with proper
+/// screen margins, state icon block, progress bar, and speed pills,
+/// while featuring Transmission-specific capabilities: expressive wavy
+/// progress animations while transferring, rich swarm peer stats,
+/// and a direct actions menu.
 class TransmissionTorrentRow extends StatelessWidget {
   const TransmissionTorrentRow({
     required this.torrent,
@@ -48,6 +49,12 @@ class TransmissionTorrentRow extends StatelessWidget {
         ? cs.onPrimaryContainer.withValues(alpha: 0.8)
         : cs.onSurfaceVariant;
 
+    final String sizeText = torrent.needsMetadata
+        ? ''
+        : (torrent.isDone
+            ? trFmtBytes(torrent.totalSize)
+            : '${trFmtBytes(torrent.doneBytes)} / ${trFmtBytes(torrent.sizeWhenDone)}');
+
     return Padding(
       padding: const EdgeInsets.only(bottom: Insets.sm),
       child: Material(
@@ -58,7 +65,7 @@ class TransmissionTorrentRow extends StatelessWidget {
           onTap: onTap,
           onLongPress: onLongPress,
           child: Padding(
-            padding: EdgeInsets.all(compact ? Insets.sm : Insets.md),
+            padding: const EdgeInsets.all(Insets.md),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
@@ -88,29 +95,44 @@ class TransmissionTorrentRow extends StatelessWidget {
                               color: onTile,
                             ),
                           ),
-                          if (!compact) ...<Widget>[
-                            const SizedBox(height: 6),
-                            Wrap(
-                              spacing: Insets.xs,
-                              runSpacing: Insets.xs,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: <Widget>[
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: Insets.sm,
+                            runSpacing: Insets.xs,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: <Widget>[
+                              TransmissionPill(
+                                label: torrent.stateString,
+                                foreground: v.onContainer,
+                                background: v.container,
+                              ),
+                              if (torrent.isPrivate)
                                 TransmissionPill(
-                                  label: torrent.stateString,
-                                  foreground: v.onContainer,
-                                  background: v.container,
+                                  icon: Icons.lock_outline,
+                                  label: 'Private',
+                                  foreground: cs.onTertiaryContainer,
+                                  background: cs.tertiaryContainer,
                                 ),
-                                if (labelsSupported)
-                                  for (final String label in torrent.labels)
-                                    TransmissionPill(
-                                      label: label,
-                                      icon: Icons.label_outline,
-                                      foreground: cs.onSecondaryContainer,
-                                      background: cs.secondaryContainer,
-                                    ),
-                              ],
-                            ),
-                          ],
+                              if (sizeText.isNotEmpty)
+                                Text(
+                                  sizeText,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: text.bodySmall?.copyWith(
+                                    color: onTileQuiet,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              if (labelsSupported)
+                                for (final String label in torrent.labels)
+                                  TransmissionPill(
+                                    label: label,
+                                    icon: Icons.label_outline,
+                                    foreground: cs.onSecondaryContainer,
+                                    background: cs.secondaryContainer,
+                                  ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -118,6 +140,11 @@ class TransmissionTorrentRow extends StatelessWidget {
                       PopupMenuButton<TransmissionTorrentAction>(
                         tooltip: 'Torrent actions',
                         padding: EdgeInsets.zero,
+                        icon: Icon(
+                          Icons.more_vert_rounded,
+                          size: 20,
+                          color: onTileQuiet,
+                        ),
                         itemBuilder: (BuildContext _) =>
                             transmissionActionMenuItems(
                           anyStopped: torrent.status.isStopped,
@@ -128,7 +155,7 @@ class TransmissionTorrentRow extends StatelessWidget {
                       ),
                   ],
                 ),
-                SizedBox(height: compact ? Insets.sm : Insets.md),
+                const SizedBox(height: Insets.md),
                 Row(
                   children: <Widget>[
                     Expanded(
@@ -136,13 +163,11 @@ class TransmissionTorrentRow extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                         child: LinearProgressIndicatorM3E(
                           value: trBarValue(torrent),
-                          // The expressive wave reads as "moving right now",
-                          // so it is spent only on torrents shifting bytes.
                           shape: moving
                               ? ProgressM3EShape.wavy
                               : ProgressM3EShape.flat,
                           size: LinearProgressM3ESize.s,
-                          activeColor: v.color,
+                          activeColor: torrent.isDone ? cs.tertiary : v.color,
                           trackColor: selected
                               ? cs.onPrimaryContainer.withValues(alpha: 0.15)
                               : cs.surfaceContainerHighest,
@@ -159,7 +184,7 @@ class TransmissionTorrentRow extends StatelessWidget {
                     ),
                   ],
                 ),
-                SizedBox(height: compact ? Insets.xs : Insets.sm),
+                const SizedBox(height: Insets.sm),
                 if (compact)
                   Text(
                     trCompactLine(torrent),
@@ -176,11 +201,18 @@ class TransmissionTorrentRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: text.bodySmall?.copyWith(color: onTileQuiet),
                   ),
+                  const SizedBox(height: Insets.xs),
+                  Text(
+                    trStatusLine(torrent),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: text.bodySmall?.copyWith(
+                      color: torrent.hasError
+                          ? cs.error
+                          : (selected ? cs.onPrimaryContainer : v.color),
+                    ),
+                  ),
                   const SizedBox(height: Insets.sm),
-                  // A Wrap, not a Row: two rate pills plus the ratio and the
-                  // ETA do not fit across a narrow phone, and at large text
-                  // they run off even a wide one. The extras drop to a second
-                  // line instead of being clipped.
                   Wrap(
                     spacing: Insets.sm,
                     runSpacing: Insets.xs,
@@ -205,33 +237,26 @@ class TransmissionTorrentRow extends StatelessWidget {
                           const SizedBox(width: 2),
                           Text(
                             trRatioString(torrent.uploadRatio),
-                            style:
-                                text.labelSmall?.copyWith(color: onTileQuiet),
+                            style: text.labelSmall?.copyWith(
+                              color: onTileQuiet,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                          if (torrent.hasEta) ...<Widget>[
+                          if (torrent.hasEta && !torrent.isDone) ...<Widget>[
                             const SizedBox(width: Insets.sm),
                             Icon(Icons.schedule, size: 14, color: onTileQuiet),
                             const SizedBox(width: 2),
                             Text(
                               trFmtEta(torrent.eta),
-                              style:
-                                  text.labelSmall?.copyWith(color: onTileQuiet),
+                              style: text.labelSmall?.copyWith(
+                                color: onTileQuiet,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ],
                       ),
                     ],
-                  ),
-                  const SizedBox(height: Insets.sm),
-                  Text(
-                    trStatusLine(torrent),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.bodySmall?.copyWith(
-                      color: torrent.hasError
-                          ? cs.error
-                          : (selected ? cs.onPrimaryContainer : v.color),
-                    ),
                   ),
                 ],
               ],

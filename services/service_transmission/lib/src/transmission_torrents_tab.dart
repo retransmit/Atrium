@@ -227,7 +227,12 @@ class _TransmissionTorrentsTabState
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.only(bottom: 96),
+                  padding: const EdgeInsets.fromLTRB(
+                    Insets.md,
+                    0,
+                    Insets.md,
+                    96,
+                  ),
                   sliver: SliverList.builder(
                     itemCount: list.length,
                     itemBuilder: (BuildContext context, int index) {
