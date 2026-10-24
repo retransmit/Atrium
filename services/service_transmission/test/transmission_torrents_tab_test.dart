@@ -43,42 +43,62 @@ void main() {
               .overrideWith((Ref ref) async => fakeTransmissionDio(fake)),
         ],
         child: const MaterialApp(
-          home: Scaffold(
-            body: TransmissionHome(instance: transmissionTestInstance),
-          ),
+          home: TransmissionHome(instance: transmissionTestInstance),
         ),
       ),
     );
     await settle(tester);
   }
 
-  testWidgets('chips carry counts and narrow the list',
+  /// The filters live in the end drawer now, so a test that wants one opens it
+  /// the way the filter button does.
+  Future<void> openFilters(WidgetTester tester) async {
+    await tester.tap(find.byTooltip('Filter torrents'));
+    await settle(tester);
+  }
+
+  /// Opens the search box, which is collapsed to a tap target until wanted.
+  Future<void> openSearch(WidgetTester tester) async {
+    await tester.tap(find.text('Search torrents...'));
+    await settle(tester);
+  }
+
+  testWidgets('the filter drawer counts and narrows the list',
       (WidgetTester tester) async {
     await open(tester);
 
+    await openFilters(tester);
     expect(find.text('All (2)'), findsOneWidget);
     expect(find.text('Downloading (1)'), findsOneWidget);
     expect(find.text('Seeding (1)'), findsOneWidget);
-    // Every torrent is public, so those two chips say nothing and stay hidden.
+    // Every torrent is public, so those two say nothing and stay hidden.
     expect(find.textContaining('Private'), findsNothing);
 
     await tester.tap(find.text('Seeding (1)'));
     await settle(tester);
+    // Picking a filter leaves the drawer open so a second facet can follow;
+    // closing it is the user's own move.
+    await tester.tapAt(const Offset(10, 10));
+    await settle(tester);
+
     expect(find.text('Beta'), findsOneWidget);
     expect(find.text('Alpha'), findsNothing);
   });
 
   testWidgets('search narrows by name and label', (WidgetTester tester) async {
     await open(tester);
+    await openSearch(tester);
 
     await tester.enterText(
-      find.widgetWithText(TextField, 'Search torrents'),
+      find.widgetWithText(TextField, 'Search torrents...'),
       'lin',
     );
     await settle(tester);
     expect(find.text('Alpha'), findsOneWidget);
     expect(find.text('Beta'), findsNothing);
-    // The counts follow the search.
+
+    // The drawer's counts follow the search, as the chips' did.
+    await openFilters(tester);
     expect(find.text('All (1)'), findsOneWidget);
   });
 
@@ -87,8 +107,7 @@ void main() {
     // Otherwise the keyboard comes back every time a menu closes, since focus
     // returns to the field.
     await open(tester);
-    await tester.tap(find.widgetWithText(TextField, 'Search torrents'));
-    await settle(tester);
+    await openSearch(tester);
     expect(
       tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus,
       isTrue,
@@ -117,7 +136,10 @@ void main() {
       find.text('Magnetized transfer - retrieving metadata (40.0%)'),
       findsOneWidget,
     );
-    expect(find.textContaining('Downloading from 8 of 12 peers'), findsOneWidget);
+    expect(
+      find.textContaining('Downloading from 8 of 12 peers'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('long-press selects, Select all widens, the bar pauses them all',
@@ -142,16 +164,13 @@ void main() {
     expect(find.textContaining('selected'), findsNothing);
   });
 
-  testWidgets('Pause all and Start all send no ids', (WidgetTester tester) async {
+  testWidgets('Pause all and Start all send no ids',
+      (WidgetTester tester) async {
     await open(tester);
 
-    await tester.tap(find.byTooltip('More'));
+    await tester.tap(find.byTooltip('Pause all'));
     await settle(tester);
-    await tester.tap(find.text('Pause all'));
-    await settle(tester);
-    await tester.tap(find.byTooltip('More'));
-    await settle(tester);
-    await tester.tap(find.text('Start all'));
+    await tester.tap(find.byTooltip('Resume all'));
     await settle(tester);
 
     expect(fake.single('torrent-stop').arguments.containsKey('ids'), isFalse);
