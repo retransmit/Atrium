@@ -3,6 +3,7 @@ import 'package:atrium/src/screens/instance_form_screen.dart';
 import 'package:atrium/src/screens/service_grid_screen.dart';
 import 'package:core_models/core_models.dart';
 import 'package:core_router/core_router.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -38,9 +39,10 @@ void main() {
     );
   }
 
-  testWidgets('ServiceGridScreen renders search bar and category tabs',
+  testWidgets('ServiceGridScreen shows a section for every category',
       (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1000, 1400);
+    // Tall enough that the list builds every section.
+    tester.view.physicalSize = const Size(1000, 8000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -49,16 +51,40 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('service_search_bar')), findsOneWidget);
-    expect(find.byKey(const Key('category_tab_all')), findsOneWidget);
-    expect(find.byKey(const Key('category_tab_automation')), findsOneWidget);
-    expect(find.byKey(const Key('category_tab_mediaServer')), findsOneWidget);
-    expect(find.byKey(const Key('category_tab_downloader')), findsOneWidget);
+    for (final ServiceRole role in ServiceRole.values) {
+      final Finder section = find.byKey(Key('service_section_${role.name}'));
+      expect(section, findsOneWidget);
+      // At least one: Ombi and Seerr's tagline is also "Requests".
+      expect(
+        find.descendant(
+          of: section,
+          matching: find.text(ServiceVisuals.roleLabel(role)),
+        ),
+        findsAtLeastNWidgets(1),
+      );
+    }
+  });
 
-    // Initial state renders AdGuard Home card (first alphabetically)
-    expect(
-      find.byKey(const ValueKey<String>('service_card_adguardHome')),
-      findsOneWidget,
-    );
+  testWidgets('every service sits under its own category',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1000, 8000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(buildApp());
+    await tester.pumpAndSettle();
+
+    for (final ServiceKind kind in ServiceKind.values) {
+      expect(
+        find.descendant(
+          of: find.byKey(Key('service_section_${kind.role.name}')),
+          matching: find.byKey(ValueKey<String>('service_card_${kind.name}')),
+        ),
+        findsOneWidget,
+        reason: '${kind.name} belongs under ${kind.role.name}',
+      );
+    }
   });
 
   testWidgets('ServiceGridScreen search filter works',
@@ -87,7 +113,7 @@ void main() {
     );
   });
 
-  testWidgets('ServiceGridScreen category filter works',
+  testWidgets('a search leaves out categories with no match',
       (WidgetTester tester) async {
     tester.view.physicalSize = const Size(1000, 1400);
     tester.view.devicePixelRatio = 1;
@@ -97,18 +123,41 @@ void main() {
     await tester.pumpWidget(buildApp());
     await tester.pumpAndSettle();
 
-    // Tap Media tab
-    await tester.tap(find.byKey(const Key('category_tab_mediaServer')));
+    await tester.enterText(
+      find.byKey(const Key('service_search_bar')),
+      'plex',
+    );
     await tester.pumpAndSettle();
 
-    // Media servers like Plex/Jellyfin should be visible, Sonarr (automation) should not
     expect(
-      find.byKey(const ValueKey<String>('service_card_plex')),
+      find.byKey(const Key('service_section_mediaServer')),
       findsOneWidget,
     );
+    expect(find.byKey(const Key('service_section_automation')), findsNothing);
+  });
+
+  testWidgets('a search with no match offers to clear it',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(buildApp());
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('service_search_bar')),
+      'zzzz',
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('No services found'), findsOneWidget);
+
+    await tester.tap(find.text('Clear search'));
+    await tester.pumpAndSettle();
     expect(
-      find.byKey(const ValueKey<String>('service_card_sonarr')),
-      findsNothing,
+      find.byKey(const ValueKey<String>('service_card_adguardHome')),
+      findsOneWidget,
     );
   });
 
@@ -131,53 +180,6 @@ void main() {
     expect(find.byType(InstanceFormScreen), findsOneWidget);
     expect(find.textContaining('Network-wide blocking'), findsWidgets);
     expect(find.text('AdGuard Home'), findsWidgets);
-  });
-
-  testWidgets('Category tabs are generated from all ServiceRole values',
-      (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1000, 1400);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    await tester.pumpWidget(buildApp());
-    await tester.pumpAndSettle();
-
-    for (final ServiceRole role in ServiceRole.values) {
-      expect(
-        find.byKey(Key('category_tab_${role.name}')),
-        findsOneWidget,
-      );
-    }
-  });
-
-  testWidgets('Swiping the grid pages moves to the next category tab',
-      (WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1000, 1400);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    await tester.pumpWidget(buildApp());
-    await tester.pumpAndSettle();
-
-    await tester.drag(
-      find.byType(TabBarView),
-      const Offset(-600, 0),
-    );
-    await tester.pumpAndSettle();
-
-    final TabBar tabBar = tester.widget<TabBar>(find.byType(TabBar));
-    expect(tabBar.controller!.index, 1);
-    // Automation grid: Sonarr present, a media server is not.
-    expect(
-      find.byKey(const ValueKey<String>('service_card_sonarr')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey<String>('service_card_plex')),
-      findsNothing,
-    );
   });
 
   testWidgets('Unknown service parameter renders error screen',

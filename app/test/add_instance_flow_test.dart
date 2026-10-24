@@ -80,7 +80,15 @@ void main() {
   ) async {
     await pumpApp(tester, '/add-instance');
 
-    await tester.tap(find.byKey(const ValueKey<String>('service_card_aria2')));
+    final Finder aria2 = find.byKey(const ValueKey<String>('service_card_aria2'));
+    await tester.scrollUntilVisible(
+      aria2,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(aria2);
+    await tester.pumpAndSettle();
+    await tester.tap(aria2);
     await tester.pumpAndSettle();
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Name'),
@@ -111,7 +119,15 @@ void main() {
   ) async {
     final GoRouter router = await pumpApp(tester, '/add-instance');
 
-    await tester.tap(find.byKey(const ValueKey<String>('service_card_aria2')));
+    final Finder aria2 = find.byKey(const ValueKey<String>('service_card_aria2'));
+    await tester.scrollUntilVisible(
+      aria2,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(aria2);
+    await tester.pumpAndSettle();
+    await tester.tap(aria2);
     await tester.pumpAndSettle();
     router.pop();
     await tester.pumpAndSettle();
