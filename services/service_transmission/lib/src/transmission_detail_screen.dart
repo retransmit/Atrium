@@ -122,7 +122,7 @@ class TransmissionDetailScreen extends ConsumerWidget {
 }
 
 const EdgeInsets _tabPadding =
-    EdgeInsets.fromLTRB(Insets.md, Insets.xs, Insets.md, Insets.xl);
+    EdgeInsets.fromLTRB(Insets.md, Insets.lg, Insets.md, Insets.xl);
 
 class _InfoTab extends StatelessWidget {
   const _InfoTab({
@@ -360,35 +360,44 @@ class _FilesTabState extends ConsumerState<_FilesTab> {
     return Column(
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.fromLTRB(Insets.md, Insets.sm, Insets.md, 0),
+          padding: const EdgeInsets.fromLTRB(
+            Insets.md,
+            Insets.lg,
+            Insets.md,
+            Insets.sm,
+          ),
           child: Row(
             children: <Widget>[
-              FilledButton.tonalIcon(
-                onPressed: _busy
-                    ? null
-                    : () => _write(
-                          (TransmissionApi api) => api.setFileWanted(
-                            widget.hashString,
-                            all,
-                            wanted: true,
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: _busy
+                      ? null
+                      : () => _write(
+                            (TransmissionApi api) => api.setFileWanted(
+                              widget.hashString,
+                              all,
+                              wanted: true,
+                            ),
                           ),
-                        ),
-                icon: const Icon(Icons.select_all),
-                label: const Text('Select all'),
+                  icon: const Icon(Icons.select_all),
+                  label: const Text('Select all'),
+                ),
               ),
               const SizedBox(width: Insets.sm),
-              FilledButton.tonalIcon(
-                onPressed: _busy
-                    ? null
-                    : () => _write(
-                          (TransmissionApi api) => api.setFileWanted(
-                            widget.hashString,
-                            all,
-                            wanted: false,
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  onPressed: _busy
+                      ? null
+                      : () => _write(
+                            (TransmissionApi api) => api.setFileWanted(
+                              widget.hashString,
+                              all,
+                              wanted: false,
+                            ),
                           ),
-                        ),
-                icon: const Icon(Icons.deselect),
-                label: const Text('Select none'),
+                  icon: const Icon(Icons.deselect),
+                  label: const Text('Select none'),
+                ),
               ),
             ],
           ),
@@ -429,17 +438,27 @@ class _PeersTab extends StatelessWidget {
       padding: _tabPadding,
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Insets.xs),
+          padding: const EdgeInsets.only(bottom: Insets.sm),
           child: Row(
             children: <Widget>[
               Text(
                 'Peers (${detail.peers.length})',
-                style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                style: text.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: cs.primary,
+                ),
               ),
               const Spacer(),
-              IconButton.filledTonal(
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 tooltip: 'Peer flags',
-                icon: const Icon(Icons.help_outline),
+                icon: Icon(
+                  Icons.help_outline_rounded,
+                  size: 20,
+                  color: cs.onSurfaceVariant,
+                ),
                 onPressed: () => showTransmissionPeerFlagsSheet(context),
               ),
             ],
@@ -476,7 +495,7 @@ class _PeersTab extends StatelessWidget {
                         style: text.titleSmall
                             ?.copyWith(fontWeight: FontWeight.w600),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: Insets.xxs),
                       Text(
                         '${p.clientName.isEmpty ? 'Unknown client' : p.clientName}'
                         ' - ${trPct(p.progress)}%',
@@ -486,29 +505,50 @@ class _PeersTab extends StatelessWidget {
                             ?.copyWith(color: cs.onSurfaceVariant),
                       ),
                       const SizedBox(height: Insets.sm),
-                      Wrap(
-                        spacing: Insets.xs,
-                        runSpacing: Insets.xs,
+                      Row(
                         children: <Widget>[
-                          TransmissionSpeedPill(
-                            icon: Icons.south,
-                            label: trFmtRate(p.rateToClient),
-                            color: cs.primary,
-                            active: p.rateToClient > 0,
-                          ),
-                          TransmissionSpeedPill(
-                            icon: Icons.north,
-                            label: trFmtRate(p.rateToPeer),
-                            color: cs.tertiary,
-                            active: p.rateToPeer > 0,
-                          ),
-                          if (p.flagStr.isNotEmpty)
-                            TransmissionPill(
-                              label: p.flagStr,
-                              monospace: true,
-                              foreground: cs.onSecondaryContainer,
-                              background: cs.secondaryContainer,
+                          Expanded(
+                            child: TransmissionSpeedPill(
+                              icon: Icons.south,
+                              label: trFmtRate(p.rateToClient),
+                              color: cs.primary,
+                              active: p.rateToClient > 0,
                             ),
+                          ),
+                          const SizedBox(width: Insets.sm),
+                          Expanded(
+                            child: TransmissionSpeedPill(
+                              icon: Icons.north,
+                              label: trFmtRate(p.rateToPeer),
+                              color: cs.tertiary,
+                              active: p.rateToPeer > 0,
+                            ),
+                          ),
+                          if (p.flagStr.isNotEmpty) ...<Widget>[
+                            const SizedBox(width: Insets.sm),
+                            Expanded(
+                              child: Container(
+                                height: 28,
+                                alignment: Alignment.center,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 8),
+                                decoration: BoxDecoration(
+                                  color: cs.secondaryContainer,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  p.flagStr,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: text.labelSmall?.copyWith(
+                                    color: cs.onSecondaryContainer,
+                                    fontWeight: FontWeight.w700,
+                                    fontFamily: 'monospace',
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ],

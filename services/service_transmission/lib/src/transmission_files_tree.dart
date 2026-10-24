@@ -142,7 +142,7 @@ class _TransmissionFilesTreeState extends State<TransmissionFilesTree> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         Insets.md,
-        Insets.xs,
+        0,
         Insets.md,
         Insets.xl,
       ),
@@ -165,7 +165,12 @@ class _TransmissionFilesTreeState extends State<TransmissionFilesTree> {
     final bool? checked =
         node.allWanted ? true : (node.anyWanted ? null : false);
     return Padding(
-      padding: EdgeInsets.only(left: depth * Insets.lg),
+      padding: EdgeInsets.fromLTRB(
+        depth * Insets.lg,
+        Insets.xxs,
+        0,
+        Insets.xxs,
+      ),
       child: Row(
         children: <Widget>[
           Checkbox(
@@ -176,6 +181,7 @@ class _TransmissionFilesTreeState extends State<TransmissionFilesTree> {
                 : (bool? _) =>
                     widget.onWanted(node.indices, !(checked ?? false)),
           ),
+          const SizedBox(width: Insets.xs),
           TransmissionIconBlock(
             icon: node.isFolder
                 ? (open ? Icons.folder_open_rounded : Icons.folder_rounded)
@@ -201,12 +207,50 @@ class _TransmissionFilesTreeState extends State<TransmissionFilesTree> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
-                      node.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            node.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        PopupMenuButton<TransmissionPriority>(
+                          tooltip: 'Priority',
+                          icon: Icon(
+                            Icons.more_vert_rounded,
+                            size: 20,
+                            color: cs.onSurfaceVariant,
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 24,
+                            minHeight: 24,
+                          ),
+                          enabled: !widget.busy,
+                          onSelected: (TransmissionPriority p) =>
+                              widget.onPriority(node.indices, p),
+                          itemBuilder: (BuildContext _) =>
+                              const <PopupMenuEntry<TransmissionPriority>>[
+                            PopupMenuItem<TransmissionPriority>(
+                              value: TransmissionPriority.low,
+                              child: Text('Low'),
+                            ),
+                            PopupMenuItem<TransmissionPriority>(
+                              value: TransmissionPriority.normal,
+                              child: Text('Normal'),
+                            ),
+                            PopupMenuItem<TransmissionPriority>(
+                              value: TransmissionPriority.high,
+                              child: Text('High'),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                     const SizedBox(height: Insets.xs),
                     ClipRRect(
@@ -220,8 +264,8 @@ class _TransmissionFilesTreeState extends State<TransmissionFilesTree> {
                     ),
                     const SizedBox(height: Insets.xs),
                     Text(
-                      '${trPct(node.progress)}% - ${trFmtBytes(node.length)}'
-                      '${node.isFolder ? '' : ' - ${node.file!.priorityLabel} priority'}',
+                      '${trPct(node.progress)}% • ${trFmtBytes(node.length)}'
+                      '${node.isFolder ? '' : ' • ${node.file!.priorityLabel} priority'}',
                       style: theme.textTheme.bodySmall
                           ?.copyWith(color: cs.onSurfaceVariant),
                     ),
@@ -229,28 +273,6 @@ class _TransmissionFilesTreeState extends State<TransmissionFilesTree> {
                 ),
               ),
             ),
-          ),
-          PopupMenuButton<TransmissionPriority>(
-            tooltip: 'Priority',
-            icon: const Icon(Icons.low_priority),
-            enabled: !widget.busy,
-            onSelected: (TransmissionPriority p) =>
-                widget.onPriority(node.indices, p),
-            itemBuilder: (BuildContext _) =>
-                const <PopupMenuEntry<TransmissionPriority>>[
-              PopupMenuItem<TransmissionPriority>(
-                value: TransmissionPriority.low,
-                child: Text('Low'),
-              ),
-              PopupMenuItem<TransmissionPriority>(
-                value: TransmissionPriority.normal,
-                child: Text('Normal'),
-              ),
-              PopupMenuItem<TransmissionPriority>(
-                value: TransmissionPriority.high,
-                child: Text('High'),
-              ),
-            ],
           ),
         ],
       ),

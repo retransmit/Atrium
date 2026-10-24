@@ -171,4 +171,69 @@ void main() {
     expect(peersCenter - filesCenter, closeTo(tabSlotWidth, 0.1));
     expect(trackersCenter - peersCenter, closeTo(tabSlotWidth, 0.1));
   });
+
+  testWidgets('detail screen tabs have proper top margin to content',
+      (WidgetTester tester) async {
+    await open(tester);
+
+    final Finder tabBar = find.byType(TabBar);
+    final Finder firstPanel = find.byType(TransmissionPanel).first;
+
+    final double tabBarBottom = tester.getBottomLeft(tabBar).dy;
+    final double panelTop = tester.getTopLeft(firstPanel).dy;
+
+    // Margin between TabBar (app bar) and content is Insets.lg (16 px)
+    expect(panelTop - tabBarBottom, equals(16.0));
+  });
+
+  testWidgets('files action buttons are evenly spaced with equal widths',
+      (WidgetTester tester) async {
+    await open(tester, tab: 'Files');
+
+    final Finder selectAllBtn = find.ancestor(
+      of: find.text('Select all'),
+      matching: find.byType(FilledButton),
+    );
+    final Finder selectNoneBtn = find.ancestor(
+      of: find.text('Select none'),
+      matching: find.byType(FilledButton),
+    );
+
+    expect(selectAllBtn, findsOneWidget);
+    expect(selectNoneBtn, findsOneWidget);
+
+    final double allWidth = tester.getSize(selectAllBtn).width;
+    final double noneWidth = tester.getSize(selectNoneBtn).width;
+
+    expect(allWidth, equals(noneWidth));
+    expect(
+      tester.getTopLeft(selectNoneBtn).dx - tester.getTopRight(selectAllBtn).dx,
+      equals(8.0),
+    );
+  });
+
+  testWidgets(
+      'peer card pills are evenly spaced with equal widths and height 28',
+      (WidgetTester tester) async {
+    await open(tester, tab: 'Peers');
+
+    final Finder downPill = find.byWidgetPredicate(
+      (Widget w) => w is TransmissionSpeedPill && w.icon == Icons.south,
+    );
+    final Finder upPill = find.byWidgetPredicate(
+      (Widget w) => w is TransmissionSpeedPill && w.icon == Icons.north,
+    );
+
+    expect(downPill, findsOneWidget);
+    expect(upPill, findsOneWidget);
+
+    final double downWidth = tester.getSize(downPill).width;
+    final double upWidth = tester.getSize(upPill).width;
+
+    expect(downWidth, equals(upWidth));
+    expect(
+      tester.getTopLeft(upPill).dx - tester.getTopRight(downPill).dx,
+      equals(8.0),
+    );
+  });
 }
