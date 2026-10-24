@@ -49,11 +49,14 @@ class TransmissionTorrentRow extends StatelessWidget {
         ? cs.onPrimaryContainer.withValues(alpha: 0.8)
         : cs.onSurfaceVariant;
 
+    final String etaSuffix = (torrent.hasEta && !torrent.isDone)
+        ? ' • ${trFmtEta(torrent.eta)} left'
+        : '';
     final String sizeText = torrent.needsMetadata
         ? ''
         : (torrent.isDone
             ? trFmtBytes(torrent.totalSize)
-            : '${trFmtBytes(torrent.doneBytes)} / ${trFmtBytes(torrent.sizeWhenDone)}');
+            : '${trFmtBytes(torrent.doneBytes)} / ${trFmtBytes(torrent.sizeWhenDone)}$etaSuffix');
 
     return Padding(
       padding: const EdgeInsets.only(bottom: Insets.sm),
@@ -184,8 +187,8 @@ class TransmissionTorrentRow extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: Insets.sm),
-                if (compact)
+                if (compact) ...<Widget>[
+                  const SizedBox(height: Insets.sm),
                   Text(
                     trCompactLine(torrent),
                     maxLines: 1,
@@ -193,68 +196,65 @@ class TransmissionTorrentRow extends StatelessWidget {
                     style: text.bodySmall?.copyWith(
                       color: torrent.hasError ? cs.error : onTileQuiet,
                     ),
-                  )
-                else ...<Widget>[
-                  Text(
-                    trProgressLine(torrent),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.bodySmall?.copyWith(color: onTileQuiet),
                   ),
-                  const SizedBox(height: Insets.xs),
-                  Text(
-                    trStatusLine(torrent),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: text.bodySmall?.copyWith(
-                      color: torrent.hasError
-                          ? cs.error
-                          : (selected ? cs.onPrimaryContainer : v.color),
+                ] else ...<Widget>[
+                  if (torrent.hasError) ...<Widget>[
+                    const SizedBox(height: Insets.xs),
+                    Text(
+                      torrent.errorString,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.bodySmall?.copyWith(color: cs.error),
                     ),
-                  ),
-                  const SizedBox(height: Insets.sm),
-                  Wrap(
-                    spacing: Insets.sm,
-                    runSpacing: Insets.xs,
-                    crossAxisAlignment: WrapCrossAlignment.center,
+                  ] else if (torrent.needsMetadata) ...<Widget>[
+                    const SizedBox(height: Insets.xs),
+                    Text(
+                      trProgressLine(torrent),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.bodySmall?.copyWith(color: onTileQuiet),
+                    ),
+                  ] else if (torrent.status == TransmissionStatus.checking) ...<Widget>[
+                    const SizedBox(height: Insets.xs),
+                    Text(
+                      trStatusLine(torrent),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.bodySmall?.copyWith(color: onTileQuiet),
+                    ),
+                  ],
+                  const SizedBox(height: Insets.md),
+                  Row(
                     children: <Widget>[
-                      TransmissionSpeedPill(
-                        icon: Icons.south,
-                        label: trFmtRate(torrent.downloadRate),
-                        color: cs.primary,
-                        active: torrent.downloadRate > 0,
+                      Expanded(
+                        child: TransmissionSpeedPill(
+                          icon: Icons.south,
+                          label: trFmtRate(torrent.downloadRate),
+                          color: cs.primary,
+                          active: torrent.downloadRate > 0,
+                          selected: selected,
+                        ),
                       ),
-                      TransmissionSpeedPill(
-                        icon: Icons.north,
-                        label: trFmtRate(torrent.uploadRate),
-                        color: cs.tertiary,
-                        active: torrent.uploadRate > 0,
+                      const SizedBox(width: Insets.sm),
+                      Expanded(
+                        child: TransmissionSpeedPill(
+                          icon: Icons.north,
+                          label: trFmtRate(torrent.uploadRate),
+                          color: cs.tertiary,
+                          active: torrent.uploadRate > 0,
+                          selected: selected,
+                        ),
                       ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          Icon(Icons.swap_vert, size: 14, color: onTileQuiet),
-                          const SizedBox(width: 2),
-                          Text(
-                            trRatioString(torrent.uploadRatio),
-                            style: text.labelSmall?.copyWith(
-                              color: onTileQuiet,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          if (torrent.hasEta && !torrent.isDone) ...<Widget>[
-                            const SizedBox(width: Insets.sm),
-                            Icon(Icons.schedule, size: 14, color: onTileQuiet),
-                            const SizedBox(width: 2),
-                            Text(
-                              trFmtEta(torrent.eta),
-                              style: text.labelSmall?.copyWith(
-                                color: onTileQuiet,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ],
+                      const SizedBox(width: Insets.sm),
+                      Expanded(
+                        child: TransmissionPill(
+                          icon: Icons.swap_vert,
+                          label: trRatioString(torrent.uploadRatio),
+                          foreground: onTileQuiet,
+                          background: selected
+                              ? cs.onPrimaryContainer.withValues(alpha: 0.12)
+                              : cs.surfaceContainerHighest,
+                        ),
                       ),
                     ],
                   ),

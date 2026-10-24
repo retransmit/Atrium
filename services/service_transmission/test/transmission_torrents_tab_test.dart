@@ -124,7 +124,8 @@ void main() {
     );
   });
 
-  testWidgets('rows read like the web UI', (WidgetTester tester) async {
+  testWidgets('rows show metadata status without peer clutter',
+      (WidgetTester tester) async {
     fake.on('torrent-get', <String, Object?>{
       'torrents': <Map<String, dynamic>>[
         torrentJson(hash: 'm', name: 'Magnet', metadataPercentComplete: 0.4),
@@ -138,6 +139,19 @@ void main() {
     );
     expect(
       find.textContaining('Downloading from 8 of 12 peers'),
+      findsNothing,
+    );
+    final Finder row = find.byType(TransmissionTorrentRow);
+    expect(
+      find.descendant(of: row, matching: find.byIcon(Icons.south)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: row, matching: find.byIcon(Icons.north)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: row, matching: find.byIcon(Icons.swap_vert)),
       findsOneWidget,
     );
   });
@@ -208,10 +222,10 @@ void main() {
     expect(find.text('Download limit'), findsOneWidget);
   });
 
-  testWidgets('compact rows drop the progress line',
+  testWidgets('compact rows drop the bottom badges row',
       (WidgetTester tester) async {
     await open(tester);
-    expect(find.textContaining('remaining'), findsOneWidget);
+    expect(find.byIcon(Icons.swap_vert), findsNWidgets(2));
 
     await tester.tap(find.byTooltip('More'));
     await settle(tester);
@@ -221,7 +235,7 @@ void main() {
     );
     await settle(tester);
 
-    expect(find.textContaining('remaining'), findsNothing);
+    expect(find.byIcon(Icons.swap_vert), findsNothing);
     expect(find.textContaining('↓'), findsWidgets);
   });
 
@@ -348,6 +362,52 @@ void main() {
     // Row 2 to Row 3 (buttonRow), without any doubled SizedBox gap
     expect(
       tester.getTopLeft(buttonRow).dy - tester.getBottomLeft(searchRow).dy,
+      equals(8.0),
+    );
+  });
+
+  testWidgets(
+      'torrent card badges for down speed, up speed, and ratio are evenly spaced',
+      (WidgetTester tester) async {
+    await open(tester);
+
+    final Finder firstTile = find.byType(TransmissionTorrentRow).first;
+    final Finder downBadge = find.descendant(
+      of: firstTile,
+      matching: find.byWidgetPredicate(
+        (Widget w) => w is TransmissionSpeedPill && w.icon == Icons.south,
+      ),
+    );
+    final Finder upBadge = find.descendant(
+      of: firstTile,
+      matching: find.byWidgetPredicate(
+        (Widget w) => w is TransmissionSpeedPill && w.icon == Icons.north,
+      ),
+    );
+    final Finder ratioBadge = find.descendant(
+      of: firstTile,
+      matching: find.byWidgetPredicate(
+        (Widget w) => w is TransmissionPill && w.icon == Icons.swap_vert,
+      ),
+    );
+
+    expect(downBadge, findsOneWidget);
+    expect(upBadge, findsOneWidget);
+    expect(ratioBadge, findsOneWidget);
+
+    final double downWidth = tester.getSize(downBadge).width;
+    final double upWidth = tester.getSize(upBadge).width;
+    final double ratioWidth = tester.getSize(ratioBadge).width;
+
+    expect(downWidth, equals(upWidth));
+    expect(upWidth, equals(ratioWidth));
+
+    expect(
+      tester.getTopLeft(upBadge).dx - tester.getTopRight(downBadge).dx,
+      equals(8.0),
+    );
+    expect(
+      tester.getTopLeft(ratioBadge).dx - tester.getTopRight(upBadge).dx,
       equals(8.0),
     );
   });

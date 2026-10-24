@@ -195,13 +195,15 @@ class TransmissionPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           if (icon != null) ...<Widget>[
             Icon(icon, size: 14, color: foreground),
@@ -235,6 +237,7 @@ class TransmissionSpeedPill extends StatelessWidget {
     required this.label,
     required this.color,
     required this.active,
+    this.selected = false,
     super.key,
   });
 
@@ -242,16 +245,23 @@ class TransmissionSpeedPill extends StatelessWidget {
   final String label;
   final Color color;
   final bool active;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
+    final Color quietForeground = selected
+        ? cs.onPrimaryContainer.withValues(alpha: 0.8)
+        : cs.onSurfaceVariant;
+    final Color quietBackground = selected
+        ? cs.onPrimaryContainer.withValues(alpha: 0.12)
+        : cs.surfaceContainerHighest;
     return TransmissionPill(
       icon: icon,
       label: label,
-      foreground: active ? color : cs.onSurfaceVariant,
+      foreground: active ? color : quietForeground,
       background:
-          active ? color.withValues(alpha: 0.12) : cs.surfaceContainerHighest,
+          active ? color.withValues(alpha: 0.12) : quietBackground,
     );
   }
 }
