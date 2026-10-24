@@ -744,41 +744,40 @@ class _StatisticsCard extends ConsumerWidget {
     }) {
       final double ratio =
           b.downloadedBytes == 0 ? -1 : b.uploadedBytes / b.downloadedBytes;
-      return Expanded(
-        child: Container(
-          padding: const EdgeInsets.all(Insets.md),
-          decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Icon(icon, size: 16, color: cs.primary),
-                  const SizedBox(width: Insets.xs),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: text.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700),
-                    ),
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(Insets.md),
+        decoration: BoxDecoration(
+          color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Icon(icon, size: 16, color: cs.primary),
+                const SizedBox(width: Insets.xs),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: text.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
                   ),
-                ],
-              ),
-              const SizedBox(height: Insets.sm),
-              figure('Uploaded', trFmtBytes(b.uploadedBytes)),
-              figure('Downloaded', trFmtBytes(b.downloadedBytes)),
-              figure('Ratio', trRatioString(ratio)),
-              figure('Running time', trTimeInterval(b.secondsActive)),
-              if (started)
-                Text(
-                  'Started ${b.sessionCount} times',
-                  style: text.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                 ),
-            ],
-          ),
+              ],
+            ),
+            const SizedBox(height: Insets.sm),
+            figure('Uploaded', trFmtBytes(b.uploadedBytes)),
+            figure('Downloaded', trFmtBytes(b.downloadedBytes)),
+            figure('Ratio', trRatioString(ratio)),
+            figure('Running time', trTimeInterval(b.secondsActive)),
+            if (started)
+              Text(
+                'Started ${b.sessionCount} times',
+                style: text.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+              ),
+          ],
         ),
       );
     }
@@ -788,22 +787,17 @@ class _StatisticsCard extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           const TransmissionPanelTitle('Statistics'),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              block(
-                'This session',
-                Icons.timelapse_rounded,
-                stats.currentStats,
-              ),
-              const SizedBox(width: Insets.sm),
-              block(
-                'All time',
-                Icons.history_rounded,
-                stats.cumulativeStats,
-                started: true,
-              ),
-            ],
+          block(
+            'This session',
+            Icons.timelapse_rounded,
+            stats.currentStats,
+          ),
+          const SizedBox(height: Insets.sm),
+          block(
+            'All time',
+            Icons.history_rounded,
+            stats.cumulativeStats,
+            started: true,
           ),
         ],
       ),
