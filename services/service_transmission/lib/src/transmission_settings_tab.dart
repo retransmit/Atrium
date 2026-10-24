@@ -14,9 +14,17 @@ import 'transmission_visuals.dart';
 /// scrolling tab. Every change is written on its own, then the session is
 /// read again so the screen shows what the daemon accepted.
 class TransmissionSettingsTab extends ConsumerStatefulWidget {
-  const TransmissionSettingsTab({required this.instance, super.key});
+  const TransmissionSettingsTab({
+    required this.instance,
+    this.onOpenDrawer,
+    super.key,
+  });
 
   final Instance instance;
+
+  /// How to open the app's services drawer. Handed in because this tab's own
+  /// app bar cannot reach the home's Scaffold through a second Scaffold.
+  final VoidCallback? onOpenDrawer;
 
   @override
   ConsumerState<TransmissionSettingsTab> createState() =>
@@ -27,9 +35,16 @@ class _TransmissionSettingsTabState
     extends ConsumerState<TransmissionSettingsTab> {
   bool _updatingBlocklist = false;
   bool _testingPort = false;
+  final ScrollController _scroll = ScrollController();
 
   /// Per protocol, or a single `''` key on a daemon that tests only one.
   Map<String, bool> _portResults = <String, bool>{};
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
 
   Future<void> _write(String key, Object? value) async {
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
@@ -150,327 +165,370 @@ class _TransmissionSettingsTabState
     final ColorScheme cs = Theme.of(context).colorScheme;
     final AsyncValue<TransmissionSession> session =
         ref.watch(transmissionSessionProvider(widget.instance));
-    return AsyncValueView<TransmissionSession>(
-      value: session,
-      onRetry: () =>
-          ref.invalidate(transmissionSessionProvider(widget.instance)),
-      data: (TransmissionSession s) => ListView(
-        padding: const EdgeInsets.fromLTRB(
-          Insets.md,
-          Insets.xs,
-          Insets.md,
-          Insets.xl,
+
+    ref.listen<int>(
+      transmissionScrollToTopProvider((widget.instance, 1)),
+      (int? previous, int next) {
+        if (next > 0 && _scroll.hasClients) {
+          _scroll.animateTo(
+            0,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+          );
+        }
+      },
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed:
+              widget.onOpenDrawer ?? () => Scaffold.of(context).openDrawer(),
         ),
-        children: <Widget>[
-          _StatisticsCard(instance: widget.instance),
-          const SizedBox(height: Insets.sm),
-          _Group(
-            title: 'Torrents',
-            children: <Widget>[
-              _pathTile('Download to', s.downloadDir, 'download-dir'),
-              _switchTile(
-                'Start when added',
-                s.startAddedTorrents,
-                'start-added-torrents',
-              ),
-              _switchTile(
-                'Stop seeding at ratio',
-                s.seedRatioLimited,
-                'seedRatioLimited',
-              ),
-              _numberTile(
-                'Seed ratio limit',
-                s.seedRatioLimit,
-                'seedRatioLimit',
-                decimal: true,
-              ),
-              _switchTile(
-                'Stop seeding if idle',
-                s.idleSeedingLimitEnabled,
-                'idle-seeding-limit-enabled',
-              ),
-              _numberTile(
-                'Idle limit (minutes)',
-                s.idleSeedingLimit,
-                'idle-seeding-limit',
-              ),
-              _switchTile(
-                'Keep incomplete torrents in a separate folder',
-                s.incompleteDirEnabled,
-                'incomplete-dir-enabled',
-              ),
-              _pathTile('Incomplete folder', s.incompleteDir, 'incomplete-dir'),
-              _switchTile(
-                'Append ".part" to incomplete files',
-                s.renamePartialFiles,
-                'rename-partial-files',
-              ),
-              _switchTile(
-                'Limit the download queue',
-                s.downloadQueueEnabled,
-                'download-queue-enabled',
-              ),
-              _numberTile(
-                'Download queue size',
-                s.downloadQueueSize,
-                'download-queue-size',
-              ),
-              if (s.supportsDefaultTrackers)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Default public trackers'),
-                  subtitle: Text(_trackerCount(s.defaultTrackers)),
-                  onTap: () => _editText(
-                    title: 'Default public trackers',
-                    key: 'default-trackers',
-                    initial: s.defaultTrackers,
-                    multiline: true,
-                    helper: 'One URL per line, a blank line between tiers',
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: Insets.sm),
-          _Group(
-            title: 'Speed',
-            children: <Widget>[
-              _switchTile(
-                'Limit upload',
-                s.speedLimitUpEnabled,
-                'speed-limit-up-enabled',
-              ),
-              _numberTile(
-                'Upload limit (kB/s)',
-                s.speedLimitUp,
-                'speed-limit-up',
-              ),
-              _switchTile(
-                'Limit download',
-                s.speedLimitDownEnabled,
-                'speed-limit-down-enabled',
-              ),
-              _numberTile(
-                'Download limit (kB/s)',
-                s.speedLimitDown,
-                'speed-limit-down',
-              ),
-              _numberTile(
-                'Alternative upload limit (kB/s)',
-                s.altSpeedUp,
-                'alt-speed-up',
-              ),
-              _numberTile(
-                'Alternative download limit (kB/s)',
-                s.altSpeedDown,
-                'alt-speed-down',
-              ),
-              _switchTile(
-                'Scheduled alternative limits',
-                s.altSpeedTimeEnabled,
-                'alt-speed-time-enabled',
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('From'),
-                subtitle: Text(_clock(s.altSpeedTimeBegin)),
-                onTap: () => _pickTime(
-                  key: 'alt-speed-time-begin',
-                  minutes: s.altSpeedTimeBegin,
-                ),
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('To'),
-                subtitle: Text(_clock(s.altSpeedTimeEnd)),
-                onTap: () => _pickTime(
-                  key: 'alt-speed-time-end',
-                  minutes: s.altSpeedTimeEnd,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: Insets.xs),
-                child: Text('On days: ${trDaySummary(s.altSpeedTimeDay)}'),
-              ),
-              Wrap(
-                spacing: Insets.xs,
-                runSpacing: Insets.xs,
-                children: <Widget>[
-                  for (final (int mask, String name) in <(int, String)>[
-                    (trEveryDay, 'Every day'),
-                    (trWeekdays, 'Weekdays'),
-                    (trWeekends, 'Weekends'),
-                  ])
-                    ChoiceChip(
-                      label: Text(name),
-                      selected: s.altSpeedTimeDay == mask,
-                      onSelected: (_) => _write('alt-speed-time-day', mask),
-                    ),
-                  for (final (int bit, String name) in trDays)
-                    FilterChip(
-                      label: Text(name),
-                      selected: s.altSpeedTimeDay & bit != 0,
-                      onSelected: (_) => _write(
-                        'alt-speed-time-day',
-                        trToggleDay(s.altSpeedTimeDay, bit),
-                      ),
-                    ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: Insets.sm),
-          _Group(
-            title: 'Peers',
-            children: <Widget>[
-              _numberTile(
-                'Max peers per torrent',
-                s.peerLimitPerTorrent,
-                'peer-limit-per-torrent',
-              ),
-              _numberTile(
-                'Max peers overall',
-                s.peerLimitGlobal,
-                'peer-limit-global',
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Encryption'),
-                subtitle: Text(_encryptionLabel(s.encryption)),
-                onTap: () async {
-                  final String? mode = await showDialog<String>(
-                    context: context,
-                    builder: (BuildContext context) => SimpleDialog(
-                      title: const Text('Encryption'),
-                      children: <Widget>[
-                        RadioGroup<String>(
-                          groupValue: _encryptionValue(s.encryption),
-                          onChanged: (String? v) =>
-                              Navigator.of(context).pop(v),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              for (final (String value, String label)
-                                  in _encryptionModes)
-                                RadioListTile<String>(
-                                  value: value,
-                                  title: Text(label),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (mode != null) await _write('encryption', mode);
-                },
-              ),
-              _switchTile(
-                'Use PEX to find more peers',
-                s.pexEnabled,
-                'pex-enabled',
-              ),
-              _switchTile(
-                'Use DHT to find more peers',
-                s.dhtEnabled,
-                'dht-enabled',
-              ),
-              _switchTile(
-                'Use LPD to find local peers',
-                s.lpdEnabled,
-                'lpd-enabled',
-              ),
-              _switchTile(
-                'Enable blocklist',
-                s.blocklistEnabled,
-                'blocklist-enabled',
-              ),
-              _pathTile('Blocklist URL', s.blocklistUrl, 'blocklist-url'),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: Insets.xs),
-                child: Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: TransmissionPill(
-                        icon: Icons.block,
-                        label: 'Blocklist has ${s.blocklistSize} rules',
-                        foreground: cs.onSurfaceVariant,
-                        background: cs.surfaceContainerHighest,
-                      ),
-                    ),
-                    const SizedBox(width: Insets.sm),
-                    FilledButton.tonal(
-                      onPressed: _updatingBlocklist ? null : _updateBlocklist,
-                      child: const Text('Update blocklist'),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: Insets.sm),
-          _Group(
-            title: 'Network',
-            children: <Widget>[
-              _numberTile('Peer listening port', s.peerPort, 'peer-port'),
-              _switchTile(
-                'Randomize port on launch',
-                s.peerPortRandomOnStart,
-                'peer-port-random-on-start',
-              ),
-              _switchTile(
-                'Use port forwarding (UPnP or NAT-PMP)',
-                s.portForwardingEnabled,
-                'port-forwarding-enabled',
-              ),
-              _switchTile('Enable uTP', s.utpEnabled, 'utp-enabled'),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: Insets.xs),
-                child: Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Wrap(
-                        spacing: Insets.xs,
-                        runSpacing: Insets.xs,
-                        children: <Widget>[
-                          for (final MapEntry<String, bool> r
-                              in _portResults.entries)
-                            TransmissionPill(
-                              icon: r.value
-                                  ? Icons.check_circle_outline
-                                  : Icons.error_outline,
-                              label: '${_protocolLabel(r.key)} is '
-                                  '${r.value ? 'Open' : 'Closed'}',
-                              foreground: r.value
-                                  ? cs.onTertiaryContainer
-                                  : cs.onErrorContainer,
-                              background: r.value
-                                  ? cs.tertiaryContainer
-                                  : cs.errorContainer,
-                            ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: Insets.sm),
-                    FilledButton.tonal(
-                      onPressed: _testingPort ? null : () => _testPort(s),
-                      child: const Text('Test port'),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: Insets.lg),
-          Center(
-            child: Text(
-              'Transmission ${s.version}, RPC ${s.rpcVersion}',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: cs.onSurfaceVariant),
-            ),
+        title: Text('${widget.instance.name} Settings'),
+        actions: <Widget>[
+          IconButton(
+            tooltip: 'Refresh',
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              ref
+                ..invalidate(transmissionSessionProvider(widget.instance))
+                ..invalidate(
+                  transmissionSessionStatsProvider(widget.instance),
+                );
+            },
           ),
         ],
+      ),
+      body: AsyncValueView<TransmissionSession>(
+        value: session,
+        onRetry: () =>
+            ref.invalidate(transmissionSessionProvider(widget.instance)),
+        data: (TransmissionSession s) => ListView(
+          controller: _scroll,
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(
+            Insets.md,
+            Insets.xs,
+            Insets.md,
+            Insets.xl,
+          ),
+          children: <Widget>[
+            _StatisticsCard(instance: widget.instance),
+            const SizedBox(height: Insets.sm),
+            _Group(
+              title: 'Torrents',
+              children: <Widget>[
+                _pathTile('Download to', s.downloadDir, 'download-dir'),
+                _switchTile(
+                  'Start when added',
+                  s.startAddedTorrents,
+                  'start-added-torrents',
+                ),
+                _switchTile(
+                  'Stop seeding at ratio',
+                  s.seedRatioLimited,
+                  'seedRatioLimited',
+                ),
+                _numberTile(
+                  'Seed ratio limit',
+                  s.seedRatioLimit,
+                  'seedRatioLimit',
+                  decimal: true,
+                ),
+                _switchTile(
+                  'Stop seeding if idle',
+                  s.idleSeedingLimitEnabled,
+                  'idle-seeding-limit-enabled',
+                ),
+                _numberTile(
+                  'Idle limit (minutes)',
+                  s.idleSeedingLimit,
+                  'idle-seeding-limit',
+                ),
+                _switchTile(
+                  'Keep incomplete torrents in a separate folder',
+                  s.incompleteDirEnabled,
+                  'incomplete-dir-enabled',
+                ),
+                _pathTile(
+                  'Incomplete folder',
+                  s.incompleteDir,
+                  'incomplete-dir',
+                ),
+                _switchTile(
+                  'Append ".part" to incomplete files',
+                  s.renamePartialFiles,
+                  'rename-partial-files',
+                ),
+                _switchTile(
+                  'Limit the download queue',
+                  s.downloadQueueEnabled,
+                  'download-queue-enabled',
+                ),
+                _numberTile(
+                  'Download queue size',
+                  s.downloadQueueSize,
+                  'download-queue-size',
+                ),
+                if (s.supportsDefaultTrackers)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Default public trackers'),
+                    subtitle: Text(_trackerCount(s.defaultTrackers)),
+                    onTap: () => _editText(
+                      title: 'Default public trackers',
+                      key: 'default-trackers',
+                      initial: s.defaultTrackers,
+                      multiline: true,
+                      helper: 'One URL per line, a blank line between tiers',
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: Insets.sm),
+            _Group(
+              title: 'Speed',
+              children: <Widget>[
+                _switchTile(
+                  'Limit upload',
+                  s.speedLimitUpEnabled,
+                  'speed-limit-up-enabled',
+                ),
+                _numberTile(
+                  'Upload limit (kB/s)',
+                  s.speedLimitUp,
+                  'speed-limit-up',
+                ),
+                _switchTile(
+                  'Limit download',
+                  s.speedLimitDownEnabled,
+                  'speed-limit-down-enabled',
+                ),
+                _numberTile(
+                  'Download limit (kB/s)',
+                  s.speedLimitDown,
+                  'speed-limit-down',
+                ),
+                _numberTile(
+                  'Alternative upload limit (kB/s)',
+                  s.altSpeedUp,
+                  'alt-speed-up',
+                ),
+                _numberTile(
+                  'Alternative download limit (kB/s)',
+                  s.altSpeedDown,
+                  'alt-speed-down',
+                ),
+                _switchTile(
+                  'Scheduled alternative limits',
+                  s.altSpeedTimeEnabled,
+                  'alt-speed-time-enabled',
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('From'),
+                  subtitle: Text(_clock(s.altSpeedTimeBegin)),
+                  onTap: () => _pickTime(
+                    key: 'alt-speed-time-begin',
+                    minutes: s.altSpeedTimeBegin,
+                  ),
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('To'),
+                  subtitle: Text(_clock(s.altSpeedTimeEnd)),
+                  onTap: () => _pickTime(
+                    key: 'alt-speed-time-end',
+                    minutes: s.altSpeedTimeEnd,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: Insets.xs),
+                  child: Text('On days: ${trDaySummary(s.altSpeedTimeDay)}'),
+                ),
+                Wrap(
+                  spacing: Insets.xs,
+                  runSpacing: Insets.xs,
+                  children: <Widget>[
+                    for (final (int mask, String name) in <(int, String)>[
+                      (trEveryDay, 'Every day'),
+                      (trWeekdays, 'Weekdays'),
+                      (trWeekends, 'Weekends'),
+                    ])
+                      ChoiceChip(
+                        label: Text(name),
+                        selected: s.altSpeedTimeDay == mask,
+                        onSelected: (_) => _write('alt-speed-time-day', mask),
+                      ),
+                    for (final (int bit, String name) in trDays)
+                      FilterChip(
+                        label: Text(name),
+                        selected: s.altSpeedTimeDay & bit != 0,
+                        onSelected: (_) => _write(
+                          'alt-speed-time-day',
+                          trToggleDay(s.altSpeedTimeDay, bit),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: Insets.sm),
+            _Group(
+              title: 'Peers',
+              children: <Widget>[
+                _numberTile(
+                  'Max peers per torrent',
+                  s.peerLimitPerTorrent,
+                  'peer-limit-per-torrent',
+                ),
+                _numberTile(
+                  'Max peers overall',
+                  s.peerLimitGlobal,
+                  'peer-limit-global',
+                ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Encryption'),
+                  subtitle: Text(_encryptionLabel(s.encryption)),
+                  onTap: () async {
+                    final String? mode = await showDialog<String>(
+                      context: context,
+                      builder: (BuildContext context) => SimpleDialog(
+                        title: const Text('Encryption'),
+                        children: <Widget>[
+                          RadioGroup<String>(
+                            groupValue: _encryptionValue(s.encryption),
+                            onChanged: (String? v) =>
+                                Navigator.of(context).pop(v),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                for (final (String value, String label)
+                                    in _encryptionModes)
+                                  RadioListTile<String>(
+                                    value: value,
+                                    title: Text(label),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (mode != null) await _write('encryption', mode);
+                  },
+                ),
+                _switchTile(
+                  'Use PEX to find more peers',
+                  s.pexEnabled,
+                  'pex-enabled',
+                ),
+                _switchTile(
+                  'Use DHT to find more peers',
+                  s.dhtEnabled,
+                  'dht-enabled',
+                ),
+                _switchTile(
+                  'Use LPD to find local peers',
+                  s.lpdEnabled,
+                  'lpd-enabled',
+                ),
+                _switchTile(
+                  'Enable blocklist',
+                  s.blocklistEnabled,
+                  'blocklist-enabled',
+                ),
+                _pathTile('Blocklist URL', s.blocklistUrl, 'blocklist-url'),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: Insets.xs),
+                  child: Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: TransmissionPill(
+                          icon: Icons.block,
+                          label: 'Blocklist has ${s.blocklistSize} rules',
+                          foreground: cs.onSurfaceVariant,
+                          background: cs.surfaceContainerHighest,
+                        ),
+                      ),
+                      const SizedBox(width: Insets.sm),
+                      FilledButton.tonal(
+                        onPressed: _updatingBlocklist ? null : _updateBlocklist,
+                        child: const Text('Update blocklist'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: Insets.sm),
+            _Group(
+              title: 'Network',
+              children: <Widget>[
+                _numberTile('Peer listening port', s.peerPort, 'peer-port'),
+                _switchTile(
+                  'Randomize port on launch',
+                  s.peerPortRandomOnStart,
+                  'peer-port-random-on-start',
+                ),
+                _switchTile(
+                  'Use port forwarding (UPnP or NAT-PMP)',
+                  s.portForwardingEnabled,
+                  'port-forwarding-enabled',
+                ),
+                _switchTile('Enable uTP', s.utpEnabled, 'utp-enabled'),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: Insets.xs),
+                  child: Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Wrap(
+                          spacing: Insets.xs,
+                          runSpacing: Insets.xs,
+                          children: <Widget>[
+                            for (final MapEntry<String, bool> r
+                                in _portResults.entries)
+                              TransmissionPill(
+                                icon: r.value
+                                    ? Icons.check_circle_outline
+                                    : Icons.error_outline,
+                                label: '${_protocolLabel(r.key)} is '
+                                    '${r.value ? 'Open' : 'Closed'}',
+                                foreground: r.value
+                                    ? cs.onTertiaryContainer
+                                    : cs.onErrorContainer,
+                                background: r.value
+                                    ? cs.tertiaryContainer
+                                    : cs.errorContainer,
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: Insets.sm),
+                      FilledButton.tonal(
+                        onPressed: _testingPort ? null : () => _testPort(s),
+                        child: const Text('Test port'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: Insets.lg),
+            Center(
+              child: Text(
+                'Transmission ${s.version}, RPC ${s.rpcVersion}',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -517,10 +575,8 @@ class _TransmissionSettingsTabState
       '${(minutes % 60).toString().padLeft(2, '0')}';
 
   static String _trackerCount(String trackers) {
-    final int n = trackers
-        .split('\n')
-        .where((String l) => l.trim().isNotEmpty)
-        .length;
+    final int n =
+        trackers.split('\n').where((String l) => l.trim().isNotEmpty).length;
     return n == 0 ? 'None' : trCount(n, 'tracker', 'trackers');
   }
 
@@ -735,7 +791,11 @@ class _StatisticsCard extends ConsumerWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              block('This session', Icons.timelapse_rounded, stats.currentStats),
+              block(
+                'This session',
+                Icons.timelapse_rounded,
+                stats.currentStats,
+              ),
               const SizedBox(width: Insets.sm),
               block(
                 'All time',
