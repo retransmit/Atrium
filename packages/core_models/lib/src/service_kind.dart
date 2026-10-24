@@ -31,7 +31,16 @@ enum ServiceKind {
   ombi,
   myspeed,
   adguardHome,
-  aria2,
+  aria2;
+
+  /// All [ServiceKind] entries sorted alphabetically by their display name.
+  static List<ServiceKind> get sortedValues =>
+      ServiceKind.values.toList()
+        ..sort(
+          (ServiceKind a, ServiceKind b) => a.displayName
+              .toLowerCase()
+              .compareTo(b.displayName.toLowerCase()),
+        );
 }
 
 /// Static metadata about a [ServiceKind] - display name, default port, the

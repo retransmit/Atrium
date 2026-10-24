@@ -1,5 +1,6 @@
 import 'package:core_models/core_models.dart';
 import 'package:core_profile/core_profile.dart';
+import 'package:core_router/core_router.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +11,7 @@ import 'package:service_speedtest_tracker/service_speedtest_tracker.dart';
 import '../connection_test/connection_test_result.dart';
 import '../connection_test/connection_tester.dart';
 import '../plex_client_identifier.dart';
+import '../service_icon.dart';
 
 const String speedtestConnectionSuccessMessage =
     'Connected with results:read. Run permission cannot be verified until used.';
@@ -34,16 +36,22 @@ String speedtestConnectionErrorMessage(SpeedtestTrackerException error) =>
         'Speedtest Tracker returned an unexpected response.',
     };
 
-/// Add / edit an instance. When [instanceId] is null this is an "add" form;
-/// otherwise it pre-fills from the existing instance.
+/// Add / edit an instance. When [instanceId] is null this is an "add" form
+/// for [initialKind], the service picked on the grid; otherwise it pre-fills
+/// from the existing instance.
 ///
 /// The auth fields shown depend on the selected [ServiceKind]'s auth style:
 /// API-key and bearer-token services show one field; user/pass services show
 /// two; Plex shows a token field.
 class InstanceFormScreen extends ConsumerStatefulWidget {
-  const InstanceFormScreen({this.instanceId, super.key});
+  const InstanceFormScreen({
+    this.instanceId,
+    this.initialKind,
+    super.key,
+  });
 
   final String? instanceId;
+  final ServiceKind? initialKind;
 
   @override
   ConsumerState<InstanceFormScreen> createState() => _InstanceFormScreenState();
@@ -77,6 +85,14 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
   Map<String, String> _customHeaders = const <String, String>{};
 
   bool get _isEdit => widget.instanceId != null;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialKind != null) {
+      _kind = widget.initialKind!;
+    }
+  }
 
   @override
   void dispose() {
@@ -269,7 +285,11 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     final Instance instance = _buildInstance(id);
     await controller.upsertInstance(profile.id, instance);
     if (mounted) {
-      context.pop();
+      if (context.canPop()) {
+        context.pop(true);
+      } else {
+        context.goNamed(AtriumRoutes.dashboardName);
+      }
     }
   }
 
@@ -309,6 +329,32 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
   }
 
   Future<void> _delete() async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: Text('Delete ${_name.text.isEmpty ? "service" : _name.text}?'),
+        content: const Text(
+          'This will permanently remove this instance and its connection credentials.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) {
+      return;
+    }
     final Profile? profile = ref.read(activeProfileProvider);
     if (profile == null || widget.instanceId == null) {
       return;
@@ -331,6 +377,10 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
       }
     }
 
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final Color accent = ServiceVisuals.accent(_kind);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(_isEdit ? 'Edit service' : 'Add service'),
@@ -348,210 +398,316 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
         child: ListView(
           padding: Insets.page,
           children: <Widget>[
-            DropdownMenu<ServiceKind>(
-              key: ValueKey<ServiceKind>(_kind),
-              initialSelection: _kind,
-              label: const Text('Service'),
-              expandedInsets: EdgeInsets.zero,
-              menuHeight: 350,
-              leadingIcon: UnconstrainedBox(
-                child: _buildServiceIcon(_kind, size: 24),
+            // Service Hero / Header Card
+            Card(
+              elevation: 0,
+              color: cs.surfaceContainerLow,
+              clipBehavior: Clip.antiAlias,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(Radii.md),
+                side: BorderSide(
+                  color: cs.outlineVariant.withValues(alpha: 0.5),
+                ),
               ),
-              dropdownMenuEntries: <DropdownMenuEntry<ServiceKind>>[
-                for (final ServiceKind k in ServiceKind.values.toList()
-                  ..sort((a, b) => a.displayName
-                      .toLowerCase()
-                      .compareTo(b.displayName.toLowerCase())))
-                  DropdownMenuEntry<ServiceKind>(
-                    value: k,
-                    label: k.isBeta
-                        ? '${k.displayName} - ${k.tagline} (Beta)'
-                        : '${k.displayName} - ${k.tagline}',
-                    leadingIcon: _buildServiceIcon(k),
-                  ),
-              ],
-              onSelected: (ServiceKind? k) => setState(() {
-                _kind = k ?? _kind;
-                _connectionResults = <String, ConnectionTestResult>{};
-              }),
-            ),
-            const SizedBox(height: Insets.md),
-            TextFormField(
-              controller: _name,
-              decoration: InputDecoration(
-                border: const OutlineInputBorder(),
-                labelText: 'Name',
-                hintText: 'e.g. Home ${_kind.displayName}',
+              child: Padding(
+                padding: const EdgeInsets.all(Insets.lg),
+                child: Row(
+                  children: <Widget>[
+                    Container(
+                      width: 52,
+                      height: 52,
+                      padding: const EdgeInsets.all(Insets.xs),
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(Radii.md),
+                      ),
+                      child: Center(
+                        child: ServiceIcon(kind: _kind, size: 36),
+                      ),
+                    ),
+                    const SizedBox(width: Insets.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Row(
+                            children: <Widget>[
+                              Flexible(
+                                child: Text(
+                                  _kind.displayName,
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (_kind.isBeta) ...<Widget>[
+                                const SizedBox(width: Insets.xs),
+                                const BetaBadge(),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: Insets.xxs),
+                          Text(
+                            _kind.tagline,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              textInputAction: TextInputAction.next,
-              validator: (String? v) =>
-                  (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
             const SizedBox(height: Insets.lg),
-            Text(
-              'Connection',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: Insets.sm),
-            TextFormField(
-              controller: _localUrl,
-              decoration: InputDecoration(
-                border: const OutlineInputBorder(),
-                labelText: 'Local URL',
-                hintText: _kind.defaultPort == null
-                    ? 'http://192.168.1.10'
-                    : 'http://192.168.1.10:${_kind.defaultPort}',
-              ),
-              keyboardType: TextInputType.url,
-              autocorrect: false,
-              onChanged: _clearConnectionTest,
-              validator: _validateUrlsTogether,
-            ),
-            const SizedBox(height: Insets.md),
-            TextFormField(
-              controller: _externalUrl,
-              decoration: InputDecoration(
-                border: const OutlineInputBorder(),
-                labelText: 'External URL',
-                hintText: _kind == ServiceKind.speedtestTracker
-                    ? 'https://speedtest.example.com'
-                    : 'https://sonarr.example.com',
-              ),
-              keyboardType: TextInputType.url,
-              autocorrect: false,
-              onChanged: _clearConnectionTest,
-              validator: _validateUrlsTogether,
-            ),
-            if (_warnAboutExternalHttp) ...<Widget>[
-              const SizedBox(height: Insets.sm),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Icon(
-                    Icons.warning_amber_rounded,
-                    size: 18,
-                    color: Theme.of(context).colorScheme.error,
+
+            // General Information Card
+            _FormSectionCard(
+              title: 'General',
+              icon: Icons.badge_outlined,
+              children: <Widget>[
+                TextFormField(
+                  controller: _name,
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    labelText: 'Name',
+                    hintText: 'e.g. Home ${_kind.displayName}',
+                    prefixIcon: const Icon(Icons.label_outline),
                   ),
-                  const SizedBox(width: Insets.sm),
-                  const Expanded(
-                    child: Text(
-                      'An external or Tailscale HTTP URL does not protect the '
-                      'bearer token with TLS. Use HTTPS when possible.',
+                  textInputAction: TextInputAction.next,
+                  validator: (String? v) =>
+                      (v == null || v.trim().isEmpty) ? 'Required' : null,
+                ),
+              ],
+            ),
+            const SizedBox(height: Insets.lg),
+
+            // Connection Card
+            _FormSectionCard(
+              title: 'Connection',
+              icon: Icons.lan_outlined,
+              children: <Widget>[
+                TextFormField(
+                  controller: _localUrl,
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    labelText: 'Local URL',
+                    hintText: _kind.defaultPort == null
+                        ? 'http://192.168.1.10'
+                        : 'http://192.168.1.10:${_kind.defaultPort}',
+                    prefixIcon: const Icon(Icons.home_outlined),
+                    helperText: 'Used on your home network',
+                  ),
+                  keyboardType: TextInputType.url,
+                  autocorrect: false,
+                  onChanged: _clearConnectionTest,
+                  validator: _validateUrlsTogether,
+                ),
+                const SizedBox(height: Insets.md),
+                TextFormField(
+                  controller: _externalUrl,
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    labelText: 'External URL',
+                    hintText: _kind == ServiceKind.speedtestTracker
+                        ? 'https://speedtest.example.com'
+                        : 'https://sonarr.example.com',
+                    prefixIcon: const Icon(Icons.public_outlined),
+                    helperText: 'Used away from home',
+                  ),
+                  keyboardType: TextInputType.url,
+                  autocorrect: false,
+                  onChanged: _clearConnectionTest,
+                  validator: _validateUrlsTogether,
+                ),
+                if (_warnAboutExternalHttp) ...<Widget>[
+                  const SizedBox(height: Insets.sm),
+                  Container(
+                    padding: const EdgeInsets.all(Insets.sm),
+                    decoration: BoxDecoration(
+                      color: cs.errorContainer.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(Radii.sm),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          size: 18,
+                          color: cs.error,
+                        ),
+                        const SizedBox(width: Insets.sm),
+                        Expanded(
+                          child: Text(
+                            'An external or Tailscale HTTP URL does not protect the '
+                            'bearer token with TLS. Use HTTPS when possible.',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: cs.onErrorContainer,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
-              ),
-            ],
-            const SizedBox(height: Insets.md),
-            DropdownMenu<UrlMode>(
-              initialSelection: _urlMode,
-              label: const Text('URL selection'),
-              expandedInsets: EdgeInsets.zero,
-              dropdownMenuEntries: const <DropdownMenuEntry<UrlMode>>[
-                DropdownMenuEntry<UrlMode>(
-                  value: UrlMode.auto,
-                  label: 'Auto (probe local, fall back to external)',
-                ),
-                DropdownMenuEntry<UrlMode>(
-                  value: UrlMode.forceLocal,
-                  label: 'Always local',
-                ),
-                DropdownMenuEntry<UrlMode>(
-                  value: UrlMode.forceExternal,
-                  label: 'Always external',
+                const SizedBox(height: Insets.md),
+                DropdownMenu<UrlMode>(
+                  initialSelection: _urlMode,
+                  label: const Text('URL selection'),
+                  expandedInsets: EdgeInsets.zero,
+                  leadingIcon: const Icon(Icons.alt_route_outlined),
+                  dropdownMenuEntries: const <DropdownMenuEntry<UrlMode>>[
+                    DropdownMenuEntry<UrlMode>(
+                      value: UrlMode.auto,
+                      label: 'Auto (probe local, fall back to external)',
+                    ),
+                    DropdownMenuEntry<UrlMode>(
+                      value: UrlMode.forceLocal,
+                      label: 'Always local',
+                    ),
+                    DropdownMenuEntry<UrlMode>(
+                      value: UrlMode.forceExternal,
+                      label: 'Always external',
+                    ),
+                  ],
+                  onSelected: (UrlMode? m) => setState(() {
+                    _urlMode = m ?? _urlMode;
+                    _connectionResults = <String, ConnectionTestResult>{};
+                  }),
                 ),
               ],
-              onSelected: (UrlMode? m) => setState(() {
-                _urlMode = m ?? _urlMode;
-                _connectionResults = <String, ConnectionTestResult>{};
-              }),
             ),
             const SizedBox(height: Insets.lg),
-            Text(
-              'Authentication',
-              style: Theme.of(context).textTheme.titleSmall,
+
+            // Authentication Card
+            _FormSectionCard(
+              title: 'Authentication',
+              icon: Icons.lock_outline,
+              children: _authFields(),
             ),
-            const SizedBox(height: Insets.sm),
-            ..._authFields(),
-            const SizedBox(height: Insets.md),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Allow self-signed certificates'),
-              subtitle: const Text(
-                'Skip TLS validation for this instance only.',
-              ),
-              value: _allowSelfSigned,
-              onChanged: (bool v) => setState(() {
-                _allowSelfSigned = v;
-                _connectionResults = <String, ConnectionTestResult>{};
-              }),
-            ),
-            const SizedBox(height: Insets.sm),
-            OutlinedButton.icon(
-              onPressed: _testingConnection ? null : _testConnection,
-              icon: _testingConnection
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.cable_outlined),
-              label: Text(
-                _testingConnection ? 'Testing...' : 'Test connection',
-              ),
-            ),
-            for (final MapEntry<String, ConnectionTestResult> entry
-                in _connectionResults.entries) ...<Widget>[
-              const SizedBox(height: Insets.sm),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Icon(
-                    _connectionOutcomeIcon(entry.value.outcome),
-                    size: 18,
-                    color:
-                        _connectionOutcomeColor(context, entry.value.outcome),
+            const SizedBox(height: Insets.lg),
+
+            // Preferences Card
+            _FormSectionCard(
+              title: 'Preferences',
+              icon: Icons.tune_outlined,
+              children: <Widget>[
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  secondary: const Icon(Icons.security_outlined),
+                  title: const Text('Allow self-signed certificates'),
+                  subtitle: const Text(
+                    'Skip TLS validation for this instance only.',
                   ),
-                  const SizedBox(width: Insets.sm),
-                  Expanded(
-                    child: Text('${entry.key}: ${entry.value.message}'),
+                  value: _allowSelfSigned,
+                  onChanged: (bool v) => setState(() {
+                    _allowSelfSigned = v;
+                    _connectionResults = <String, ConnectionTestResult>{};
+                  }),
+                ),
+                if (_kind == ServiceKind.glances ||
+                    _kind == ServiceKind.dashdot ||
+                    _kind == ServiceKind.gluetun ||
+                    _kind == ServiceKind.qbittorrent) ...<Widget>[
+                  const SizedBox(height: Insets.md),
+                  TextFormField(
+                    controller: _pollingInterval,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: 'Polling Interval (seconds)',
+                      hintText: '5',
+                      prefixIcon: Icon(Icons.timer_outlined),
+                      suffixText: 'sec',
+                    ),
+                    keyboardType: TextInputType.number,
+                    validator: (String? v) {
+                      final int? val = int.tryParse(v?.trim() ?? '');
+                      if (val == null || val < 1) {
+                        return 'Must be at least 1 second';
+                      }
+                      return null;
+                    },
                   ),
                 ],
-              ),
-            ],
-            if (_kind == ServiceKind.glances ||
-                _kind == ServiceKind.dashdot ||
-                _kind == ServiceKind.gluetun ||
-                _kind == ServiceKind.qbittorrent) ...<Widget>[
-              const SizedBox(height: Insets.lg),
-              Text(
-                'Polling',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: Insets.sm),
-              TextFormField(
-                controller: _pollingInterval,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  labelText: 'Polling Interval (seconds)',
-                  hintText: '5',
-                ),
-                keyboardType: TextInputType.number,
-                validator: (String? v) {
-                  final int? val = int.tryParse(v?.trim() ?? '');
-                  if (val == null || val < 1) {
-                    return 'Must be at least 1 second';
-                  }
-                  return null;
-                },
-              ),
-            ],
-            const SizedBox(height: Insets.xl),
-            FilledButton.icon(
-              onPressed: _save,
-              icon: const Icon(Icons.save_outlined),
-              label: Text(_isEdit ? 'Save changes' : 'Add service'),
+              ],
             ),
+            const SizedBox(height: Insets.lg),
+
+            // Connection Test Card
+            _FormSectionCard(
+              title: 'Diagnostics',
+              icon: Icons.cable_outlined,
+              subtitle: 'Verify connectivity before saving.',
+              children: <Widget>[
+                OutlinedButton.icon(
+                  onPressed: _testingConnection ? null : _testConnection,
+                  icon: _testingConnection
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: ExpressiveProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.play_arrow_outlined),
+                  label: Text(
+                    _testingConnection ? 'Testing...' : 'Test connection',
+                  ),
+                ),
+                for (final MapEntry<String, ConnectionTestResult> entry
+                    in _connectionResults.entries) ...<Widget>[
+                  const SizedBox(height: Insets.sm),
+                  Container(
+                    padding: const EdgeInsets.all(Insets.sm),
+                    decoration: BoxDecoration(
+                      color: _connectionOutcomeColor(context, entry.value.outcome)
+                          .withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(Radii.sm),
+                      border: Border.all(
+                        color: _connectionOutcomeColor(context, entry.value.outcome)
+                            .withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Icon(
+                          _connectionOutcomeIcon(entry.value.outcome),
+                          size: 18,
+                          color: _connectionOutcomeColor(
+                            context,
+                            entry.value.outcome,
+                          ),
+                        ),
+                        const SizedBox(width: Insets.sm),
+                        Expanded(
+                          child: Text(
+                            '${entry.key}: ${entry.value.message}',
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: Insets.xl),
+
+            // Save / Submit Button
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: FilledButton.icon(
+                onPressed: _save,
+                icon: const Icon(Icons.check_rounded),
+                label: Text(
+                  _isEdit ? 'Save changes' : 'Add service',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+            const SizedBox(height: Insets.xl),
           ],
         ),
       ),
@@ -568,6 +724,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 labelText: 'Password (optional)',
+                prefixIcon: Icon(Icons.lock_outline),
                 helperText:
                     'Leave empty if password protection is disabled on your MySpeed instance.',
               ),
@@ -591,6 +748,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 labelText: 'RPC secret (optional)',
+                prefixIcon: Icon(Icons.key_outlined),
                 helperText: 'aria2\'s --rpc-secret, sent as the first '
                     'parameter of every RPC call. Leave empty if the daemon '
                     'has no secret.',
@@ -611,6 +769,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
             decoration: InputDecoration(
               border: const OutlineInputBorder(),
               labelText: keyOptional ? 'API key (optional)' : 'API key',
+              prefixIcon: const Icon(Icons.key_outlined),
               helperText: keyOptional
                   ? 'Leave empty if the control server has auth turned off.'
                   : null,
@@ -630,6 +789,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
             decoration: const InputDecoration(
               border: OutlineInputBorder(),
               labelText: 'Bearer API token',
+              prefixIcon: Icon(Icons.key_outlined),
               helperText: 'Requires results:read; speedtests:run is optional.',
             ),
             obscureText: true,
@@ -653,6 +813,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
             decoration: const InputDecoration(
               border: OutlineInputBorder(),
               labelText: 'Plex token (X-Plex-Token)',
+              prefixIcon: Icon(Icons.token_outlined),
             ),
             autocorrect: false,
             onChanged: _clearConnectionTest,
@@ -680,6 +841,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
           decoration: InputDecoration(
             border: const OutlineInputBorder(),
             labelText: passwordOptional ? 'Password (Optional)' : 'Password',
+            prefixIcon: const Icon(Icons.lock_outline),
           ),
           obscureText: true,
           validator: passwordOptional
@@ -693,6 +855,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
             decoration: InputDecoration(
               border: const OutlineInputBorder(),
               labelText: authOptional ? 'Username (Optional)' : 'Username',
+              prefixIcon: const Icon(Icons.person_outline),
             ),
             autocorrect: false,
             textInputAction: TextInputAction.next,
@@ -740,6 +903,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 labelText: 'API key',
+                prefixIcon: Icon(Icons.key_outlined),
                 helperText: 'qBittorrent 5.2+ Web UI setting; '
                     'sent as Authorization: Bearer',
               ),
@@ -751,7 +915,27 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
             ...userPass,
         ];
       case AuthStyle.none:
-        return const <Widget>[];
+        return <Widget>[
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: Insets.xs),
+            child: Row(
+              children: <Widget>[
+                Icon(
+                  Icons.info_outline,
+                  size: 20,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                const SizedBox(width: Insets.sm),
+                Expanded(
+                  child: Text(
+                    'No authentication credentials are required for ${_kind.displayName}.',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ];
     }
   }
 
@@ -772,15 +956,70 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     final Uri? uri = Uri.tryParse(raw.trim());
     return uri != null && uri.hasScheme && uri.host.isNotEmpty;
   }
+}
 
-  Widget _buildServiceIcon(ServiceKind kind, {double size = 24}) {
-    return Image.asset(
-      'assets/service_icons/${kind.name}.png',
-      width: size,
-      height: size,
-      errorBuilder:
-          (BuildContext context, Object error, StackTrace? stackTrace) =>
-              Icon(Icons.dns_outlined, size: size),
+class _FormSectionCard extends StatelessWidget {
+  const _FormSectionCard({
+    required this.title,
+    required this.icon,
+    required this.children,
+    this.subtitle,
+  });
+
+  final String title;
+  final IconData icon;
+  final String? subtitle;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+
+    return Card(
+      elevation: 0,
+      color: cs.surfaceContainerLow,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.md),
+        side: BorderSide(
+          color: cs.outlineVariant.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(Insets.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Icon(icon, size: 20, color: cs.primary),
+                const SizedBox(width: Insets.sm),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            if (subtitle != null) ...<Widget>[
+              const SizedBox(height: Insets.xxs),
+              Text(
+                subtitle!,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ],
+            const SizedBox(height: Insets.md),
+            ...children,
+          ],
+        ),
+      ),
     );
   }
 }

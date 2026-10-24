@@ -17,18 +17,12 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: InstanceFormScreen())),
+      const ProviderScope(
+        child: MaterialApp(
+          home: InstanceFormScreen(initialKind: ServiceKind.adguardHome),
+        ),
+      ),
     );
-
-    await tester.tap(find.byType(DropdownMenu<ServiceKind>));
-    await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('AdGuard Home - Network-wide blocking'),
-      200,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('AdGuard Home - Network-wide blocking'));
     await tester.pumpAndSettle();
 
     FormField<String> field(String label) => tester.widget<TextFormField>(

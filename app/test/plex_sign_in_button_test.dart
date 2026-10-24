@@ -10,33 +10,27 @@ import 'package:flutter_test/flutter_test.dart';
 /// sign in at plex.tv. The form now offers the second way, so somebody who
 /// cannot reach their server can still add it.
 void main() {
-  Future<void> openForm(WidgetTester tester) async {
+  Future<void> openForm(
+    WidgetTester tester, {
+    ServiceKind kind = ServiceKind.sonarr,
+  }) async {
     tester.view.physicalSize = const Size(900, 1400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: InstanceFormScreen())),
+      ProviderScope(
+        child: MaterialApp(
+          home: InstanceFormScreen(initialKind: kind),
+        ),
+      ),
     );
-  }
-
-  Future<void> pickPlex(WidgetTester tester) async {
-    await tester.tap(find.byType(DropdownMenu<ServiceKind>));
-    await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('Plex - Media server'),
-      200,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Plex - Media server'));
     await tester.pumpAndSettle();
   }
 
   testWidgets('Plex offers to sign in beside the token field',
       (WidgetTester tester) async {
-    await openForm(tester);
-    await pickPlex(tester);
+    await openForm(tester, kind: ServiceKind.plex);
 
     expect(find.text('Sign in with Plex'), findsOneWidget);
     // Typing a token by hand still works for anyone who already has one.
