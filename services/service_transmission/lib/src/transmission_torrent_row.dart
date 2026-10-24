@@ -133,7 +133,9 @@ class TransmissionTorrentRow extends StatelessWidget {
                             Text(
                               torrent.isDone
                                   ? trFmtBytes(torrent.totalSize)
-                                  : '${trFmtBytes(torrent.doneBytes)} / ${trFmtBytes(torrent.sizeWhenDone)}',
+                                  : (torrent.hasEta && !complete
+                                      ? '${trFmtBytes(torrent.doneBytes)} / ${trFmtBytes(torrent.sizeWhenDone)} • ${_formatEta(torrent.eta)}'
+                                      : '${trFmtBytes(torrent.doneBytes)} / ${trFmtBytes(torrent.sizeWhenDone)}'),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.bodySmall?.copyWith(
@@ -212,67 +214,30 @@ class TransmissionTorrentRow extends StatelessWidget {
                 const SizedBox(height: Insets.md),
                 Row(
                   children: <Widget>[
-                    Flexible(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            TransmissionSpeedPill(
-                              icon: Icons.south,
-                              label: trFmtRate(torrent.downloadRate),
-                              color: cs.primary,
-                              active: dlActive,
-                            ),
-                            const SizedBox(width: Insets.sm),
-                            TransmissionSpeedPill(
-                              icon: Icons.north,
-                              label: trFmtRate(torrent.uploadRate),
-                              color: cs.tertiary,
-                              active: upActive,
-                            ),
-                          ],
-                        ),
+                    Expanded(
+                      child: TransmissionSpeedPill(
+                        icon: Icons.south,
+                        label: trFmtRate(torrent.downloadRate),
+                        color: cs.primary,
+                        active: dlActive,
+                        selected: selected,
                       ),
                     ),
-                    const Spacer(),
-                    Flexible(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: <Widget>[
-                            Icon(
-                              Icons.swap_vert,
-                              size: 14,
-                              color: onTileQuiet,
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              torrent.uploadRatio < 0
-                                  ? '0.00'
-                                  : torrent.uploadRatio.toStringAsFixed(2),
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: onTileQuiet,
-                              ),
-                            ),
-                            if (!complete) ...<Widget>[
-                              const SizedBox(width: Insets.sm),
-                              Icon(
-                                Icons.schedule,
-                                size: 14,
-                                color: onTileQuiet,
-                              ),
-                              const SizedBox(width: 2),
-                              Text(
-                                _formatEta(torrent.eta),
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: onTileQuiet,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
+                    const SizedBox(width: Insets.sm),
+                    Expanded(
+                      child: TransmissionSpeedPill(
+                        icon: Icons.north,
+                        label: trFmtRate(torrent.uploadRate),
+                        color: cs.tertiary,
+                        active: upActive,
+                        selected: selected,
+                      ),
+                    ),
+                    const SizedBox(width: Insets.sm),
+                    Expanded(
+                      child: TransmissionRatioPill(
+                        ratio: torrent.uploadRatio,
+                        selected: selected,
                       ),
                     ),
                   ],

@@ -258,22 +258,81 @@ class TransmissionSpeedPill extends StatelessWidget {
     final Color bg =
         active ? color.withValues(alpha: 0.12) : quietBackground;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      height: 28,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           Icon(icon, size: 14, color: fg),
           const SizedBox(width: 4),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: fg,
-                  fontWeight: FontWeight.w700,
-                ),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: fg,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A ratio badge styled consistently with the speed pills.
+class TransmissionRatioPill extends StatelessWidget {
+  const TransmissionRatioPill({
+    required this.ratio,
+    this.selected = false,
+    super.key,
+  });
+
+  final double ratio;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme cs = Theme.of(context).colorScheme;
+    final Color quietForeground = selected
+        ? cs.onPrimaryContainer.withValues(alpha: 0.8)
+        : cs.onSurfaceVariant;
+    final Color quietBackground = selected
+        ? cs.onPrimaryContainer.withValues(alpha: 0.12)
+        : cs.surfaceContainerHighest;
+    final String label = ratio < 0 ? '0.00' : ratio.toStringAsFixed(2);
+    return Container(
+      height: 28,
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: quietBackground,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: <Widget>[
+          Icon(Icons.swap_vert, size: 14, color: quietForeground),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: quietForeground,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
           ),
         ],
       ),
