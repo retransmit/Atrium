@@ -1,9 +1,8 @@
 import 'models/transmission_torrent.dart';
 import 'transmission_format.dart';
 
-/// What a row's progress bar tracks, from the web UI's `getProgressInfo`:
-/// metadata while a magnet is still fetching it, the recheck while verifying,
-/// the download until it is done, and the share ratio toward 1.0 after.
+/// What a row's progress bar tracks: metadata while a magnet is still fetching
+/// it, the recheck while verifying, and the download completion percentage.
 double trBarValue(TransmissionTorrent t) {
   if (t.needsMetadata) {
     return t.metadataPercentComplete.clamp(0, 1).toDouble();
@@ -11,8 +10,7 @@ double trBarValue(TransmissionTorrent t) {
   if (t.status == TransmissionStatus.checking) {
     return t.recheckProgress.clamp(0, 1).toDouble();
   }
-  if (t.leftUntilDone > 0) return t.percentDone.clamp(0, 1).toDouble();
-  return t.ratio.clamp(0, 1).toDouble();
+  return t.percentDone.clamp(0, 1).toDouble();
 }
 
 /// The line under the bar, from `renderProgressDetails`.

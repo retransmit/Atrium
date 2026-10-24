@@ -97,6 +97,17 @@ void main() {
         '${trFmtBytes(4000000000)}, uploaded ${trFmtBytes(200000000)} '
         '(Ratio: 1.50)',
       );
+      expect(trBarValue(done), 1.0);
+    });
+
+    test('a newly seeding torrent with 0 ratio shows 100% progress', () {
+      final TransmissionTorrent seeding = t(<String, dynamic>{
+        'status': 6,
+        'leftUntilDone': 0,
+        'percentDone': 1.0,
+        'uploadRatio': 0.0,
+      });
+      expect(trBarValue(seeding), 1.0);
     });
 
     test('status lines follow the web UI', () {
