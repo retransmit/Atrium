@@ -79,6 +79,12 @@ TransmissionVisual transmissionVisualFor(
 }
 
 /// The rounded surface every group of content sits on.
+///
+/// A [Material] rather than a decorated box: the settings panels and the
+/// header hold [ListTile]s and chips, which paint their background and ink
+/// splashes on the nearest Material ancestor. A `Container` with a
+/// `BoxDecoration` between them and that ancestor hides both, and current
+/// Flutter asserts on exactly that.
 class TransmissionPanel extends StatelessWidget {
   const TransmissionPanel({
     required this.child,
@@ -97,14 +103,14 @@ class TransmissionPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: margin,
-      padding: padding,
-      decoration: BoxDecoration(
+    return Padding(
+      padding: margin,
+      child: Material(
         color: color ?? Theme.of(context).colorScheme.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(radius),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(padding: padding, child: child),
       ),
-      child: child,
     );
   }
 }
@@ -201,13 +207,20 @@ class TransmissionPill extends StatelessWidget {
             Icon(icon, size: 14, color: foreground),
             const SizedBox(width: 4),
           ],
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: foreground,
-                  fontWeight: FontWeight.w700,
-                  fontFamily: monospace ? 'monospace' : null,
-                ),
+          // Flexible, so a long label (a torrent's name in a selection, a
+          // tracker host) is ellipsised inside the pill instead of shoving
+          // the pill wider than the row it sits in.
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: foreground,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: monospace ? 'monospace' : null,
+                  ),
+            ),
           ),
         ],
       ),

@@ -44,8 +44,9 @@ class TransmissionTorrentRow extends StatelessWidget {
     final TransmissionVisual v = transmissionVisualFor(cs, torrent);
     final bool moving = torrent.downloadRate > 0 || torrent.uploadRate > 0;
     final Color onTile = selected ? cs.onPrimaryContainer : cs.onSurface;
-    final Color onTileQuiet =
-        selected ? cs.onPrimaryContainer.withValues(alpha: 0.8) : cs.onSurfaceVariant;
+    final Color onTileQuiet = selected
+        ? cs.onPrimaryContainer.withValues(alpha: 0.8)
+        : cs.onSurfaceVariant;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: Insets.sm),
@@ -69,7 +70,8 @@ class TransmissionTorrentRow extends StatelessWidget {
                       background: selected
                           ? cs.onPrimaryContainer.withValues(alpha: 0.15)
                           : v.container,
-                      foreground: selected ? cs.onPrimaryContainer : v.onContainer,
+                      foreground:
+                          selected ? cs.onPrimaryContainer : v.onContainer,
                       size: compact ? 36 : 44,
                     ),
                     const SizedBox(width: Insets.md),
@@ -175,7 +177,14 @@ class TransmissionTorrentRow extends StatelessWidget {
                     style: text.bodySmall?.copyWith(color: onTileQuiet),
                   ),
                   const SizedBox(height: Insets.sm),
-                  Row(
+                  // A Wrap, not a Row: two rate pills plus the ratio and the
+                  // ETA do not fit across a narrow phone, and at large text
+                  // they run off even a wide one. The extras drop to a second
+                  // line instead of being clipped.
+                  Wrap(
+                    spacing: Insets.sm,
+                    runSpacing: Insets.xs,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: <Widget>[
                       TransmissionSpeedPill(
                         icon: Icons.south,
@@ -183,29 +192,34 @@ class TransmissionTorrentRow extends StatelessWidget {
                         color: cs.primary,
                         active: torrent.downloadRate > 0,
                       ),
-                      const SizedBox(width: Insets.sm),
                       TransmissionSpeedPill(
                         icon: Icons.north,
                         label: trFmtRate(torrent.uploadRate),
                         color: cs.tertiary,
                         active: torrent.uploadRate > 0,
                       ),
-                      const Spacer(),
-                      Icon(Icons.swap_vert, size: 14, color: onTileQuiet),
-                      const SizedBox(width: 2),
-                      Text(
-                        trRatioString(torrent.uploadRatio),
-                        style: text.labelSmall?.copyWith(color: onTileQuiet),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Icon(Icons.swap_vert, size: 14, color: onTileQuiet),
+                          const SizedBox(width: 2),
+                          Text(
+                            trRatioString(torrent.uploadRatio),
+                            style:
+                                text.labelSmall?.copyWith(color: onTileQuiet),
+                          ),
+                          if (torrent.hasEta) ...<Widget>[
+                            const SizedBox(width: Insets.sm),
+                            Icon(Icons.schedule, size: 14, color: onTileQuiet),
+                            const SizedBox(width: 2),
+                            Text(
+                              trFmtEta(torrent.eta),
+                              style:
+                                  text.labelSmall?.copyWith(color: onTileQuiet),
+                            ),
+                          ],
+                        ],
                       ),
-                      if (torrent.hasEta) ...<Widget>[
-                        const SizedBox(width: Insets.sm),
-                        Icon(Icons.schedule, size: 14, color: onTileQuiet),
-                        const SizedBox(width: 2),
-                        Text(
-                          trFmtEta(torrent.eta),
-                          style: text.labelSmall?.copyWith(color: onTileQuiet),
-                        ),
-                      ],
                     ],
                   ),
                   const SizedBox(height: Insets.sm),
