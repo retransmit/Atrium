@@ -22,6 +22,7 @@ export 'src/widgets/beta_badge.dart';
 export 'src/widgets/bottom_nav.dart';
 export 'src/widgets/collapsed_title.dart';
 export 'src/widgets/easy_refresh_wrapper.dart';
+export 'src/widgets/expandable_fab.dart';
 export 'src/widgets/expressive_progress_indicator.dart';
 export 'src/widgets/expressive_slider.dart';
 export 'src/widgets/overview_box.dart';
