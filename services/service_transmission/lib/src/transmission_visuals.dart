@@ -333,7 +333,13 @@ class TransmissionStatBadge extends StatelessWidget {
   }
 }
 
-/// The rounded, filled text field the search box and the sheet use.
+/// The rounded, filled text field the add sheet and the settings dialogs use.
+///
+/// Outlined as well as filled. A fill alone left these reading as floating
+/// labels: `surfaceContainerHighest` at 0.7 alpha sits within a shade of the
+/// sheet's own surface, so there was nothing to see but the text. The outline
+/// is what makes it a box, and it follows the scheme so it works in both
+/// themes and under dynamic colour.
 InputDecoration transmissionFieldDecoration(
   BuildContext context, {
   String? hint,
@@ -343,6 +349,13 @@ InputDecoration transmissionFieldDecoration(
   Widget? suffixIcon,
 }) {
   final ColorScheme cs = Theme.of(context).colorScheme;
+  // `outline`, not `outlineVariant`: the latter is nearly the fill's own value
+  // in the light scheme (#CAC4CF on #E6E0E9), which is the same "nothing to
+  // see" problem in a different place.
+  final OutlineInputBorder border = OutlineInputBorder(
+    borderRadius: BorderRadius.circular(14),
+    borderSide: BorderSide(color: cs.outline),
+  );
   return InputDecoration(
     hintText: hint,
     labelText: label,
@@ -353,9 +366,12 @@ InputDecoration transmissionFieldDecoration(
     fillColor: cs.surfaceContainerHighest.withValues(alpha: 0.7),
     isDense: true,
     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide.none,
+    border: border,
+    enabledBorder: border,
+    // A filled field's outline can all but vanish at rest, so focus says so
+    // with the primary colour rather than only a thicker line.
+    focusedBorder: border.copyWith(
+      borderSide: BorderSide(color: cs.primary, width: 2),
     ),
   );
 }
