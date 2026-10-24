@@ -177,6 +177,37 @@ void main() {
     expect(fake.single('torrent-start').arguments.containsKey('ids'), isFalse);
   });
 
+  testWidgets('unlimited caps show no pills until a cap is in force',
+      (WidgetTester tester) async {
+    // The fixture leaves download unlimited and upload capped at 1000 kB/s,
+    // which is exactly the pair that used to read "Unlimited" / "1000 KB/s"
+    // and crowd the bulk controls.
+    await open(tester);
+
+    // One pill, for the cap that is actually on. Addressed by key: the Down
+    // figure happens to read the same rate as the upload cap.
+    expect(find.text('Unlimited'), findsNothing);
+    expect(find.byKey(const ValueKey<String>('limit-down-pill')), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey<String>('limit-up-pill')),
+        matching: find.text('1000 KB/s'),
+      ),
+      findsOneWidget,
+    );
+
+    // The menu still offers both caps, naming what each is set to, so the
+    // unlimited one is not a dead end.
+    await tester.tap(find.byTooltip('More'));
+    await settle(tester);
+    expect(find.textContaining('Download limit: Unlimited'), findsOneWidget);
+    expect(find.textContaining('Upload limit: 1000 KB/s'), findsOneWidget);
+
+    await tester.tap(find.textContaining('Download limit: Unlimited'));
+    await settle(tester);
+    expect(find.text('Download limit'), findsOneWidget);
+  });
+
   testWidgets('compact rows drop the progress line',
       (WidgetTester tester) async {
     await open(tester);

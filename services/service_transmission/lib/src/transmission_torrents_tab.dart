@@ -444,82 +444,100 @@ class _TransferPanel extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: Insets.sm),
-          // A Wrap, not a Row: a cap can read "10240 KB/s" and a phone at
-          // large text has no room for two caps and three buttons on one
-          // line.
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: Insets.sm,
-            runSpacing: Insets.xs,
+          // Caps are status, not furniture: a pill appears only while a limit
+          // is actually in force. Two "Unlimited" badges said nothing and took
+          // the room the bulk controls needed. Setting either cap, and turning
+          // one off, lives in the overflow menu.
+          if (session.speedLimitDownEnabled ||
+              session.speedLimitUpEnabled) ...<Widget>[
+            const SizedBox(height: Insets.sm),
+            Wrap(
+              spacing: Insets.sm,
+              runSpacing: Insets.xs,
+              children: <Widget>[
+                if (session.speedLimitDownEnabled)
+                  _LimitPill(
+                    key: const ValueKey<String>('limit-down-pill'),
+                    icon: Icons.south,
+                    color: cs.primary,
+                    kbps: session.speedLimitDown,
+                    enabled: true,
+                    onTap: () => _editLimit(
+                      context,
+                      title: 'Download limit',
+                      kbps: session.speedLimitDown,
+                      enabled: session.speedLimitDownEnabled,
+                      onSet: onSetDown,
+                    ),
+                  ),
+                if (session.speedLimitUpEnabled)
+                  _LimitPill(
+                    key: const ValueKey<String>('limit-up-pill'),
+                    icon: Icons.north,
+                    color: cs.tertiary,
+                    kbps: session.speedLimitUp,
+                    enabled: true,
+                    onTap: () => _editLimit(
+                      context,
+                      title: 'Upload limit',
+                      kbps: session.speedLimitUp,
+                      enabled: session.speedLimitUpEnabled,
+                      onSet: onSetUp,
+                    ),
+                  ),
+              ],
+            ),
+          ],
+          const SizedBox(height: Insets.sm),
+          // Three equal controls across the panel, at a size a thumb can hit.
+          // They were 48 px buttons bunched at the right of a row the cap pills
+          // had already filled; they now share the whole width.
+          Row(
             children: <Widget>[
-              // Limits read as status first and controls second: pills
-              // that light up while a cap is in force.
-              _LimitPill(
-                icon: Icons.south,
-                color: cs.primary,
-                kbps: session.speedLimitDown,
-                enabled: session.speedLimitDownEnabled,
-                onTap: () async {
-                  final int? kbps = await showTransmissionSpeedDialog(
-                    context,
-                    title: 'Download limit',
-                    currentKbps: session.speedLimitDown,
-                    currentEnabled: session.speedLimitDownEnabled,
-                  );
-                  if (kbps != null) onSetDown(kbps);
-                },
+              Expanded(
+                child: _BulkButton(
+                  tooltip: 'Resume all',
+                  icon: Icons.play_arrow_rounded,
+                  onPressed: onStartAll,
+                ),
               ),
-              _LimitPill(
-                icon: Icons.north,
-                color: cs.tertiary,
-                kbps: session.speedLimitUp,
-                enabled: session.speedLimitUpEnabled,
-                onTap: () async {
-                  final int? kbps = await showTransmissionSpeedDialog(
-                    context,
-                    title: 'Upload limit',
-                    currentKbps: session.speedLimitUp,
-                    currentEnabled: session.speedLimitUpEnabled,
-                  );
-                  if (kbps != null) onSetUp(kbps);
-                },
+              const SizedBox(width: Insets.sm),
+              Expanded(
+                child: _BulkButton(
+                  tooltip: 'Pause all',
+                  icon: Icons.pause_rounded,
+                  onPressed: onPauseAll,
+                ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  IconButton.filledTonal(
-                    style: IconButton.styleFrom(
-                      backgroundColor:
-                          cs.surfaceContainerHighest.withValues(alpha: 0.7),
-                      minimumSize: const Size(48, 48),
-                      padding: EdgeInsets.zero,
-                    ),
-                    tooltip: 'Resume all',
-                    onPressed: onStartAll,
-                    icon: const Icon(Icons.play_arrow_rounded),
-                  ),
-                  const SizedBox(width: Insets.xs),
-                  IconButton.filledTonal(
-                    style: IconButton.styleFrom(
-                      backgroundColor:
-                          cs.surfaceContainerHighest.withValues(alpha: 0.7),
-                      minimumSize: const Size(48, 48),
-                      padding: EdgeInsets.zero,
-                    ),
-                    tooltip: 'Pause all',
-                    onPressed: onPauseAll,
-                    icon: const Icon(Icons.pause_rounded),
-                  ),
-                  PopupMenuButton<String>(
+              const SizedBox(width: Insets.sm),
+              Expanded(
+                child: Material(
+                  color: cs.surfaceContainerHighest.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(16),
+                  clipBehavior: Clip.antiAlias,
+                  child: PopupMenuButton<String>(
                     tooltip: 'More',
+                    padding: EdgeInsets.zero,
+                    position: PopupMenuPosition.under,
                     onSelected: (String value) => switch (value) {
                       'pauseAll' => onPauseAll(),
                       'startAll' => onStartAll(),
+                      'limitDown' => _editLimit(
+                          context,
+                          title: 'Download limit',
+                          kbps: session.speedLimitDown,
+                          enabled: session.speedLimitDownEnabled,
+                          onSet: onSetDown,
+                        ),
+                      'limitUp' => _editLimit(
+                          context,
+                          title: 'Upload limit',
+                          kbps: session.speedLimitUp,
+                          enabled: session.speedLimitUpEnabled,
+                          onSet: onSetUp,
+                        ),
                       _ => ref
-                          .read(
-                            transmissionCompactProvider(instance).notifier,
-                          )
+                          .read(transmissionCompactProvider(instance).notifier)
                           .update((bool c) => !c),
                     },
                     itemBuilder: (BuildContext _) => <PopupMenuEntry<String>>[
@@ -532,18 +550,102 @@ class _TransferPanel extends ConsumerWidget {
                         child: Text('Start all'),
                       ),
                       const PopupMenuDivider(),
+                      PopupMenuItem<String>(
+                        value: 'limitDown',
+                        child: Text(
+                          'Download limit: ${trFmtLimit(
+                            kbps: session.speedLimitDown,
+                            enabled: session.speedLimitDownEnabled,
+                          )}',
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'limitUp',
+                        child: Text(
+                          'Upload limit: ${trFmtLimit(
+                            kbps: session.speedLimitUp,
+                            enabled: session.speedLimitUpEnabled,
+                          )}',
+                        ),
+                      ),
+                      const PopupMenuDivider(),
                       CheckedPopupMenuItem<String>(
                         value: 'compact',
                         checked: compact,
                         child: const Text('Compact rows'),
                       ),
                     ],
+                    // The menu button's own child fills the surface so the
+                    // whole tile is the target, not just the glyph.
+                    child: SizedBox(
+                      height: _BulkButton.height,
+                      child: Icon(
+                        Icons.more_vert_rounded,
+                        size: 28,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
                   ),
-                ],
+                ),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  /// The cap dialog, shared by an active pill and the menu's two entries.
+  Future<void> _editLimit(
+    BuildContext context, {
+    required String title,
+    required int kbps,
+    required bool enabled,
+    required void Function(int kbps) onSet,
+  }) async {
+    final int? chosen = await showTransmissionSpeedDialog(
+      context,
+      title: title,
+      currentKbps: kbps,
+      currentEnabled: enabled,
+    );
+    if (chosen != null) onSet(chosen);
+  }
+}
+
+/// One of the panel's bulk controls: a full-width target 56 px tall, so it is
+/// comfortable under a thumb and the three of them divide the panel evenly.
+class _BulkButton extends StatelessWidget {
+  const _BulkButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  static const double height = 56;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: height,
+      child: IconButton.filledTonal(
+        style: IconButton.styleFrom(
+          backgroundColor: Theme.of(context)
+              .colorScheme
+              .surfaceContainerHighest
+              .withValues(alpha: 0.7),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        tooltip: tooltip,
+        onPressed: onPressed,
+        iconSize: 28,
+        icon: Icon(icon),
       ),
     );
   }
@@ -703,6 +805,7 @@ class _SearchRowState extends ConsumerState<_SearchRow> {
 /// tapping changes it.
 class _LimitPill extends StatelessWidget {
   const _LimitPill({
+    super.key,
     required this.icon,
     required this.color,
     required this.kbps,
