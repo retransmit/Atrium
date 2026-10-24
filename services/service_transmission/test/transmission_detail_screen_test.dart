@@ -138,4 +138,37 @@ void main() {
 
     expect(fake.single('torrent-verify').arguments['ids'], <String>['aaaa']);
   });
+
+  testWidgets('detail screen tabs are evenly spaced across the app bar',
+      (WidgetTester tester) async {
+    await open(tester);
+
+    final Finder infoTab = find.widgetWithText(Tab, 'Info');
+    final Finder filesTab = find.widgetWithText(Tab, 'Files');
+    final Finder peersTab = find.widgetWithText(Tab, 'Peers');
+    final Finder trackersTab = find.widgetWithText(Tab, 'Trackers');
+
+    expect(infoTab, findsOneWidget);
+    expect(filesTab, findsOneWidget);
+    expect(peersTab, findsOneWidget);
+    expect(trackersTab, findsOneWidget);
+
+    final double infoCenter = tester.getCenter(infoTab).dx;
+    final double filesCenter = tester.getCenter(filesTab).dx;
+    final double peersCenter = tester.getCenter(peersTab).dx;
+    final double trackersCenter = tester.getCenter(trackersTab).dx;
+
+    final double totalWidth = tester.getSize(find.byType(TabBar)).width;
+    final double tabSlotWidth = totalWidth / 4;
+
+    // Tabs are evenly spaced across the entire screen width
+    expect(infoCenter, closeTo(tabSlotWidth * 0.5, 0.1));
+    expect(filesCenter, closeTo(tabSlotWidth * 1.5, 0.1));
+    expect(peersCenter, closeTo(tabSlotWidth * 2.5, 0.1));
+    expect(trackersCenter, closeTo(tabSlotWidth * 3.5, 0.1));
+
+    expect(filesCenter - infoCenter, closeTo(tabSlotWidth, 0.1));
+    expect(peersCenter - filesCenter, closeTo(tabSlotWidth, 0.1));
+    expect(trackersCenter - peersCenter, closeTo(tabSlotWidth, 0.1));
+  });
 }

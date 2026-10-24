@@ -94,7 +94,6 @@ class TransmissionDetailScreen extends ConsumerWidget {
               ),
           ],
           bottom: const TabBar(
-            isScrollable: true,
             tabs: <Widget>[
               Tab(text: 'Info'),
               Tab(text: 'Files'),
