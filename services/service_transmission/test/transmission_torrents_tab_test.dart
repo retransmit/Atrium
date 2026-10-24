@@ -235,4 +235,120 @@ void main() {
 
     expect(find.text('Set torrent location'), findsOneWidget);
   });
+
+  testWidgets('the top transfer panel elements are evenly spaced',
+      (WidgetTester tester) async {
+    await open(tester);
+
+    // Badges in Row 1 have Insets.sm (8 px) horizontal spacing between them.
+    final Finder torrentsBadge = find.ancestor(
+      of: find.text('Torrents'),
+      matching: find.byType(TransmissionStatBadge),
+    );
+    final Finder downBadge = find.ancestor(
+      of: find.text('Down'),
+      matching: find.byType(TransmissionStatBadge),
+    );
+    final Finder upBadge = find.ancestor(
+      of: find.text('Up'),
+      matching: find.byType(TransmissionStatBadge),
+    );
+
+    expect(
+      tester.getTopLeft(downBadge).dx - tester.getTopRight(torrentsBadge).dx,
+      equals(8.0),
+    );
+    expect(
+      tester.getTopLeft(upBadge).dx - tester.getTopRight(downBadge).dx,
+      equals(8.0),
+    );
+
+    // Row 4 bulk buttons also have Insets.sm (8 px) spacing between them.
+    final Finder resumeBtn = find.ancestor(
+      of: find.byTooltip('Resume all'),
+      matching: find.byType(IconButton),
+    );
+    final Finder pauseBtn = find.ancestor(
+      of: find.byTooltip('Pause all'),
+      matching: find.byType(IconButton),
+    );
+    expect(
+      tester.getTopLeft(pauseBtn).dx - tester.getTopRight(resumeBtn).dx,
+      equals(8.0),
+    );
+
+    // Vertical spacing between panel rows is consistently Insets.sm (8 px).
+    final Finder badgeRow = find.ancestor(
+      of: torrentsBadge,
+      matching: find.byType(Row),
+    ).first;
+    final Finder searchRow = find.ancestor(
+      of: find.text('Search torrents...'),
+      matching: find.byType(Row),
+    ).first;
+    final Finder limitWrap = find.ancestor(
+      of: find.byKey(const ValueKey<String>('limit-up-pill')),
+      matching: find.byType(Wrap),
+    );
+    final Finder buttonRow = find.ancestor(
+      of: resumeBtn,
+      matching: find.byType(Row),
+    );
+
+    expect(
+      tester.getTopLeft(searchRow).dy - tester.getBottomLeft(badgeRow).dy,
+      equals(8.0),
+    );
+    expect(
+      tester.getTopLeft(limitWrap).dy - tester.getBottomLeft(searchRow).dy,
+      equals(8.0),
+    );
+    expect(
+      tester.getTopLeft(buttonRow).dy - tester.getBottomLeft(limitWrap).dy,
+      equals(8.0),
+    );
+  });
+
+  testWidgets(
+      'the top transfer panel rows are evenly spaced when caps are unlimited',
+      (WidgetTester tester) async {
+    fake.on(
+      'session-get',
+      sessionJson()
+        ..['speed-limit-down-enabled'] = false
+        ..['speed-limit-up-enabled'] = false,
+    );
+    await open(tester);
+
+    expect(find.byKey(const ValueKey<String>('limit-down-pill')), findsNothing);
+    expect(find.byKey(const ValueKey<String>('limit-up-pill')), findsNothing);
+
+    final Finder torrentsBadge = find.ancestor(
+      of: find.text('Torrents'),
+      matching: find.byType(TransmissionStatBadge),
+    );
+    final Finder badgeRow = find.ancestor(
+      of: torrentsBadge,
+      matching: find.byType(Row),
+    ).first;
+    final Finder searchRow = find.ancestor(
+      of: find.text('Search torrents...'),
+      matching: find.byType(Row),
+    ).first;
+    final Finder buttonRow = find.ancestor(
+      of: find.byTooltip('Resume all'),
+      matching: find.byType(Row),
+    );
+
+    // Row 1 to Row 2
+    expect(
+      tester.getTopLeft(searchRow).dy - tester.getBottomLeft(badgeRow).dy,
+      equals(8.0),
+    );
+    // Row 2 to Row 3 (buttonRow), without any doubled SizedBox gap
+    expect(
+      tester.getTopLeft(buttonRow).dy - tester.getBottomLeft(searchRow).dy,
+      equals(8.0),
+    );
+  });
 }
