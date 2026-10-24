@@ -305,7 +305,7 @@ class TransmissionStatBadge extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: Insets.xs),
           Text(
             value,
             maxLines: 1,
@@ -316,7 +316,7 @@ class TransmissionStatBadge extends StatelessWidget {
             ),
           ),
           if (detail != null) ...<Widget>[
-            const SizedBox(height: 2),
+            const SizedBox(height: Insets.xs),
             Text(
               detail!,
               maxLines: 1,
