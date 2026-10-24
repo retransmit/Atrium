@@ -124,7 +124,7 @@ void main() {
     );
   });
 
-  testWidgets('rows show metadata status without peer clutter',
+  testWidgets('rows render clean card without peer clutter',
       (WidgetTester tester) async {
     fake.on('torrent-get', <String, Object?>{
       'torrents': <Map<String, dynamic>>[
@@ -133,10 +133,7 @@ void main() {
     });
     await open(tester);
 
-    expect(
-      find.text('Magnetized transfer - retrieving metadata (40.0%)'),
-      findsOneWidget,
-    );
+    expect(find.text('Magnet'), findsOneWidget);
     expect(
       find.textContaining('Downloading from 8 of 12 peers'),
       findsNothing,
