@@ -19,7 +19,8 @@ export const servicesList = [
   'sabnzbd',
   'nzbget',
   'glances',
-  'speedtest-tracker'
+  'speedtest-tracker',
+  'cleanuparr'
 ];
 
 export const servicesData = {
@@ -339,6 +340,24 @@ export const servicesData = {
       'Historical Download & Upload Charts',
       'Ping & Jitter Variance Logging',
       'ISP Performance Diagnostic Summaries'
+    ]
+  },
+  cleanuparr: {
+    name: 'Cleanuparr',
+    category: 'The *arr Stack',
+    icon: asset('assets/service_icons/cleanuparr.png'),
+    screenshots: [
+      asset('assets/service_previews/cleanuparr/cleanuparr_1.png'),
+      asset('assets/service_previews/cleanuparr/cleanuparr_2.png'),
+      asset('assets/service_previews/cleanuparr/cleanuparr_3.png'),
+      asset('assets/service_previews/cleanuparr/cleanuparr_4.png')
+    ],
+    description: 'Automated download cleaner and malware blocker for the Servarr ecosystem and download clients. Quarantines suspicious payloads, enforces item strikes, and purges orphaned items.',
+    features: [
+      'Automated Malware & Unwanted File Blocking',
+      'Active Download Strikes Ledger & Resets',
+      'Comprehensive Security & Operation Audit Feed',
+      'Background Cleaner Jobs with On-Demand Runs'
     ]
   }
 };

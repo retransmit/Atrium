@@ -337,6 +337,23 @@ Atrium is a **controller** app. Video playback was removed by design
   The live test lives in the package (`test/live_aria2_test.dart`) and needs
   `ARIA2_URL` and `ARIA2_SECRET` to run.
 
+- **Cleanuparr** (added 2026-10-23, Issue #188): the automated malware blocker and
+  queue cleaner for the Servarr ecosystem and download clients (`service_cleanuparr`).
+  Default port 11011, role: `ServiceRole.automation`, API key authentication via
+  `X-Api-Key` header.
+  - **Overview tab**: System status card (version, uptime, memory, connected Arrs & clients),
+    selectable timeframes (24h, 7d, 30d), 4 operational metric cards (Malware Blocked, Active Strikes,
+    Cleaned Torrents, Seeker Searches), and background cleaner jobs with on-demand run triggers.
+  - **Strikes tab**: Live strikes counter badge on bottom nav, instant substring search,
+    strike item cards with strike counters (`2/3`), failure reason breakdown, and strike reset
+    operations (`DELETE /api/strikes/{id}`).
+  - **Events tab**: Search bar, category filter chips (`All`, `Malware`, `Strikes`, `Deletions`,
+    `Cleaned`), audit log feed with severity indicators, and detail bottom sheet.
+  - **Dashboard widget**: Compact `DashboardCleanuparrWidget` on the board displaying
+    malware blocked counts, active strikes, and top strike alerts.
+  - Strictly zero hardcoded colors (`Theme.of(context).colorScheme`).
+  - Pull-to-refresh (`EasyRefresh`) with `AlwaysScrollableScrollPhysics` on all tabs.
+
 - **iOS**: the target exists and CI builds it unsigned on macOS on every
   change, so it cannot rot unnoticed. Deep links already no-op off Android and
   dynamic colour falls back to Atrium's own seed, since iOS has no system

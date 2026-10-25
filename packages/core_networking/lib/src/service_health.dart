@@ -56,6 +56,8 @@ enum _HealthMode {
       );
     case ServiceKind.tracearr:
       return (path: 'api/v2/public/docs', mode: _HealthMode.authed);
+    case ServiceKind.cleanuparr:
+      return (path: 'api/status', mode: _HealthMode.authed);
     case ServiceKind.gluetun:
       // The control server answers whether or not the tunnel is up, so the
       // answer is read for the VPN status; see the gluetun arm of

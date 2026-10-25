@@ -25,12 +25,14 @@ import 'package:service_transmission/service_transmission.dart';
 import 'package:service_gluetun/service_gluetun.dart';
 import 'package:service_myspeed/service_myspeed.dart';
 import 'package:service_aria2/service_aria2.dart';
+import 'package:service_cleanuparr/service_cleanuparr.dart';
 
 import '../health_providers.dart';
 import '../screens/calendar_screen.dart';
 import 'dashboard_layout.dart';
 import 'dashboard_widget_kind.dart';
 import 'widgets/adguard_home_widget.dart';
+import 'widgets/cleanuparr_widget.dart';
 import 'widgets/dashdot_widget.dart';
 import 'widgets/downloads_widget.dart';
 import 'widgets/gluetun_status_widget.dart';
@@ -210,6 +212,10 @@ class DashboardBoard extends ConsumerWidget {
         return DashboardAdguardHomeWidget(
           instances: _byKind(instances, ServiceKind.adguardHome),
         );
+      case DashboardWidgetKind.cleanuparr:
+        return DashboardCleanuparrWidget(
+          instances: _byKind(instances, ServiceKind.cleanuparr),
+        );
       case DashboardWidgetKind.wakeOnLan:
         return const DashboardWakeOnLanWidget();
     }
@@ -281,6 +287,12 @@ class DashboardBoard extends ConsumerWidget {
           ref.invalidate(adguardHomeStatusProvider(i));
           ref.invalidate(adguardHomeStatsProvider(i));
           ref.invalidate(adguardHomeFilteringProvider(i));
+        case ServiceKind.cleanuparr:
+          ref.invalidate(cleanuparrStatusProvider(i));
+          ref.invalidate(cleanuparrStatsProvider(i));
+          ref.invalidate(cleanuparrStrikesProvider(i));
+          ref.invalidate(cleanuparrStrikesCountProvider(i));
+          ref.invalidate(cleanuparrJobsProvider(i));
         default:
           break;
       }

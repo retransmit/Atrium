@@ -37,6 +37,7 @@ void main() {
         'myspeed',
         'adguardHome',
         'aria2',
+        'cleanuparr',
       ],
     );
   });
@@ -145,6 +146,16 @@ void main() {
     expect(ServiceKind.aria2.role, ServiceRole.downloader);
     // aria2 speaks BitTorrent as well as plain HTTP.
     expect(ServiceKind.aria2.acceptsTorrents, isTrue);
+  });
+
+  test('Cleanuparr is registered as an apiKey automation service', () {
+    expect(ServiceKind.cleanuparr.displayName, 'Cleanuparr');
+    expect(ServiceKind.cleanuparr.tagline, 'Malware blocker & cleaner');
+    expect(ServiceKind.cleanuparr.isBeta, isTrue);
+    expect(ServiceKind.cleanuparr.defaultPort, 11011);
+    expect(ServiceKind.cleanuparr.authStyle, AuthStyle.apiKey);
+    expect(ServiceKind.cleanuparr.role, ServiceRole.automation);
+    expect(ServiceKind.cleanuparr.acceptsTorrents, isFalse);
   });
 
   test('existing services retain their default ports', () {
