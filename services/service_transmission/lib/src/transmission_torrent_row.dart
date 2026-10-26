@@ -10,10 +10,9 @@ import 'transmission_visuals.dart';
 
 /// One torrent in the list, full or compact, selectable.
 ///
-/// Designed to completely copy the visual structure of qBittorrent's cards:
-/// state icon container, 2-line title, grouped state pill and privacy badge
-/// with size, flat M3E progress bar with integer percentage, and speed pills
-/// on the left with ratio and ETA on the right separated by a spacer.
+/// A state icon, the name, the state pill with the privacy badge and sizes,
+/// the progress bar, then the speeds and ratio. A torrent with an error says
+/// what the error is under the bar, in either layout.
 class TransmissionTorrentRow extends StatelessWidget {
   const TransmissionTorrentRow({
     required this.torrent,
@@ -35,17 +34,6 @@ class TransmissionTorrentRow extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onLongPress;
   final void Function(TransmissionTorrentAction action) onAction;
-
-  String _formatEta(int eta) {
-    if (eta >= 8640000 || eta < 0) {
-      return '∞';
-    }
-    final Duration d = Duration(seconds: eta);
-    if (d.inDays > 0) return '${d.inDays}d ${d.inHours.remainder(24)}h';
-    if (d.inHours > 0) return '${d.inHours}h ${d.inMinutes.remainder(60)}m';
-    if (d.inMinutes > 0) return '${d.inMinutes}m ${d.inSeconds.remainder(60)}s';
-    return '${d.inSeconds}s';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -122,8 +110,13 @@ class TransmissionTorrentRow extends StatelessWidget {
                               runSpacing: Insets.xs,
                               crossAxisAlignment: WrapCrossAlignment.center,
                               children: <Widget>[
+                                // An error outranks the state: a stopped
+                                // torrent that failed should not read as one
+                                // that was merely paused.
                                 _StatePill(
-                                  label: torrent.stateString,
+                                  label: torrent.hasError
+                                      ? 'Error'
+                                      : torrent.stateString,
                                   visual: v,
                                 ),
                                 if (torrent.isPrivate)
@@ -134,9 +127,9 @@ class TransmissionTorrentRow extends StatelessWidget {
                               torrent.isDone
                                   ? trFmtBytes(torrent.totalSize)
                                   : (torrent.hasEta && !complete
-                                      ? '${trFmtBytes(torrent.doneBytes)} / ${trFmtBytes(torrent.sizeWhenDone)} • ${_formatEta(torrent.eta)}'
+                                      ? '${trFmtBytes(torrent.doneBytes)} / ${trFmtBytes(torrent.sizeWhenDone)} • ${trFmtEta(torrent.eta)}'
                                       : '${trFmtBytes(torrent.doneBytes)} / ${trFmtBytes(torrent.sizeWhenDone)}'),
-                              maxLines: 1,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: onTileQuiet,
@@ -211,34 +204,37 @@ class TransmissionTorrentRow extends StatelessWidget {
                   ),
                 ),
               ] else ...<Widget>[
+                if (torrent.hasError) ...<Widget>[
+                  const SizedBox(height: Insets.sm),
+                  Text(
+                    torrent.errorString,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: selected ? cs.onPrimaryContainer : cs.error,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: Insets.md),
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: TransmissionSpeedPill(
-                        icon: Icons.south,
-                        label: trFmtRate(torrent.downloadRate),
-                        color: cs.primary,
-                        active: dlActive,
-                        selected: selected,
-                      ),
+                TransmissionPillLine(
+                  pills: <TransmissionMeasuredPill>[
+                    TransmissionSpeedPill(
+                      icon: Icons.south,
+                      label: trFmtRate(torrent.downloadRate),
+                      color: cs.primary,
+                      active: dlActive,
+                      selected: selected,
                     ),
-                    const SizedBox(width: Insets.sm),
-                    Expanded(
-                      child: TransmissionSpeedPill(
-                        icon: Icons.north,
-                        label: trFmtRate(torrent.uploadRate),
-                        color: cs.tertiary,
-                        active: upActive,
-                        selected: selected,
-                      ),
+                    TransmissionSpeedPill(
+                      icon: Icons.north,
+                      label: trFmtRate(torrent.uploadRate),
+                      color: cs.tertiary,
+                      active: upActive,
+                      selected: selected,
                     ),
-                    const SizedBox(width: Insets.sm),
-                    Expanded(
-                      child: TransmissionRatioPill(
-                        ratio: torrent.uploadRatio,
-                        selected: selected,
-                      ),
+                    TransmissionRatioPill(
+                      ratio: torrent.uploadRatio,
+                      selected: selected,
                     ),
                   ],
                 ),

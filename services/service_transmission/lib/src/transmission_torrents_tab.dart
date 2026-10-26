@@ -151,6 +151,7 @@ class _TransmissionTorrentsTabState
               selection: selection,
             ),
       floatingActionButton: ExpandableFab(
+        tooltip: 'Add torrent',
         builder: (BuildContext context, VoidCallback close) => <Widget>[
           FloatingActionButton(
             heroTag: null,
@@ -428,10 +429,24 @@ class _TransferPanel extends ConsumerWidget {
               // switch rather than another limit value.
               IconButton.filledTonal(
                 style: IconButton.styleFrom(
-                  backgroundColor:
-                      cs.surfaceContainerHighest.withValues(alpha: 0.7),
                   minimumSize: const Size(48, 48),
                   padding: EdgeInsets.zero,
+                ).copyWith(
+                  // Resolved per state: one background colour would cover
+                  // the selected state too, and turtle on would look like
+                  // turtle off.
+                  backgroundColor: WidgetStateProperty.resolveWith(
+                    (Set<WidgetState> states) =>
+                        states.contains(WidgetState.selected)
+                            ? cs.primaryContainer
+                            : cs.surfaceContainerHighest.withValues(alpha: 0.7),
+                  ),
+                  foregroundColor: WidgetStateProperty.resolveWith(
+                    (Set<WidgetState> states) =>
+                        states.contains(WidgetState.selected)
+                            ? cs.onPrimaryContainer
+                            : cs.onSurfaceVariant,
+                  ),
                 ),
                 tooltip: session.altSpeedEnabled
                     ? 'Turtle on: ${session.altSpeedDown}/'
@@ -678,6 +693,18 @@ class _SearchRowState extends ConsumerState<_SearchRow> {
     final ColorScheme cs = theme.colorScheme;
     final Instance instance = widget.instance;
     final String query = ref.watch(transmissionSearchProvider(instance));
+
+    // Back clears the query from the home screen, which cannot reach this
+    // field. Follow any change that did not come from the field itself, or
+    // the box keeps showing a search the list has already dropped.
+    ref.listen<String>(transmissionSearchProvider(instance), (
+      String? previous,
+      String next,
+    ) {
+      if (next == _search.text) return;
+      _search.text = next;
+      if (next.isEmpty) setState(() => _isSearching = false);
+    });
 
     if (_isSearching) {
       return Container(

@@ -228,8 +228,83 @@ class TransmissionPill extends StatelessWidget {
   }
 }
 
+/// The value style of a speed or ratio pill, shared so that
+/// [TransmissionPillLine] measures a value the way the pill draws it.
+TextStyle? _pillValueStyle(BuildContext context, Color color) =>
+    Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w700,
+        );
+
+/// A pill that can say how wide it needs to be, so a [TransmissionPillLine]
+/// can tell whether it fits its share of the line before laying it out.
+abstract class TransmissionMeasuredPill extends StatelessWidget {
+  const TransmissionMeasuredPill({super.key});
+
+  /// The text the pill shows beside its icon.
+  String get value;
+
+  /// The width that shows [value] whole: padding, icon, gap and text.
+  double naturalWidth(BuildContext context) {
+    final TextPainter painter = TextPainter(
+      text: TextSpan(
+        text: value,
+        style: _pillValueStyle(context, const Color(0xFF000000)),
+      ),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    final double width = painter.width;
+    painter.dispose();
+    return (16 + 14 + 4 + width).ceilToDouble();
+  }
+}
+
+/// Speed and ratio pills across one line, sharing it evenly while every value
+/// fits its share. When one does not, at a large text size or on a narrow
+/// phone, they stack one per line at full width, so a rate is never cut short.
+class TransmissionPillLine extends StatelessWidget {
+  const TransmissionPillLine({required this.pills, super.key});
+
+  final List<TransmissionMeasuredPill> pills;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double share =
+            (constraints.maxWidth - Insets.sm * (pills.length - 1)) /
+                pills.length;
+        final bool fits = pills.every(
+          (TransmissionMeasuredPill p) => p.naturalWidth(context) <= share,
+        );
+        if (fits) {
+          return Row(
+            children: <Widget>[
+              for (int i = 0; i < pills.length; i++) ...<Widget>[
+                if (i > 0) const SizedBox(width: Insets.sm),
+                Expanded(child: pills[i]),
+              ],
+            ],
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            for (int i = 0; i < pills.length; i++) ...<Widget>[
+              if (i > 0) const SizedBox(height: Insets.xs),
+              pills[i],
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
 /// A rate, tinted while it moves and quiet while it does not.
-class TransmissionSpeedPill extends StatelessWidget {
+class TransmissionSpeedPill extends TransmissionMeasuredPill {
   const TransmissionSpeedPill({
     required this.icon,
     required this.label,
@@ -246,6 +321,9 @@ class TransmissionSpeedPill extends StatelessWidget {
   final bool selected;
 
   @override
+  String get value => label;
+
+  @override
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
     final Color quietForeground = selected
@@ -257,8 +335,10 @@ class TransmissionSpeedPill extends StatelessWidget {
     final Color fg = active ? color : quietForeground;
     final Color bg =
         active ? color.withValues(alpha: 0.12) : quietBackground;
+    // A minimum height rather than a fixed one, so a large text size makes
+    // the pill taller instead of clipping the value.
     return Container(
-      height: 28,
+      constraints: const BoxConstraints(minHeight: 28),
       alignment: Alignment.center,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
@@ -276,10 +356,7 @@ class TransmissionSpeedPill extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: fg,
-                    fontWeight: FontWeight.w700,
-                  ),
+              style: _pillValueStyle(context, fg),
             ),
           ),
         ],
@@ -289,7 +366,7 @@ class TransmissionSpeedPill extends StatelessWidget {
 }
 
 /// A ratio badge styled consistently with the speed pills.
-class TransmissionRatioPill extends StatelessWidget {
+class TransmissionRatioPill extends TransmissionMeasuredPill {
   const TransmissionRatioPill({
     required this.ratio,
     this.selected = false,
@@ -300,6 +377,9 @@ class TransmissionRatioPill extends StatelessWidget {
   final bool selected;
 
   @override
+  String get value => ratio < 0 ? '0.00' : ratio.toStringAsFixed(2);
+
+  @override
   Widget build(BuildContext context) {
     final ColorScheme cs = Theme.of(context).colorScheme;
     final Color quietForeground = selected
@@ -308,9 +388,8 @@ class TransmissionRatioPill extends StatelessWidget {
     final Color quietBackground = selected
         ? cs.onPrimaryContainer.withValues(alpha: 0.12)
         : cs.surfaceContainerHighest;
-    final String label = ratio < 0 ? '0.00' : ratio.toStringAsFixed(2);
     return Container(
-      height: 28,
+      constraints: const BoxConstraints(minHeight: 28),
       alignment: Alignment.center,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
@@ -325,13 +404,10 @@ class TransmissionRatioPill extends StatelessWidget {
           const SizedBox(width: 4),
           Flexible(
             child: Text(
-              label,
+              value,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: quietForeground,
-                    fontWeight: FontWeight.w700,
-                  ),
+              style: _pillValueStyle(context, quietForeground),
             ),
           ),
         ],

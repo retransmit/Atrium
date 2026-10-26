@@ -1,5 +1,6 @@
 import 'package:core_networking/core_networking.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -31,8 +32,11 @@ void main() {
       });
   });
 
-  Future<void> open(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1080, 2400);
+  Future<void> open(
+    WidgetTester tester, {
+    Size size = const Size(1080, 2400),
+  }) async {
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -407,5 +411,120 @@ void main() {
       tester.getTopLeft(ratioBadge).dx - tester.getTopRight(upBadge).dx,
       equals(8.0),
     );
+  });
+
+  testWidgets('a full row says a torrent failed, and why',
+      (WidgetTester tester) async {
+    // The reason used to ride on the status line under the bar. With that
+    // line gone, a full row showed a red "Paused" pill and nothing else.
+    fake.on('torrent-get', <String, Object?>{
+      'torrents': <Map<String, dynamic>>[
+        torrentJson(
+          hash: 'e',
+          name: 'Broken',
+          status: 0,
+          error: 3,
+          errorString: 'No data found!',
+        ),
+      ],
+    });
+    await open(tester);
+
+    final Finder row = find.byType(TransmissionTorrentRow);
+    expect(
+      find.descendant(of: row, matching: find.text('No data found!')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: row, matching: find.text('Error')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: row, matching: find.text('Paused')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('Back clears the search box along with the search',
+      (WidgetTester tester) async {
+    await open(tester);
+    await openSearch(tester);
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Search torrents...'),
+      'lin',
+    );
+    await settle(tester);
+    expect(find.text('Beta'), findsNothing);
+
+    // Back is handled by the home screen, which clears the query but cannot
+    // reach the field that shows it.
+    await tester.state<NavigatorState>(find.byType(Navigator)).maybePop();
+    await settle(tester);
+
+    expect(find.text('Beta'), findsOneWidget);
+    expect(find.text('lin'), findsNothing);
+    expect(find.text('Search torrents...'), findsOneWidget);
+  });
+
+  testWidgets('the turtle button looks different on and off',
+      (WidgetTester tester) async {
+    // The button's own surface is the nearest Material above its icon.
+    Color background() => tester
+        .widget<Material>(
+          find
+              .ancestor(
+                of: find.byIcon(Icons.slow_motion_video),
+                matching: find.byType(Material),
+              )
+              .first,
+        )
+        .color!;
+
+    await open(tester);
+    final ColorScheme cs = Theme.of(
+      tester.element(find.byType(TransmissionTorrentsTab)),
+    ).colorScheme;
+    expect(find.byTooltip('Turtle off'), findsOneWidget);
+    final Color off = background();
+
+    fake.on('session-get', sessionJson()..['alt-speed-enabled'] = true);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await open(tester);
+    expect(find.byTooltip('Turtle on: 500/100 KB/s'), findsOneWidget);
+    final Color on = background();
+
+    expect(on, cs.primaryContainer);
+    expect(on, isNot(off));
+  });
+
+  testWidgets('speeds stack rather than cut short on a narrow phone',
+      (WidgetTester tester) async {
+    tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await open(tester, size: const Size(320, 2400));
+
+    final Finder firstTile = find.byType(TransmissionTorrentRow).first;
+    final Finder down = find.descendant(
+      of: firstTile,
+      matching: find.byWidgetPredicate(
+        (Widget w) => w is TransmissionSpeedPill && w.icon == Icons.south,
+      ),
+    );
+    final Finder up = find.descendant(
+      of: firstTile,
+      matching: find.byWidgetPredicate(
+        (Widget w) => w is TransmissionSpeedPill && w.icon == Icons.north,
+      ),
+    );
+
+    // One under the other, and each value whole.
+    expect(tester.getTopLeft(up).dy, greaterThan(tester.getBottomLeft(down).dy));
+    for (final Finder pill in <Finder>[down, up]) {
+      // The icon is drawn as text too; the value comes after it.
+      final RenderParagraph text = tester.renderObject<RenderParagraph>(
+        find.descendant(of: pill, matching: find.byType(RichText)).last,
+      );
+      expect(text.didExceedMaxLines, isFalse);
+    }
   });
 }
