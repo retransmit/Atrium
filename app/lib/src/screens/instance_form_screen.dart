@@ -175,6 +175,22 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     });
   }
 
+  /// Swaps the service in place. What is typed so far stays, as it did with
+  /// the old dropdown; only a connection result for the old service goes.
+  Future<void> _changeService() async {
+    final ServiceKind? picked = await showDialog<ServiceKind>(
+      context: context,
+      builder: (BuildContext context) => _ServiceKindDialog(current: _kind),
+    );
+    if (picked == null || picked == _kind || !mounted) {
+      return;
+    }
+    setState(() {
+      _kind = picked;
+      _connectionResults = <String, ConnectionTestResult>{};
+    });
+  }
+
   /// Fills the token, and the URLs too when the user picks a server.
   ///
   /// Anything the sheet did not find is left alone rather than blanked: a
@@ -409,55 +425,65 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                   color: cs.outlineVariant.withValues(alpha: 0.5),
                 ),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(Insets.lg),
-                child: Row(
-                  children: <Widget>[
-                    Container(
-                      width: 52,
-                      height: 52,
-                      padding: const EdgeInsets.all(Insets.xs),
-                      decoration: BoxDecoration(
-                        color: accent.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(Radii.md),
-                      ),
-                      child: Center(
-                        child: ServiceIcon(kind: _kind, size: 36),
-                      ),
-                    ),
-                    const SizedBox(width: Insets.md),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Row(
+              child: Semantics(
+                button: true,
+                label: 'Change service',
+                child: InkWell(
+                  key: const Key('service_header'),
+                  onTap: _changeService,
+                  child: Padding(
+                    padding: const EdgeInsets.all(Insets.lg),
+                    child: Row(
+                      children: <Widget>[
+                        Container(
+                          width: 52,
+                          height: 52,
+                          padding: const EdgeInsets.all(Insets.xs),
+                          decoration: BoxDecoration(
+                            color: accent.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(Radii.md),
+                          ),
+                          child: Center(
+                            child: ServiceIcon(kind: _kind, size: 36),
+                          ),
+                        ),
+                        const SizedBox(width: Insets.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: <Widget>[
-                              Flexible(
-                                child: Text(
-                                  _kind.displayName,
-                                  style: theme.textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.bold,
+                              Row(
+                                children: <Widget>[
+                                  Flexible(
+                                    child: Text(
+                                      _kind.displayName,
+                                      style: theme.textTheme.titleLarge?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
-                                  overflow: TextOverflow.ellipsis,
+                                  if (_kind.isBeta) ...<Widget>[
+                                    const SizedBox(width: Insets.xs),
+                                    const BetaBadge(),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: Insets.xxs),
+                              Text(
+                                _kind.tagline,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: cs.onSurfaceVariant,
                                 ),
                               ),
-                              if (_kind.isBeta) ...<Widget>[
-                                const SizedBox(width: Insets.xs),
-                                const BetaBadge(),
-                              ],
                             ],
                           ),
-                          const SizedBox(height: Insets.xxs),
-                          Text(
-                            _kind.tagline,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: Insets.sm),
+                        Icon(Icons.swap_horiz, color: cs.onSurfaceVariant),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -1005,5 +1031,162 @@ class _FormSectionCard extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// The services by category in a dialog, with the current one ticked and
+/// scrolled into view.
+class _ServiceKindDialog extends StatefulWidget {
+  const _ServiceKindDialog({required this.current});
+
+  final ServiceKind current;
+
+  @override
+  State<_ServiceKindDialog> createState() => _ServiceKindDialogState();
+}
+
+class _ServiceKindDialogState extends State<_ServiceKindDialog> {
+  final GlobalKey _currentKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final BuildContext? current = _currentKey.currentContext;
+      if (current != null) {
+        Scrollable.ensureVisible(current, alignment: 0.4);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+
+    return Dialog(
+      clipBehavior: Clip.antiAlias,
+      // Narrower margins than the default leave room for long names at
+      // large text sizes.
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: Insets.md,
+        vertical: Insets.lg,
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 420,
+          maxHeight: MediaQuery.sizeOf(context).height * 0.7,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                Insets.lg,
+                Insets.lg,
+                Insets.lg,
+                Insets.sm,
+              ),
+              child: Text('Change service', style: theme.textTheme.titleLarge),
+            ),
+            Divider(height: 1, color: cs.outlineVariant),
+            // Every row is built up front so the current one can be scrolled
+            // to, however far down it is.
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(bottom: Insets.sm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    for (final ServiceRole role in ServiceRole.values)
+                      ..._section(context, role),
+                  ],
+                ),
+              ),
+            ),
+            Divider(height: 1, color: cs.outlineVariant),
+            Padding(
+              padding: const EdgeInsets.all(Insets.sm),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _section(BuildContext context, ServiceRole role) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final List<ServiceKind> kinds = ServiceKind.sortedValues
+        .where((ServiceKind k) => k.role == role)
+        .toList(growable: false);
+    if (kinds.isEmpty) {
+      return const <Widget>[];
+    }
+    return <Widget>[
+      Padding(
+        padding: const EdgeInsets.fromLTRB(
+          Insets.lg,
+          Insets.md,
+          Insets.lg,
+          Insets.xs,
+        ),
+        child: Text(
+          ServiceVisuals.roleLabel(role),
+          style: theme.textTheme.labelLarge?.copyWith(color: cs.primary),
+        ),
+      ),
+      for (final ServiceKind kind in kinds)
+        ListTile(
+          key: kind == widget.current
+              ? _currentKey
+              : ValueKey<String>('service_option_${kind.name}'),
+          selected: kind == widget.current,
+          selectedTileColor: cs.secondaryContainer.withValues(alpha: 0.6),
+          contentPadding: const EdgeInsets.symmetric(horizontal: Insets.lg),
+          leading: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: ServiceVisuals.accent(kind).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(Radii.sm),
+            ),
+            alignment: Alignment.center,
+            child: ServiceIcon(kind: kind, size: 24),
+          ),
+          title: Row(
+            children: <Widget>[
+              Flexible(
+                child: Text(
+                  kind.displayName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (kind.isBeta) ...<Widget>[
+                const SizedBox(width: Insets.sm),
+                const BetaBadge(),
+              ],
+            ],
+          ),
+          subtitle: Text(
+            kind.tagline,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: kind == widget.current
+              ? Icon(Icons.check, color: cs.primary)
+              : null,
+          onTap: () => Navigator.of(context).pop(kind),
+        ),
+    ];
   }
 }

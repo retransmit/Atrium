@@ -157,6 +157,85 @@ void main() {
     expect(profiles.deleted, <String>[existing.id]);
     expect(find.text('home'), findsOneWidget);
   });
+
+  testWidgets('tapping the service swaps it without leaving the form', (
+    WidgetTester tester,
+  ) async {
+    await pumpApp(tester, '/add-instance/form/aria2');
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Name'),
+      'Home server',
+    );
+
+    await tester.tap(find.byKey(const Key('service_header')));
+    await tester.pumpAndSettle();
+    expect(find.text('Change service'), findsOneWidget);
+
+    final Finder radarr =
+        find.byKey(const ValueKey<String>('service_option_radarr'));
+    await tester.ensureVisible(radarr);
+    await tester.pumpAndSettle();
+    await tester.tap(radarr);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Change service'), findsNothing);
+    expect(find.byType(InstanceFormScreen), findsOneWidget);
+    expect(find.text('Radarr'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'API key'), findsOneWidget);
+    expect(
+      find.widgetWithText(TextFormField, 'RPC secret (optional)'),
+      findsNothing,
+    );
+    expect(find.text('Home server'), findsOneWidget);
+  });
+
+  testWidgets('cancelling the service picker keeps the service', (
+    WidgetTester tester,
+  ) async {
+    await pumpApp(tester, '/add-instance/form/aria2');
+
+    await tester.tap(find.byKey(const Key('service_header')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Change service'), findsNothing);
+    expect(find.text('aria2'), findsOneWidget);
+    expect(
+      find.widgetWithText(TextFormField, 'RPC secret (optional)'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('a service changed while editing is saved as the new one', (
+    WidgetTester tester,
+  ) async {
+    await pumpApp(tester, '/edit');
+
+    await tester.tap(find.byKey(const Key('service_header')));
+    await tester.pumpAndSettle();
+    final Finder transmission =
+        find.byKey(const ValueKey<String>('service_option_transmission'));
+    await tester.ensureVisible(transmission);
+    await tester.pumpAndSettle();
+    await tester.tap(transmission);
+    await tester.pumpAndSettle();
+
+    final Finder save = find.widgetWithText(FilledButton, 'Save changes');
+    await tester.scrollUntilVisible(
+      save,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+
+    final Instance saved = profiles.saved.single;
+    expect(saved.id, existing.id);
+    expect(saved.kind, ServiceKind.transmission);
+    expect(saved.name, 'Home aria2');
+    expect(saved.localUrl, existing.localUrl);
+  });
 }
 
 class _Profiles extends ProfileListController {
