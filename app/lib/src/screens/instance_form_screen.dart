@@ -474,7 +474,6 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                     border: const OutlineInputBorder(),
                     labelText: 'Name',
                     hintText: 'e.g. Home ${_kind.displayName}',
-                    prefixIcon: const Icon(Icons.label_outline),
                   ),
                   textInputAction: TextInputAction.next,
                   validator: (String? v) =>
@@ -497,8 +496,6 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                     hintText: _kind.defaultPort == null
                         ? 'http://192.168.1.10'
                         : 'http://192.168.1.10:${_kind.defaultPort}',
-                    prefixIcon: const Icon(Icons.home_outlined),
-                    helperText: 'Used on your home network',
                   ),
                   keyboardType: TextInputType.url,
                   autocorrect: false,
@@ -514,8 +511,6 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                     hintText: _kind == ServiceKind.speedtestTracker
                         ? 'https://speedtest.example.com'
                         : 'https://sonarr.example.com',
-                    prefixIcon: const Icon(Icons.public_outlined),
-                    helperText: 'Used away from home',
                   ),
                   keyboardType: TextInputType.url,
                   autocorrect: false,
@@ -557,7 +552,6 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                   initialSelection: _urlMode,
                   label: const Text('URL selection'),
                   expandedInsets: EdgeInsets.zero,
-                  leadingIcon: const Icon(Icons.alt_route_outlined),
                   dropdownMenuEntries: const <DropdownMenuEntry<UrlMode>>[
                     DropdownMenuEntry<UrlMode>(
                       value: UrlMode.auto,
@@ -596,7 +590,6 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
               children: <Widget>[
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  secondary: const Icon(Icons.security_outlined),
                   title: const Text('Allow self-signed certificates'),
                   subtitle: const Text(
                     'Skip TLS validation for this instance only.',
@@ -618,7 +611,6 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                       border: OutlineInputBorder(),
                       labelText: 'Polling Interval (seconds)',
                       hintText: '5',
-                      prefixIcon: Icon(Icons.timer_outlined),
                       suffixText: 'sec',
                     ),
                     keyboardType: TextInputType.number,
@@ -724,7 +716,6 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 labelText: 'Password (optional)',
-                prefixIcon: Icon(Icons.lock_outline),
                 helperText:
                     'Leave empty if password protection is disabled on your MySpeed instance.',
               ),
@@ -748,7 +739,6 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 labelText: 'RPC secret (optional)',
-                prefixIcon: Icon(Icons.key_outlined),
                 helperText: 'aria2\'s --rpc-secret, sent as the first '
                     'parameter of every RPC call. Leave empty if the daemon '
                     'has no secret.',
@@ -769,7 +759,6 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
             decoration: InputDecoration(
               border: const OutlineInputBorder(),
               labelText: keyOptional ? 'API key (optional)' : 'API key',
-              prefixIcon: const Icon(Icons.key_outlined),
               helperText: keyOptional
                   ? 'Leave empty if the control server has auth turned off.'
                   : null,
@@ -789,7 +778,6 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
             decoration: const InputDecoration(
               border: OutlineInputBorder(),
               labelText: 'Bearer API token',
-              prefixIcon: Icon(Icons.key_outlined),
               helperText: 'Requires results:read; speedtests:run is optional.',
             ),
             obscureText: true,
@@ -813,7 +801,6 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
             decoration: const InputDecoration(
               border: OutlineInputBorder(),
               labelText: 'Plex token (X-Plex-Token)',
-              prefixIcon: Icon(Icons.token_outlined),
             ),
             autocorrect: false,
             onChanged: _clearConnectionTest,
@@ -841,7 +828,6 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
           decoration: InputDecoration(
             border: const OutlineInputBorder(),
             labelText: passwordOptional ? 'Password (Optional)' : 'Password',
-            prefixIcon: const Icon(Icons.lock_outline),
           ),
           obscureText: true,
           validator: passwordOptional
@@ -855,7 +841,6 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
             decoration: InputDecoration(
               border: const OutlineInputBorder(),
               labelText: authOptional ? 'Username (Optional)' : 'Username',
-              prefixIcon: const Icon(Icons.person_outline),
             ),
             autocorrect: false,
             textInputAction: TextInputAction.next,
@@ -903,7 +888,6 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 labelText: 'API key',
-                prefixIcon: Icon(Icons.key_outlined),
                 helperText: 'qBittorrent 5.2+ Web UI setting; '
                     'sent as Authorization: Bearer',
               ),
