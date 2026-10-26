@@ -209,17 +209,13 @@ final transmissionFreeSpaceProvider =
 /// the Activity feed see the whole list instead of inheriting whatever filter
 /// the user last chose on the Transmission screen.
 final transmissionRawTorrentsProvider =
-    FutureProvider.autoDispose.family<List<TransmissionTorrent>, Instance>(
-  (
-    Ref ref,
-    Instance instance,
-  ) =>
-      ref.polled(
-    transmissionListPollInterval,
-    () async {
-      final TransmissionApi api =
-          await ref.watch(transmissionApiProvider(instance).future);
-      return api.getTorrents();
+    FutureProvider.autoDispose.family<List<TransmissionTorrent>, Instance>((
+  Ref ref,
+  Instance instance,
+) => ref.polled(transmissionListPollInterval, () async {
+    final TransmissionApi api =
+        await ref.watch(transmissionApiProvider(instance).future);
+    return api.getTorrents();
     },
   ),
 );
@@ -284,16 +280,20 @@ List<TransmissionTorrent> sortTransmissionTorrents(
 }) {
   final List<TransmissionTorrent> out = List<TransmissionTorrent>.of(torrents);
   int compare(TransmissionTorrent a, TransmissionTorrent b) => switch (field) {
-        TransmissionSortField.queue => _queueRank(a).compareTo(_queueRank(b)),
+        TransmissionSortField.queue =>
+          _queueRank(a).compareTo(_queueRank(b)),
         TransmissionSortField.name =>
           a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-        TransmissionSortField.size => a.sizeWhenDone.compareTo(b.sizeWhenDone),
+        TransmissionSortField.size =>
+          a.sizeWhenDone.compareTo(b.sizeWhenDone),
         TransmissionSortField.progress =>
           a.percentDone.compareTo(b.percentDone),
-        TransmissionSortField.status => a.statusCode.compareTo(b.statusCode),
+        TransmissionSortField.status =>
+          a.statusCode.compareTo(b.statusCode),
         TransmissionSortField.downSpeed =>
           a.downloadRate.compareTo(b.downloadRate),
-        TransmissionSortField.upSpeed => a.uploadRate.compareTo(b.uploadRate),
+        TransmissionSortField.upSpeed =>
+          a.uploadRate.compareTo(b.uploadRate),
         TransmissionSortField.ratio => a.ratio.compareTo(b.ratio),
         TransmissionSortField.added => a.addedDate.compareTo(b.addedDate),
         // Most recent first is the natural order, as the web UI has it; the
@@ -336,34 +336,26 @@ List<String> transmissionTrackers(List<TransmissionTorrent> torrents) {
 
 /// Session settings: bandwidth limits, turtle mode, download dir, free space.
 final transmissionSessionProvider =
-    FutureProvider.autoDispose.family<TransmissionSession, Instance>(
-  (
-    Ref ref,
-    Instance instance,
-  ) =>
-      ref.polled(
-    transmissionSlowPollInterval,
-    () async {
-      final TransmissionApi api =
-          await ref.watch(transmissionApiProvider(instance).future);
-      return api.getSession();
+    FutureProvider.autoDispose.family<TransmissionSession, Instance>((
+  Ref ref,
+  Instance instance,
+) => ref.polled(transmissionSlowPollInterval, () async {
+    final TransmissionApi api =
+        await ref.watch(transmissionApiProvider(instance).future);
+    return api.getSession();
     },
   ),
 );
 
 /// Live session speeds and counts.
 final transmissionSessionStatsProvider =
-    FutureProvider.autoDispose.family<TransmissionSessionStats, Instance>(
-  (
-    Ref ref,
-    Instance instance,
-  ) =>
-      ref.polled(
-    transmissionListPollInterval,
-    () async {
-      final TransmissionApi api =
-          await ref.watch(transmissionApiProvider(instance).future);
-      return api.getSessionStats();
+    FutureProvider.autoDispose.family<TransmissionSessionStats, Instance>((
+  Ref ref,
+  Instance instance,
+) => ref.polled(transmissionListPollInterval, () async {
+    final TransmissionApi api =
+        await ref.watch(transmissionApiProvider(instance).future);
+    return api.getSessionStats();
     },
   ),
 );
@@ -374,17 +366,13 @@ typedef TransmissionTorrentRef = (Instance instance, String hashString);
 
 /// Files, peers and trackers for one torrent.
 final transmissionDetailProvider = FutureProvider.autoDispose
-    .family<TransmissionDetail, TransmissionTorrentRef>(
-  (
-    Ref ref,
-    TransmissionTorrentRef key,
-  ) =>
-      ref.polled(
-    transmissionSlowPollInterval,
-    () async {
-      final TransmissionApi api =
-          await ref.watch(transmissionApiProvider(key.$1).future);
-      return api.getDetail(key.$2);
+    .family<TransmissionDetail, TransmissionTorrentRef>((
+  Ref ref,
+  TransmissionTorrentRef key,
+) => ref.polled(transmissionSlowPollInterval, () async {
+    final TransmissionApi api =
+        await ref.watch(transmissionApiProvider(key.$1).future);
+    return api.getDetail(key.$2);
     },
   ),
 );

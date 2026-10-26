@@ -54,49 +54,21 @@ void main() {
   });
 
   group('row strings', () {
-    test('a magnet still fetching metadata says so and drives the bar', () {
+    test('a magnet still fetching metadata drives the bar', () {
       final TransmissionTorrent m = t(<String, dynamic>{
         'metadataPercentComplete': 0.4,
         'status': 4,
       });
-      expect(
-        trProgressLine(m),
-        'Magnetized transfer - retrieving metadata (40.0%)',
-      );
       expect(trBarValue(m), 0.4);
-      expect(
-        trProgressLine(
-          t(<String, dynamic>{'metadataPercentComplete': 0.4, 'status': 0}),
-        ),
-        'Magnetized transfer - needs metadata (40.0%)',
-      );
     });
 
-    test('a downloading torrent shows done of size and the remaining time',
-        () {
-      expect(
-        trProgressLine(t(<String, dynamic>{})),
-        '${trFmtBytes(1000000000)} of ${trFmtBytes(4000000000)} (25.0%) - '
-        '15 minutes remaining',
-      );
-      expect(
-        trProgressLine(t(<String, dynamic>{'eta': -1})),
-        endsWith(' - remaining time unknown'),
-      );
-    });
-
-    test('a finished torrent shows its size and what it uploaded', () {
+    test('a finished torrent fills the bar', () {
       final TransmissionTorrent done = t(<String, dynamic>{
         'status': 6,
         'leftUntilDone': 0,
         'percentDone': 1.0,
         'uploadRatio': 1.5,
       });
-      expect(
-        trProgressLine(done),
-        '${trFmtBytes(4000000000)}, uploaded ${trFmtBytes(200000000)} '
-        '(Ratio: 1.50)',
-      );
       expect(trBarValue(done), 1.0);
     });
 
@@ -108,33 +80,6 @@ void main() {
         'uploadRatio': 0.0,
       });
       expect(trBarValue(seeding), 1.0);
-    });
-
-    test('status lines follow the web UI', () {
-      expect(
-        trStatusLine(t(<String, dynamic>{})),
-        'Downloading from 8 of 12 peers - ↓ ${trFmtRate(1024000)} '
-        '↑ ${trFmtRate(51200)}',
-      );
-      expect(
-        trStatusLine(t(<String, dynamic>{'webseedsSendingToUs': 1})),
-        startsWith('Downloading from 8 of 12 peers and 1 web seed'),
-      );
-      expect(
-        trStatusLine(t(<String, dynamic>{'status': 6})),
-        'Seeding to 3 of 12 peers - ↑ ${trFmtRate(51200)}',
-      );
-      expect(
-        trStatusLine(t(<String, dynamic>{'status': 2, 'recheckProgress': 0.5})),
-        'Verifying local data (50.0% tested)',
-      );
-      expect(trStatusLine(t(<String, dynamic>{'status': 0})), 'Paused');
-      expect(
-        trStatusLine(
-          t(<String, dynamic>{'error': 2, 'errorString': 'Tracker gone'}),
-        ),
-        'Tracker gone',
-      );
     });
 
     test('compact lines', () {

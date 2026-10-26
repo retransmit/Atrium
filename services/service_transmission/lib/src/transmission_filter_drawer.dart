@@ -34,13 +34,6 @@ class TransmissionFilterDrawer extends ConsumerWidget {
         ref.watch(transmissionFilterProvider(instance));
     final String search = ref.watch(transmissionSearchProvider(instance));
 
-    // The list with the search applied and no filter, which is what each
-    // count is measured against.
-    final List<TransmissionTorrent> searched = filterTransmissionTorrents(
-      all,
-      const TransmissionFilter(),
-      search: search,
-    );
     final bool anyPrivate = all.any((TransmissionTorrent t) => t.isPrivate);
     final List<String> trackers = transmissionTrackers(all);
     final List<String> labels = transmissionLabels(all);
@@ -48,17 +41,11 @@ class TransmissionFilterDrawer extends ConsumerWidget {
     void set(TransmissionFilter Function(TransmissionFilter f) change) =>
         ref.read(transmissionFilterProvider(instance).notifier).update(change);
 
-    /// How many of [searched] survive [candidate]. The drawer's promise is
-    /// that a figure matches what tapping the row will leave on screen.
-    int countFor(TransmissionFilter candidate) => searched
-        .where(
-          (TransmissionTorrent t) =>
-              candidate.mode.matches(t) &&
-              (candidate.tracker.isEmpty ||
-                  t.trackerHosts.contains(candidate.tracker)) &&
-              (candidate.label.isEmpty || t.labels.contains(candidate.label)),
-        )
-        .length;
+    /// How many torrents [candidate] would leave with the current search. The
+    /// drawer's promise is that a figure matches what tapping the row will
+    /// leave on screen, so it asks the list's own filter rather than a copy.
+    int countFor(TransmissionFilter candidate) =>
+        filterTransmissionTorrents(all, candidate, search: search).length;
 
     Widget section(String title, List<Widget> children) => ExpansionTile(
           initiallyExpanded: true,

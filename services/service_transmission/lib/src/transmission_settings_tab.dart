@@ -575,8 +575,10 @@ class _TransmissionSettingsTabState
       '${(minutes % 60).toString().padLeft(2, '0')}';
 
   static String _trackerCount(String trackers) {
-    final int n =
-        trackers.split('\n').where((String l) => l.trim().isNotEmpty).length;
+    final int n = trackers
+        .split('\n')
+        .where((String l) => l.trim().isNotEmpty)
+        .length;
     return n == 0 ? 'None' : trCount(n, 'tracker', 'trackers');
   }
 
