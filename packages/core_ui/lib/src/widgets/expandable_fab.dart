@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 class ExpandableFab extends StatefulWidget {
   const ExpandableFab({
     required this.builder,
+    this.tooltip = 'Add',
     this.step = 68,
     super.key,
   });
@@ -17,6 +18,10 @@ class ExpandableFab extends StatefulWidget {
   /// The actions, nearest the main button first. That is also the order they
   /// are painted in, so the first one sits closest when the stack is open.
   final List<Widget> Function(BuildContext context, VoidCallback close) builder;
+
+  /// What the main button says to a screen reader and on a long press while
+  /// the stack is closed. Open, it says Close.
+  final String tooltip;
 
   /// How far apart the actions sit, and how far each one travels.
   final double step;
@@ -93,10 +98,14 @@ class _ExpandableFabState extends State<ExpandableFab>
             _ExpandingActionButton(
               maxDistance: (i + 1) * widget.step,
               progress: _expandAnimation,
-              child: actions[i],
+              // Folded away they are still in the tree, scaled to nothing, so
+              // a screen reader would otherwise read out buttons nobody can
+              // see.
+              child: ExcludeSemantics(excluding: !_open, child: actions[i]),
             ),
           FloatingActionButton(
             heroTag: null,
+            tooltip: _open ? 'Close' : widget.tooltip,
             onPressed: _toggle,
             child: AnimatedBuilder(
               animation: _expandAnimation,
