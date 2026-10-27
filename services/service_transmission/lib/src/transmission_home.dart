@@ -50,6 +50,11 @@ class TransmissionHome extends ConsumerWidget {
         return;
       }
       ref.read(transmissionTabProvider(instance).notifier).state = index;
+      // The bar hides while a list scrolls down, and that state outlives the
+      // tab. Landing on another tab with it hidden leaves no visible way to
+      // switch back, so every tab change brings it back.
+      ref.read(transmissionBottomNavVisibleProvider(instance).notifier).state =
+          true;
     }
 
     return Scaffold(
@@ -127,6 +132,13 @@ class TransmissionHome extends ConsumerWidget {
               }
               if (ref.read(transmissionTabProvider(instance)) != 0) {
                 ref.read(transmissionTabProvider(instance).notifier).state = 0;
+                // Settings can hide the bar on its way down; Back must not
+                // hand the torrent list over with no bar until it is dragged.
+                ref
+                    .read(
+                      transmissionBottomNavVisibleProvider(instance).notifier,
+                    )
+                    .state = true;
                 return;
               }
               GoRouter.of(context).goNamed(AtriumRoutes.dashboardName);

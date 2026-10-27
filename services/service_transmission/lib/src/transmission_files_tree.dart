@@ -172,6 +172,7 @@ class _TransmissionFilesTreeState extends State<TransmissionFilesTree> {
         Insets.xxs,
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Checkbox(
             tristate: node.isFolder,
@@ -207,50 +208,12 @@ class _TransmissionFilesTreeState extends State<TransmissionFilesTree> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Expanded(
-                          child: Text(
-                            node.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodyMedium
-                                ?.copyWith(fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                        PopupMenuButton<TransmissionPriority>(
-                          tooltip: 'Priority',
-                          icon: Icon(
-                            Icons.more_vert_rounded,
-                            size: 20,
-                            color: cs.onSurfaceVariant,
-                          ),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 24,
-                            minHeight: 24,
-                          ),
-                          enabled: !widget.busy,
-                          onSelected: (TransmissionPriority p) =>
-                              widget.onPriority(node.indices, p),
-                          itemBuilder: (BuildContext _) =>
-                              const <PopupMenuEntry<TransmissionPriority>>[
-                            PopupMenuItem<TransmissionPriority>(
-                              value: TransmissionPriority.low,
-                              child: Text('Low'),
-                            ),
-                            PopupMenuItem<TransmissionPriority>(
-                              value: TransmissionPriority.normal,
-                              child: Text('Normal'),
-                            ),
-                            PopupMenuItem<TransmissionPriority>(
-                              value: TransmissionPriority.high,
-                              child: Text('High'),
-                            ),
-                          ],
-                        ),
-                      ],
+                    Text(
+                      node.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: Insets.xs),
                     ClipRRect(
@@ -273,6 +236,42 @@ class _TransmissionFilesTreeState extends State<TransmissionFilesTree> {
                 ),
               ),
             ),
+          ),
+          // Beside the content, not inside its first line: an IconButton is
+          // 48 px tall, which used to stretch that line and leave a gap
+          // between the name and the bar under it.
+          PopupMenuButton<TransmissionPriority>(
+            tooltip: 'Priority',
+            icon: Icon(
+              Icons.more_vert_rounded,
+              size: 20,
+              color: cs.onSurfaceVariant,
+            ),
+            padding: EdgeInsets.zero,
+            style: IconButton.styleFrom(
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              minimumSize: const Size(40, 40),
+              maximumSize: const Size(40, 40),
+              padding: EdgeInsets.zero,
+            ),
+            enabled: !widget.busy,
+            onSelected: (TransmissionPriority p) =>
+                widget.onPriority(node.indices, p),
+            itemBuilder: (BuildContext _) =>
+                const <PopupMenuEntry<TransmissionPriority>>[
+              PopupMenuItem<TransmissionPriority>(
+                value: TransmissionPriority.low,
+                child: Text('Low'),
+              ),
+              PopupMenuItem<TransmissionPriority>(
+                value: TransmissionPriority.normal,
+                child: Text('Normal'),
+              ),
+              PopupMenuItem<TransmissionPriority>(
+                value: TransmissionPriority.high,
+                child: Text('High'),
+              ),
+            ],
           ),
         ],
       ),

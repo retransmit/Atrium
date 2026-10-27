@@ -61,6 +61,34 @@ void main() {
 
       expect(tester.takeException(), isNull);
 
+      // The active-filter strip is another row that has to fit, and the
+      // drawer it comes from is the tightest layout on the smallest phone.
+      await tester.tap(find.byTooltip('Filter torrents'));
+      await settle(tester);
+      await tester.tap(find.text('Seeding (1)'));
+      await settle(tester);
+      await tester.tapAt(const Offset(10, 10));
+      await settle(tester, frames: 12);
+      expect(tester.takeException(), isNull);
+
+      final Finder filterBar =
+          find.byKey(const ValueKey<String>('active-filter-bar'));
+      expect(filterBar, findsOneWidget);
+      await tester.tap(
+        find.descendant(of: filterBar, matching: find.text('Clear')),
+      );
+      await settle(tester);
+      expect(tester.takeException(), isNull);
+
+      // Compact rows do not share the full row's layout.
+      await tester.tap(find.byTooltip('More'));
+      await settle(tester);
+      await tester.tap(
+        find.widgetWithText(CheckedPopupMenuItem<String>, 'Compact rows'),
+      );
+      await settle(tester);
+      expect(tester.takeException(), isNull);
+
       // The selection app bar is the other layout that has to fit.
       await tester.longPress(find.textContaining('ellipsised'));
       await settle(tester);

@@ -89,6 +89,59 @@ void main() {
     expect(find.text('Alpha'), findsNothing);
   });
 
+  testWidgets('the list says a filter is on and can drop it',
+      (WidgetTester tester) async {
+    await open(tester);
+    final Finder bar = find.byKey(
+      const ValueKey<String>('active-filter-bar'),
+    );
+    expect(bar, findsNothing);
+
+    await openFilters(tester);
+    await tester.tap(find.text('Seeding (1)'));
+    await settle(tester);
+    await tester.tapAt(const Offset(10, 10));
+    // The scrim is hit-testable until the close animation finishes.
+    await settle(tester, frames: 12);
+
+    // The drawer is closed now, so only the strip can say the list is
+    // narrowed, and only it can undo it without opening the drawer again.
+    expect(bar, findsOneWidget);
+    expect(
+      find.descendant(of: bar, matching: find.text('Filtered:')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: bar, matching: find.text('Seeding')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.descendant(of: bar, matching: find.text('Clear')));
+    await settle(tester);
+    expect(bar, findsNothing);
+    expect(find.text('Alpha'), findsOneWidget);
+  });
+
+  testWidgets('an empty list under a filter offers to clear it',
+      (WidgetTester tester) async {
+    await open(tester);
+    await openFilters(tester);
+    await tester.tap(find.text('Error (0)'));
+    await settle(tester);
+    await tester.tapAt(const Offset(10, 10));
+    await settle(tester, frames: 12);
+
+    // "No torrents, add one" would be a lie while a filter hides both.
+    expect(find.text('No torrents match'), findsOneWidget);
+    expect(find.text('Clear filters'), findsOneWidget);
+
+    await tester.tap(find.text('Clear filters'));
+    await settle(tester);
+    expect(find.text('Alpha'), findsOneWidget);
+    expect(find.text('Beta'), findsOneWidget);
+    expect(find.text('No torrents match'), findsNothing);
+  });
+
   testWidgets('search narrows by name and label', (WidgetTester tester) async {
     await open(tester);
     await openSearch(tester);
@@ -238,6 +291,32 @@ void main() {
 
     expect(find.byIcon(Icons.swap_vert), findsNothing);
     expect(find.textContaining('↓'), findsWidgets);
+  });
+
+  testWidgets('compact rows are shorter and say the state once',
+      (WidgetTester tester) async {
+    fake.on('torrent-get', <String, Object?>{
+      'torrents': <Map<String, dynamic>>[
+        torrentJson(hash: 'p', name: 'Paused one', status: 0),
+      ],
+    });
+    await open(tester);
+
+    final Finder row = find.byType(TransmissionTorrentRow);
+    final double full = tester.getSize(row).height;
+    expect(find.text('Paused'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('More'));
+    await settle(tester);
+    await tester.tap(
+      find.widgetWithText(CheckedPopupMenuItem<String>, 'Compact rows'),
+    );
+    await settle(tester);
+
+    // The pill used to sit above a summary that repeated it, and dropping
+    // only the pill row left the row nearly as tall as the full one.
+    expect(tester.getSize(row).height, lessThan(full - 32));
+    expect(find.text('Paused'), findsOneWidget);
   });
 
   testWidgets('the row menu opens Set location', (WidgetTester tester) async {

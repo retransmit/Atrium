@@ -19,8 +19,11 @@ void main() {
       ..on('session-stats', statsJson());
   });
 
-  Future<void> open(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1080, 4000);
+  Future<void> open(
+    WidgetTester tester, {
+    Size size = const Size(1080, 4000),
+  }) async {
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -68,6 +71,20 @@ void main() {
       tester.getTopLeft(allTimeTitle).dy,
       greaterThan(tester.getBottomLeft(sessionTitle).dy),
     );
+  });
+
+  testWidgets('the statistics card leaves the first screen to the settings',
+      (WidgetTester tester) async {
+    // The pair of blocks is stacked; two figures per line keep it from
+    // pushing every actual setting below the fold on a phone.
+    await open(tester, size: const Size(360, 800));
+
+    final Size card = tester.getSize(
+      find.byKey(const ValueKey<String>('statistics-panel')),
+    );
+    expect(card.height, lessThan(400));
+    // The first group of settings has started by the bottom of the screen.
+    expect(tester.getTopLeft(find.text('Torrents')).dy, lessThan(800));
   });
 
   testWidgets('a switch writes its key alone', (WidgetTester tester) async {

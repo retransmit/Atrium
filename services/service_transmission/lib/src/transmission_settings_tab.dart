@@ -700,8 +700,9 @@ class _EditDialogState extends State<_EditDialog> {
   }
 }
 
-/// The web UI's Statistics dialog: this session beside all time, each as
-/// one tinted block of figures.
+/// The web UI's Statistics dialog: this session above all time, each as one
+/// tinted block of figures, two to a line so the pair does not fill the first
+/// screen before any actual setting appears.
 class _StatisticsCard extends ConsumerWidget {
   const _StatisticsCard({required this.instance});
 
@@ -770,10 +771,27 @@ class _StatisticsCard extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: Insets.sm),
-            figure('Uploaded', trFmtBytes(b.uploadedBytes)),
-            figure('Downloaded', trFmtBytes(b.downloadedBytes)),
-            figure('Ratio', trRatioString(ratio)),
-            figure('Running time', trTimeInterval(b.secondsActive)),
+            LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                final double column = (constraints.maxWidth - Insets.sm) / 2;
+                return Wrap(
+                  spacing: Insets.sm,
+                  children: <Widget>[
+                    for (final (String label, String value)
+                        in <(String, String)>[
+                      ('Uploaded', trFmtBytes(b.uploadedBytes)),
+                      ('Downloaded', trFmtBytes(b.downloadedBytes)),
+                      ('Ratio', trRatioString(ratio)),
+                      ('Running time', trTimeInterval(b.secondsActive)),
+                    ])
+                      SizedBox(
+                        width: column,
+                        child: figure(label, value),
+                      ),
+                  ],
+                );
+              },
+            ),
             if (started)
               Text(
                 'Started ${b.sessionCount} times',
@@ -785,6 +803,7 @@ class _StatisticsCard extends ConsumerWidget {
     }
 
     return TransmissionPanel(
+      key: const ValueKey<String>('statistics-panel'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[

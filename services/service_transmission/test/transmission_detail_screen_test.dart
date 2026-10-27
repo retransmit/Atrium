@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 import 'package:service_transmission/service_transmission.dart';
 
 import 'support/fake_transmission.dart';
@@ -235,5 +236,32 @@ void main() {
       tester.getTopLeft(upPill).dx - tester.getTopRight(downPill).dx,
       equals(8.0),
     );
+  });
+  testWidgets('a file name sits against its progress bar',
+      (WidgetTester tester) async {
+    await open(tester, tab: 'Files');
+
+    final Finder name = find.text('README.txt');
+    expect(name, findsOneWidget);
+    // Files are the rows whose tap target is null; the folders toggle open.
+    final Finder fileRow = find
+        .ancestor(
+          of: name,
+          matching: find.byWidgetPredicate(
+            (Widget w) => w is InkWell && w.onTap == null,
+          ),
+        )
+        .first;
+    final Finder bar = find.descendant(
+      of: fileRow,
+      matching: find.byType(LinearProgressIndicatorM3E),
+    );
+    expect(bar, findsOneWidget);
+
+    // The priority menu is 48 px tall and used to live in the name's line,
+    // which stretched that line and left the gap this pins shut.
+    final double gap =
+        tester.getTopLeft(bar).dy - tester.getBottomLeft(name).dy;
+    expect(gap, lessThanOrEqualTo(8.0));
   });
 }

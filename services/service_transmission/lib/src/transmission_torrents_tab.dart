@@ -95,6 +95,18 @@ class _TransmissionTorrentsTabState
     );
   }
 
+  void _clearFilter() {
+    ref.read(transmissionFilterProvider(widget.instance).notifier).state =
+        const TransmissionFilter();
+  }
+
+  /// Drops every narrowing in one move, so the empty state's action cannot
+  /// leave half a filter behind.
+  void _clearNarrowing() {
+    _clearFilter();
+    ref.read(transmissionSearchProvider(widget.instance).notifier).state = '';
+  }
+
   @override
   Widget build(BuildContext context) {
     final Instance instance = widget.instance;
@@ -108,6 +120,9 @@ class _TransmissionTorrentsTabState
             .value
             ?.supportsLabels ??
         false;
+    final TransmissionFilter filter =
+        ref.watch(transmissionFilterProvider(instance));
+    final String search = ref.watch(transmissionSearchProvider(instance));
 
     ref.listen<int>(transmissionScrollToTopProvider((instance, 0)), (
       int? previous,
@@ -131,6 +146,21 @@ class _TransmissionTorrentsTabState
                     () => Scaffold.of(context).openDrawer(),
               ),
               title: Text(instance.name, overflow: TextOverflow.ellipsis),
+              // A filter narrows the list but changes nothing on the screen
+              // by itself, so the strip is the only sign the list is not
+              // everything the daemon has. It stays under the app bar while
+              // the rows scroll, where the old chips scrolled away. The
+              // search box carries its own query, so only the drawer's
+              // facets are repeated here.
+              bottom: filter.isActive
+                  ? PreferredSize(
+                      preferredSize: const Size.fromHeight(48),
+                      child: _ActiveFilterBar(
+                        filter: filter,
+                        onClear: _clearFilter,
+                      ),
+                    )
+                  : null,
               actions: <Widget>[
                 IconButton(
                   tooltip: 'Filter torrents',
@@ -216,14 +246,33 @@ class _TransmissionTorrentsTabState
                 ),
               ),
               if (list.isEmpty)
-                const SliverToBoxAdapter(
+                SliverToBoxAdapter(
                   child: Padding(
-                    padding: EdgeInsets.only(top: Insets.xl * 2),
-                    child: EmptyView(
-                      icon: Icons.download_done_outlined,
-                      title: 'No torrents',
-                      message: 'Tap + to add a magnet, URL, or .torrent file.',
-                    ),
+                    padding: const EdgeInsets.only(top: Insets.xl * 2),
+                    // "No torrents" under a filter is a lie: there may be
+                    // plenty, just not in the drawer's current slice.
+                    child: filter.isActive || search.trim().isNotEmpty
+                        ? EmptyView(
+                            icon: Icons.filter_alt_off_outlined,
+                            title: 'No torrents match',
+                            message: 'Nothing matches the filter or search '
+                                'right now.',
+                            action: FilledButton.tonalIcon(
+                              onPressed: _clearNarrowing,
+                              icon: const Icon(Icons.filter_alt_off),
+                              label: Text(
+                                filter.isActive
+                                    ? 'Clear filters'
+                                    : 'Clear search',
+                              ),
+                            ),
+                          )
+                        : const EmptyView(
+                            icon: Icons.download_done_outlined,
+                            title: 'No torrents',
+                            message:
+                                'Tap + to add a magnet, URL, or .torrent file.',
+                          ),
                   ),
                 )
               else
@@ -855,6 +904,86 @@ class _LimitPill extends StatelessWidget {
         label: trFmtLimit(kbps: kbps, enabled: enabled),
         color: color,
         active: enabled,
+      ),
+    );
+  }
+}
+
+/// The facets currently narrowing the list, under the app bar, with a way out.
+///
+/// The drawer is closed most of the time, and the drawer's button looks the
+/// same whether anything is in force or not. This strip is the visible answer
+/// to "why is the list not showing everything?" whenever a filter is on; the
+/// values scroll sideways at a large text size rather than overflowing.
+class _ActiveFilterBar extends StatelessWidget {
+  const _ActiveFilterBar({required this.filter, required this.onClear});
+
+  final TransmissionFilter filter;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    return Container(
+      key: const ValueKey<String>('active-filter-bar'),
+      height: 48,
+      color: cs.surfaceContainer,
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: Insets.md),
+              child: Row(
+                children: <Widget>[
+                  Text(
+                    'Filtered:',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: cs.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: Insets.xs),
+                  if (filter.mode != TransmissionFilterMode.all) ...<Widget>[
+                    TransmissionPill(
+                      label: filter.mode.label,
+                      foreground: cs.onPrimaryContainer,
+                      background: cs.primaryContainer,
+                    ),
+                    const SizedBox(width: Insets.xs),
+                  ],
+                  if (filter.tracker.isNotEmpty) ...<Widget>[
+                    TransmissionPill(
+                      icon: Icons.dns_outlined,
+                      label: filter.tracker,
+                      foreground: cs.onSecondaryContainer,
+                      background: cs.secondaryContainer,
+                    ),
+                    const SizedBox(width: Insets.xs),
+                  ],
+                  if (filter.label.isNotEmpty) ...<Widget>[
+                    TransmissionPill(
+                      icon: Icons.label_outline,
+                      label: filter.label,
+                      foreground: cs.onSecondaryContainer,
+                      background: cs.secondaryContainer,
+                    ),
+                    const SizedBox(width: Insets.xs),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: onClear,
+            style: TextButton.styleFrom(
+              minimumSize: const Size(0, 40),
+              padding: const EdgeInsets.symmetric(horizontal: Insets.md),
+            ),
+            child: const Text('Clear'),
+          ),
+        ],
       ),
     );
   }
