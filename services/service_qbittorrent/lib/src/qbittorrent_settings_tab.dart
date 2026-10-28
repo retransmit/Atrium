@@ -402,6 +402,12 @@ class _QbittorrentSettingsTabState
         ref.watch(qbitApiVersionProvider(instance));
     final QbitTransferInfo? transfer =
         ref.watch(qbitTransferProvider(instance)).value;
+    final QbitExternalAddresses? addresses =
+        ref.watch(qbitExternalAddressesProvider(instance)).value;
+    // qBittorrent before 5.0 sends neither field, so there is nothing to show
+    // rather than an address that will never arrive.
+    final bool reportsAddresses =
+        addresses != null && (addresses.v4 != null || addresses.v6 != null);
 
     final String shareRatio = transfer != null && transfer.dlData > 0
         ? (transfer.upData / transfer.dlData).toStringAsFixed(2)
@@ -434,6 +440,22 @@ class _QbittorrentSettingsTabState
                   ? Theme.of(context).colorScheme.error
                   : Theme.of(context).colorScheme.primary,
             ),
+            if (reportsAddresses) ...<Widget>[
+              const Divider(height: 1),
+              _buildAddressTile(
+                title: 'External IPv4',
+                address: addresses.v4 ?? '',
+              ),
+              // Most connections have no IPv6 address at all, so an empty
+              // one is left out rather than shown as unknown.
+              if ((addresses.v6 ?? '').isNotEmpty) ...<Widget>[
+                const Divider(height: 1),
+                _buildAddressTile(
+                  title: 'External IPv6',
+                  address: addresses.v6!,
+                ),
+              ],
+            ],
             const Divider(height: 1),
             _buildInfoTile(
               icon: Icons.link_rounded,
@@ -1685,6 +1707,58 @@ class _QbittorrentSettingsTabState
           fontWeight: FontWeight.w500,
         ),
       ),
+    );
+  }
+
+  /// A public address qBittorrent reports, with the value under the title
+  /// rather than beside it, since an IPv6 address is too long to sit beside
+  /// it. Tapping copies it.
+  Widget _buildAddressTile({required String title, required String address}) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final bool known = address.isNotEmpty;
+    return ListTile(
+      leading: Container(
+        width: 36,
+        height: 36,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: cs.secondary.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(Icons.public_rounded, color: cs.secondary, size: 20),
+      ),
+      title: Text(
+        title,
+        style:
+            theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+      ),
+      // qBittorrent learns the address from peers and trackers, so a server
+      // that has only just started has none to report yet.
+      subtitle: Text(
+        known ? address : 'Not known yet',
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: cs.onSurfaceVariant,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      trailing: known
+          ? Icon(Icons.copy_rounded, size: 20, color: cs.onSurfaceVariant)
+          : null,
+      onTap: known ? () => _copyAddress(title, address) : null,
+    );
+  }
+
+  Future<void> _copyAddress(String title, String address) async {
+    String message = '$title copied';
+    try {
+      await Clipboard.setData(ClipboardData(text: address));
+    } on PlatformException {
+      message = 'Could not copy to the clipboard';
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 

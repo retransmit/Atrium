@@ -310,12 +310,27 @@ bool? qbitIsPrivate(QbitTorrentProperties properties) =>
     properties.private ??
     (properties.piecesNum > 0 ? properties.isPrivate : null);
 
-/// Mutable per-instance `/sync/maindata` state: the response id plus the
-/// parsed model per torrent.
+/// The public addresses qBittorrent last saw itself at. Each is null where
+/// the server never sent the field, which qBittorrent before 5.0 does not, and
+/// empty while it has not learnt an address yet.
+typedef QbitExternalAddresses = ({String? v4, String? v6});
+
+/// Mutable per-instance `/sync/maindata` state: the response id, the parsed
+/// model per torrent, and the server state.
 class QbitSyncStore {
   int rid = 0;
   final Map<String, QbitTorrent> _models = <String, QbitTorrent>{};
+
+  /// Kept whole because it arrives as a delta like the torrents: after the
+  /// first reply, only the fields that changed are sent.
+  final Map<String, dynamic> _serverState = <String, dynamic>{};
   Future<void> _tail = Future<void>.value();
+
+  /// From `last_external_address_v4` and `_v6` in the server state.
+  QbitExternalAddresses get externalAddresses => (
+        v4: _serverState['last_external_address_v4'] as String?,
+        v6: _serverState['last_external_address_v6'] as String?,
+      );
 
   /// Fetches the delta since [rid] and merges it. Calls run one after
   /// another: a refresh fired while a fetch is in flight (pull-to-refresh, the
@@ -345,6 +360,11 @@ class QbitSyncStore {
     try {
       if (data['full_update'] == true) {
         _models.clear();
+        _serverState.clear();
+      }
+      final Object? serverState = data['server_state'];
+      if (serverState is Map<String, dynamic>) {
+        _serverState.addAll(serverState);
       }
       final Map<String, dynamic> patches =
           (data['torrents'] as Map<String, dynamic>?) ?? <String, dynamic>{};
@@ -391,6 +411,17 @@ final qbitRawTorrentsProvider =
         await ref.watch(qbittorrentClientProvider(instance).future);
     return store.sync(client);
   });
+});
+
+/// What qBittorrent reports as its own public addresses. It rides on the
+/// torrent list's polling, since both come from the same `/sync/maindata`
+/// reply.
+final qbitExternalAddressesProvider = Provider.autoDispose
+    .family<AsyncValue<QbitExternalAddresses>, Instance>((ref, instance) {
+  final QbitSyncStore store = ref.watch(qbitSyncStoreProvider(instance));
+  return ref
+      .watch(qbitRawTorrentsProvider(instance))
+      .whenData((List<QbitTorrent> _) => store.externalAddresses);
 });
 
 final qbitSearchProvider =
