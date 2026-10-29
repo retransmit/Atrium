@@ -19,12 +19,21 @@ class _Qbittorrent implements HttpClientAdapter {
 
   final Map<String, dynamic> serverState;
 
+  /// Makes `/sync/maindata` answer 500, as a server under strain might for
+  /// one poll.
+  bool failSync = false;
+  int syncFailures = 0;
+
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
   ) async {
+    if (failSync && options.uri.path == '/api/v2/sync/maindata') {
+      syncFailures++;
+      return ResponseBody.fromString('Internal Server Error', 500);
+    }
     return switch (options.uri.path) {
       '/api/v2/sync/maindata' => _json(<String, dynamic>{
           'rid': 1,
@@ -164,17 +173,18 @@ void main() {
           .setMockMethodCallHandler(SystemChannels.platform, null);
     });
 
-    Future<void> open(
+    Future<_Qbittorrent> open(
       WidgetTester tester,
       Map<String, dynamic> serverState,
     ) async {
+      final _Qbittorrent server = _Qbittorrent(serverState);
       tester.view.physicalSize = const Size(1080, 2400);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       final QbittorrentClient client = QbittorrentClient(
         dio: Dio(BaseOptions(baseUrl: 'https://qbit.example.test/'))
-          ..httpClientAdapter = _Qbittorrent(serverState),
+          ..httpClientAdapter = server,
         cookies: CookieJar(),
         username: '',
         password: '',
@@ -194,6 +204,7 @@ void main() {
       for (int i = 0; i < 6; i++) {
         await tester.pump(const Duration(milliseconds: 50));
       }
+      return server;
     }
 
     // The list polls, so the tree is taken down before the test ends.
@@ -216,6 +227,24 @@ void main() {
       await tester.pump();
       expect(copied, <String>['203.0.113.7']);
       expect(find.text('External IPv4 copied'), findsOneWidget);
+      await close(tester);
+    });
+
+    testWidgets('keeps the last address through a failed poll',
+        (WidgetTester tester) async {
+      final _Qbittorrent server = await open(tester, <String, dynamic>{
+        'last_external_address_v4': '203.0.113.7',
+      });
+      expect(find.text('203.0.113.7'), findsOneWidget);
+
+      // Past the next poll, which fails. The address it last reported is
+      // still the best answer there is, so the row stays.
+      server.failSync = true;
+      for (int i = 0; i < 16; i++) {
+        await tester.pump(const Duration(milliseconds: 500));
+      }
+      expect(server.syncFailures, greaterThan(0));
+      expect(find.text('203.0.113.7'), findsOneWidget);
       await close(tester);
     });
 

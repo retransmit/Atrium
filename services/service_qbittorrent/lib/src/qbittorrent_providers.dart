@@ -326,6 +326,9 @@ class QbitSyncStore {
   final Map<String, dynamic> _serverState = <String, dynamic>{};
   Future<void> _tail = Future<void>.value();
 
+  /// Whether any reply has carried a server state yet.
+  bool get hasServerState => _serverState.isNotEmpty;
+
   /// From `last_external_address_v4` and `_v6` in the server state.
   QbitExternalAddresses get externalAddresses => (
         v4: _serverState['last_external_address_v4'] as String?,
@@ -416,12 +419,20 @@ final qbitRawTorrentsProvider =
 /// What qBittorrent reports as its own public addresses. It rides on the
 /// torrent list's polling, since both come from the same `/sync/maindata`
 /// reply.
+///
+/// Once a reply has carried a server state, the store's copy is the answer
+/// even while the latest poll is loading or has failed: the address a server
+/// last reported is still the best one there is, and one failed poll should
+/// not blank the rows until the next good one.
 final qbitExternalAddressesProvider = Provider.autoDispose
     .family<AsyncValue<QbitExternalAddresses>, Instance>((ref, instance) {
   final QbitSyncStore store = ref.watch(qbitSyncStoreProvider(instance));
-  return ref
-      .watch(qbitRawTorrentsProvider(instance))
-      .whenData((List<QbitTorrent> _) => store.externalAddresses);
+  final AsyncValue<List<QbitTorrent>> torrents =
+      ref.watch(qbitRawTorrentsProvider(instance));
+  if (store.hasServerState) {
+    return AsyncData<QbitExternalAddresses>(store.externalAddresses);
+  }
+  return torrents.whenData((List<QbitTorrent> _) => store.externalAddresses);
 });
 
 final qbitSearchProvider =
