@@ -41,6 +41,7 @@ class CleanuparrOverviewTab extends ConsumerWidget {
     final statsAsync = ref.watch(cleanuparrStatsProvider(instance));
     final jobsAsync = ref.watch(cleanuparrJobsProvider(instance));
     final int selectedHours = ref.watch(cleanuparrTimeframeHoursProvider(instance));
+    final int activeCount = ref.watch(cleanuparrActiveStrikesCountProvider(instance));
 
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
     final TextTheme textTheme = Theme.of(context).textTheme;
@@ -178,9 +179,6 @@ class CleanuparrOverviewTab extends ConsumerWidget {
                 // Exact server-side ledger count. Deliberately NOT derived
                 // from the rendered strikes list, which is search-filtered
                 // and capped at its page size.
-                final int activeCount =
-                    ref.watch(cleanuparrActiveStrikesCountProvider(instance));
-
                 return Column(
                   children: <Widget>[
                     Row(

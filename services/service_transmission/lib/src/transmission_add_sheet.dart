@@ -216,6 +216,7 @@ class _TransmissionAddSheetState
           if (mounted) setState(() => _done++);
         }
         ref.invalidate(transmissionRawTorrentsProvider(widget.instance));
+        if (!mounted) return;
         navigator.pop();
         messenger.showSnackBar(
           SnackBar(
@@ -231,6 +232,7 @@ class _TransmissionAddSheetState
         paused: !(_startWhenAdded ?? true),
       );
       ref.invalidate(transmissionRawTorrentsProvider(widget.instance));
+      if (!mounted) return;
       navigator.pop();
       messenger.showSnackBar(
         SnackBar(

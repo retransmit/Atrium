@@ -180,7 +180,7 @@ class _ReleaseBanner extends StatelessWidget {
     // classic dark scrim with white text. Either way the text stays legible.
     final bool isLight = theme.brightness == Brightness.light;
     final Color scrim = isLight ? Colors.white : Colors.black;
-    final Color onArt = isLight ? const Color(0xFF141414) : Colors.white;
+    final Color onArt = isLight ? cs.onSurface : Colors.white;
     final Color titleColor = hasArt ? onArt : cs.onSurface;
     final Color subColor =
         hasArt ? onArt.withValues(alpha: 0.78) : cs.onSurfaceVariant;

@@ -67,7 +67,10 @@ class CleanuparrStrikeCard extends ConsumerWidget {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to reset strikes: ${describeCleanuparrError(e)}'),
+          content: Text(
+            'Failed to reset strikes: ${describeCleanuparrError(e)}',
+            style: TextStyle(color: Theme.of(context).colorScheme.onError),
+          ),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );

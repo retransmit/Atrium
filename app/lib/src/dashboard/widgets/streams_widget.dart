@@ -330,7 +330,7 @@ class _StreamBannerState extends State<_StreamBanner> {
 
     final bool isLight = theme.brightness == Brightness.light;
     final Color scrim = isLight ? Colors.white : Colors.black;
-    final Color onArt = isLight ? const Color(0xFF141414) : Colors.white;
+    final Color onArt = isLight ? cs.onSurface : Colors.white;
     final Color titleColor = hasArt ? onArt : cs.onSurface;
     final Color subColor =
         hasArt ? onArt.withValues(alpha: 0.78) : cs.onSurfaceVariant;

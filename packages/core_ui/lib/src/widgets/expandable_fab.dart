@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 /// A floating action button that fans its actions out above itself.
@@ -36,7 +38,7 @@ class ExpandableFab extends StatefulWidget {
 class _ExpandableFabState extends State<ExpandableFab>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  late final Animation<double> _expandAnimation;
+  late final CurvedAnimation _expandAnimation;
   bool _open = false;
 
   @override
@@ -56,11 +58,13 @@ class _ExpandableFabState extends State<ExpandableFab>
 
   @override
   void dispose() {
+    _expandAnimation.dispose();
     _controller.dispose();
     super.dispose();
   }
 
   void _toggle() {
+    if (!mounted) return;
     setState(() {
       _open = !_open;
       if (_open) {
@@ -98,10 +102,16 @@ class _ExpandableFabState extends State<ExpandableFab>
             _ExpandingActionButton(
               maxDistance: (i + 1) * widget.step,
               progress: _expandAnimation,
-              // Folded away they are still in the tree, scaled to nothing, so
-              // a screen reader would otherwise read out buttons nobody can
-              // see.
-              child: ExcludeSemantics(excluding: !_open, child: actions[i]),
+              child: ExcludeFocus(
+                excluding: !_open,
+                child: ExcludeSemantics(
+                  excluding: !_open,
+                  child: IgnorePointer(
+                    ignoring: !_open,
+                    child: actions[i],
+                  ),
+                ),
+              ),
             ),
           FloatingActionButton(
             heroTag: null,
@@ -111,7 +121,7 @@ class _ExpandableFabState extends State<ExpandableFab>
               animation: _expandAnimation,
               builder: (BuildContext context, Widget? child) {
                 return Transform.rotate(
-                  angle: _expandAnimation.value * 0.7853981633974483,
+                  angle: _expandAnimation.value * (math.pi / 4),
                   child: const Icon(Icons.add),
                 );
               },

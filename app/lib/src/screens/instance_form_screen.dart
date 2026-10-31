@@ -953,12 +953,15 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     }
   }
 
-  /// At least one of local / external must be a valid URL.
-  String? _validateUrlsTogether(String? _) {
+  /// At least one of local / external must be a valid URL, and any entered URL must be valid.
+  String? _validateUrlsTogether(String? value) {
     final bool localOk = _isValidUrl(_localUrl.text);
     final bool externalOk = _isValidUrl(_externalUrl.text);
     if (!localOk && !externalOk) {
       return 'Enter at least one valid URL (local or external)';
+    }
+    if (value != null && value.trim().isNotEmpty && !_isValidUrl(value)) {
+      return 'Enter a valid URL';
     }
     return null;
   }
