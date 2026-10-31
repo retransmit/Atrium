@@ -34,6 +34,7 @@ import 'package:service_myspeed/service_myspeed.dart';
 import 'package:service_adguard_home/service_adguard_home.dart';
 import 'package:service_aria2/service_aria2.dart';
 import 'package:service_cleanuparr/service_cleanuparr.dart';
+import 'package:service_slskd/service_slskd.dart';
 
 import 'dashboard_screen.dart';
 
@@ -174,6 +175,15 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
     }
     if (instance.kind == ServiceKind.cleanuparr) {
       return CleanuparrHome(
+        instance: instance,
+        drawer: ServicesDrawer(
+          instances: ref.watch(activeInstancesProvider),
+          profile: ref.watch(activeProfileProvider),
+        ),
+      );
+    }
+    if (instance.kind == ServiceKind.slskd) {
+      return SlskdHome(
         instance: instance,
         drawer: ServicesDrawer(
           instances: ref.watch(activeInstancesProvider),
@@ -399,6 +409,8 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
       // Owns its own scaffold, handled above.
       ServiceKind.aria2 => const SizedBox.shrink(),
       ServiceKind.cleanuparr => const SizedBox.shrink(),
+      // Owns its own scaffold, handled above.
+      ServiceKind.slskd => const SizedBox.shrink(),
     };
   }
 }

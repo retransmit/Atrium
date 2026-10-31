@@ -12,6 +12,7 @@ import 'package:service_rtorrent/service_rtorrent.dart';
 import 'package:service_sabnzbd/service_sabnzbd.dart';
 import 'package:service_transmission/service_transmission.dart';
 import 'package:service_aria2/service_aria2.dart';
+import 'package:service_slskd/service_slskd.dart';
 
 import '../dashboard_widget_card.dart';
 import '../dashboard_widget_kind.dart';
@@ -98,6 +99,20 @@ final activeDownloadCountProvider = Provider.autoDispose<int>((Ref ref) {
             .length;
         count += snapshot.waiting.where((Aria2Download d) => d.isWaiting).length;
       }
+    } else if (i.kind == ServiceKind.slskd) {
+      final List<SlskdUserTransfers> downloads =
+          ref.watch(slskdDownloadsProvider(i)).value ??
+              const <SlskdUserTransfers>[];
+      for (final SlskdUserTransfers user in downloads) {
+        for (final SlskdDirectoryTransfers dir in user.directories) {
+          for (final SlskdTransfer file in dir.files) {
+            if (file.category == TransferCategory.inProgress ||
+                file.category == TransferCategory.queued) {
+              count++;
+            }
+          }
+        }
+      }
     }
   }
   return count;
@@ -154,6 +169,7 @@ class DashboardDownloadsWidget extends ConsumerWidget {
     required this.transmissionInstances,
     required this.rtorrentInstances,
     required this.aria2Instances,
+    this.slskdInstances = const <Instance>[],
     super.key,
   });
 
@@ -164,6 +180,7 @@ class DashboardDownloadsWidget extends ConsumerWidget {
   final List<Instance> transmissionInstances;
   final List<Instance> rtorrentInstances;
   final List<Instance> aria2Instances;
+  final List<Instance> slskdInstances;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -306,6 +323,37 @@ class DashboardDownloadsWidget extends ConsumerWidget {
         }
       }
     }
+    for (final Instance i in slskdInstances) {
+      final AsyncValue<List<SlskdUserTransfers>> downloads =
+          ref.watch(slskdDownloadsProvider(i));
+      anyLoading |= downloads.isLoading && !downloads.hasValue;
+      anyError |= downloads.hasError;
+      for (final SlskdUserTransfers user
+          in downloads.value ?? const <SlskdUserTransfers>[]) {
+        for (final SlskdDirectoryTransfers dir in user.directories) {
+          for (final SlskdTransfer file in dir.files) {
+            if (file.category == TransferCategory.inProgress ||
+                file.category == TransferCategory.queued) {
+              final bool moving = file.category == TransferCategory.inProgress;
+              if (moving && file.averageSpeed > 0 && file.averageSpeed.isFinite) {
+                totalSpeed += file.averageSpeed.round();
+              }
+              final String name = file.filename
+                      .split(RegExp(r'[\\/]'))
+                      .where((s) => s.isNotEmpty)
+                      .lastOrNull ??
+                  file.filename;
+              rows.add(_DownloadRow(
+                name: name,
+                progress: file.progress,
+                instance: i,
+                moving: moving,
+              ));
+            }
+          }
+        }
+      }
+    }
 
     // What is moving comes first, then furthest along. Progress alone let a
     // queue full of nearly-complete torrents push the live download off a card
@@ -385,6 +433,9 @@ class DashboardDownloadsWidget extends ConsumerWidget {
     }
     for (final Instance i in aria2Instances) {
       ref.invalidate(aria2SnapshotProvider(i));
+    }
+    for (final Instance i in slskdInstances) {
+      ref.invalidate(slskdDownloadsProvider(i));
     }
   }
 }

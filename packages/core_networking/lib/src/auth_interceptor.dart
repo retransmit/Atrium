@@ -96,6 +96,10 @@ class AuthInterceptor extends Interceptor {
             // path for no gain, so nothing goes out here; the service module
             // puts it in the RPC parameters where it belongs.
             break;
+          case ServiceKind.slskd:
+            if (apiKey.isNotEmpty) {
+              options.headers['X-Api-Key'] = apiKey;
+            }
           case _:
             options.headers['X-Api-Key'] = apiKey;
         }

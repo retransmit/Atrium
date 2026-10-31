@@ -63,6 +63,7 @@ dependencies:
   service_adguard_home:
   service_aria2:
   service_cleanuparr:
+  service_slskd:
   url_launcher: ^6.3.2
 dev_dependencies:
   flutter_launcher_icons: ^0.14.3

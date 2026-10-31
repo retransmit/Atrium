@@ -15,6 +15,7 @@ import 'package:service_sabnzbd/service_sabnzbd.dart';
 import 'package:service_sonarr/service_sonarr.dart';
 import 'package:service_tautulli/service_tautulli.dart';
 import 'package:service_aria2/service_aria2.dart';
+import 'package:service_slskd/service_slskd.dart';
 
 /// One active playback session, normalized across Plex / Jellyfin / Emby /
 /// Tautulli for the cross-service Activity feed (and future dashboard
@@ -277,6 +278,13 @@ final activityDownloadsProvider =
           ref.watch(radarrQueueProvider(instance)),
           (List<RadarrQueueItem> items) => _radarrDownloads(instance, items),
         );
+      case ServiceKind.slskd:
+        collect(
+          instance,
+          ref.watch(slskdDownloadsProvider(instance)),
+          (List<SlskdUserTransfers> transfers) =>
+              _slskdDownloads(instance, transfers),
+        );
       default:
         break;
     }
@@ -338,6 +346,9 @@ void refreshActivity(WidgetRef ref) {
         ref.invalidate(sonarrQueueProvider(instance));
       case ServiceKind.radarr:
         ref.invalidate(radarrQueueProvider(instance));
+      case ServiceKind.slskd:
+        ref.invalidate(slskdDownloadsProvider(instance));
+        ref.invalidate(slskdUploadsProvider(instance));
       default:
         break;
     }
@@ -800,3 +811,42 @@ String _arrStatusLabel(String? status, String? trackedState) {
 
 String _capitalized(String s) =>
     s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
+List<ActivityDownload> _slskdDownloads(
+  Instance instance,
+  List<SlskdUserTransfers> userTransfers,
+) {
+  final List<ActivityDownload> result = <ActivityDownload>[];
+  for (final SlskdUserTransfers user in userTransfers) {
+    for (final SlskdDirectoryTransfers dir in user.directories) {
+      for (final SlskdTransfer file in dir.files) {
+        if (file.category == TransferCategory.inProgress ||
+            file.category == TransferCategory.queued) {
+          final String title = file.filename
+                  .split(RegExp(r'[/\\]'))
+                  .where((p) => p.isNotEmpty)
+                  .lastOrNull ??
+              file.filename;
+          result.add(
+            ActivityDownload(
+              key: '${instance.id}:${file.id}',
+              instance: instance,
+              sourceKind: instance.kind,
+              title: title,
+              progress: file.progress.clamp(0.0, 1.0).toDouble(),
+              speedBps: file.category == TransferCategory.inProgress &&
+                      file.averageSpeed > 0 &&
+                      file.averageSpeed.isFinite
+                  ? file.averageSpeed.round()
+                  : null,
+              status: file.category == TransferCategory.inProgress
+                  ? 'Downloading'
+                  : 'Queued',
+            ),
+          );
+        }
+      }
+    }
+  }
+  return result;
+}

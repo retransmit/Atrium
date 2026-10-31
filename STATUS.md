@@ -19,7 +19,7 @@ Atrium is a **controller** app. Video playback was removed by design
   Streaming (backdrop session cards from Plex / Jellyfin / Emby /
   Tautulli, tap-through to each module's now-playing screen) and
   Transfers (qBittorrent downloads *and active uploads*, Deluge,
-  Transmission, rTorrent and aria2 transfers,
+  Transmission, rTorrent, aria2 and slskd transfers,
   SABnzbd slots,
   NZBGet groups, Sonarr/Radarr queues). Per-instance resilience: an unreachable server
   degrades to a chip, never blocks the feed
@@ -353,6 +353,26 @@ Atrium is a **controller** app. Video playback was removed by design
     malware blocked counts, active strikes, and top strike alerts.
   - Strictly zero hardcoded colors (`Theme.of(context).colorScheme`).
   - Pull-to-refresh (`EasyRefresh`) with `AlwaysScrollableScrollPhysics` on all tabs.
+
+- **slskd** (added 2026-10-28): the modern mobile client for the Soulseek peer-to-peer
+  music sharing network (`service_slskd`).
+  Default port 5030, role: `ServiceRole.downloader`, API key authentication via
+  `X-Api-Key` header.
+  - **Transfers tab**: Active, Queued, Completed, and Failed transfer queues with real-time speed,
+    progress indicators, grouped (by peer) and flat views, inline actions (cancel, retry, remove,
+    prioritize), filter bottom sheet, and comprehensive analytics sheet (transfer telemetry,
+    peer leaderboard, and Pareto failure charts).
+  - **Search tab**: Concurrent P2P search, active query chips, real-time polling of incomplete
+    searches, album-grouped and flat track results, bitrate and format filters, and 1-tap download
+    batch enqueueing.
+  - **Browse tab**: Hierarchical peer shares navigation with breadcrumb traversal, folder contents
+    viewer, locked share badges, 1-tap folder download, and peer user profile bio sheet.
+  - **Community tab**: Dual-view hub for public chat rooms and 1-on-1 direct messages, room
+    discovery modal, online members drawer with presence dots, room ticker updates, and chat history.
+  - **System tab**: TabBar with Daemon Health metrics, local file shares browser, and historical log reader
+    with severity filters and search.
+  - **Dashboard widget**: Integrated into `DashboardWidgetKind.downloads` for cross-service queue tracking.
+  - Strictly dynamic Material 3 theming with `AtriumBottomNav` system insets support and `ExpressiveProgressIndicator`.
 
 - **iOS**: the target exists and CI builds it unsigned on macOS on every
   change, so it cannot rot unnoticed. Deep links already no-op off Android and

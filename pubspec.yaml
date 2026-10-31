@@ -54,3 +54,4 @@ workspace:
   - services/service_adguard_home
   - services/service_aria2
   - services/service_cleanuparr
+  - services/service_slskd

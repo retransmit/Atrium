@@ -37,6 +37,7 @@ abstract final class ServiceVisuals {
         ServiceKind.adguardHome => Icons.gpp_good_outlined,
         ServiceKind.aria2 => Icons.download_for_offline_outlined,
         ServiceKind.cleanuparr => Icons.cleaning_services_outlined,
+        ServiceKind.slskd => Icons.library_music_outlined,
       };
 
   static Color accent(ServiceKind kind) => switch (kind) {
@@ -69,6 +70,7 @@ abstract final class ServiceVisuals {
         ServiceKind.adguardHome => const Color(0xFF68BC71),
         ServiceKind.aria2 => const Color(0xFF2F6FA8),
         ServiceKind.cleanuparr => const Color(0xFF7C3AED),
+        ServiceKind.slskd => const Color(0xFF007ACC),
       };
 
   /// Human label for a [ServiceRole] section header.

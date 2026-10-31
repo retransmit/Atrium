@@ -32,7 +32,8 @@ enum ServiceKind {
   myspeed,
   adguardHome,
   aria2,
-  cleanuparr;
+  cleanuparr,
+  slskd;
 
   /// All [ServiceKind] entries sorted alphabetically by their display name.
   static List<ServiceKind> get sortedValues =>
@@ -80,6 +81,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.adguardHome => 'AdGuard Home',
         ServiceKind.aria2 => 'aria2',
         ServiceKind.cleanuparr => 'Cleanuparr',
+        ServiceKind.slskd => 'slskd',
       };
 
   /// One-line role description.
@@ -113,6 +115,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.adguardHome => 'Network-wide blocking',
         ServiceKind.aria2 => 'Download client',
         ServiceKind.cleanuparr => 'Malware blocker & cleaner',
+        ServiceKind.slskd => 'Soulseek client',
       };
 
   /// Whether this service's integration is still in beta. Surfaced as a
@@ -122,7 +125,8 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.deluge ||
         ServiceKind.rtorrent ||
         ServiceKind.aria2 ||
-        ServiceKind.cleanuparr =>
+        ServiceKind.cleanuparr ||
+        ServiceKind.slskd =>
           true,
         _ => false,
       };
@@ -168,6 +172,8 @@ extension ServiceKindX on ServiceKind {
         // aria2's own RPC port, and the one the docs use.
         ServiceKind.aria2 => 6800,
         ServiceKind.cleanuparr => 11011,
+        // slskd default HTTP/API port.
+        ServiceKind.slskd => 5030,
       };
 
   /// What auth flow the service uses by default. Some services (Jellyfin) can
@@ -192,7 +198,9 @@ extension ServiceKindX on ServiceKind {
         // first RPC parameter rather than as a header. It is optional - a
         // daemon with no secret answers anyone - so the form must not
         // demand one.
-        ServiceKind.aria2 => AuthStyle.apiKey,
+        ServiceKind.aria2 ||
+        ServiceKind.slskd =>
+          AuthStyle.apiKey,
         // Transmission and rTorrent both use HTTP Basic, and for both it is
         // *optional* - rTorrent's XML-RPC has no auth of its own and is only
         // protected when someone puts a proxy in front - so the form must not
@@ -240,7 +248,8 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.deluge ||
         ServiceKind.transmission ||
         ServiceKind.rtorrent ||
-        ServiceKind.aria2 =>
+        ServiceKind.aria2 ||
+        ServiceKind.slskd =>
           ServiceRole.downloader,
         ServiceKind.glances => ServiceRole.analytics,
         ServiceKind.speedtestTracker => ServiceRole.analytics,

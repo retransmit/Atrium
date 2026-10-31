@@ -64,6 +64,7 @@ extension DashboardWidgetKindX on DashboardWidgetKind {
             ServiceKind.transmission,
             ServiceKind.rtorrent,
             ServiceKind.aria2,
+            ServiceKind.slskd,
           ],
         DashboardWidgetKind.streams => const <ServiceKind>[
             ServiceKind.tautulli,

@@ -20,7 +20,8 @@ export const servicesList = [
   'nzbget',
   'glances',
   'speedtest-tracker',
-  'cleanuparr'
+  'cleanuparr',
+  'slskd'
 ];
 
 export const servicesData = {
@@ -358,6 +359,24 @@ export const servicesData = {
       'Active Download Strikes Ledger & Resets',
       'Comprehensive Security & Operation Audit Feed',
       'Background Cleaner Jobs with On-Demand Runs'
+    ]
+  },
+  slskd: {
+    name: 'slskd',
+    category: 'Downloads & Utilities',
+    icon: asset('assets/service_icons/slskd.png'),
+    screenshots: [
+      asset('assets/service_previews/slskd/slskd_1.png'),
+      asset('assets/service_previews/slskd/slskd_2.png'),
+      asset('assets/service_previews/slskd/slskd_3.png'),
+      asset('assets/service_previews/slskd/slskd_4.png')
+    ],
+    description: 'Modern mobile client for the Soulseek P2P music network. Search releases by album, browse shared peer collections, exchange DMs, and manage upload/download queues.',
+    features: [
+      'Concurrent P2P Search with Album Grouping & Bitrate Filtering',
+      'Hierarchical Peer Shares Navigation with Breadcrumb Traversal',
+      'Unified Community Hub with Public Rooms & 1-on-1 Messages',
+      'Deep Transfer Telemetry with Queue Rank & Peer Analytics'
     ]
   }
 };

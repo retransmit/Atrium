@@ -261,6 +261,161 @@ void main() {
       );
     });
   });
+
+  group('slskd', () {
+    const Instance slskdWithKey = Instance(
+      id: 'slskd-1',
+      name: 'slskd',
+      kind: ServiceKind.slskd,
+      localUrl: 'http://slskd.test',
+      externalUrl: '',
+      urlMode: UrlMode.auto,
+      auth: InstanceAuth.apiKey(apiKey: 'secret-key'),
+    );
+
+    const Instance slskdNoKey = Instance(
+      id: 'slskd-2',
+      name: 'slskd',
+      kind: ServiceKind.slskd,
+      localUrl: 'http://slskd.test',
+      externalUrl: '',
+      urlMode: UrlMode.auto,
+      auth: InstanceAuth.apiKey(apiKey: ''),
+    );
+
+    Future<ConnectionTestResult> testSlskd(
+      Instance candidate,
+      ResponseBody Function(RequestOptions options) handler,
+    ) async {
+      final ProviderContainer container = ProviderContainer(
+        overrides: <Override>[
+          dioFactoryProvider.overrideWithValue(
+            _SlskdDioFactory(handler: handler),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      return container.read(connectionTesterProvider).test(
+            candidate: candidate,
+            url: UrlMode.forceLocal,
+          );
+    }
+
+    test('a valid key tests as connected', () async {
+      final ConnectionTestResult result = await testSlskd(
+        slskdWithKey,
+        (RequestOptions options) => ResponseBody.fromString(
+          '{"version":"0.20.0"}',
+          200,
+          headers: <String, List<String>>{
+            Headers.contentTypeHeader: <String>[Headers.jsonContentType],
+          },
+        ),
+      );
+
+      expect(result.outcome, ConnectionOutcome.connected);
+      expect(result.message, 'Connected');
+    });
+
+    test('an invalid key tests as authFailed with guidance', () async {
+      final ConnectionTestResult result = await testSlskd(
+        slskdWithKey,
+        (RequestOptions options) => ResponseBody.fromString(
+          '{"error":"Unauthorized"}',
+          401,
+          headers: <String, List<String>>{
+            Headers.contentTypeHeader: <String>[Headers.jsonContentType],
+          },
+        ),
+      );
+
+      expect(result.outcome, ConnectionOutcome.authFailed);
+      expect(
+        result.message,
+        contains('Verify the API key matches SLSKD_API_KEY'),
+      );
+    });
+
+    test('no key with auth enabled prompts the user for API key', () async {
+      final ConnectionTestResult result = await testSlskd(
+        slskdNoKey,
+        (RequestOptions options) => ResponseBody.fromString(
+          '{"error":"Unauthorized"}',
+          401,
+          headers: <String, List<String>>{
+            Headers.contentTypeHeader: <String>[Headers.jsonContentType],
+          },
+        ),
+      );
+
+      expect(result.outcome, ConnectionOutcome.authFailed);
+      expect(
+        result.message,
+        contains('this slskd server has authentication enabled'),
+      );
+    });
+
+    test('no key with auth disabled (SLSKD_NO_AUTH) connects successfully', () async {
+      final ConnectionTestResult result = await testSlskd(
+        slskdNoKey,
+        (RequestOptions options) => ResponseBody.fromString(
+          '{"version":"0.26.2"}',
+          200,
+          headers: <String, List<String>>{
+            Headers.contentTypeHeader: <String>[Headers.jsonContentType],
+          },
+        ),
+      );
+
+      expect(result.outcome, ConnectionOutcome.connected);
+      expect(result.message, 'Connected (no auth required)');
+    });
+
+    test('a login page in front of slskd does not test as connected', () async {
+      // A forward-auth proxy answers an unauthenticated request with its
+      // portal: a 200 web page, not the API.
+      final ConnectionTestResult result = await testSlskd(
+        slskdWithKey,
+        (RequestOptions options) => ResponseBody.fromString(
+          '<!doctype html><html><body>Sign in</body></html>',
+          200,
+          headers: <String, List<String>>{
+            Headers.contentTypeHeader: <String>['text/html; charset=utf-8'],
+          },
+        ),
+      );
+
+      expect(result.outcome, ConnectionOutcome.authFailed);
+    });
+  });
+}
+
+class _SlskdDioFactory implements DioFactory {
+  _SlskdDioFactory({required this.handler});
+
+  final ResponseBody Function(RequestOptions options) handler;
+
+  @override
+  Future<Dio> create(Instance instance) async =>
+      Dio(BaseOptions(baseUrl: 'http://slskd.test/'))
+        ..httpClientAdapter = _SlskdAdapter(handler);
+}
+
+class _SlskdAdapter implements HttpClientAdapter {
+  _SlskdAdapter(this.handler);
+
+  final ResponseBody Function(RequestOptions options) handler;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async =>
+      handler(options);
+
+  @override
+  void close({bool force = false}) {}
 }
 
 /// Hands out a Dio that answers every request with one status and body,

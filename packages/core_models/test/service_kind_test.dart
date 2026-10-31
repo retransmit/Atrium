@@ -38,6 +38,7 @@ void main() {
         'adguardHome',
         'aria2',
         'cleanuparr',
+        'slskd',
       ],
     );
   });
@@ -156,6 +157,16 @@ void main() {
     expect(ServiceKind.cleanuparr.authStyle, AuthStyle.apiKey);
     expect(ServiceKind.cleanuparr.role, ServiceRole.automation);
     expect(ServiceKind.cleanuparr.acceptsTorrents, isFalse);
+  });
+
+  test('slskd is registered as an apiKey downloader service', () {
+    expect(ServiceKind.slskd.displayName, 'slskd');
+    expect(ServiceKind.slskd.tagline, 'Soulseek client');
+    expect(ServiceKind.slskd.isBeta, isTrue);
+    expect(ServiceKind.slskd.defaultPort, 5030);
+    expect(ServiceKind.slskd.authStyle, AuthStyle.apiKey);
+    expect(ServiceKind.slskd.role, ServiceRole.downloader);
+    expect(ServiceKind.slskd.acceptsTorrents, isFalse);
   });
 
   test('existing services retain their default ports', () {

@@ -136,6 +136,8 @@ enum _HealthMode {
       // 400 and an `error` envelope, which the `authed` reading turns into
       // a warning - the host is up, the secret is not.
       return (path: 'jsonrpc', mode: _HealthMode.authed);
+    case ServiceKind.slskd:
+      return (path: 'api/v0/application', mode: _HealthMode.authed);
   }
 }
 

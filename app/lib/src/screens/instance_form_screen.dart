@@ -629,7 +629,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                 if (_kind == ServiceKind.glances ||
                     _kind == ServiceKind.dashdot ||
                     _kind == ServiceKind.gluetun ||
-                    _kind == ServiceKind.qbittorrent) ...<Widget>[
+                    _kind == ServiceKind.qbittorrent ||
+                    _kind == ServiceKind.slskd) ...<Widget>[
                   const SizedBox(height: Insets.md),
                   TextFormField(
                     controller: _pollingInterval,
@@ -776,9 +777,10 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
             ),
           ];
         }
-        // Gluetun's control server can run without auth, through a role with
-        // auth = "none", and then there is no key to give.
-        final bool keyOptional = _kind == ServiceKind.gluetun;
+        // Gluetun's control server and slskd can run without auth, through a role with
+        // auth = "none" or SLSKD_NO_AUTH=true, and then there is no key to give.
+        final bool keyOptional =
+            _kind == ServiceKind.gluetun || _kind == ServiceKind.slskd;
         return <Widget>[
           TextFormField(
             controller: _apiKey,
@@ -786,7 +788,9 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
               border: const OutlineInputBorder(),
               labelText: keyOptional ? 'API key (optional)' : 'API key',
               helperText: keyOptional
-                  ? 'Leave empty if the control server has auth turned off.'
+                  ? (_kind == ServiceKind.slskd
+                      ? 'Leave empty if authentication is disabled in slskd.'
+                      : 'Leave empty if the control server has auth turned off.')
                   : null,
             ),
             autocorrect: false,
