@@ -1,0 +1,6 @@
+New services, in beta: slskd (Soulseek), aria2 and Cleanuparr. AdGuard Home
+gains its filters and settings and is out of beta. Seerr requests filter by
+status, and qBittorrent shows its external IP.
+
+Adding a service starts from a searchable grid, Transmission has a filter
+drawer, and the calendar remembers list or month view.

@@ -27,6 +27,29 @@ class ReleaseNote {
 /// Newest first. Update alongside appVersion and the pubspec at each release.
 const List<ReleaseNote> releaseNotes = <ReleaseNote>[
   ReleaseNote(
+    version: '1.10.0',
+    date: '2026-11-02',
+    groups: <ChangeGroup>[
+      ChangeGroup(ChangeCategory.added, <String>[
+        "slskd, the Soulseek client, is a supported service, in beta. Transfers lists downloads and uploads by peer and folder or as one list. Search shows results as albums or tracks, with format, bitrate and free slot filters and a one-tap album download. Browse opens a peer's shares as a folder tree, Community holds direct messages and chat rooms, and System covers the server connection, shares, logs and transfer statistics.",
+        "aria2 is a supported service, in beta. Downloads can be filtered by state, searched, sorted, and paused, resumed or removed in bulk, and a download opens with its files, peers, mirrors and its own speed limits. Add by link, magnet, .torrent or .metalink, and edit the daemon's settings. aria2 also shows in Active downloads and Activity, and takes shared torrents.",
+        'Cleanuparr is a supported service, in beta, listed under a new Extra group in the sidebar and when adding a service. Overview shows malware blocked, active strikes, cleaned torrents and the background tasks, Strikes lists the downloads holding strikes, and Events is the audit log. A dashboard widget says whether the queues are clean.',
+        'AdGuard Home has a Filters tab, with blocklists and allowlists, custom rules, blocked services with their schedule, DNS rewrites and Check a host, and a Settings tab, with the DNS servers, caching, access, query log and statistics retention, encryption, DHCP and the update check.',
+        'Seerr requests can be filtered by status: Pending, Approved, Completed, Declined and Failed.',
+        'qBittorrent shows its external IPv4 and IPv6 address in Settings > System, on qBittorrent 5.0 and later.',
+      ]),
+      ChangeGroup(ChangeCategory.improved, <String>[
+        'Adding a service starts from a searchable grid of every service, grouped by category, and the form opens set up for the one you pick.',
+        "Transmission is rebuilt around a filter drawer with the web UI's state filters plus trackers and labels.",
+        'The calendar remembers whether you last used the list or the month view.',
+        'AdGuard Home is out of beta.',
+      ]),
+      ChangeGroup(ChangeCategory.fixed, <String>[
+        "The qBittorrent Delete action uses the theme's error colour in light and dark mode.",
+      ]),
+    ],
+  ),
+  ReleaseNote(
     version: '1.9.1',
     date: '2026-10-19',
     groups: <ChangeGroup>[

@@ -113,4 +113,42 @@ void main() {
       '/downloads/complete',
     );
   });
+
+  testWidgets('the fields read as boxes, not floating labels',
+      (WidgetTester tester) async {
+    // A fill alone left both fields looking like bare text on the sheet: the
+    // fill was within a shade of the surface behind it. Each has to carry an
+    // outline, and say so when focused.
+    await open(tester);
+
+    for (final String label in <String>[
+      'magnet: link or .torrent URL',
+      'Download folder (optional)',
+    ]) {
+      final TextField field = tester.widget<TextField>(
+        find.widgetWithText(TextField, label),
+      );
+      final InputDecoration decoration = decorationOf(tester, field);
+      expect(decoration.filled, isTrue, reason: '$label fill');
+      final OutlineInputBorder border =
+          decoration.border! as OutlineInputBorder;
+      expect(
+        border.borderSide.style,
+        BorderStyle.solid,
+        reason: '$label outline',
+      );
+      expect(
+        decoration.focusedBorder,
+        isA<OutlineInputBorder>(),
+        reason: '$label focus ring',
+      );
+    }
+  });
+}
+
+/// The decoration a [TextField] actually paints with, theme defaults applied.
+InputDecoration decorationOf(WidgetTester tester, TextField field) {
+  final BuildContext context = tester.element(find.byType(TextField).first);
+  return (field.decoration ?? const InputDecoration())
+      .applyDefaults(Theme.of(context).inputDecorationTheme);
 }

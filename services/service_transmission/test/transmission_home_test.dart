@@ -1,4 +1,5 @@
 import 'package:core_networking/core_networking.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
@@ -11,8 +12,12 @@ import 'support/transmission_fixtures.dart';
 import 'support/transmission_test_instance.dart';
 
 void main() {
-  Future<void> open(WidgetTester tester, FakeTransmission fake) async {
-    tester.view.physicalSize = const Size(1080, 2400);
+  Future<void> open(
+    WidgetTester tester,
+    FakeTransmission fake, {
+    Size size = const Size(1080, 2400),
+  }) async {
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -81,5 +86,33 @@ void main() {
       0,
     );
     expect(find.text('Alpha'), findsOneWidget);
+  });
+
+  testWidgets('Back from Settings brings the bottom bar back',
+      (WidgetTester tester) async {
+    final FakeTransmission fake = FakeTransmission()
+      ..on('session-get', sessionJson())
+      ..on('session-stats', statsJson())
+      ..on('torrent-get', <String, Object?>{'torrents': <Object>[]});
+    await open(tester, fake, size: const Size(360, 800));
+
+    await tester.tap(find.text('Settings'));
+    await settle(tester);
+
+    // Scrolling Settings down hides the bar, as it does on the list.
+    await tester.drag(find.text('Statistics'), const Offset(0, -800));
+    await settle(tester);
+    final Finder bar = find.byType(AtriumBottomNav);
+    expect(tester.getSize(bar).height, lessThan(1));
+
+    // Back returns to Torrents. The bar has to be there: it is the only way
+    // back to Settings, and the list is already scrolled at the top.
+    await tester.binding.handlePopRoute();
+    await settle(tester);
+    expect(tester.getSize(bar).height, greaterThan(60));
+    expect(
+      tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+      0,
+    );
   });
 }

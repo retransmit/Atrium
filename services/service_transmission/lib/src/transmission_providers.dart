@@ -163,6 +163,19 @@ final transmissionSortDescendingProvider =
 final transmissionTabProvider =
     StateProvider.family<int, Instance>((Ref ref, Instance _) => 0);
 
+/// Whether the bottom bar is on screen. It hides while the list scrolls down,
+/// so a long torrent list is not read through the bar, and comes back on the
+/// first upward movement.
+final transmissionBottomNavVisibleProvider =
+    StateProvider.family<bool, Instance>((Ref ref, Instance _) => true);
+
+/// Bumped when the active tab is tapped again, which scrolls that tab to the
+/// top. Keyed by tab so two tabs cannot answer each other's bump.
+final transmissionScrollToTopProvider =
+    StateProvider.family<int, (Instance, int)>(
+  (Ref ref, (Instance, int) _) => 0,
+);
+
 /// The search box's text. Matches names and labels.
 final transmissionSearchProvider =
     StateProvider.family<String, Instance>((Ref ref, Instance _) => '');

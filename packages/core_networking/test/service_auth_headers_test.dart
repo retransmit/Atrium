@@ -106,6 +106,26 @@ void main() {
     expect(serviceAuthHeaderNames(ServiceKind.tautulli, apiKey), isEmpty);
   });
 
+  test('aria2 collides with nothing: its secret is an RPC parameter', () {
+    // The daemon reads the `--rpc-secret` from the first parameter of every
+    // RPC call, so no header is spent on it and none is overwritten.
+    expect(serviceAuthHeaderNames(ServiceKind.aria2, apiKey), isEmpty);
+    expect(
+      headerConflictWarning('X-Api-Key', <Instance>[
+        const Instance(
+          id: 'aria2',
+          name: 'aria2',
+          kind: ServiceKind.aria2,
+          localUrl: 'http://x',
+          externalUrl: '',
+          urlMode: UrlMode.auto,
+          auth: apiKey,
+        ),
+      ]),
+      isNull,
+    );
+  });
+
   test('qBittorrent is flagged as refusing a foreign Authorization', () {
     expect(rejectsForeignAuthorization(ServiceKind.qbittorrent), isTrue);
     expect(rejectsForeignAuthorization(ServiceKind.sonarr), isFalse);

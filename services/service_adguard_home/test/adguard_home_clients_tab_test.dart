@@ -503,6 +503,26 @@ void main() {
       expect(find.text('Add as persistent client'), findsOneWidget);
     });
 
+    testWidgets('refused for the sign-in, Retry asks for it to be tried again',
+        (WidgetTester tester) async {
+      final Pumped pumped = await openSheet(
+        tester,
+        '127.0.0.1',
+        failure: const AdguardHomeSignInRefused(),
+      );
+      await tester.pumpAndSettle();
+      pumped.actions.lookup = lookupOf('127.0.0.1');
+
+      await tester.tap(find.text('Retry'));
+      await tester.pumpAndSettle();
+
+      expect(
+        pumped.actions.calls,
+        <String>['find 127.0.0.1', 'retry', 'find 127.0.0.1'],
+      );
+      expect(find.text('Add as persistent client'), findsOneWidget);
+    });
+
     testWidgets('of a persistent client shows its settings in short',
         (WidgetTester tester) async {
       await openSheet(

@@ -25,21 +25,11 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
       const ProviderScope(
-        child: MaterialApp(home: InstanceFormScreen()),
+        child: MaterialApp(
+          home: InstanceFormScreen(initialKind: ServiceKind.speedtestTracker),
+        ),
       ),
     );
-
-    await tester.tap(find.byType(DropdownMenu<ServiceKind>));
-    await tester.pumpAndSettle();
-    // The menu is height-capped and scrolls, so an entry this far down the
-    // list is not built until it has been scrolled into view.
-    await tester.scrollUntilVisible(
-      find.text('Speedtest Tracker - Internet performance'),
-      200,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Speedtest Tracker - Internet performance'));
     await tester.pumpAndSettle();
 
     final Finder bearerField = find.ancestor(

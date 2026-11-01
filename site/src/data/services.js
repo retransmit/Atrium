@@ -14,11 +14,14 @@ export const servicesList = [
   'deluge',
   'transmission',
   'rtorrent',
+  'aria2',
   'tracearr',
   'sabnzbd',
   'nzbget',
   'glances',
-  'speedtest-tracker'
+  'speedtest-tracker',
+  'cleanuparr',
+  'slskd'
 ];
 
 export const servicesData = {
@@ -245,6 +248,25 @@ export const servicesData = {
       'Detailed Tracker Status & Hash Checks'
     ]
   },
+  aria2: {
+    name: 'aria2',
+    category: 'Downloads & Utilities',
+    icon: asset('assets/service_icons/aria2.png'),
+    screenshots: [
+      asset('assets/service_previews/aria2/aria2_1.png'),
+      asset('assets/service_previews/aria2/aria2_2.png'),
+      asset('assets/service_previews/aria2/aria2_3.png'),
+      asset('assets/service_previews/aria2/aria2_4.png')
+    ],
+    description: 'Lightweight multi-protocol download utility client. Supervise active tasks with real-time throughput telemetry, adjust individual speed limits, inject live mirrors, and manage global daemon options.',
+    features: [
+      'Unified Transfers Hub with Real-Time Speed Telemetry',
+      'Multi-Field Sorting & Live Search Filtering',
+      'Batch Multi-Select Pause, Resume & Remove Actions',
+      'Per-Task Speed Limits & Live Mirror Injection',
+      'Full Daemon Settings Editor & System Diagnostics'
+    ]
+  },
   tracearr: {
     name: 'Tracearr',
     category: 'Media Servers',
@@ -319,6 +341,42 @@ export const servicesData = {
       'Historical Download & Upload Charts',
       'Ping & Jitter Variance Logging',
       'ISP Performance Diagnostic Summaries'
+    ]
+  },
+  cleanuparr: {
+    name: 'Cleanuparr',
+    category: 'The *arr Stack',
+    icon: asset('assets/service_icons/cleanuparr.png'),
+    screenshots: [
+      asset('assets/service_previews/cleanuparr/cleanuparr_1.png'),
+      asset('assets/service_previews/cleanuparr/cleanuparr_2.png'),
+      asset('assets/service_previews/cleanuparr/cleanuparr_3.png'),
+      asset('assets/service_previews/cleanuparr/cleanuparr_4.png')
+    ],
+    description: 'Automated download cleaner and malware blocker for the Servarr ecosystem and download clients. Quarantines suspicious payloads, enforces item strikes, and purges orphaned items.',
+    features: [
+      'Automated Malware & Unwanted File Blocking',
+      'Active Download Strikes Ledger & Resets',
+      'Comprehensive Security & Operation Audit Feed',
+      'Background Cleaner Jobs with On-Demand Runs'
+    ]
+  },
+  slskd: {
+    name: 'slskd',
+    category: 'Downloads & Utilities',
+    icon: asset('assets/service_icons/slskd.png'),
+    screenshots: [
+      asset('assets/service_previews/slskd/slskd_1.png'),
+      asset('assets/service_previews/slskd/slskd_2.png'),
+      asset('assets/service_previews/slskd/slskd_3.png'),
+      asset('assets/service_previews/slskd/slskd_4.png')
+    ],
+    description: 'Modern mobile client for the Soulseek P2P music network. Search releases by album, browse shared peer collections, exchange DMs, and manage upload/download queues.',
+    features: [
+      'Concurrent P2P Search with Album Grouping & Bitrate Filtering',
+      'Hierarchical Peer Shares Navigation with Breadcrumb Traversal',
+      'Unified Community Hub with Public Rooms & 1-on-1 Messages',
+      'Deep Transfer Telemetry with Queue Rank & Peer Analytics'
     ]
   }
 };

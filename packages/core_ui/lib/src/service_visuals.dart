@@ -35,6 +35,9 @@ abstract final class ServiceVisuals {
         ServiceKind.ombi => Icons.movie_filter_outlined,
         ServiceKind.myspeed => Icons.network_check_outlined,
         ServiceKind.adguardHome => Icons.gpp_good_outlined,
+        ServiceKind.aria2 => Icons.download_for_offline_outlined,
+        ServiceKind.cleanuparr => Icons.cleaning_services_outlined,
+        ServiceKind.slskd => Icons.library_music_outlined,
       };
 
   static Color accent(ServiceKind kind) => switch (kind) {
@@ -65,6 +68,9 @@ abstract final class ServiceVisuals {
         ServiceKind.ombi => const Color(0xFFDF691A),
         ServiceKind.myspeed => const Color(0xFF06B6D4),
         ServiceKind.adguardHome => const Color(0xFF68BC71),
+        ServiceKind.aria2 => const Color(0xFF2F6FA8),
+        ServiceKind.cleanuparr => const Color(0xFF7C3AED),
+        ServiceKind.slskd => const Color(0xFF007ACC),
       };
 
   /// Human label for a [ServiceRole] section header.
@@ -74,5 +80,6 @@ abstract final class ServiceVisuals {
         ServiceRole.analytics => 'Analytics',
         ServiceRole.mediaServer => 'Media servers',
         ServiceRole.downloader => 'Download clients',
+        ServiceRole.extra => 'Extra',
       };
 }

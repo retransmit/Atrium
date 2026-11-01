@@ -174,7 +174,17 @@ class _AdguardHomeQueryDetailState
                 ),
                 const AdguardHomeHeading('Response'),
                 AdguardHomeField('Response code', entry.status),
-                AdguardHomeField('Blocked service', entry.serviceName),
+                AdguardHomeField(
+                  'Blocked service',
+                  // Read only for an entry that names a service.
+                  entry.serviceName.isEmpty
+                      ? ''
+                      : ref
+                              .watch(adguardHomeServicesProvider(instance))
+                              .value
+                              ?.nameOf(entry.serviceName) ??
+                          entry.serviceName,
+                ),
                 AdguardHomeField('DNS server', entry.upstream),
                 if (entry.cached)
                   const AdguardHomeField('Served from cache', 'Yes'),

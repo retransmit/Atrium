@@ -3,14 +3,14 @@
 The central courtyard for your self-hosted media stack.
 One Android app that fronts Sonarr, Radarr, Lidarr, Prowlarr, Bazarr,
 Seerr, Ombi, Tautulli, Tracearr, Jellyfin, Emby, Plex, Navidrome,
-qBittorrent, Deluge, Transmission, rTorrent, SABnzbd, NZBGet, Glances,
-Speedtest Tracker, MySpeed, Beszel, dashdot, Gluetun, AdGuard Home and
-Unraid - and routes every request through the right URL whether you're on
+qBittorrent, Deluge, Transmission, rTorrent, aria2, slskd, SABnzbd, NZBGet, Glances,
+Speedtest Tracker, MySpeed, Beszel, dashdot, Gluetun, AdGuard Home, Cleanuparr
+and Unraid - and routes every request through the right URL whether you're on
 the home Wi-Fi or out in the world.
 
 **[Website][site]** - screenshots and a tour, no install needed.
 
-> **Status:** v1.9.1. Install from [F-Droid][fdroid], or grab a signed APK
+> **Status:** v1.10.0. Install from [F-Droid][fdroid], or grab a signed APK
 > from the [releases page][releases].
 
 ## Why
@@ -31,7 +31,7 @@ external URLs.
 - **Activity feed.** One tab aggregates live activity across every
   instance: active streams from Plex / Jellyfin / Emby / Tautulli and
   transfers (downloads and active uploads) from qBittorrent, Deluge,
-  Transmission, rTorrent, SABnzbd, NZBGet, and the *arr queues.
+  Transmission, rTorrent, aria2, slskd, SABnzbd, NZBGet, and the *arr queues.
 - **Controller, not a player.** Media servers are browse/manage/remote-
   control surfaces; playback stays with the official apps (deep links
   provided).
@@ -61,7 +61,7 @@ each one covers:
 | Lidarr                 | artists, albums and tracks, wanted, activity, settings, log reader    |
 | Prowlarr               | indexers, search + grab, history, settings, system                    |
 | Bazarr                 | series/movies, wanted, manual subtitle search, system                 |
-| Seerr                  | discover, search, requests management                                 |
+| Seerr                  | discover, search, requests management filtered by status              |
 | Ombi                   | requests with approve/deny/delete, search, discover                   |
 | Tautulli               | activity, history, stats, users, terminate                            |
 | Tracearr               | fleet overview, live streams, media catalog, user profiles, policy incidents |
@@ -69,10 +69,12 @@ each one covers:
 | Emby                   | same depth as Jellyfin                                                |
 | Plex                   | libraries, detail, seasons, music, genres, now-playing controller, plex.tv sign-in |
 | Navidrome              | artists, albums and tracks, playlists, ratings and favorites, search |
-| qBittorrent            | realtime list, add/manage, torrent detail, private/public badges, queue reorder, full settings, execution log |
+| qBittorrent            | realtime list, add/manage, torrent detail, private/public badges, queue reorder, full settings, execution log, external IP |
 | Deluge                 | torrent list, add/manage, queue moves, speed limits, torrent detail (beta) |
-| Transmission           | the web UI's filters, actions and inspector, full settings, turtle mode |
+| Transmission           | the web UI's filters in a drawer, actions and inspector, full settings, turtle mode |
 | rTorrent               | torrent list, add/manage, priorities, speed limits, torrent detail (beta) |
+| aria2                  | transfer list, add/manage, speed limits, download detail, full settings, Active downloads widget (beta) |
+| slskd                  | Soulseek P2P client, album search, peer shares browser, chat rooms & direct messages, transfer leaderboard, Active downloads widget (beta) |
 | SABnzbd                | queue, history with retry, speed limit, server stats                  |
 | NZBGet                 | queue with reorder/priority/category, add NZB, speed limit, history   |
 | Glances                | CPU/memory/network/disk monitoring                                    |
@@ -81,7 +83,8 @@ each one covers:
 | Beszel                 | systems list, live metrics, per-system detail screen                  |
 | dashdot                | live CPU, memory, disk, and GPU usage with a system-info tab, dashboard widget |
 | Gluetun                | VPN status, forwarded port, reconnect, dashboard widget               |
-| AdGuard Home           | protection switch and timed pause, statistics, top clients and domains, query log with block and unblock, persistent and runtime clients, dashboard widget (beta) |
+| AdGuard Home           | protection switch and timed pause, statistics, top clients and domains, query log with block and unblock, blocklists, custom rules, blocked services and rewrites, persistent and runtime clients, DNS, cache, access and retention settings, dashboard widget |
+| Cleanuparr             | system status, operational metrics, active strikes ledger & reset, audit events feed, background cleaner job triggers, dashboard widget (beta) |
 | Unraid                 | array and disk health, system with per-core load, Docker, VM control  |
 
 ## Install

@@ -214,14 +214,15 @@ void main() {
   });
 
   group('torrentTargets', () {
-    test('keeps the four torrent clients', () {
+    test('keeps the five torrent clients', () {
       final List<Instance> targets = torrentTargets(<Instance>[
         _instance(ServiceKind.qbittorrent),
         _instance(ServiceKind.deluge),
         _instance(ServiceKind.transmission),
         _instance(ServiceKind.rtorrent),
+        _instance(ServiceKind.aria2),
       ]);
-      expect(targets, hasLength(4));
+      expect(targets, hasLength(5));
     });
 
     test('drops the Usenet downloaders and everything else', () {
@@ -259,6 +260,8 @@ void main() {
         ServiceKind.deluge,
         ServiceKind.transmission,
         ServiceKind.rtorrent,
+        // aria2 speaks BitTorrent as well as plain HTTP.
+        ServiceKind.aria2,
       });
     });
   });

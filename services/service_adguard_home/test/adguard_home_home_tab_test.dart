@@ -616,7 +616,7 @@ void main() {
     expect(find.byType(AdguardHomeClientSheet), findsOneWidget);
   });
 
-  testWidgets('the shell names the instance and marks it beta',
+  testWidgets('the shell names the instance, out of beta',
       (WidgetTester tester) async {
     await pumpAdguardHome(
       tester,
@@ -625,7 +625,7 @@ void main() {
     );
 
     expect(find.text('AdGuard Home'), findsOneWidget);
-    expect(find.byType(BetaBadge), findsOneWidget);
+    expect(find.byType(BetaBadge), findsNothing);
     expect(find.text('Protection is on'), findsOneWidget);
   });
 }

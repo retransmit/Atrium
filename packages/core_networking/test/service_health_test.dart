@@ -3,6 +3,7 @@ import 'package:core_networking/core_networking.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  group('aria2 JSON-RPC health', _aria2Tests);
   group('AdGuard Home anonymous health', _adguardHomeTests);
   group('proxy interception', _interceptionTests);
   group('Navidrome Subsonic health', _navidromeTests);
@@ -367,6 +368,75 @@ void _gluetunTests() {
   test('a refused key is a warning and no answer is offline', () {
     expect(gluetun(401, 'Unauthorized'), Health.warning);
     expect(gluetun(0, null), Health.error);
+  });
+}
+
+/// aria2 answers over JSON-RPC, so the probe reads the envelope rather than
+/// trusting the status alone.
+void _aria2Tests() {
+  Health health(int status, {Object? data, String? contentType}) =>
+      interpretServiceHealthResponse(
+        ServiceKind.aria2,
+        status,
+        data,
+        contentType: contentType,
+      );
+
+  test('a version answer is online', () {
+    expect(
+      health(
+        200,
+        data: <String, dynamic>{
+          'id': 'atrium',
+          'jsonrpc': '2.0',
+          'result': <String, dynamic>{'version': '1.37.0'},
+        },
+      ),
+      Health.ok,
+    );
+  });
+
+  test('the answer is read as text too, since the probe asks for plain', () {
+    // The probe posts with `ResponseType.plain`, so the body arrives as the
+    // string aria2 sent.
+    expect(
+      health(
+        200,
+        data: '{"id":"atrium","jsonrpc":"2.0",'
+            '"result":{"version":"1.37.0"}}',
+        contentType: 'application/json-rpc',
+      ),
+      Health.ok,
+    );
+  });
+
+  test('a refused secret is a warning, not a broken server', () {
+    // aria2 answers a wrong secret with HTTP 400 and an `error` envelope.
+    expect(health(400), Health.warning);
+    expect(health(401), Health.warning);
+    expect(health(500), Health.warning);
+  });
+
+  test('a 200 that is not aria2 is a warning', () {
+    for (final Object? body in <Object?>[
+      <String, dynamic>{'hello': 'world'},
+      '{"hello":"world"}',
+      'not json at all',
+      null,
+    ]) {
+      expect(health(200, data: body), Health.warning, reason: 'body: $body');
+    }
+  });
+
+  test('a web page where the RPC endpoint should be is a warning', () {
+    expect(
+      health(200, data: '<html>Sign in</html>', contentType: 'text/html'),
+      Health.warning,
+    );
+  });
+
+  test('no answer at all is offline', () {
+    expect(health(0), Health.error);
   });
 }
 

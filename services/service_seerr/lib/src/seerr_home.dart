@@ -7,10 +7,13 @@ import 'models/seerr_discover.dart';
 import 'models/seerr_request.dart';
 import 'seerr_api.dart';
 import 'seerr_discover_screen.dart';
+import 'seerr_filter_chips.dart';
 import 'seerr_issues_screen.dart';
 import 'seerr_item_detail.dart';
 import 'seerr_media_card.dart';
 import 'seerr_providers.dart';
+import 'seerr_request_filter.dart';
+import 'seerr_status_badge.dart';
 
 /// Seerr's per-instance UI: the recent request list. Pending requests get
 /// approve / decline actions - the key thing you want to do from a phone.
@@ -47,77 +50,91 @@ class SeerrHome extends StatelessWidget {
   }
 }
 
-class _SeerrRequestsTab extends ConsumerWidget {
+/// The Requests tab body: a chip for each request status over the polled
+/// request list. The chips cut down the list already read, so switching
+/// them sends nothing, and the chip picked stays across tab switches.
+class _SeerrRequestsTab extends ConsumerStatefulWidget {
   const _SeerrRequestsTab({required this.instance});
 
   final Instance instance;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final AsyncValue<List<SeerrRequest>> requests =
-        ref.watch(seerrRequestsProvider(instance));
+  ConsumerState<_SeerrRequestsTab> createState() => _SeerrRequestsTabState();
+}
 
-    return AsyncValueView<List<SeerrRequest>>(
-          value: requests,
-        onRetry: () {
-          ref.invalidate(seerrRequestsProvider(instance));
-          ref.invalidate(seerrRequestCountsProvider(instance));
-        },
-          data: (List<SeerrRequest> list) {
-            
-          if (list.isEmpty) {
-            return EasyRefresh(
-        header: const ClassicHeader(
-          dragText: 'Pull to refresh',
-          armedText: 'Release ready',
-          readyText: 'Refreshing...',
-          processingText: 'Refreshing...',
-          processedText: 'Succeeded',
-          failedText: 'Failed',
-          messageText: 'Last updated at %T',
+class _SeerrRequestsTabState extends ConsumerState<_SeerrRequestsTab>
+    with SeerrKeptFilter<_SeerrRequestsTab, SeerrRequestFilter> {
+  @override
+  Object get filterKey => 'seerr-requests-${widget.instance.id}';
+
+  @override
+  SeerrRequestFilter get firstFilter => SeerrRequestFilter.all;
+
+  void _refresh() {
+    ref.invalidate(seerrRequestsProvider(widget.instance));
+    ref.invalidate(seerrRequestCountsProvider(widget.instance));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final AsyncValue<List<SeerrRequest>> requests =
+        ref.watch(seerrRequestsProvider(widget.instance));
+
+    return Column(
+      children: <Widget>[
+        SeerrFilterChips<SeerrRequestFilter>(
+          values: SeerrRequestFilter.values,
+          label: (SeerrRequestFilter f) => f.label,
+          selected: filter,
+          onSelected: pickFilter,
         ),
-        onRefresh: () async {
-        ref.invalidate(seerrRequestsProvider(instance));
-        ref.invalidate(seerrRequestCountsProvider(instance));
-      },
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          children: const <Widget>[
-            SizedBox(height: 100),
-            EmptyView(
-              icon: Icons.playlist_add_check_outlined,
-              title: 'No requests',
-              message: 'No media requests yet.',
-            ),
-          ],
-        ),
-      );
-          }
-          return EasyRefresh(
-      header: const ClassicHeader(
-        dragText: 'Pull to refresh',
-        armedText: 'Release ready',
-        readyText: 'Refreshing...',
-        processingText: 'Refreshing...',
-        processedText: 'Succeeded',
-        failedText: 'Failed',
-        messageText: 'Last updated at %T',
-      ),
-      onRefresh: () async {
-        ref.invalidate(seerrRequestsProvider(instance));
-        ref.invalidate(seerrRequestCountsProvider(instance));
-      },
-      child: ListView.separated(
-            padding: Insets.page,
-            itemCount: list.length,
-            separatorBuilder: (_, __) => const SizedBox(height: Insets.md),
-            itemBuilder: (BuildContext context, int index) =>
-                _RequestTile(instance: instance, request: list[index]),
+        Expanded(
+          child: AsyncValueView<List<SeerrRequest>>(
+            value: requests,
+            onRetry: _refresh,
+            data: (List<SeerrRequest> all) {
+              final List<SeerrRequest> list = filter.apply(all);
+              return EasyRefresh(
+                header: const ClassicHeader(
+                  dragText: 'Pull to refresh',
+                  armedText: 'Release ready',
+                  readyText: 'Refreshing...',
+                  processingText: 'Refreshing...',
+                  processedText: 'Succeeded',
+                  failedText: 'Failed',
+                  messageText: 'Last updated at %T',
+                ),
+                onRefresh: () async => _refresh(),
+                child: list.isEmpty
+                    ? ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: <Widget>[
+                          const SizedBox(height: 100),
+                          EmptyView(
+                            icon: Icons.playlist_add_check_outlined,
+                            title: filter.emptyTitle,
+                            message: filter.emptyMessage,
+                          ),
+                        ],
+                      )
+                    : ListView.separated(
+                        padding: Insets.page,
+                        itemCount: list.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: Insets.md),
+                        itemBuilder: (BuildContext context, int index) =>
+                            _RequestTile(
+                          key: ValueKey<int>(list[index].id),
+                          instance: widget.instance,
+                          request: list[index],
+                        ),
+                      ),
+              );
+            },
           ),
+        ),
+      ],
     );
-        
-          },
-        );
   }
 }
 
@@ -125,7 +142,11 @@ class _SeerrRequestsTab extends ConsumerWidget {
 /// status pills, with inline approve / decline for pending requests and the
 /// overflow menu (retry, delete, etc.) top-right.
 class _RequestTile extends ConsumerStatefulWidget {
-  const _RequestTile({required this.instance, required this.request});
+  const _RequestTile({
+    required this.instance,
+    required this.request,
+    super.key,
+  });
 
   final Instance instance;
   final SeerrRequest request;
@@ -212,7 +233,7 @@ class _RequestTileState extends ConsumerState<_RequestTile> {
           borderRadius: BorderRadius.circular(20),
           child: SeerrRequestCard(
             item: item,
-              api: ref.watch(seerrApiProvider(widget.instance)).value,
+            api: ref.watch(seerrApiProvider(widget.instance)).value,
             requestedBy: request.requestedBy?.displayName,
             mediaStatus: request.media?.status,
             requestStatus: request.status,
@@ -304,16 +325,6 @@ class _RequestTileState extends ConsumerState<_RequestTile> {
     );
   }
 
-  String _statusString(int status) {
-    switch (status) {
-      case 1:
-        return 'Pending';
-      case 2:
-        return 'Approved';
-      case 3:
-        return 'Declined';
-      default:
-        return 'Unknown ($status)';
-    }
-  }
+  String _statusString(int status) =>
+      seerrRequestStatusStyle(status)?.label ?? 'Unknown ($status)';
 }

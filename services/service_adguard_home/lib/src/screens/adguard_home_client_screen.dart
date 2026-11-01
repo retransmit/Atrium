@@ -7,11 +7,15 @@ import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import '../adguard_home_client_edit.dart';
 import '../adguard_home_errors.dart';
+import '../adguard_home_filter_rules.dart';
 import '../adguard_home_format.dart';
 import '../adguard_home_providers.dart';
 import '../models/adguard_home_clients.dart';
+import '../models/adguard_home_filters.dart';
 import '../models/adguard_home_services.dart';
+import '../widgets/adguard_home_failure_dialog.dart';
 import '../widgets/adguard_home_fields.dart';
+import '../widgets/adguard_home_schedule_editor.dart';
 import 'adguard_home_services_screen.dart';
 
 /// What became of the client a form was opened for.
@@ -153,6 +157,9 @@ class _ClientFormState extends ConsumerState<_ClientForm> {
   /// Whether something is being written. Nothing else can be started then.
   bool _busy = false;
 
+  /// Whether Delete is asking first.
+  bool _confirming = false;
+
   /// Whether Save has been asked for once. Until then an empty field is not
   /// complained about: the form opens with several.
   bool _checked = false;
@@ -248,19 +255,9 @@ class _ClientFormState extends ConsumerState<_ClientForm> {
     );
   }
 
-  Future<void> _explain(String title, String message) => showDialog<void>(
-        context: context,
-        builder: (BuildContext context) => AlertDialog(
-          title: Text(title),
-          content: Text(message),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
+  /// After a refused sign-in, lets one more request out.
+  void _retrySignIn() =>
+      ref.read(adguardHomeActionsProvider(_instance)).retrySignIn();
 
   /// Brings the first field that will not do into view.
   void _showProblem(AdguardHomeClientProblems problems) {
@@ -278,7 +275,9 @@ class _ClientFormState extends ConsumerState<_ClientForm> {
     );
   }
 
-  Future<void> _save() async {
+  /// Saves the form. [updateRules] is the answer, once given, to whether
+  /// the custom rules that name a renamed client follow the rename.
+  Future<void> _save({bool? updateRules}) async {
     if (_busy) return;
     final AdguardHomeClientDraft draft = _draft;
     final AdguardHomeClientProblems problems = draft.problems;
@@ -296,7 +295,18 @@ class _ClientFormState extends ConsumerState<_ClientForm> {
 
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
     final ModalRoute<Object?>? form = ModalRoute.of(context);
+    final String name = draft.name.trim();
     setState(() => _busy = true);
+    bool rename = updateRules ?? false;
+    if (updateRules == null && originalName != null && name != originalName) {
+      final bool? answer = await _askAboutRules(originalName, name);
+      if (!mounted) return;
+      if (answer == null) {
+        setState(() => _busy = false);
+        return;
+      }
+      rename = answer;
+    }
     try {
       await ref.read(adguardHomeActionsProvider(_instance)).saveClient(
             originalName: originalName,
@@ -306,33 +316,115 @@ class _ClientFormState extends ConsumerState<_ClientForm> {
     } on Object catch (error) {
       if (!mounted) return;
       setState(() => _busy = false);
-      await _explain('Not saved', describeAdguardHomeError(error));
+      final bool again = await showAdguardHomeFailure(
+        context,
+        title: 'Not saved',
+        error: error,
+      );
+      if (again && mounted) {
+        _retrySignIn();
+        await _save(updateRules: rename);
+      }
       return;
+    }
+    String message =
+        'Client "$name" ${originalName == null ? 'added' : 'saved'}';
+    if (rename && originalName != null) {
+      try {
+        final int rules = await ref
+            .read(adguardHomeActionsProvider(_instance))
+            .renameClientInRules(originalName, name);
+        if (rules == 1) message = '$message. 1 custom rule now names it.';
+        if (rules > 1) message = '$message. $rules custom rules now name it.';
+      } on Object catch (error) {
+        message = '$message, but the custom rules that name it could not be '
+            'updated: ${describeAdguardHomeError(error)}';
+      }
     }
     if (!mounted) return;
     _close(form, AdguardHomeClientOutcome.saved);
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            'Client "${draft.name.trim()}" '
-            '${originalName == null ? 'added' : 'saved'}',
-          ),
-        ),
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// Asks whether the custom rules that name the client as [from] should
+  /// name it as [to] once it is renamed: left alone, they apply to no one.
+  /// True to change them, false to leave them, null to not save at all.
+  /// With no such rules, or none readable, nothing is asked and they are
+  /// left alone.
+  Future<bool?> _askAboutRules(String from, String to) async {
+    int rules;
+    try {
+      rules = adguardHomeRulesNamingClient(
+        (await ref.read(adguardHomeFilteringProvider(_instance).future))
+            .userRules,
+        from,
       );
+    } on Object {
+      return false;
+    }
+    if (rules == 0 || !mounted) return false;
+    return showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Update the custom rules?'),
+        content: Text(
+          '${rules == 1 ? '1 custom rule names' : '$rules custom rules name'} '
+          'this client "$from". Renamed, it is no longer covered by '
+          '${rules == 1 ? 'that rule' : 'them'} unless '
+          '${rules == 1 ? 'it names' : 'they name'} "$to" instead.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Leave them'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Update them'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _delete() async {
     final String? name = _originalName;
-    if (_busy || name == null) return;
+    if (_busy || _confirming || name == null) return;
+    // The rules are read before the question is asked: a second tap
+    // meanwhile would ask it twice.
+    _confirming = true;
+    // Rules written for this client alone name it, and would apply to no
+    // one once it is gone. When the rules cannot be read, the question is
+    // asked without that part rather than not at all.
+    int rules = 0;
+    try {
+      rules = adguardHomeRulesNamingClient(
+        (await ref.read(adguardHomeFilteringProvider(_instance).future))
+            .userRules,
+        name,
+      );
+    } on Object {
+      rules = 0;
+    }
+    if (!mounted) return;
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) => AlertDialog(
         title: Text('Delete "$name"?'),
-        content: const Text(
+        content: Text(
           'Its settings are removed. The device itself is not shut out: '
-          'AdGuard Home goes on answering it, with the global settings.',
+          'AdGuard Home goes on answering it, with the global settings.'
+          '${switch (rules) {
+            0 => '',
+            1 => ' 1 custom rule names it and will no longer apply.',
+            _ => ' $rules custom rules name it and will no longer apply.',
+          }}',
         ),
         actions: <Widget>[
           TextButton(
@@ -346,6 +438,7 @@ class _ClientFormState extends ConsumerState<_ClientForm> {
         ],
       ),
     );
+    _confirming = false;
     if (confirmed != true || !mounted || _busy) return;
 
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
@@ -356,7 +449,15 @@ class _ClientFormState extends ConsumerState<_ClientForm> {
     } on Object catch (error) {
       if (!mounted) return;
       setState(() => _busy = false);
-      await _explain('Not deleted', describeAdguardHomeError(error));
+      final bool again = await showAdguardHomeFailure(
+        context,
+        title: 'Not deleted',
+        error: error,
+      );
+      if (again && mounted) {
+        _retrySignIn();
+        await _delete();
+      }
       return;
     }
     if (!mounted) return;
@@ -421,11 +522,6 @@ class _ClientFormState extends ConsumerState<_ClientForm> {
     final bool ownServices = !settings.useGlobalBlockedServices;
     final TextStyle? note =
         theme.textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant);
-    // The schedule is not something this form changes, but a client that
-    // has one should not look as if it had none.
-    final String? pauses = client == null || client.pauses.isEmpty
-        ? null
-        : formatAdguardHomePauses(client.pauses, client.pauseTimeZone);
     final List<String> tags = <String>[
       ...widget.supportedTags,
       // One it has that the server no longer offers, so it can be taken off.
@@ -636,15 +732,24 @@ class _ClientFormState extends ConsumerState<_ClientForm> {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: _pickServices,
                 ),
-                if (pauses != null)
+                // Its own schedule applies only to its own services. On the
+                // global list, the server's schedule applies instead.
+                if (ownServices) ...<Widget>[
                   _Inset(
-                    top: Insets.xs,
+                    top: Insets.sm,
                     child: Text(
-                      'Blocking pauses $pauses. This schedule is kept as it '
-                      'is. It can be changed in AdGuard Home.',
+                      'Pause schedule: while paused, the services blocked for '
+                      'this client are let through.',
                       style: note,
                     ),
                   ),
+                  AdguardHomeScheduleEditor(
+                    schedule: settings.schedule,
+                    enabled: !_busy,
+                    onChanged: (AdguardHomeSchedule next) =>
+                        _set(settings.copyWith(schedule: next)),
+                  ),
+                ],
                 const _Inset(child: AdguardHomeHeading('Upstream DNS servers')),
                 _Inset(
                   top: Insets.sm,

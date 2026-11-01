@@ -142,7 +142,7 @@ class _TransmissionFilesTreeState extends State<TransmissionFilesTree> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(
         Insets.md,
-        Insets.xs,
+        0,
         Insets.md,
         Insets.xl,
       ),
@@ -165,8 +165,14 @@ class _TransmissionFilesTreeState extends State<TransmissionFilesTree> {
     final bool? checked =
         node.allWanted ? true : (node.anyWanted ? null : false);
     return Padding(
-      padding: EdgeInsets.only(left: depth * Insets.lg),
+      padding: EdgeInsets.fromLTRB(
+        depth * Insets.lg,
+        Insets.xxs,
+        0,
+        Insets.xxs,
+      ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Checkbox(
             tristate: node.isFolder,
@@ -176,6 +182,7 @@ class _TransmissionFilesTreeState extends State<TransmissionFilesTree> {
                 : (bool? _) =>
                     widget.onWanted(node.indices, !(checked ?? false)),
           ),
+          const SizedBox(width: Insets.xs),
           TransmissionIconBlock(
             icon: node.isFolder
                 ? (open ? Icons.folder_open_rounded : Icons.folder_rounded)
@@ -220,8 +227,8 @@ class _TransmissionFilesTreeState extends State<TransmissionFilesTree> {
                     ),
                     const SizedBox(height: Insets.xs),
                     Text(
-                      '${trPct(node.progress)}% - ${trFmtBytes(node.length)}'
-                      '${node.isFolder ? '' : ' - ${node.file!.priorityLabel} priority'}',
+                      '${trPct(node.progress)}% • ${trFmtBytes(node.length)}'
+                      '${node.isFolder ? '' : ' • ${node.file!.priorityLabel} priority'}',
                       style: theme.textTheme.bodySmall
                           ?.copyWith(color: cs.onSurfaceVariant),
                     ),
@@ -230,9 +237,23 @@ class _TransmissionFilesTreeState extends State<TransmissionFilesTree> {
               ),
             ),
           ),
+          // Beside the content, not inside its first line: an IconButton is
+          // 48 px tall, which used to stretch that line and leave a gap
+          // between the name and the bar under it.
           PopupMenuButton<TransmissionPriority>(
             tooltip: 'Priority',
-            icon: const Icon(Icons.low_priority),
+            icon: Icon(
+              Icons.more_vert_rounded,
+              size: 20,
+              color: cs.onSurfaceVariant,
+            ),
+            padding: EdgeInsets.zero,
+            style: IconButton.styleFrom(
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              minimumSize: const Size(40, 40),
+              maximumSize: const Size(40, 40),
+              padding: EdgeInsets.zero,
+            ),
             enabled: !widget.busy,
             onSelected: (TransmissionPriority p) =>
                 widget.onPriority(node.indices, p),

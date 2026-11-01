@@ -25,6 +25,7 @@ void main() {
     Size size = const Size(360, 4000),
     double textScale = 1,
     Object? safeSearchError,
+    AdguardHomeFiltering filtering = const AdguardHomeFiltering(),
     bool settle = true,
   }) async {
     final List<AdguardHomeClientOutcome?> outcomes =
@@ -51,6 +52,7 @@ void main() {
       size: size,
       textScale: textScale,
       safeSearchError: safeSearchError,
+      filtering: filtering,
     );
     await tester.tap(find.text('Open'));
     if (settle) {
@@ -190,23 +192,21 @@ void main() {
       expect(find.text('TikTok, Roblox, YouTube'), findsOneWidget);
     });
 
-    testWidgets('says that it has a pause schedule, which is kept',
+    testWidgets('shows its own pause schedule, to be changed',
         (WidgetTester tester) async {
       await open(tester, client: capturedClient('Kids tablet'));
 
-      expect(
-        find.textContaining(
-          'Sat 09:00 to 17:00, Sun 09:00 to 17:00 (Europe/Berlin)',
-        ),
-        findsOneWidget,
-      );
+      expect(find.byType(AdguardHomeScheduleEditor), findsOneWidget);
+      expect(find.text('Europe/Berlin'), findsOneWidget);
+      expect(find.text('09:00 to 17:00'), findsNWidgets(2));
     });
 
-    testWidgets('without a pause schedule says nothing of one',
+    testWidgets('on the global services has no schedule of its own to show',
         (WidgetTester tester) async {
+      // The server's schedule applies to it, not its own.
       await open(tester, client: capturedClient('Laptop'));
 
-      expect(find.textContaining('pauses'), findsNothing);
+      expect(find.byType(AdguardHomeScheduleEditor), findsNothing);
     });
 
     testWidgets('shows its upstream servers one to a line, and the cache',
@@ -846,6 +846,200 @@ void main() {
     }
   });
 
+  group('the pause schedule', () {
+    testWidgets('a changed day is saved with the client',
+        (WidgetTester tester) async {
+      final ({
+        Pumped pumped,
+        List<AdguardHomeClientOutcome?> outcomes
+      }) form = await open(tester, client: capturedClient('Kids tablet'));
+
+      await tester.tap(find.text('Sunday'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Pause blocking'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Remove pause'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AdguardHomePauseSheet), findsNothing);
+
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      final SavedClient sent = form.pumped.actions.saved.single;
+      expect(sent.before.schedule.pauseOn('sun'), isNotNull);
+      expect(sent.after.schedule.pauseOn('sun'), isNull);
+      expect(sent.after.schedule.pauseOn('sat'), isNotNull);
+      expect(sent.after.schedule.timeZone, 'Europe/Berlin');
+    });
+
+    testWidgets('appears once the client has services of its own',
+        (WidgetTester tester) async {
+      await open(tester, client: capturedClient('Laptop'));
+
+      await flip(tester, 'Use global blocked services');
+
+      expect(find.byType(AdguardHomeScheduleEditor), findsOneWidget);
+    });
+
+    testWidgets('a change to it is a change to leave',
+        (WidgetTester tester) async {
+      await open(tester, client: capturedClient('Kids tablet'));
+
+      await tester.tap(find.text('Monday'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Add pause'));
+      await tester.pumpAndSettle();
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Discard changes?'), findsOneWidget);
+    });
+  });
+
+  group('renaming', () {
+    const AdguardHomeFiltering namingKids = AdguardHomeFiltering(
+      userRules: <String>[
+        "||tiktok.com^\$client='Kids tablet'",
+        "@@||school.example^\$client='Kids tablet'",
+        '||plain.example^',
+      ],
+    );
+
+    testWidgets('asks first, then carries the rules that name the client',
+        (WidgetTester tester) async {
+      final ({
+        Pumped pumped,
+        List<AdguardHomeClientOutcome?> outcomes
+      }) form = await open(
+        tester,
+        client: capturedClient('Kids tablet'),
+        filtering: namingKids,
+      );
+      form.pumped.actions.rulesRenamed = 2;
+
+      await tester.enterText(find.byKey(nameField), 'Tablet');
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Update the custom rules?'), findsOneWidget);
+      expect(find.textContaining('2 custom rules name'), findsOneWidget);
+      expect(form.pumped.actions.calls, isEmpty);
+      await tester.tap(find.text('Update them'));
+      await tester.pumpAndSettle();
+
+      expect(form.pumped.actions.calls, <String>[
+        'save Kids tablet as Tablet',
+        'rename rules Kids tablet to Tablet',
+      ]);
+      expect(
+        find.text('Client "Tablet" saved. 2 custom rules now name it.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('Leave them saves the client and leaves the rules',
+        (WidgetTester tester) async {
+      final ({
+        Pumped pumped,
+        List<AdguardHomeClientOutcome?> outcomes
+      }) form = await open(
+        tester,
+        client: capturedClient('Kids tablet'),
+        filtering: namingKids,
+      );
+
+      await tester.enterText(find.byKey(nameField), 'Tablet');
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Leave them'));
+      await tester.pumpAndSettle();
+
+      expect(form.pumped.actions.calls, <String>['save Kids tablet as Tablet']);
+      expect(find.text('Client "Tablet" saved'), findsOneWidget);
+    });
+
+    testWidgets('Cancel saves nothing and keeps the form',
+        (WidgetTester tester) async {
+      final ({
+        Pumped pumped,
+        List<AdguardHomeClientOutcome?> outcomes
+      }) form = await open(
+        tester,
+        client: capturedClient('Kids tablet'),
+        filtering: namingKids,
+      );
+
+      await tester.enterText(find.byKey(nameField), 'Tablet');
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(form.pumped.actions.calls, isEmpty);
+      expect(find.byKey(nameField), findsOneWidget);
+      // Not stuck: Save asks again.
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(find.text('Update the custom rules?'), findsOneWidget);
+    });
+
+    testWidgets('after a refused sign-in, Try again keeps the answer',
+        (WidgetTester tester) async {
+      final ({
+        Pumped pumped,
+        List<AdguardHomeClientOutcome?> outcomes
+      }) form = await open(
+        tester,
+        client: capturedClient('Kids tablet'),
+        filtering: namingKids,
+      );
+      form.pumped.actions.writeFailure = const AdguardHomeSignInRefused();
+
+      await tester.enterText(find.byKey(nameField), 'Tablet');
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Update them'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Try again'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Update the custom rules?'), findsNothing);
+      expect(form.pumped.actions.calls, <String>[
+        'save Kids tablet as Tablet',
+        'retry',
+        'save Kids tablet as Tablet',
+        'rename rules Kids tablet to Tablet',
+      ]);
+    });
+
+    testWidgets('with no rules naming the client says only that it saved',
+        (WidgetTester tester) async {
+      await open(tester, client: capturedClient('Kids tablet'));
+
+      await tester.enterText(find.byKey(nameField), 'Tablet');
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Client "Tablet" saved'), findsOneWidget);
+    });
+
+    testWidgets('a save that keeps the name touches no rules',
+        (WidgetTester tester) async {
+      final ({
+        Pumped pumped,
+        List<AdguardHomeClientOutcome?> outcomes
+      }) form = await open(tester, client: capturedClient('Kids tablet'));
+
+      await flip(tester, 'Ignore in statistics');
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+
+      expect(form.pumped.actions.calls, <String>[
+        'save Kids tablet as Kids tablet',
+      ]);
+    });
+  });
+
   group('deleting', () {
     testWidgets('asks first, and Cancel sends nothing',
         (WidgetTester tester) async {
@@ -865,6 +1059,39 @@ void main() {
 
       expect(form.pumped.actions.calls, isEmpty);
       expect(find.text('Edit client'), findsOneWidget);
+    });
+
+    testWidgets('says how many custom rules name the client',
+        (WidgetTester tester) async {
+      await open(
+        tester,
+        client: capturedClient('Kids tablet'),
+        filtering: const AdguardHomeFiltering(
+          userRules: <String>[
+            "||tiktok.com^\$client='Kids tablet'",
+            "@@||school.example^\$client='Kids tablet'",
+            '||plain.example^',
+          ],
+        ),
+      );
+
+      await tester.tap(find.byTooltip('Delete client'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('2 custom rules name it'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('with no rules naming the client says nothing of rules',
+        (WidgetTester tester) async {
+      await open(tester, client: capturedClient('Kids tablet'));
+
+      await tester.tap(find.byTooltip('Delete client'));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('custom rule'), findsNothing);
     });
 
     testWidgets('deletes by the name the client has on the server, and closes',

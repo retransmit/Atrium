@@ -8,6 +8,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:service_adguard_home/service_adguard_home.dart';
 
 import 'adguard_home_clients_fixtures.dart';
+import 'adguard_home_filters_fixtures.dart';
+import 'adguard_home_fixtures.dart';
+import 'adguard_home_query_log_fixtures.dart';
+import 'adguard_home_settings_fixtures.dart';
 import 'adguard_home_test_instance.dart';
 
 /// Stands in for [AdguardHomeActions], noting what the screen asked for
@@ -30,8 +34,14 @@ class RecordingActions extends AdguardHomeActions {
     if (error != null) throw error;
   }
 
+  /// Lets requests out again, as the session does once asked: what was
+  /// refused for the sign-in now goes through.
   @override
-  void retrySignIn() => calls.add('retry');
+  void retrySignIn() {
+    calls.add('retry');
+    if (writeFailure is AdguardHomeSignInRefused) writeFailure = null;
+    if (lookupFailure is AdguardHomeSignInRefused) lookupFailure = null;
+  }
 
   @override
   void refresh() => calls.add('refresh');
@@ -141,6 +151,281 @@ class RecordingActions extends AdguardHomeActions {
     final Object? error = lookupFailure;
     if (error != null) throw error;
     return lookup ?? AdguardHomeClientLookup(address: address, queries: queries);
+  }
+
+  /// What [refreshLists] reports as updated.
+  int listsUpdated = 0;
+
+  /// What [checkHost] answers. Without one the name matched nothing.
+  AdguardHomeHostCheck? hostCheck;
+
+  /// What [saveRules] throws the first time, when set.
+  Object? rulesFailure;
+
+  /// What [renameClientInRules] reports.
+  int rulesRenamed = 0;
+
+  String _list(AdguardHomeFilterList list) =>
+      list.name.isEmpty ? list.url : list.name;
+
+  @override
+  Future<void> setListEnabled(
+    AdguardHomeFilterList list, {
+    required bool allowlist,
+    required bool enabled,
+  }) async {
+    calls.add('${enabled ? 'on' : 'off'} ${_list(list)}');
+    await _write();
+  }
+
+  @override
+  Future<void> saveList({
+    required bool allowlist,
+    required String name,
+    required String url,
+    AdguardHomeFilterList? original,
+  }) async {
+    calls.add(
+      '${original == null ? 'add' : 'change ${original.url} to'} '
+      '${allowlist ? 'allowlist' : 'blocklist'} $name $url',
+    );
+    await _write();
+  }
+
+  @override
+  Future<void> removeList(
+    AdguardHomeFilterList list, {
+    required bool allowlist,
+  }) async {
+    calls.add('remove ${list.url}');
+    await _write();
+  }
+
+  @override
+  Future<int> refreshLists({required bool allowlist}) async {
+    calls.add('refresh ${allowlist ? 'allowlists' : 'blocklists'}');
+    await _write();
+    return listsUpdated;
+  }
+
+  @override
+  Future<void> setUpdateInterval(int hours) async {
+    calls.add('interval $hours');
+    await _write();
+  }
+
+  @override
+  Future<void> saveRules({
+    required List<String> before,
+    required List<String> after,
+    bool overwrite = false,
+  }) async {
+    calls.add('rules ${after.length}${overwrite ? ' overwrite' : ''}');
+    savedRules.add(after);
+    final Object? error = rulesFailure;
+    if (error != null && !overwrite) {
+      rulesFailure = null;
+      throw error;
+    }
+    await _write();
+  }
+
+  /// Every rewrite [saveRewrite] was asked to write.
+  final List<AdguardHomeRewrite> savedRewrites = <AdguardHomeRewrite>[];
+
+  /// Every list of rules [saveRules] was asked to write.
+  final List<List<String>> savedRules = <List<String>>[];
+
+  @override
+  Future<int> renameClientInRules(String from, String to) async {
+    calls.add('rename rules $from to $to');
+    return rulesRenamed;
+  }
+
+  @override
+  Future<AdguardHomeHostCheck> checkHost(String name, {String? client}) async {
+    calls.add('check $name${client == null ? '' : ' for $client'}');
+    final Completer<void>? held = lookupHold;
+    if (held != null) await held.future;
+    final Object? error = lookupFailure;
+    if (error != null) throw error;
+    return hostCheck ??
+        AdguardHomeHostCheck(name: name, reason: 'NotFilteredNotFound');
+  }
+
+  @override
+  Future<void> setGlobalServiceIds(List<String> ids) async {
+    calls.add('services ${ids.join(',')}');
+    await _write();
+  }
+
+  @override
+  Future<void> setGlobalSchedule(AdguardHomeSchedule schedule) async {
+    calls.add('schedule ${schedule.timeZone} ${schedule.pauses.length}');
+    await _write();
+  }
+
+  @override
+  Future<void> saveRewrite({
+    required AdguardHomeRewrite rewrite,
+    AdguardHomeRewrite? original,
+  }) async {
+    calls.add(
+      '${original == null ? 'add' : 'change ${original.domain} to'} '
+      '${rewrite.domain} ${rewrite.answer}',
+    );
+    savedRewrites.add(rewrite);
+    await _write();
+  }
+
+  @override
+  Future<void> setRewriteEnabled(
+    AdguardHomeRewrite rewrite, {
+    required bool enabled,
+  }) async {
+    calls.add('${enabled ? 'on' : 'off'} ${rewrite.domain}');
+    await _write();
+  }
+
+  @override
+  Future<void> deleteRewrite(AdguardHomeRewrite rewrite) async {
+    calls.add('delete ${rewrite.domain}');
+    await _write();
+  }
+
+  @override
+  Future<void> setRewritesEnabled({required bool enabled}) async {
+    calls.add('rewrites ${enabled ? 'on' : 'off'}');
+    await _write();
+  }
+
+  @override
+  Future<void> setFilteringEnabled({required bool enabled}) async {
+    calls.add('filtering ${enabled ? 'on' : 'off'}');
+    await _write();
+  }
+
+  @override
+  Future<void> setSafeBrowsing({required bool enabled}) async {
+    calls.add('safebrowsing ${enabled ? 'on' : 'off'}');
+    await _write();
+  }
+
+  @override
+  Future<void> setParental({required bool enabled}) async {
+    calls.add('parental ${enabled ? 'on' : 'off'}');
+    await _write();
+  }
+
+  /// Every safe search [setSafeSearch] was asked to write.
+  final List<AdguardHomeSafeSearch> savedSafeSearch = <AdguardHomeSafeSearch>[];
+
+  @override
+  Future<void> setSafeSearch({
+    required AdguardHomeSafeSearch before,
+    required AdguardHomeSafeSearch after,
+  }) async {
+    calls.add('safesearch');
+    savedSafeSearch.add(after);
+    await _write();
+  }
+
+  /// Every retention saved, query log and statistics alike, as it left the
+  /// form.
+  final List<AdguardHomeRetention> savedRetention = <AdguardHomeRetention>[];
+
+  @override
+  Future<void> saveQueryLogRetention({
+    required AdguardHomeRetention before,
+    required AdguardHomeRetention after,
+  }) async {
+    calls.add('querylog settings');
+    savedRetention.add(after);
+    await _write();
+  }
+
+  @override
+  Future<void> saveStatsRetention({
+    required AdguardHomeRetention before,
+    required AdguardHomeRetention after,
+  }) async {
+    calls.add('stats settings');
+    savedRetention.add(after);
+    await _write();
+  }
+
+  @override
+  Future<void> resetStats() async {
+    calls.add('reset stats');
+    await _write();
+  }
+
+  /// What each DNS save would send: only the settings that changed.
+  final List<Map<String, dynamic>> savedDns = <Map<String, dynamic>>[];
+
+  @override
+  Future<void> saveDnsSettings({
+    required Map<String, dynamic> before,
+    required Map<String, dynamic> after,
+  }) async {
+    final Map<String, dynamic> changes = adguardHomeDnsChanges(before, after);
+    calls.add('dns ${changes.keys.join(',')}');
+    savedDns.add(changes);
+    await _write();
+  }
+
+  /// What [testUpstreams] answers.
+  List<AdguardHomeUpstreamResult> upstreamResults =
+      const <AdguardHomeUpstreamResult>[
+    AdguardHomeUpstreamResult('1.1.1.1:53', 'OK'),
+  ];
+
+  @override
+  Future<List<AdguardHomeUpstreamResult>> testUpstreams({
+    required List<String> upstreams,
+    required List<String> bootstrap,
+    required List<String> fallback,
+    required List<String> privateUpstreams,
+  }) async {
+    calls.add('test ${upstreams.join(' ')}');
+    final Completer<void>? held = lookupHold;
+    if (held != null) await held.future;
+    final Object? error = lookupFailure;
+    if (error != null) throw error;
+    return upstreamResults;
+  }
+
+  @override
+  Future<void> clearDnsCache() async {
+    calls.add('clear cache');
+    await _write();
+  }
+
+  /// Every access list [saveAccessList] was asked to write.
+  final List<AdguardHomeAccessList> savedAccess = <AdguardHomeAccessList>[];
+
+  @override
+  Future<void> saveAccessList({
+    required AdguardHomeAccessList before,
+    required AdguardHomeAccessList after,
+  }) async {
+    calls.add('access');
+    savedAccess.add(after);
+    await _write();
+  }
+
+  /// What [checkVersion] answers.
+  AdguardHomeVersionCheck versionCheck =
+      const AdguardHomeVersionCheck(disabled: true);
+
+  @override
+  Future<AdguardHomeVersionCheck> checkVersion({bool recheck = false}) async {
+    calls.add('version${recheck ? ' now' : ''}');
+    final Completer<void>? held = lookupHold;
+    if (held != null) await held.future;
+    final Object? error = lookupFailure;
+    if (error != null) throw error;
+    return versionCheck;
   }
 }
 
@@ -259,6 +544,15 @@ class Pumped {
 
   /// How many times the catalogue of services was read.
   int servicesReads = 0;
+
+  /// How many times the rewrites were read.
+  int rewriteReads = 0;
+
+  /// How many times the server's blocked services were read.
+  int globalServicesReads = 0;
+
+  /// How many settings reads were made, of any of them.
+  int settingsReads = 0;
 }
 
 /// Pumps [child] with the four reads answered from fixed values and the
@@ -283,6 +577,20 @@ Future<Pumped> pumpAdguardHome(
   AdguardHomeSafeSearch? safeSearch,
   Object? safeSearchError,
   AdguardHomeServiceCatalogue? services,
+  List<AdguardHomeRewrite>? rewrites,
+  bool rewritesEnabled = true,
+  Object? rewritesError,
+  Object? rewritesEnabledError,
+  AdguardHomeGlobalServices? globalServices,
+  Object? filteringError,
+  AdguardHomeGeneralSettings? general,
+  AdguardHomeRetention? queryLogRetention,
+  AdguardHomeRetention? statsRetention,
+  AdguardHomeDnsConfig? dnsConfig,
+  AdguardHomeAccessList? accessList,
+  AdguardHomeTlsStatus? tls,
+  AdguardHomeDhcpStatus? dhcp,
+  Object? settingsError,
   Size size = const Size(360, 2400),
   double textScale = 1,
   Instance instance = adguardHomeTestInstance,
@@ -312,8 +620,10 @@ Future<Pumped> pumpAdguardHome(
           if (statsError != null) throw statsError;
           return stats;
         }),
-        adguardHomeFilteringProvider(instance)
-            .overrideWith((Ref ref) async => filtering),
+        adguardHomeFilteringProvider(instance).overrideWith((Ref ref) async {
+          if (filteringError != null) throw filteringError;
+          return filtering;
+        }),
         adguardHomeStatsPeriodProvider(instance)
             .overrideWith((Ref ref) async => period),
         adguardHomeQueryLogProvider(instance).overrideWith(() {
@@ -335,10 +645,71 @@ Future<Pumped> pumpAdguardHome(
           }
           return safeSearch ?? AdguardHomeSafeSearch.fromJson(safeSearchJson());
         }),
+        adguardHomeRewritesProvider(instance).overrideWith((Ref ref) async {
+          pumped.rewriteReads++;
+          if (rewritesError != null) throw rewritesError;
+          return rewrites ?? AdguardHomeRewrite.listFromJson(rewritesJson());
+        }),
+        adguardHomeRewritesEnabledProvider(instance)
+            .overrideWith((Ref ref) async {
+          if (rewritesEnabledError != null) throw rewritesEnabledError;
+          return rewritesEnabled;
+        }),
+        adguardHomeGlobalServicesProvider(instance)
+            .overrideWith((Ref ref) async {
+          pumped.globalServicesReads++;
+          return globalServices ??
+              AdguardHomeGlobalServices.fromJson(globalServicesJson());
+        }),
         adguardHomeServicesProvider(instance).overrideWith((Ref ref) async {
           pumped.servicesReads++;
           return services ??
               AdguardHomeServiceCatalogue.fromJson(blockedServicesJson());
+        }),
+        adguardHomeGeneralSettingsProvider(instance)
+            .overrideWith((Ref ref) async {
+          pumped.settingsReads++;
+          if (settingsError != null) throw settingsError;
+          return general ??
+              AdguardHomeGeneralSettings(
+                safeBrowsing: true,
+                parental: false,
+                safeSearch: AdguardHomeSafeSearch.fromJson(safeSearchJson()),
+              );
+        }),
+        adguardHomeQueryLogRetentionProvider(instance)
+            .overrideWith((Ref ref) async {
+          pumped.settingsReads++;
+          if (settingsError != null) throw settingsError;
+          return queryLogRetention ??
+              AdguardHomeRetention.fromJson(queryLogConfigJson());
+        }),
+        adguardHomeStatsRetentionProvider(instance)
+            .overrideWith((Ref ref) async {
+          pumped.settingsReads++;
+          if (settingsError != null) throw settingsError;
+          return statsRetention ??
+              AdguardHomeRetention.fromJson(statsConfigJson());
+        }),
+        adguardHomeDnsConfigProvider(instance).overrideWith((Ref ref) async {
+          pumped.settingsReads++;
+          if (settingsError != null) throw settingsError;
+          return dnsConfig ?? AdguardHomeDnsConfig(dnsInfoJson());
+        }),
+        adguardHomeAccessListProvider(instance).overrideWith((Ref ref) async {
+          pumped.settingsReads++;
+          if (settingsError != null) throw settingsError;
+          return accessList ?? AdguardHomeAccessList.fromJson(accessListJson());
+        }),
+        adguardHomeTlsStatusProvider(instance).overrideWith((Ref ref) async {
+          pumped.settingsReads++;
+          if (settingsError != null) throw settingsError;
+          return tls ?? AdguardHomeTlsStatus.fromJson(tlsOffJson());
+        }),
+        adguardHomeDhcpStatusProvider(instance).overrideWith((Ref ref) async {
+          pumped.settingsReads++;
+          if (settingsError != null) throw settingsError;
+          return dhcp ?? AdguardHomeDhcpStatus.fromJson(dhcpOffJson());
         }),
         adguardHomeActionsProvider(instance).overrideWith(
           (Ref ref) => pumped.actions = RecordingActions(ref, instance),

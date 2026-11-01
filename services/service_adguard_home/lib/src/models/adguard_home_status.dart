@@ -22,6 +22,7 @@ class AdguardHomeStatus {
     this.dnsAddresses = const <String>[],
     this.dnsPort = 53,
     this.httpPort = 80,
+    this.dhcpAvailable = true,
   });
 
   /// [readAt] is when the answer arrived. A pause is reported as time left
@@ -42,6 +43,8 @@ class AdguardHomeStatus {
       dnsAddresses: readStrings(json['dns_addresses']),
       dnsPort: json['dns_port'] == null ? 53 : readInt(json['dns_port']),
       httpPort: json['http_port'] == null ? 80 : readInt(json['http_port']),
+      // Said by every server since DHCP came in; taken as so when missing.
+      dhcpAvailable: json['dhcp_available'] != false,
     );
   }
 
@@ -56,6 +59,10 @@ class AdguardHomeStatus {
   final List<String> dnsAddresses;
   final int dnsPort;
   final int httpPort;
+
+  /// Whether the server can hand out addresses where it runs. In a
+  /// container without the host's network, for one, it cannot.
+  final bool dhcpAvailable;
 
   AdguardHomeProtection get protection {
     if (protectionEnabled) return AdguardHomeProtection.on;

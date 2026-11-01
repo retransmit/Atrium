@@ -105,7 +105,7 @@ String adguardHomeFilterListName(AdguardHomeFiltering? filtering, int id) {
       ...filtering.blocklists,
       ...filtering.allowlists,
     ]) {
-      if (list.id == id) return list.name;
+      if (list.id == id) return list.name.isEmpty ? list.url : list.name;
     }
   }
   return 'Unknown filter $id';

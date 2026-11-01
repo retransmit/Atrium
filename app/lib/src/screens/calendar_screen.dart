@@ -295,7 +295,6 @@ class CalendarScreen extends ConsumerStatefulWidget {
 class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   late DateTime _visibleMonth;
   late DateTime _selectedDay;
-  bool _showListView = false;
 
   @override
   void initState() {
@@ -494,6 +493,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     final bool showUnmonitored = ref.watch(
       preferencesProvider.select((Preferences p) => p.calendarShowUnmonitored),
     );
+    final bool showListView = ref.watch(
+      preferencesProvider.select((Preferences p) => p.calendarListView),
+    );
     final AsyncValue<List<CalendarEvent>> calendar =
         ref.watch(globalCalendarProvider((_visibleMonth, showUnmonitored)));
 
@@ -576,17 +578,15 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             ),
             IconButton(
               icon: Icon(
-                _showListView
+                showListView
                     ? Icons.calendar_month
                     : Icons.format_list_bulleted,
               ),
               tooltip:
-                  _showListView ? 'Switch to grid view' : 'Switch to list view',
-              onPressed: () {
-                setState(() {
-                  _showListView = !_showListView;
-                });
-              },
+                  showListView ? 'Switch to grid view' : 'Switch to list view',
+              onPressed: () => ref
+                  .read(preferencesProvider.notifier)
+                  .setCalendarListView(!showListView),
             ),
             const SizedBox(width: 8),
           ],
@@ -607,7 +607,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             final DateTime now = DateTime.now();
 
             final Widget content;
-            if (_showListView) {
+            if (showListView) {
               final List<DateTime> eventDates = entriesMap.keys.toList()
                 ..sort((a, b) => a.compareTo(b));
 

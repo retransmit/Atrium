@@ -24,12 +24,16 @@ import 'package:service_rtorrent/service_rtorrent.dart';
 import 'package:service_transmission/service_transmission.dart';
 import 'package:service_gluetun/service_gluetun.dart';
 import 'package:service_myspeed/service_myspeed.dart';
+import 'package:service_aria2/service_aria2.dart';
+import 'package:service_cleanuparr/service_cleanuparr.dart';
+import 'package:service_slskd/service_slskd.dart';
 
 import '../health_providers.dart';
 import '../screens/calendar_screen.dart';
 import 'dashboard_layout.dart';
 import 'dashboard_widget_kind.dart';
 import 'widgets/adguard_home_widget.dart';
+import 'widgets/cleanuparr_widget.dart';
 import 'widgets/dashdot_widget.dart';
 import 'widgets/downloads_widget.dart';
 import 'widgets/gluetun_status_widget.dart';
@@ -158,6 +162,8 @@ class DashboardBoard extends ConsumerWidget {
           delugeInstances: _byKind(instances, ServiceKind.deluge),
           transmissionInstances: _byKind(instances, ServiceKind.transmission),
           rtorrentInstances: _byKind(instances, ServiceKind.rtorrent),
+          aria2Instances: _byKind(instances, ServiceKind.aria2),
+          slskdInstances: _byKind(instances, ServiceKind.slskd),
         );
       case DashboardWidgetKind.streams:
         return DashboardStreamsWidget(
@@ -208,6 +214,10 @@ class DashboardBoard extends ConsumerWidget {
         return DashboardAdguardHomeWidget(
           instances: _byKind(instances, ServiceKind.adguardHome),
         );
+      case DashboardWidgetKind.cleanuparr:
+        return DashboardCleanuparrWidget(
+          instances: _byKind(instances, ServiceKind.cleanuparr),
+        );
       case DashboardWidgetKind.wakeOnLan:
         return const DashboardWakeOnLanWidget();
     }
@@ -241,6 +251,8 @@ class DashboardBoard extends ConsumerWidget {
         case ServiceKind.rtorrent:
           ref.invalidate(rtorrentRawTorrentsProvider(i));
           ref.invalidate(rtorrentGlobalProvider(i));
+        case ServiceKind.aria2:
+          ref.invalidate(aria2SnapshotProvider(i));
         case ServiceKind.tautulli:
           ref.invalidate(tautulliActivityProvider(i));
         case ServiceKind.jellyfin:
@@ -277,6 +289,15 @@ class DashboardBoard extends ConsumerWidget {
           ref.invalidate(adguardHomeStatusProvider(i));
           ref.invalidate(adguardHomeStatsProvider(i));
           ref.invalidate(adguardHomeFilteringProvider(i));
+        case ServiceKind.cleanuparr:
+          ref.invalidate(cleanuparrStatusProvider(i));
+          ref.invalidate(cleanuparrStatsProvider(i));
+          ref.invalidate(cleanuparrStrikesProvider(i));
+          ref.invalidate(cleanuparrStrikesCountProvider(i));
+          ref.invalidate(cleanuparrJobsProvider(i));
+        case ServiceKind.slskd:
+          ref.invalidate(slskdDownloadsProvider(i));
+          ref.invalidate(slskdUploadsProvider(i));
         default:
           break;
       }

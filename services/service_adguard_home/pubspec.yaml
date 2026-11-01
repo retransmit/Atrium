@@ -21,6 +21,7 @@ dependencies:
   go_router: ^17.3.0
   intl: ^0.20.2
   progress_indicator_m3e:
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_lints: ^6.0.0

@@ -14,6 +14,8 @@ import 'package:service_radarr/service_radarr.dart';
 import 'package:service_sabnzbd/service_sabnzbd.dart';
 import 'package:service_sonarr/service_sonarr.dart';
 import 'package:service_tautulli/service_tautulli.dart';
+import 'package:service_aria2/service_aria2.dart';
+import 'package:service_slskd/service_slskd.dart';
 
 /// One active playback session, normalized across Plex / Jellyfin / Emby /
 /// Tautulli for the cross-service Activity feed (and future dashboard
@@ -258,6 +260,12 @@ final activityDownloadsProvider =
           (List<RtorrentTorrent> torrents) =>
               _rtorrentDownloads(instance, torrents),
         );
+      case ServiceKind.aria2:
+        collect(
+          instance,
+          ref.watch(aria2SnapshotProvider(instance)),
+          (Aria2Snapshot snapshot) => _aria2Downloads(instance, snapshot),
+        );
       case ServiceKind.sonarr:
         collect(
           instance,
@@ -269,6 +277,13 @@ final activityDownloadsProvider =
           instance,
           ref.watch(radarrQueueProvider(instance)),
           (List<RadarrQueueItem> items) => _radarrDownloads(instance, items),
+        );
+      case ServiceKind.slskd:
+        collect(
+          instance,
+          ref.watch(slskdDownloadsProvider(instance)),
+          (List<SlskdUserTransfers> transfers) =>
+              _slskdDownloads(instance, transfers),
         );
       default:
         break;
@@ -325,10 +340,15 @@ void refreshActivity(WidgetRef ref) {
         ref.invalidate(transmissionRawTorrentsProvider(instance));
       case ServiceKind.rtorrent:
         ref.invalidate(rtorrentRawTorrentsProvider(instance));
+      case ServiceKind.aria2:
+        ref.invalidate(aria2SnapshotProvider(instance));
       case ServiceKind.sonarr:
         ref.invalidate(sonarrQueueProvider(instance));
       case ServiceKind.radarr:
         ref.invalidate(radarrQueueProvider(instance));
+      case ServiceKind.slskd:
+        ref.invalidate(slskdDownloadsProvider(instance));
+        ref.invalidate(slskdUploadsProvider(instance));
       default:
         break;
     }
@@ -680,6 +700,37 @@ List<ActivityDownload> _rtorrentDownloads(
   ];
 }
 
+List<ActivityDownload> _aria2Downloads(
+  Instance instance,
+  Aria2Snapshot snapshot,
+) {
+  return <ActivityDownload>[
+    // Active transfers: incomplete downloads plus active seeds moving bytes.
+    // Idle seeds and paused downloads stay out of the activity feed.
+    for (final Aria2Download d in <Aria2Download>[
+      ...snapshot.active,
+      ...snapshot.waiting,
+    ])
+      if (!d.isPaused && (!d.isSeeding || d.uploadSpeed > 0))
+        ActivityDownload(
+          key: '${instance.id}:${d.gid}',
+          instance: instance,
+          sourceKind: instance.kind,
+          title: d.displayName,
+          progress: d.progress,
+          speedBps: d.downloadSpeed > 0 ? d.downloadSpeed : null,
+          upSpeedBps: d.uploadSpeed > 0 ? d.uploadSpeed : null,
+          eta: d.etaSeconds == null ? null : _fmtEtaSeconds(d.etaSeconds!),
+          status: aria2StatusLabel(d.status, seeder: d.isSeeding),
+          onOpenBuilder: (BuildContext _) => Aria2DownloadDetailScreen(
+            instance: instance,
+            gid: d.gid,
+            initialName: d.displayName,
+          ),
+        ),
+  ];
+}
+
 List<ActivityDownload> _sonarrDownloads(
   Instance instance,
   List<SonarrQueueItem> items,
@@ -760,3 +811,42 @@ String _arrStatusLabel(String? status, String? trackedState) {
 
 String _capitalized(String s) =>
     s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+
+List<ActivityDownload> _slskdDownloads(
+  Instance instance,
+  List<SlskdUserTransfers> userTransfers,
+) {
+  final List<ActivityDownload> result = <ActivityDownload>[];
+  for (final SlskdUserTransfers user in userTransfers) {
+    for (final SlskdDirectoryTransfers dir in user.directories) {
+      for (final SlskdTransfer file in dir.files) {
+        if (file.category == TransferCategory.inProgress ||
+            file.category == TransferCategory.queued) {
+          final String title = file.filename
+                  .split(RegExp(r'[/\\]'))
+                  .where((p) => p.isNotEmpty)
+                  .lastOrNull ??
+              file.filename;
+          result.add(
+            ActivityDownload(
+              key: '${instance.id}:${file.id}',
+              instance: instance,
+              sourceKind: instance.kind,
+              title: title,
+              progress: file.progress.clamp(0.0, 1.0).toDouble(),
+              speedBps: file.category == TransferCategory.inProgress &&
+                      file.averageSpeed > 0 &&
+                      file.averageSpeed.isFinite
+                  ? file.averageSpeed.round()
+                  : null,
+              status: file.category == TransferCategory.inProgress
+                  ? 'Downloading'
+                  : 'Queued',
+            ),
+          );
+        }
+      }
+    }
+  }
+  return result;
+}

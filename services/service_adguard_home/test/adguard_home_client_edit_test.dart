@@ -94,6 +94,56 @@ void main() {
     });
   });
 
+  group('the pause schedule of a draft', () {
+    test("is the client's own, read as it is", () {
+      final AdguardHomeClientDraft draft =
+          AdguardHomeClientDraft.of(named('Kids tablet'));
+
+      expect(draft.schedule.timeZone, 'Europe/Berlin');
+      expect(draft.schedule.pauses, hasLength(2));
+    });
+
+    test("of a new client is empty, in the server's own time zone", () {
+      expect(
+        const AdguardHomeClientDraft.blank().schedule.toJson(),
+        <String, dynamic>{'time_zone': 'Local'},
+      );
+    });
+
+    test('goes out only when it was changed', () {
+      final AdguardHomeClient kids = named('Kids tablet');
+      final AdguardHomeClientDraft before = AdguardHomeClientDraft.of(kids);
+      // Changed on the server meanwhile.
+      final Map<String, dynamic> current = copyOf('Kids tablet')
+        ..['blocked_services_schedule'] = <String, dynamic>{'time_zone': 'UTC'};
+
+      final Map<String, dynamic> untouched = adguardHomeClientWrite(
+        current: current,
+        before: before,
+        after: before.copyWith(ignoreStatistics: true),
+      );
+      final Map<String, dynamic> changed = adguardHomeClientWrite(
+        current: current,
+        before: before,
+        after: before.copyWith(
+          schedule: before.schedule.withoutPause('sun'),
+        ),
+      );
+
+      expect(
+        untouched['blocked_services_schedule'],
+        <String, dynamic>{'time_zone': 'UTC'},
+      );
+      expect(
+        changed['blocked_services_schedule'],
+        <String, dynamic>{
+          'time_zone': 'Europe/Berlin',
+          'sat': <String, dynamic>{'start': 32400000, 'end': 61200000},
+        },
+      );
+    });
+  });
+
   group('what a draft sends', () {
     test('has the name without the spaces around it', () {
       const AdguardHomeClientDraft draft = AdguardHomeClientDraft.blank(

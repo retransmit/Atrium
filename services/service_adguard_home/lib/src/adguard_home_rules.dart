@@ -48,7 +48,7 @@ AdguardHomeRuleEdit adguardHomeBlockingEdit(
 }) {
   final String blockRule = client == null
       ? '||$domain^\$important'
-      : "||$domain^\$client='${_escapedClient(client)}'";
+      : "||$domain^\$client='${adguardHomeEscapedClient(client)}'";
   final String allowRule = '@@$blockRule';
   final String wanted = block ? blockRule : allowRule;
   final String opposite = block ? allowRule : blockRule;
@@ -76,7 +76,7 @@ AdguardHomeRuleEdit adguardHomeBlockingEdit(
 
 /// [name] as it has to be written inside `$client='...'`: the four
 /// characters that would end it early each get a backslash.
-String _escapedClient(String name) => name
+String adguardHomeEscapedClient(String name) => name
     .replaceAll("'", r"\'")
     .replaceAll('"', r'\"')
     .replaceAll(',', r'\,')

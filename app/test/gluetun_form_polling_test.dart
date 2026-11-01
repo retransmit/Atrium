@@ -13,29 +13,24 @@ import 'package:flutter_test/flutter_test.dart';
 /// qBittorrent's torrent list and global speeds poll on the same interval,
 /// so its form offers the field too.
 void main() {
-  Future<void> openFormFor(WidgetTester tester, String serviceLabel) async {
+  Future<void> openFormFor(WidgetTester tester, ServiceKind kind) async {
     tester.view.physicalSize = const Size(900, 1400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: InstanceFormScreen())),
+      ProviderScope(
+        child: MaterialApp(
+          home: InstanceFormScreen(initialKind: kind),
+        ),
+      ),
     );
-    await tester.tap(find.byType(DropdownMenu<ServiceKind>));
-    await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text(serviceLabel),
-      200,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text(serviceLabel));
     await tester.pumpAndSettle();
   }
 
   testWidgets('Gluetun offers the polling interval',
       (WidgetTester tester) async {
-    await openFormFor(tester, 'Gluetun - VPN client');
+    await openFormFor(tester, ServiceKind.gluetun);
     await tester.scrollUntilVisible(
       find.text('Polling Interval (seconds)'),
       200,
@@ -47,7 +42,7 @@ void main() {
 
   testWidgets('qBittorrent offers the polling interval',
       (WidgetTester tester) async {
-    await openFormFor(tester, 'qBittorrent - Torrent client');
+    await openFormFor(tester, ServiceKind.qbittorrent);
     await tester.scrollUntilVisible(
       find.text('Polling Interval (seconds)'),
       200,

@@ -5,9 +5,11 @@ import 'adguard_home_session.dart';
 import 'models/adguard_home_access.dart';
 import 'models/adguard_home_clients.dart';
 import 'models/adguard_home_filtering.dart';
+import 'models/adguard_home_filters.dart';
 import 'models/adguard_home_json.dart';
 import 'models/adguard_home_query_log.dart';
 import 'models/adguard_home_services.dart';
+import 'models/adguard_home_settings.dart';
 import 'models/adguard_home_stats.dart';
 import 'models/adguard_home_status.dart';
 
@@ -29,6 +31,11 @@ class AdguardHomeApi {
 
   /// How many entries one request for the query log asks for.
   static const int queryLogPageSize = 50;
+
+  /// How long a request that makes the server fetch lists may take. The
+  /// server answers only once every list is in, and a large one on a slow
+  /// line takes far longer than an ordinary request is given.
+  static const Duration listFetchTimeout = Duration(minutes: 3);
 
   /// `GET control/status`.
   Future<AdguardHomeStatus> getStatus() async {
@@ -168,6 +175,250 @@ class AdguardHomeApi {
   Future<AdguardHomeSafeSearch> getSafeSearch() async =>
       AdguardHomeSafeSearch.fromJson(await _get('control/safesearch/status'));
 
+  /// `POST control/filtering/add_url`. The server fetches the list at once,
+  /// and turns it down in plain words if it cannot, or if any list, block
+  /// or allow, already has that address.
+  Future<void> addFilterList({
+    required String name,
+    required String url,
+    required bool allowlist,
+  }) =>
+      _post(
+        'control/filtering/add_url',
+        <String, dynamic>{
+          'name': name,
+          'url': url,
+          'whitelist': allowlist,
+        },
+        listFetchTimeout,
+      );
+
+  /// `POST control/filtering/set_url`: the list now at [url] gets [name],
+  /// [newUrl] and [enabled]. [allowlist] has to say which kind it is.
+  Future<void> updateFilterList({
+    required String url,
+    required bool allowlist,
+    required String name,
+    required String newUrl,
+    required bool enabled,
+  }) =>
+      _post(
+        'control/filtering/set_url',
+        <String, dynamic>{
+          'url': url,
+          'whitelist': allowlist,
+          'data': <String, dynamic>{
+            'name': name,
+            'url': newUrl,
+            'enabled': enabled,
+          },
+        },
+        // A list switched on, or given a new address, is fetched there and
+        // then.
+        listFetchTimeout,
+      );
+
+  /// `POST control/filtering/remove_url`.
+  Future<void> removeFilterList({
+    required String url,
+    required bool allowlist,
+  }) =>
+      _post('control/filtering/remove_url', <String, dynamic>{
+        'url': url,
+        'whitelist': allowlist,
+      });
+
+  /// `POST control/filtering/refresh`: fetches the lists of one kind again,
+  /// and says how many changed.
+  Future<int> refreshFilterLists({required bool allowlist}) async {
+    final Object? answer = await _session.run(() async {
+      final Response<dynamic> response = await _dio.post<dynamic>(
+        'control/filtering/refresh',
+        data: <String, dynamic>{'whitelist': allowlist},
+        options: Options(receiveTimeout: listFetchTimeout),
+      );
+      return response.data as Object?;
+    });
+    if (answer is! Map<Object?, Object?>) {
+      throw const AdguardHomeUnexpectedAnswer();
+    }
+    return readInt(answer['updated']);
+  }
+
+  /// `POST control/filtering/config`. Both go every time: the server resets
+  /// whichever is left out, the interval to never.
+  Future<void> setFilteringConfig({
+    required bool enabled,
+    required int intervalHours,
+  }) =>
+      _post('control/filtering/config', <String, dynamic>{
+        'enabled': enabled,
+        'interval': intervalHours,
+      });
+
+  /// `GET control/filtering/check_host`: what the server would do with
+  /// [name], for [client] when one is given.
+  Future<AdguardHomeHostCheck> checkHost(String name, {String? client}) async =>
+      AdguardHomeHostCheck.fromJson(
+        name,
+        await _get('control/filtering/check_host', <String, dynamic>{
+          'name': name,
+          if (client != null && client.isNotEmpty) 'client': client,
+        }),
+      );
+
+  /// `GET control/blocked_services/get`.
+  Future<AdguardHomeGlobalServices> getGlobalServices() async =>
+      AdguardHomeGlobalServices.fromJson(
+        await _get('control/blocked_services/get'),
+      );
+
+  /// `PUT control/blocked_services/update`, services and schedule together.
+  Future<void> setGlobalServices(AdguardHomeGlobalServices services) =>
+      _put('control/blocked_services/update', services.toJson());
+
+  /// `GET control/rewrite/list`.
+  Future<List<AdguardHomeRewrite>> getRewrites() async {
+    final Object? answer = await _session.run(() async {
+      final Response<dynamic> response =
+          await _dio.get<dynamic>('control/rewrite/list');
+      return response.data as Object?;
+    });
+    if (answer != null && answer is! List) {
+      throw const AdguardHomeUnexpectedAnswer();
+    }
+    return AdguardHomeRewrite.listFromJson(answer);
+  }
+
+  /// `POST control/rewrite/add`.
+  Future<void> addRewrite(AdguardHomeRewrite rewrite) =>
+      _post('control/rewrite/add', rewrite.toJson());
+
+  /// `PUT control/rewrite/update`: the rewrite that is [target] becomes
+  /// [update]. The server finds it by domain and answer.
+  Future<void> updateRewrite(
+    AdguardHomeRewrite target,
+    AdguardHomeRewrite update,
+  ) =>
+      _put('control/rewrite/update', <String, dynamic>{
+        'target': target.toJson(),
+        'update': update.toJson(),
+      });
+
+  /// `POST control/rewrite/delete`.
+  Future<void> deleteRewrite(AdguardHomeRewrite rewrite) =>
+      _post('control/rewrite/delete', rewrite.toJson());
+
+  /// Whether rewrites apply at all: `GET control/rewrite/settings`.
+  Future<bool> getRewritesEnabled() async =>
+      readBool((await _get('control/rewrite/settings'))['enabled']);
+
+  /// `PUT control/rewrite/settings/update`.
+  Future<void> setRewritesEnabled({required bool enabled}) => _put(
+        'control/rewrite/settings/update',
+        <String, dynamic>{'enabled': enabled},
+      );
+
+  /// `GET control/safebrowsing/status`.
+  Future<bool> getSafeBrowsing() async =>
+      readBool((await _get('control/safebrowsing/status'))['enabled']);
+
+  /// `POST control/safebrowsing/enable` or `.../disable`.
+  Future<void> setSafeBrowsing({required bool enabled}) =>
+      _post('control/safebrowsing/${enabled ? 'enable' : 'disable'}');
+
+  /// `GET control/parental/status`.
+  Future<bool> getParental() async =>
+      readBool((await _get('control/parental/status'))['enabled']);
+
+  /// `POST control/parental/enable` or `.../disable`.
+  Future<void> setParental({required bool enabled}) =>
+      _post('control/parental/${enabled ? 'enable' : 'disable'}');
+
+  /// `PUT control/safesearch/settings`. Whole: an engine left out is
+  /// switched off.
+  Future<void> setSafeSearch(AdguardHomeSafeSearch safeSearch) =>
+      _put('control/safesearch/settings', safeSearch.toJson());
+
+  /// `GET control/querylog/config`, as the settings write it back.
+  Future<AdguardHomeRetention> getQueryLogRetention() async =>
+      AdguardHomeRetention.fromJson(await _get('control/querylog/config'));
+
+  /// `PUT control/querylog/config/update`. Whole: a field left out is
+  /// refused.
+  Future<void> setQueryLogRetention(AdguardHomeRetention retention) =>
+      _put('control/querylog/config/update', retention.toJson());
+
+  /// `GET control/stats/config`.
+  Future<AdguardHomeRetention> getStatsRetention() async =>
+      AdguardHomeRetention.fromJson(await _get('control/stats/config'));
+
+  /// `PUT control/stats/config/update`. Whole, as the query log's.
+  Future<void> setStatsRetention(AdguardHomeRetention retention) =>
+      _put('control/stats/config/update', retention.toJson());
+
+  /// `POST control/stats_reset`: the statistics start again from nothing.
+  Future<void> resetStats() => _post('control/stats_reset');
+
+  /// `GET control/dns_info`.
+  Future<AdguardHomeDnsConfig> getDnsConfig() async =>
+      AdguardHomeDnsConfig(await _get('control/dns_info'));
+
+  /// `POST control/dns_config` with only what is to change: the server
+  /// keeps what is left out.
+  Future<void> setDnsConfig(Map<String, dynamic> changes) =>
+      _post('control/dns_config', changes);
+
+  /// `POST control/test_upstream_dns`: whether each server answers, for the
+  /// lists as given, saved or not.
+  Future<List<AdguardHomeUpstreamResult>> testUpstreams({
+    required List<String> upstreams,
+    required List<String> bootstrap,
+    required List<String> fallback,
+    required List<String> privateUpstreams,
+  }) async =>
+      AdguardHomeUpstreamResult.listFromJson(
+        await _postForJson('control/test_upstream_dns', <String, dynamic>{
+          'upstream_dns': upstreams,
+          'bootstrap_dns': bootstrap,
+          'fallback_dns': fallback,
+          'private_upstream': privateUpstreams,
+        }),
+      );
+
+  /// `POST control/cache_clear`.
+  Future<void> clearDnsCache() => _post('control/cache_clear');
+
+  /// `GET control/tls/status`.
+  Future<AdguardHomeTlsStatus> getTlsStatus() async =>
+      AdguardHomeTlsStatus.fromJson(await _get('control/tls/status'));
+
+  /// `GET control/dhcp/status`.
+  Future<AdguardHomeDhcpStatus> getDhcpStatus() async =>
+      AdguardHomeDhcpStatus.fromJson(await _get('control/dhcp/status'));
+
+  /// `POST control/version.json`. With [recheck] the server asks for the
+  /// latest version now rather than answering from what it last heard.
+  Future<AdguardHomeVersionCheck> checkVersion({bool recheck = false}) async =>
+      AdguardHomeVersionCheck.fromJson(
+        await _postForJson(
+          'control/version.json',
+          <String, dynamic>{'recheck_now': recheck},
+        ),
+      );
+
+  Future<Map<String, dynamic>> _postForJson(
+    String path,
+    Map<String, dynamic> body,
+  ) =>
+      _session.run(() async {
+        final Response<dynamic> response =
+            await _dio.post<dynamic>(path, data: body);
+        final Object? data = response.data;
+        if (data is Map<String, dynamic>) return data;
+        throw const AdguardHomeUnexpectedAnswer();
+      });
+
   Future<Map<String, dynamic>> _get(
     String path, [
     Map<String, dynamic>? query,
@@ -180,8 +431,21 @@ class AdguardHomeApi {
         throw const AdguardHomeUnexpectedAnswer();
       });
 
-  Future<void> _post(String path, [Map<String, dynamic>? body]) =>
+  Future<void> _post(
+    String path, [
+    Map<String, dynamic>? body,
+    Duration? timeout,
+  ]) =>
       _session.run(() async {
-        await _dio.post<dynamic>(path, data: body);
+        await _dio.post<dynamic>(
+          path,
+          data: body,
+          options: timeout == null ? null : Options(receiveTimeout: timeout),
+        );
+      });
+
+  Future<void> _put(String path, Map<String, dynamic> body) =>
+      _session.run(() async {
+        await _dio.put<dynamic>(path, data: body);
       });
 }

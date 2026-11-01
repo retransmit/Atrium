@@ -7,6 +7,7 @@ import 'models/seerr_discover.dart';
 import 'models/seerr_issue.dart';
 import 'models/seerr_request.dart';
 import 'seerr_api.dart';
+import 'seerr_filter_chips.dart';
 import 'seerr_issue_detail_screen.dart';
 import 'seerr_providers.dart';
 
@@ -22,42 +23,33 @@ class SeerrIssuesScreen extends ConsumerStatefulWidget {
   ConsumerState<SeerrIssuesScreen> createState() => _SeerrIssuesScreenState();
 }
 
-class _SeerrIssuesScreenState extends ConsumerState<SeerrIssuesScreen> {
-  static const List<(String, String)> _filters = <(String, String)>[
-    ('All', 'all'),
-    ('Open', 'open'),
-    ('Resolved', 'resolved'),
-  ];
+class _SeerrIssuesScreenState extends ConsumerState<SeerrIssuesScreen>
+    with SeerrKeptFilter<SeerrIssuesScreen, String> {
+  static const Map<String, String> _filters = <String, String>{
+    'all': 'All',
+    'open': 'Open',
+    'resolved': 'Resolved',
+  };
 
-  String _filter = 'all';
+  @override
+  Object get filterKey => 'seerr-issues-${widget.instance.id}';
+
+  @override
+  String get firstFilter => 'all';
 
   @override
   Widget build(BuildContext context) {
-    final SeerrIssuesArgs args = (instance: widget.instance, filter: _filter);
+    final SeerrIssuesArgs args = (instance: widget.instance, filter: filter);
     final AsyncValue<List<SeerrIssue>> issues =
         ref.watch(seerrIssuesProvider(args));
 
     return Column(
       children: <Widget>[
-        SizedBox(
-          height: 52,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: Insets.pageH,
-            children: <Widget>[
-              for (final (String label, String value) in _filters)
-                Padding(
-                  padding: const EdgeInsets.only(right: Insets.sm),
-                  child: Center(
-                    child: FilterChip(
-                      label: Text(label),
-                      selected: _filter == value,
-                      onSelected: (_) => setState(() => _filter = value),
-                    ),
-                  ),
-                ),
-            ],
-          ),
+        SeerrFilterChips<String>(
+          values: _filters.keys.toList(),
+          label: (String value) => _filters[value]!,
+          selected: filter,
+          onSelected: pickFilter,
         ),
         Expanded(
           child: AsyncValueView<List<SeerrIssue>>(

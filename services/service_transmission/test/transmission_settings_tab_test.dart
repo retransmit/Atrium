@@ -19,8 +19,11 @@ void main() {
       ..on('session-stats', statsJson());
   });
 
-  Future<void> open(WidgetTester tester) async {
-    tester.view.physicalSize = const Size(1080, 4000);
+  Future<void> open(
+    WidgetTester tester, {
+    Size size = const Size(1080, 4000),
+  }) async {
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -49,15 +52,39 @@ void main() {
     await settle(tester);
   }
 
-  testWidgets('the statistics card shows both columns',
+  testWidgets(
+      'the statistics card shows both session and all time cards stacked vertically',
       (WidgetTester tester) async {
     await open(tester);
 
-    expect(find.text('This session'), findsOneWidget);
-    expect(find.text('All time'), findsOneWidget);
+    final Finder sessionTitle = find.text('This session');
+    final Finder allTimeTitle = find.text('All time');
+
+    expect(sessionTitle, findsOneWidget);
+    expect(allTimeTitle, findsOneWidget);
     expect(find.text('Started 57 times'), findsOneWidget);
     expect(find.text(trTimeInterval(3600)), findsOneWidget);
     expect(find.text(trFmtBytes(391807173959)), findsOneWidget);
+
+    // Stacked vertically: 'All time' card is below 'This session' card
+    expect(
+      tester.getTopLeft(allTimeTitle).dy,
+      greaterThan(tester.getBottomLeft(sessionTitle).dy),
+    );
+  });
+
+  testWidgets('the statistics card leaves the first screen to the settings',
+      (WidgetTester tester) async {
+    // The pair of blocks is stacked; two figures per line keep it from
+    // pushing every actual setting below the fold on a phone.
+    await open(tester, size: const Size(360, 800));
+
+    final Size card = tester.getSize(
+      find.byKey(const ValueKey<String>('statistics-panel')),
+    );
+    expect(card.height, lessThan(400));
+    // The first group of settings has started by the bottom of the screen.
+    expect(tester.getTopLeft(find.text('Torrents')).dy, lessThan(800));
   });
 
   testWidgets('a switch writes its key alone', (WidgetTester tester) async {

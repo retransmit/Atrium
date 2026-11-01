@@ -1,5 +1,6 @@
 import 'package:intl/intl.dart';
 
+import 'adguard_home_time_zones.dart';
 import 'models/adguard_home_clients.dart';
 
 final NumberFormat _whole = NumberFormat.decimalPattern('en_US');
@@ -137,7 +138,8 @@ String formatAdguardHomePauses(
 ) {
   final String days = <String>[
     for (final AdguardHomeServicePause pause in pauses)
-      '${_dayLabel(pause.day)} ${_clock(pause.start)} to ${_clock(pause.end)}',
+      '${_dayLabel(pause.day)} ${formatAdguardHomeClock(pause.start)} to '
+          '${formatAdguardHomeClock(pause.end)}',
   ].join(', ');
   return timeZone.isEmpty ? days : '$days ($timeZone)';
 }
@@ -154,11 +156,37 @@ String _dayLabel(String day) => switch (day) {
     };
 
 /// A time of day from midnight. The end of the day is 24:00.
-String _clock(Duration fromMidnight) {
+String formatAdguardHomeClock(Duration fromMidnight) {
   final int minutes = fromMidnight.inMinutes;
   return '${(minutes ~/ 60).toString().padLeft(2, '0')}:'
       '${(minutes % 60).toString().padLeft(2, '0')}';
 }
+
+/// A weekday by its whole name, from the server's `mon` to `sun`.
+String adguardHomeWeekdayName(String day) => switch (day) {
+      'mon' => 'Monday',
+      'tue' => 'Tuesday',
+      'wed' => 'Wednesday',
+      'thu' => 'Thursday',
+      'fri' => 'Friday',
+      'sat' => 'Saturday',
+      'sun' => 'Sunday',
+      _ => day,
+    };
+
+/// One day's pause: its hours, or "All day" when it covers the whole of it.
+String adguardHomePauseLabel(AdguardHomeServicePause pause) =>
+    pause.start == Duration.zero && pause.end == const Duration(hours: 24)
+        ? 'All day'
+        : '${formatAdguardHomeClock(pause.start)} to '
+            '${formatAdguardHomeClock(pause.end)}';
+
+/// The time zone of a schedule. The server's own is named, not shown as
+/// its keyword.
+String adguardHomeTimeZoneLabel(String timeZone) =>
+    timeZone.isEmpty || timeZone == adguardHomeServerTimeZone
+        ? "The server's time zone"
+        : timeZone;
 
 /// `social_network` as `Social network`.
 String _sentence(String key) {
@@ -167,10 +195,73 @@ String _sentence(String key) {
   return words[0].toUpperCase() + words.substring(1);
 }
 
+/// How often the lists can be fetched again, in hours, as the web UI
+/// offers them. Never is zero.
+const List<int> adguardHomeIntervalOptions = <int>[0, 1, 12, 24, 72, 168];
+
+/// How often the lists are fetched again, the way the web UI names it.
+String adguardHomeIntervalLabel(int hours) => switch (hours) {
+      0 => 'Never',
+      1 => 'Every hour',
+      72 => 'Every 3 days',
+      168 => 'Every 7 days',
+      _ => 'Every $hours hours',
+    };
+
+final DateFormat _date = DateFormat('d MMM y, HH:mm', 'en_US');
+
+/// A date and time to the minute, in the device's own time.
+String formatAdguardHomeDate(DateTime time) => _date.format(time.toLocal());
+
 /// The period the statistics cover, the way the web UI names it.
 String adguardHomePeriodLabel(Duration period) {
   final int hours = period.inHours;
   if (hours == 1) return 'Last hour';
   if (hours <= 24 || hours % 24 != 0) return 'Last $hours hours';
   return 'Last ${hours ~/ 24} days';
+}
+
+/// How long the query log or the statistics keep things, as the web UI
+/// names its choices: "6 hours", "24 hours", "7 days", and any other
+/// length in hours.
+String adguardHomeRetentionLabel(Duration interval) {
+  final int hours = interval.inHours;
+  if (hours > 24 && hours % 24 == 0) {
+    final int days = hours ~/ 24;
+    return '$days days';
+  }
+  return hours == 1 ? '1 hour' : '$hours hours';
+}
+
+/// The retention choices the web UI offers for the query log.
+const List<Duration> adguardHomeQueryLogRetentions = <Duration>[
+  Duration(hours: 6),
+  Duration(hours: 24),
+  Duration(days: 7),
+  Duration(days: 30),
+  Duration(days: 90),
+];
+
+/// The retention choices the web UI offers for the statistics.
+const List<Duration> adguardHomeStatsRetentions = <Duration>[
+  Duration(hours: 24),
+  Duration(days: 7),
+  Duration(days: 30),
+  Duration(days: 90),
+];
+
+/// A size in bytes as AdGuard Home's own defaults are thought of, in steps
+/// of 1024: 4194304 is "4 MB".
+String adguardHomeBytesLabel(int bytes) {
+  const List<String> units = <String>['bytes', 'KB', 'MB', 'GB'];
+  double value = bytes.toDouble();
+  int unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  if (unit == 0) return bytes == 1 ? '1 byte' : '$bytes bytes';
+  String figure = value.toStringAsFixed(1);
+  if (figure.endsWith('.0')) figure = figure.substring(0, figure.length - 2);
+  return '$figure ${units[unit]}';
 }

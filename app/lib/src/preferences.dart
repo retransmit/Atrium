@@ -32,6 +32,7 @@ class Preferences {
     this.customImagePath,
     this.customImageColorsCsv,
     this.calendarShowUnmonitored = false,
+    this.calendarListView = false,
   });
 
   final ThemeMode themeMode;
@@ -47,6 +48,9 @@ class Preferences {
   /// as well as monitored ones.
   final bool calendarShowUnmonitored;
 
+  /// Whether the calendar renders in list view rather than monthly grid view.
+  final bool calendarListView;
+
   Preferences copyWith({
     ThemeMode? themeMode,
     bool? biometricEnabled,
@@ -57,6 +61,7 @@ class Preferences {
     String? Function()? customImagePath,
     String? Function()? customImageColorsCsv,
     bool? calendarShowUnmonitored,
+    bool? calendarListView,
   }) =>
       Preferences(
         themeMode: themeMode ?? this.themeMode,
@@ -74,6 +79,7 @@ class Preferences {
             : this.customImageColorsCsv,
         calendarShowUnmonitored:
             calendarShowUnmonitored ?? this.calendarShowUnmonitored,
+        calendarListView: calendarListView ?? this.calendarListView,
       );
 }
 
@@ -100,6 +106,7 @@ class PreferencesController extends Notifier<Preferences> {
   static const String _paletteStyleKey = 'pref.paletteStyle';
   static const String _calendarShowUnmonitoredKey =
       'pref.calendarShowUnmonitored';
+  static const String _calendarListViewKey = 'pref.calendarListView';
 
   Box<String> get _box => ref.read(settingsBoxProvider);
 
@@ -134,7 +141,13 @@ class PreferencesController extends Notifier<Preferences> {
       customImageColorsCsv: _box.get(_customImageColorsCsvKey),
       calendarShowUnmonitored:
           _box.get(_calendarShowUnmonitoredKey) == 'true',
+      calendarListView: _box.get(_calendarListViewKey) == 'true',
     );
+  }
+
+  Future<void> setCalendarListView(bool listView) async {
+    await _box.put(_calendarListViewKey, '$listView');
+    state = state.copyWith(calendarListView: listView);
   }
 
   Future<void> setCalendarShowUnmonitored(bool show) async {

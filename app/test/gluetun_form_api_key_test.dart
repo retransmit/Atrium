@@ -10,14 +10,19 @@ import 'package:flutter_test/flutter_test.dart';
 /// with auth = "none", and then there is no key to enter. The form demanded
 /// one anyway.
 void main() {
-  Future<void> openForm(WidgetTester tester) async {
+  Future<void> openForm(WidgetTester tester, {ServiceKind kind = ServiceKind.sonarr}) async {
     tester.view.physicalSize = const Size(900, 1400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: InstanceFormScreen())),
+      ProviderScope(
+        child: MaterialApp(
+          home: InstanceFormScreen(initialKind: kind),
+        ),
+      ),
     );
+    await tester.pumpAndSettle();
   }
 
   FormField<String> keyField(WidgetTester tester, String label) =>
@@ -29,17 +34,7 @@ void main() {
       );
 
   testWidgets('Gluetun takes an empty API key', (WidgetTester tester) async {
-    await openForm(tester);
-    await tester.tap(find.byType(DropdownMenu<ServiceKind>));
-    await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('Gluetun - VPN client'),
-      200,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Gluetun - VPN client'));
-    await tester.pumpAndSettle();
+    await openForm(tester, kind: ServiceKind.gluetun);
 
     expect(keyField(tester, 'API key (optional)').validator!(''), isNull);
     expect(find.textContaining('auth turned off'), findsOneWidget);

@@ -20,6 +20,7 @@ import 'package:service_sabnzbd/service_sabnzbd.dart';
 import 'package:service_tautulli/service_tautulli.dart';
 import 'package:service_myspeed/service_myspeed.dart';
 import 'package:service_adguard_home/service_adguard_home.dart';
+import 'package:service_aria2/service_aria2.dart';
 import 'package:atrium/src/preferences.dart';
 import 'package:atrium/src/screens/calendar_screen.dart';
 
@@ -455,5 +456,53 @@ void main() {
     expect(find.text('Protection is on'), findsOneWidget);
     expect(find.text('DNS queries'), findsOneWidget);
     expect(find.text('68'), findsOneWidget);
+  });
+
+  testWidgets('Aria2Home renders the daemon totals and the active download',
+      (WidgetTester tester) async {
+    final Instance instance = _instance(ServiceKind.aria2);
+    await _pump(
+      tester,
+      <Override>[
+        aria2SnapshotProvider(instance).overrideWith(
+          (Ref ref) async => Aria2Snapshot(
+            stat: const Aria2GlobalStat(
+              downloadSpeed: 1048576,
+              uploadSpeed: 0,
+              numActive: 1,
+              numWaiting: 0,
+              numStopped: 0,
+            ),
+            version: const Aria2Version(version: '1.37.0'),
+            active: const <Aria2Download>[
+              Aria2Download(
+                gid: '2089b05ecca3d829',
+                status: 'active',
+                totalLength: 1000000,
+                completedLength: 250000,
+                downloadSpeed: 1048576,
+                files: <Aria2File>[
+                  Aria2File(path: '/downloads/ubuntu.iso'),
+                ],
+              ),
+            ],
+            waiting: const <Aria2Download>[],
+            stopped: const <Aria2Download>[],
+          ),
+        ),
+      ],
+      Aria2Home(instance: instance),
+      pumps: 2,
+    );
+
+    // Download rate is rendered both in the hero telemetry card and the active download row.
+    expect(find.text('1.0 MB/s'), findsNWidgets(2));
+    expect(find.text('aria2'), findsOneWidget);
+    expect(find.text('1.37.0'), findsOneWidget);
+    // The active download is named after its file, since aria2 has no name of
+    // its own for a plain HTTP download.
+    expect(find.text('ubuntu.iso'), findsOneWidget);
+    expect(find.text('Active (1)'), findsOneWidget);
+    expect(find.text('Queued (0)'), findsOneWidget);
   });
 }

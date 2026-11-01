@@ -63,15 +63,89 @@ void main() {
   final Finder addClient =
       find.widgetWithText(FloatingActionButton, 'Add client');
 
-  testWidgets('opens on Home, with Home, Query log and Clients in the bar',
-      (WidgetTester tester) async {
+  testWidgets('opens on Home, with Home, Query log, Filters, Clients and '
+      'Settings in the bar, in that order', (WidgetTester tester) async {
     await pumpShell(tester);
 
     expect(destination('Home'), findsOneWidget);
     expect(destination('Query log'), findsOneWidget);
+    expect(destination('Filters'), findsOneWidget);
     expect(destination('Clients'), findsOneWidget);
+    expect(destination('Settings'), findsOneWidget);
+    expect(
+      tester.getCenter(destination('Filters')).dx,
+      lessThan(tester.getCenter(destination('Clients')).dx),
+    );
+    expect(
+      tester.getCenter(destination('Clients')).dx,
+      lessThan(tester.getCenter(destination('Settings')).dx),
+    );
+    expect(
+      tester.getCenter(destination('Query log')).dx,
+      lessThan(tester.getCenter(destination('Filters')).dx),
+    );
     expect(selected(tester), 0);
     expect(find.text('Protection is on'), findsOneWidget);
+  });
+
+  group('the filters', () {
+    Future<void> openFilters(WidgetTester tester) async {
+      await tester.tap(destination('Filters'));
+      await tester.pump();
+      await tester.pump();
+    }
+
+    testWidgets('are not read until their tab is opened, then shown',
+        (WidgetTester tester) async {
+      final Pumped pumped = await pumpShell(tester);
+      expect(pumped.rewriteReads, 0);
+      expect(pumped.globalServicesReads, 0);
+
+      await openFilters(tester);
+
+      expect(selected(tester), 2);
+      expect(find.text('Blocklists'), findsOneWidget);
+      expect(pumped.rewriteReads, 1);
+      expect(pumped.globalServicesReads, 1);
+    });
+
+    testWidgets('back on their tab goes to Home before it leaves',
+        (WidgetTester tester) async {
+      await pumpShell(tester);
+      await openFilters(tester);
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+
+      expect(selected(tester), 0);
+    });
+
+    testWidgets('have no add button and no query log menu',
+        (WidgetTester tester) async {
+      await pumpShell(tester);
+      await openFilters(tester);
+
+      expect(addClient, findsNothing);
+      expect(find.byTooltip('More'), findsNothing);
+    });
+  });
+
+  group('the settings', () {
+    testWidgets('read nothing of their own when their tab is opened',
+        (WidgetTester tester) async {
+      final Pumped pumped = await pumpShell(tester);
+
+      await tester.tap(destination('Settings'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(selected(tester), 4);
+      expect(find.text('General'), findsOneWidget);
+      expect(find.text('Statistics'), findsOneWidget);
+      expect(pumped.settingsReads, 0);
+      expect(addClient, findsNothing);
+      expect(find.byTooltip('More'), findsNothing);
+    });
   });
 
   group('the clients', () {
@@ -85,7 +159,7 @@ void main() {
       await openClients(tester);
 
       expect(pumped.clientReads, 1);
-      expect(selected(tester), 2);
+      expect(selected(tester), 3);
       expect(find.text('Persistent (3)'), findsOneWidget);
     });
 

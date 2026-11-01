@@ -1,6 +1,6 @@
 # Atrium - Status
 
-> Snapshot of what genuinely works and what is left, as of 2026-10-19.
+> Snapshot of what genuinely works and what is left, as of 2026-11-02.
 > Atrium is published on F-Droid and on the GitHub releases page. It is
 > still in early development and every module is work in progress; nothing
 > here is a release promise.
@@ -14,21 +14,27 @@ Atrium is a **controller** app. Video playback was removed by design
 ## App shell
 
 - Dashboard with role-grouped services sidebar (available on every tab
-  via the shell drawer) and a profile switcher
+  via the shell drawer) and a profile switcher. The groups are Automation,
+  Requests, Analytics, Media servers, Download clients and Extra (Cleanuparr,
+  moved out of Automation on 2026-11-02)
+- **Adding a service** (lxBlazarxl, PR #208, #199) starts from a searchable
+  grid of every service in the same groups, and the form opens set up for the
+  one picked
 - **Activity tab**: cross-instance live feed - summary bar, Now
   Streaming (backdrop session cards from Plex / Jellyfin / Emby /
   Tautulli, tap-through to each module's now-playing screen) and
   Transfers (qBittorrent downloads *and active uploads*, Deluge,
-  Transmission and rTorrent transfers,
+  Transmission, rTorrent, aria2 and slskd transfers,
   SABnzbd slots,
   NZBGet groups, Sonarr/Radarr queues). Per-instance resilience: an unreachable server
   degrades to a chip, never blocks the feed
 - **Calendar tab**: month grid aggregating upcoming Sonarr + Radarr
-  airings/releases with status dots
+  airings/releases with status dots, or a list; the view picked is kept
+  across launches (Bhavyashah94, PR #205, #203)
 - **Dashboard widgets**, reorderable from Customize dashboard: Active
   downloads, Now streaming, Upcoming releases, Recently added, Recently
   downloaded, Requests (Seerr and Ombi), Glances, Dashdot, Speedtest
-  results, MySpeed, Gluetun VPN and Wake on LAN
+  results, MySpeed, Gluetun VPN, AdGuard Home, Cleanuparr and Wake on LAN
 - **Settings**: theme, biometric lock, profile import/export (SAF,
   live-verified), **Wake-on-LAN devices** (profile-stored, magic packets
   over pure Dart UDP), **custom HTTP headers** (global + per-instance,
@@ -58,7 +64,9 @@ Atrium is a **controller** app. Video playback was removed by design
   network interfaces the server actually routes. Torrents are marked
   private or public (contributed by lxBlazarxl in PR #171) wherever the
   server says which: in the list from qBittorrent 5.0, on a torrent's own
-  screen from 4.5.1, and nowhere while a magnet has no metadata
+  screen from 4.5.1, and nowhere while a magnet has no metadata. Settings >
+  System shows the external IPv4 and IPv6 address qBittorrent reports, from
+  5.0 (PR #210, #204)
 - **Sonarr** (the canonical *arr module): poster/banner grid with
   client-side sort & filter (status, network, airing, added, size on
   disk) and per-series disk sizes, the custom filters saved on the
@@ -93,7 +101,10 @@ Atrium is a **controller** app. Video playback was removed by design
   selection), requests management (approve/decline/delete/retry). The
   requests list reads its pages in parallel once the server has said how
   many there are, and refreshes only after a read has finished, so a server
-  with thousands of requests finishes loading (fixed 2026-10-12, #185)
+  with thousands of requests finishes loading (fixed 2026-10-12, #185).
+  The requests list is filtered by status (pending, approved, completed,
+  declined, failed) on the phone, as Seerr's own filters split them, and
+  the chip picked stays across tab switches (#196)
 - **Ombi** (added 2026-09-19, out of beta since 2026-10-05, live-verified
   against 4.53, restyled 2026-10-02): its own screen with a bottom bar for Requests and Discover
   and search in the app bar. Requests for movies, TV and, where Lidarr is
@@ -174,7 +185,8 @@ Atrium is a **controller** app. Video playback was removed by design
   dashboard widget. The connection test judges the connection rather than
   the VPN behind it, and the health dot warns when Gluetun reports its VPN
   down. Update Servers on ProtonVPN says what it needs
-- **AdGuard Home** (beta, added 2026-10-07, live-verified against v0.107.79;
+- **AdGuard Home** (added 2026-10-07, out of beta since 2026-10-20,
+  live-verified against v0.107.79;
   issue #166): a Home screen with protection on/off and the five timed
   pauses the web UI offers, a countdown while paused, charts of DNS queries
   and of blocked queries with their totals, figures for malware, adult
@@ -197,9 +209,27 @@ Atrium is a **controller** app. Video playback was removed by design
   servers and their cache, leaving it out of the log or the statistics),
   and a runtime client can be made persistent with its name and address
   filled in. A change is written over the client as the server has it at
-  that moment, so what the form does not show, such as a pause schedule,
-  is kept. A top client on Home and the client of a query open the same
-  sheet. An
+  that moment, so a setting changed elsewhere meanwhile is kept; a client
+  with its own blocked services has its own pause schedule, edited by day
+  with its time zone, and renaming a client points the custom rules
+  written for it at the new name. A top client on Home and the client of a
+  query open the same sheet. A Filters tab (added 2026-10-19) has the
+  blocklists and allowlists (each with its switch; add, edit, delete,
+  Check for updates, and how often they are fetched), the custom rules in
+  one editor that will not silently overwrite rules changed elsewhere
+  meanwhile, the services blocked for everyone with their weekly pause
+  schedule, the DNS rewrites with a switch each and one for all, and Check
+  a host, which says what the server would do with a name and why. A
+  Settings tab (added 2026-10-20) has the protection switches (filtering,
+  safe browsing, parental control, safe search by engine), how long the
+  query log and statistics keep things and what they leave out (Reset
+  statistics, Clear query log), the upstream, fallback, bootstrap and
+  private DNS servers with Test upstreams, rate limiting, EDNS client
+  subnet, DNSSEC, IPv6 and the blocking mode, the DNS cache with Clear
+  cache, and the access lists behind a question; encryption, DHCP and the
+  version are shown, not changed, and Check for updates says whether a
+  newer version is out. Each write reads the server first or sends only
+  what changed, so nothing set elsewhere is reset. An
   AdGuard Home dashboard widget shows the state with Pause or Resume, the
   queries and the blocked ones with their share as a ring, a chart of both
   over the period, and the rules on the blocklists. Signed in with HTTP
@@ -208,8 +238,6 @@ Atrium is a **controller** app. Video playback was removed by design
   sign-ins (15 minutes after five, by default), so the health dot probes
   it with no password and cannot flag a wrong one, requests leave one at a
   time, and after a refusal nothing is sent until Try again is tapped.
-  Filters and settings are not built yet, nor the editor of a client's
-  pause schedule, which comes with the filters
 - **MySpeed** (added 2026-09-20 by lxBlazarxl, live-verified against 1.0.9):
   execution status with a manual run, the last 24 hours of results, a
   history with averages and a search by test id, the server's config and
@@ -237,8 +265,9 @@ Atrium is a **controller** app. Video playback was removed by design
   2026-09-20, when it was brought to parity with Transmission's own web UI):
   RPC client that rides the shared Dio and handles the CSRF-token handshake
   (409 plus a rotating session id) transparently, with optional HTTP Basic.
-  Torrent list with the web UI's nine filters (Active, Downloading, Seeding,
-  Paused, Finished, Error, Private, Public), tracker and label chips, search,
+  Torrent list with the web UI's nine filters (All, Active, Downloading,
+  Seeding, Paused, Finished, Error, Private, Public) plus trackers and labels
+  in a filter drawer (rebuilt by lxBlazarxl in PR #209, #200), search,
   ten sort fields, compact rows, long-press selection with bulk actions, pause
   all / start all, and per-torrent resume / resume now / pause / verify /
   reannounce / set location / rename / edit labels / copy magnet link / queue
@@ -274,6 +303,89 @@ Atrium is a **controller** app. Video playback was removed by design
   app downloads the file itself and sends the bytes, which does work. That
   fetch deliberately uses a bare Dio rather than the instance one, so an
   instance's credentials are never sent to whatever host a pasted link names
+
+- **aria2** (beta; contributed by Bhavyashah94 in PR #202, #167; added 2026-10-21, modernized 2026-10-22, live-verified against 1.37.0): the
+  client that speaks its own protocol rather than a REST API - JSON-RPC over
+  `POST /jsonrpc`, with the daemon's `--rpc-secret` sent as `token:<secret>` as the first
+  parameter of every call and nowhere else. It is a parameter, not a header,
+  so the secret never rides to a proxy by accident, and it is optional: a
+  daemon started without one answers anyone, so the instance form asks for it
+  but does not demand it. One batched `system.multicall` poll asks for the
+  three download lists, the daemon's totals, and its version in a single
+  atomic round-trip; aria2's numbers arrive as strings, so the models parse both
+  primitive and string representations robustly.
+  The UI features a streamlined transfers workflow built on Material 3 dynamic
+  theming without any hardcoded colors:
+  - **Transfers Hub**: Hero telemetry bar with live aggregate download/upload speeds,
+    active/waiting/stopped counters, dynamic filter chips with badge counts,
+    real-time query search across names, GIDs, paths, and Bittorrent info-hashes,
+    and multi-field sorting (name, progress, size, speed, ETA) with asc/desc direction toggling.
+  - **Batch Operations**: Multi-select mode with master select all / clear all, and
+    batch actions (pause active, resume queued, remove with confirmation dialog).
+  - **Transfer Cards**: Clean transfer rows displaying progress bars, speed metrics,
+    ETA, completed/total size, pause/resume toggle, and quick access to top-of-queue
+    or detail inspection.
+  - **Deep Inspector**: Dedicated detail screen featuring:
+    - *Overview*: GID, directory path, info-hash, piece length, piece count, error codes, and live transfer rates.
+    - *Files*: Interactive file list with completion status and per-file selection checkboxes for multi-file torrents.
+    - *Sources & Mirrors*: Live connection states, active mirror URIs, dynamic mirror injection dialog (`changeUri`), and mirror removal.
+    - *BitTorrent Peers*: Real-time peer list from `getPeers` displaying peer IP/port, decoded client software name, choking/seeding flags, and transfer rates.
+    - *Speed Overrides*: Live per-download rate limiting (`changeOption` for `max-download-limit` and `max-upload-limit`).
+  - **Settings Tab**: Daemon global options editor categorized into Bandwidth, Concurrency,
+    Storage, and BitTorrent, supporting inline modification of global limits, connection splits,
+    file allocation, and max peers, with clear read-only indicators for daemon startup options
+    configured in `aria2.conf` (disk cache, DHT, listen port).
+  - **System Diagnostics Tab**: Real-time daemon session ID, enabled features list (Async DNS,
+    BitTorrent, Firefox3 Cookie, GZip, HTTPS, Message Digest, Metalink, XML-RPC), session flush
+    to disk, and graceful daemon shutdown trigger with confirmation dialog.
+  A refused secret is reported honestly: aria2 answers a wrong secret with HTTP 400 and an
+  `error` envelope, so the health dot warns instead of calling the daemon healthy.
+  The health probe inspects the JSON-RPC envelope rather than trusting the status alone.
+  Verified against a real aria2 1.37.0 daemon: downloads transfer live, speed limits apply
+  immediately, mirrors are injected and removed on the fly, `.torrent` files and magnets load.
+  The live test lives in the package (`test/live_aria2_test.dart`) and needs
+  `ARIA2_URL` and `ARIA2_SECRET` to run.
+
+- **Cleanuparr** (beta; contributed by Bhavyashah94 in PR #207, #188; added 2026-10-23): the automated malware blocker and
+  queue cleaner for the Servarr ecosystem and download clients (`service_cleanuparr`).
+  Default port 11011, role: `ServiceRole.extra` (the Extra group), API key authentication via
+  `X-Api-Key` header.
+  - **Overview tab**: System status card (version, uptime, memory, connected Arrs & clients),
+    selectable timeframes (24h, 7d, 30d), 4 operational metric cards (Malware Blocked, Active Strikes,
+    Cleaned Torrents, Seeker Searches), and background cleaner jobs with on-demand run triggers.
+  - **Strikes tab**: Live strikes counter badge on bottom nav, instant substring search,
+    strike item cards with strike counters (`2/3`), failure reason breakdown, and strike reset
+    operations (`DELETE /api/strikes/{id}`).
+  - **Events tab**: Search bar, category filter chips (`All`, `Malware`, `Strikes`, `Deletions`,
+    `Cleaned`), audit log feed with severity indicators, and detail bottom sheet.
+  - **Dashboard widget**: Compact `DashboardCleanuparrWidget` on the board displaying
+    malware blocked counts, active strikes, and top strike alerts.
+  - Strictly zero hardcoded colors (`Theme.of(context).colorScheme`).
+  - Pull-to-refresh (`EasyRefresh`) with `AlwaysScrollableScrollPhysics` on all tabs.
+
+- **slskd** (beta; contributed by Bhavyashah94 in PR #211, #107; merged 2026-10-31): the modern mobile client for the Soulseek peer-to-peer
+  music sharing network (`service_slskd`).
+  Default port 5030, role: `ServiceRole.downloader`, API key authentication via
+  `X-Api-Key` header, optional for a daemon with auth turned off. The
+  connection test reads a login page in front of slskd as reachable but not
+  passing. Locked files are left out of folder and album downloads, an
+  offline peer's shares say so rather than look empty, and chats open on the
+  newest message.
+  - **Transfers tab**: Active, Queued, Completed, and Failed transfer queues with real-time speed,
+    progress indicators, grouped (by peer) and flat views, inline actions (cancel, retry, remove,
+    prioritize), filter bottom sheet, and comprehensive analytics sheet (transfer telemetry,
+    peer leaderboard, and Pareto failure charts).
+  - **Search tab**: Concurrent P2P search, active query chips, real-time polling of incomplete
+    searches, album-grouped and flat track results, bitrate and format filters, and 1-tap download
+    batch enqueueing.
+  - **Browse tab**: Hierarchical peer shares navigation with breadcrumb traversal, folder contents
+    viewer, locked share badges, 1-tap folder download, and peer user profile bio sheet.
+  - **Community tab**: Dual-view hub for public chat rooms and 1-on-1 direct messages, room
+    discovery modal, online members drawer with presence dots, room ticker updates, and chat history.
+  - **System tab**: TabBar with Daemon Health metrics, local file shares browser, and historical log reader
+    with severity filters and search.
+  - **Dashboard widget**: Integrated into `DashboardWidgetKind.downloads` for cross-service queue tracking.
+  - Strictly dynamic Material 3 theming with `AtriumBottomNav` system insets support and `ExpressiveProgressIndicator`.
 
 - **iOS**: the target exists and CI builds it unsigned on macOS on every
   change, so it cannot rot unnoticed. Deep links already no-op off Android and

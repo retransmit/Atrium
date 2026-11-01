@@ -87,7 +87,13 @@ class _AdguardHomeClientSheetState
     }
   }
 
+  /// Asks again. After a refused sign-in the session sends nothing until
+  /// it is asked to, and this is the asking: without it the button would
+  /// only get the same refusal back, without a word to the server.
   void _retry() {
+    if (_error is AdguardHomeSignInRefused) {
+      ref.read(adguardHomeActionsProvider(widget.instance)).retrySignIn();
+    }
     setState(() => _error = null);
     _find();
   }
@@ -152,8 +158,6 @@ class _AdguardHomeClientSheetState
                         theme.textTheme.bodyMedium?.copyWith(color: cs.error),
                   ),
                   const SizedBox(height: Insets.sm),
-                  // After a refused sign-in this sends nothing: the session
-                  // answers for the server until Try again is asked for.
                   FilledButton.tonalIcon(
                     onPressed: _retry,
                     icon: const Icon(Icons.refresh),

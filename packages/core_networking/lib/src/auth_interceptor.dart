@@ -38,6 +38,7 @@ const String anonymousRequestExtra = 'atrium.anonymous';
 /// | Deluge                   | `Cookie: _session_id=…` after `auth.login`  |
 /// | Navidrome                | `?u=` + `?t=` salted MD5 + `?s=` query params |
 /// | Ombi                     | `ApiKey` header                             |
+/// | aria2                    | `token:<secret>` as the first RPC parameter |
 ///
 /// `Jellyfin/Emby` and `qBittorrent` both use the user/password auth flow:
 /// the session token / cookie is acquired out of band and stored in the
@@ -87,6 +88,17 @@ class AuthInterceptor extends Interceptor {
             if (apiKey.isNotEmpty) {
               options.headers['x-password'] = Uri.encodeComponent(apiKey);
               if (fitsHeaderValue(apiKey)) options.headers['password'] = apiKey;
+            }
+          case ServiceKind.aria2:
+            // aria2's credential is its `--rpc-secret`, and the daemon reads
+            // it as the first parameter of every RPC call - not as a header.
+            // Sending it as one would hand the secret to every proxy in the
+            // path for no gain, so nothing goes out here; the service module
+            // puts it in the RPC parameters where it belongs.
+            break;
+          case ServiceKind.slskd:
+            if (apiKey.isNotEmpty) {
+              options.headers['X-Api-Key'] = apiKey;
             }
           case _:
             options.headers['X-Api-Key'] = apiKey;

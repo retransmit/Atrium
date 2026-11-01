@@ -742,7 +742,23 @@ void main() {
       );
 
       expect(find.text('Blocked service'), findsWidgets);
-      expect(find.text('tiktok'), findsOneWidget);
+      // By its name in the server's catalogue, not its id.
+      expect(find.text('TikTok'), findsOneWidget);
+      expect(find.text('tiktok'), findsNothing);
+    });
+
+    testWidgets('a service the catalogue does not know goes by its id',
+        (WidgetTester tester) async {
+      await open(
+        tester,
+        entry(
+          domain: 'gone.example',
+          reason: 'FilteredBlockedService',
+          serviceName: 'gone_service',
+        ),
+      );
+
+      expect(find.text('gone_service'), findsOneWidget);
     });
 
     testWidgets('says what shuts a shut-out client out',

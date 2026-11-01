@@ -64,6 +64,7 @@ void main() {
         delugeInstances: const <Instance>[],
         transmissionInstances: const <Instance>[],
         rtorrentInstances: const <Instance>[],
+        aria2Instances: const <Instance>[],
       ),
     );
 
@@ -115,6 +116,7 @@ void main() {
         delugeInstances: const <Instance>[],
         transmissionInstances: const <Instance>[],
         rtorrentInstances: const <Instance>[],
+        aria2Instances: const <Instance>[],
       ),
     );
 
@@ -159,6 +161,7 @@ void main() {
         delugeInstances: const <Instance>[],
         transmissionInstances: const <Instance>[],
         rtorrentInstances: const <Instance>[],
+        aria2Instances: const <Instance>[],
       ),
     );
 

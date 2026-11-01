@@ -1,4 +1,8 @@
 import 'models/adguard_home_clients.dart';
+import 'models/adguard_home_filters.dart';
+import 'models/adguard_home_json.dart';
+
+export 'models/adguard_home_json.dart' show adguardHomeJsonEquals;
 
 /// The largest cache size the server can hold: it keeps it in 32 bits.
 const int adguardHomeMaxCacheSize = 4294967295;
@@ -33,6 +37,7 @@ class AdguardHomeClientDraft {
     required this.upstreamsCacheSize,
     required this.ignoreQueryLog,
     required this.ignoreStatistics,
+    this.schedule = const AdguardHomeSchedule(),
   });
 
   /// A client that is not there yet, as the web UI starts one: on the
@@ -52,7 +57,9 @@ class AdguardHomeClientDraft {
         upstreamsCacheEnabled = false,
         upstreamsCacheSize = '0',
         ignoreQueryLog = false,
-        ignoreStatistics = false;
+        ignoreStatistics = false,
+        // Empty, in the server's own time zone, as the web UI starts one.
+        schedule = const AdguardHomeSchedule(timeZone: 'Local');
 
   /// The settings of [client], to be changed.
   factory AdguardHomeClientDraft.of(AdguardHomeClient client) {
@@ -74,6 +81,9 @@ class AdguardHomeClientDraft {
       upstreamsCacheSize: '${client.upstreamsCacheSize}',
       ignoreQueryLog: client.ignoreQueryLog,
       ignoreStatistics: client.ignoreStatistics,
+      schedule: AdguardHomeSchedule.fromJson(
+        client.json['blocked_services_schedule'],
+      ),
     );
   }
 
@@ -101,6 +111,10 @@ class AdguardHomeClientDraft {
   final bool ignoreQueryLog;
   final bool ignoreStatistics;
 
+  /// When its own blocked services are let through. It applies only while
+  /// the client does not use the global list.
+  final AdguardHomeSchedule schedule;
+
   AdguardHomeClientDraft copyWith({
     String? name,
     List<String>? ids,
@@ -117,6 +131,7 @@ class AdguardHomeClientDraft {
     String? upstreamsCacheSize,
     bool? ignoreQueryLog,
     bool? ignoreStatistics,
+    AdguardHomeSchedule? schedule,
   }) =>
       AdguardHomeClientDraft(
         name: name ?? this.name,
@@ -136,6 +151,7 @@ class AdguardHomeClientDraft {
         upstreamsCacheSize: upstreamsCacheSize ?? this.upstreamsCacheSize,
         ignoreQueryLog: ignoreQueryLog ?? this.ignoreQueryLog,
         ignoreStatistics: ignoreStatistics ?? this.ignoreStatistics,
+        schedule: schedule ?? this.schedule,
       );
 
   /// The identifiers that will be sent: trimmed, and no empty rows. The
@@ -197,6 +213,7 @@ class AdguardHomeClientDraft {
         'upstreams_cache_size': cacheSize ?? 0,
         'ignore_querylog': ignoreQueryLog,
         'ignore_statistics': ignoreStatistics,
+        'blocked_services_schedule': schedule.toJson(),
       };
 }
 
@@ -204,13 +221,8 @@ class AdguardHomeClientDraft {
 ///
 /// Every setting is spelled out: what is left out the server takes as off,
 /// so a client added with only a name would not use the global settings.
-/// The pause schedule starts empty in the server's own time zone, as the
-/// web UI starts it.
 Map<String, dynamic> adguardHomeNewClient(AdguardHomeClientDraft draft) =>
-    <String, dynamic>{
-      ...draft.toJson(),
-      'blocked_services_schedule': <String, dynamic>{'time_zone': 'Local'},
-    };
+    draft.toJson();
 
 /// What to send for a client that was changed in the form: [current], the
 /// client as the server has it now, with the settings that differ between
@@ -233,27 +245,6 @@ Map<String, dynamic> adguardHomeClientWrite({
       if (!adguardHomeJsonEquals(was[setting.key], setting.value))
         setting.key: setting.value,
   };
-}
-
-/// Whether two values read from JSON, or built to be sent as it, hold the
-/// same. The order of an object's properties does not count; a list's does.
-bool adguardHomeJsonEquals(Object? a, Object? b) {
-  if (a is Map<Object?, Object?> && b is Map<Object?, Object?>) {
-    if (a.length != b.length) return false;
-    for (final MapEntry<Object?, Object?> entry in a.entries) {
-      if (!b.containsKey(entry.key)) return false;
-      if (!adguardHomeJsonEquals(entry.value, b[entry.key])) return false;
-    }
-    return true;
-  }
-  if (a is List<Object?> && b is List<Object?>) {
-    if (a.length != b.length) return false;
-    for (int i = 0; i < a.length; i++) {
-      if (!adguardHomeJsonEquals(a[i], b[i])) return false;
-    }
-    return true;
-  }
-  return a == b;
 }
 
 /// The persistent client among [clients] that [id] belongs to: one that
@@ -306,6 +297,41 @@ List<int>? adguardHomeAddressBytes(String text) {
   }
 }
 
+/// An address [client] can be checked as. The server's Check a host takes
+/// only an address for its client: not a name, a MAC address or a ClientID.
+/// So the first address the client lists, or else the first in its first
+/// range of the older kind; null when it has neither.
+String? adguardHomeCheckAddressOf(AdguardHomeClient client) {
+  for (final String id in client.ids) {
+    if (!id.contains('/') && adguardHomeAddressBytes(id) != null) return id;
+  }
+  for (final String id in client.ids) {
+    final int slash = id.indexOf('/');
+    if (slash < 0) continue;
+    final String start = id.substring(0, slash);
+    final int? bits = int.tryParse(id.substring(slash + 1));
+    final List<int>? network = adguardHomeAddressBytes(start);
+    if (network == null || network.length != 4 || bits == null) continue;
+    if (bits < 0 || bits > 32) continue;
+    if (bits >= 31) return start;
+    // Past the network's own address, which no device has.
+    final int value = ((network[0] << 24) |
+            (network[1] << 16) |
+            (network[2] << 8) |
+            network[3]) &
+        (0xffffffff << (32 - bits)) &
+        0xffffffff;
+    final int host = value + 1;
+    return <int>[
+      (host >> 24) & 0xff,
+      (host >> 16) & 0xff,
+      (host >> 8) & 0xff,
+      host & 0xff,
+    ].join('.');
+  }
+  return null;
+}
+
 /// How many leading bits [range] fixes, when it is a range that [address]
 /// is inside. Minus one when it is not a range, cannot be read, or does not
 /// hold the address.
@@ -328,4 +354,20 @@ int _bitsOfRangeHolding(String range, List<int> address) {
     if ((network[whole] & mask) != (address[whole] & mask)) return -1;
   }
   return bits;
+}
+
+/// What is wrong with [text] as an IP address of the kind [version] says
+/// (4, 6, or either when null), or null when it is one.
+String? adguardHomeIpProblem(String text, {int? version}) {
+  final List<int>? bytes = adguardHomeAddressBytes(text.trim());
+  final bool fits = bytes != null &&
+      (version == null ||
+          (version == 4 && bytes.length == 4) ||
+          (version == 6 && bytes.length == 16));
+  if (fits) return null;
+  return switch (version) {
+    4 => 'An IPv4 address, such as 0.0.0.0.',
+    6 => 'An IPv6 address, such as ::.',
+    _ => 'An IP address.',
+  };
 }

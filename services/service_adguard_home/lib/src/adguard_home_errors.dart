@@ -80,10 +80,63 @@ class AdguardHomeClientGone implements Exception {
   String toString() => message;
 }
 
+/// The custom rules on the server are no longer the ones the editor was
+/// opened with: a block from the query log, or the web UI, changed them.
+/// Saving would replace those changes, so it is not done unasked.
+class AdguardHomeRulesChanged implements Exception {
+  const AdguardHomeRulesChanged(this.rules);
+
+  /// The rules as the server has them now.
+  final List<String> rules;
+
+  static const String message =
+      'The custom rules were changed on the server since you opened them.';
+
+  @override
+  String toString() => message;
+}
+
+/// A list or a rewrite that was to be changed is not on the server as it
+/// was read: someone changed or removed it in the meantime. Nothing is
+/// written then.
+class AdguardHomeEntryGone implements Exception {
+  const AdguardHomeEntryGone(this.what);
+
+  /// What it was, as a sentence names it: "list", "rewrite".
+  final String what;
+
+  String get message => 'The $what is no longer on the server as it was. '
+      'It was changed or removed somewhere else.';
+
+  @override
+  String toString() => message;
+}
+
+/// The server holds a rewrite more than once. It tells rewrites apart only
+/// by their domain and answer, so a change would land on the first copy
+/// whichever was meant, and nothing is written.
+class AdguardHomeRewriteRepeated implements Exception {
+  const AdguardHomeRewriteRepeated(this.domain, this.copies);
+
+  final String domain;
+
+  /// How many there are.
+  final int copies;
+
+  String get message => 'AdGuard Home holds the rewrite of $domain $copies '
+      'times and can only change the first. Delete it and add it again.';
+
+  @override
+  String toString() => message;
+}
+
 /// One sentence for whatever went wrong, fit to show as it is.
 String describeAdguardHomeError(Object error) => switch (error) {
       AdguardHomeSignInRefused() => 'AdGuard Home refused the sign-in.',
       AdguardHomeClientGone(:final String message) => message,
+      AdguardHomeEntryGone(:final String message) => message,
+      AdguardHomeRewriteRepeated(:final String message) => message,
+      AdguardHomeRulesChanged() => AdguardHomeRulesChanged.message,
       AdguardHomeLastAllowedClient() => AdguardHomeLastAllowedClient.message,
       AdguardHomeAllowedByWiderEntry() =>
         AdguardHomeAllowedByWiderEntry.message,

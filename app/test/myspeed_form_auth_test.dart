@@ -23,18 +23,12 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await tester.pumpWidget(
-      const ProviderScope(child: MaterialApp(home: InstanceFormScreen())),
+      const ProviderScope(
+        child: MaterialApp(
+          home: InstanceFormScreen(initialKind: ServiceKind.myspeed),
+        ),
+      ),
     );
-
-    await tester.tap(find.byType(DropdownMenu<ServiceKind>));
-    await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-      find.text('MySpeed - Internet speed'),
-      200,
-      scrollable: find.byType(Scrollable).last,
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('MySpeed - Internet speed'));
     await tester.pumpAndSettle();
 
     final FormField<String> field = passwordField(tester);

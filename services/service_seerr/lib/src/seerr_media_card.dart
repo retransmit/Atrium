@@ -187,7 +187,8 @@ class SeerrRequestCard extends StatelessWidget {
   /// available, 5 available.
   final int? mediaStatus;
 
-  /// Request approval status: 1 pending, 2 approved, 3 declined, 4 failed.
+  /// Request approval status: 1 pending, 2 approved, 3 declined, 4 failed,
+  /// 5 completed.
   final int? requestStatus;
 
   /// Optional top-right widget (the request actions menu).
@@ -350,8 +351,11 @@ class SeerrRequestCard extends StatelessWidget {
       pills.add(SeerrStatusPill(style: media));
     }
     final SeerrStatusStyle? approval = seerrRequestStatusStyle(requestStatus);
-    // 'Approved' only adds information when no availability pill is shown.
-    if (approval != null && !(requestStatus == 2 && media != null)) {
+    // 'Approved' and 'Completed' only add information when no availability
+    // pill is shown.
+    final bool saidByMedia =
+        (requestStatus == 2 || requestStatus == 5) && media != null;
+    if (approval != null && !saidByMedia) {
       pills.add(SeerrStatusPill(style: approval));
     }
     return pills;

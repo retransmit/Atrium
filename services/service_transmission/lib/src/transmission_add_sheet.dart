@@ -13,6 +13,9 @@ import 'transmission_format.dart';
 import 'transmission_providers.dart';
 import 'transmission_visuals.dart';
 
+/// Which half of the add sheet is showing when it opens.
+enum TransmissionAddMode { link, file }
+
 /// Opens the add-torrent sheet for [instance].
 ///
 /// The optional arguments prefill the sheet when another app shares torrents
@@ -20,11 +23,15 @@ import 'transmission_visuals.dart';
 /// for one or more `.torrent` files handed over as bytes. A batch shares one
 /// download directory and one paused choice, since answering those per torrent
 /// is unusable past a handful.
+///
+/// [initialMode] picks the tab the sheet opens on, which is how the list's
+/// two floating buttons each land on their own half.
 Future<void> showTransmissionAddSheet(
   BuildContext context,
   Instance instance, {
   String? initialLink,
   List<TorrentFileArg>? initialFiles,
+  TransmissionAddMode initialMode = TransmissionAddMode.link,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -37,6 +44,7 @@ Future<void> showTransmissionAddSheet(
       instance: instance,
       initialLink: initialLink,
       initialFiles: initialFiles,
+      initialMode: initialMode,
     ),
   );
 }
@@ -57,11 +65,13 @@ class _TransmissionAddSheet extends ConsumerStatefulWidget {
     required this.instance,
     this.initialLink,
     this.initialFiles,
+    this.initialMode = TransmissionAddMode.link,
   });
 
   final Instance instance;
   final String? initialLink;
   final List<TorrentFileArg>? initialFiles;
+  final TransmissionAddMode initialMode;
 
   @override
   ConsumerState<_TransmissionAddSheet> createState() =>
@@ -99,8 +109,14 @@ class _TransmissionAddSheetState
     if (shared != null && shared.isNotEmpty) {
       _mode = _AddMode.file;
       _files.addAll(shared);
-    } else if (widget.initialLink != null) {
-      _link.text = widget.initialLink!;
+    } else {
+      // A shared file or link wins over the tab the caller asked for: it is
+      // the whole reason the sheet was opened.
+      if (widget.initialLink != null) _link.text = widget.initialLink!;
+      _mode = widget.initialLink == null &&
+              widget.initialMode == TransmissionAddMode.file
+          ? _AddMode.file
+          : _AddMode.link;
     }
   }
 

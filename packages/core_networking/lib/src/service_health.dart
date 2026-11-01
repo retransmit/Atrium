@@ -56,6 +56,8 @@ enum _HealthMode {
       );
     case ServiceKind.tracearr:
       return (path: 'api/v2/public/docs', mode: _HealthMode.authed);
+    case ServiceKind.cleanuparr:
+      return (path: 'api/status', mode: _HealthMode.authed);
     case ServiceKind.gluetun:
       // The control server answers whether or not the tunnel is up, so the
       // answer is read for the VPN status; see the gluetun arm of
@@ -128,23 +130,54 @@ enum _HealthMode {
       // not be signed: see [_HealthMode.anonymous]. So the dot cannot tell a
       // wrong password from a right one, by design.
       return (path: 'control/status', mode: _HealthMode.anonymous);
+    case ServiceKind.aria2:
+      // aria2's only interface is its JSON-RPC endpoint, so the probe POSTs
+      // a call there. The daemon answers a wrong `--rpc-secret` with HTTP
+      // 400 and an `error` envelope, which the `authed` reading turns into
+      // a warning - the host is up, the secret is not.
+      return (path: 'jsonrpc', mode: _HealthMode.authed);
+    case ServiceKind.slskd:
+      return (path: 'api/v0/application', mode: _HealthMode.authed);
   }
 }
 
-/// The request body to POST for [kind], or null to probe with a plain GET.
+/// The request body to POST for [instance], or null to probe with a plain GET.
 ///
-/// Only rTorrent needs this: it has no GET-able status endpoint, so the probe
-/// sends the cheapest XML-RPC call there is.
-String? _probeBody(ServiceKind kind) => switch (kind) {
+/// Only rTorrent, Unraid and aria2 need this: none of them has a GET-able
+/// status endpoint, so the probe sends the cheapest call there is.
+String? _probeBody(Instance instance) => switch (instance.kind) {
       ServiceKind.rtorrent => '<?xml version="1.0"?><methodCall>'
           '<methodName>system.client_version</methodName>'
           '<params></params></methodCall>',
       // GraphQL has no status route. `__typename` is the smallest legal query
       // and answers on any schema, so it costs the server nothing.
       ServiceKind.unraid => '{"query":"{__typename}"}',
-      ServiceKind.beszel => null,
+      ServiceKind.aria2 => _aria2ProbeBody(instance),
       _ => null,
     };
+
+/// The JSON-RPC body of an aria2 liveness probe.
+///
+/// `aria2.getVersion` is the cheapest call there is: it touches no download
+/// and returns the daemon's version. The secret goes in as the first
+/// parameter, prefixed with `token:`, exactly as the daemon expects - a
+/// daemon started without `--rpc-secret` answers anyone, so the parameter is
+/// left out entirely then.
+String _aria2ProbeBody(Instance instance) {
+  final String secret = switch (instance.auth) {
+    InstanceAuthApiKey(:final String apiKey) => apiKey,
+    InstanceAuthUserPass() ||
+    InstanceAuthPlex() ||
+    InstanceAuthCookie() =>
+      '',
+  };
+  return jsonEncode(<String, dynamic>{
+    'jsonrpc': '2.0',
+    'id': 'atrium',
+    'method': 'aria2.getVersion',
+    'params': secret.isEmpty ? <dynamic>[] : <dynamic>['token:$secret'],
+  });
+}
 
 /// Content type for the probe body.
 ///
@@ -152,6 +185,7 @@ String? _probeBody(ServiceKind kind) => switch (kind) {
 /// two POST probes cannot share one header.
 String _probeContentType(ServiceKind kind) => switch (kind) {
       ServiceKind.unraid => Headers.jsonContentType,
+      ServiceKind.aria2 => Headers.jsonContentType,
       _ => 'text/xml',
     };
 
@@ -184,7 +218,7 @@ class HealthProbe {
     Dio? dio;
     try {
       dio = await _dioFactory.create(instance);
-      final String? body = _probeBody(instance.kind);
+      final String? body = _probeBody(instance);
       final Options options = Options(
         validateStatus: (_) => true,
         extra: cfg.mode == _HealthMode.anonymous
@@ -300,6 +334,12 @@ Health interpretServiceHealthResponse(
           // endpoint, so the URL is pointed at the wrong place.
           return Health.warning;
         }
+        if (kind == ServiceKind.aria2 && !_aria2SaysOk(data)) {
+          // If a reverse proxy or RPC gateway returns 200 with an `error`
+          // envelope or missing `result` map rather than the version payload,
+          // ensure it flags a warning rather than falsely reporting healthy.
+          return Health.warning;
+        }
         return Health.ok;
       }
       // 401/403, API-level 4xx, redirects, and 5xx all prove the host answered
@@ -319,6 +359,30 @@ Health interpretServiceHealthResponse(
 
 bool _isSpeedtestResultsEnvelope(Object? data) =>
     data is Map && data['data'] is List;
+
+/// Whether an aria2 JSON-RPC answer proves the daemon is there.
+///
+/// The probe asks for `aria2.getVersion`. While aria2 rejects a refused secret
+/// with HTTP 400, some reverse proxies or RPC gateways reply with HTTP 200 and
+/// an `error` envelope. `_aria2SaysOk` ensures only a valid `result` envelope
+/// is accepted as healthy.
+bool _aria2SaysOk(Object? data) {
+  Object? body = data;
+  if (body is String) {
+    try {
+      body = jsonDecode(body);
+    } on FormatException {
+      return false;
+    }
+  }
+  if (body is! Map) {
+    return false;
+  }
+  if (body['error'] != null) {
+    return false;
+  }
+  return body['result'] is Map;
+}
 
 /// The VPN status in a Gluetun answer, or null if [data] is not one.
 ///

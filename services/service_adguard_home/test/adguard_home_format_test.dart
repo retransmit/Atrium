@@ -60,6 +60,25 @@ void main() {
     expect(formatAdguardHomeElapsed(null), '');
   });
 
+  test('retention is named as the web UI names its choices', () {
+    expect(adguardHomeRetentionLabel(const Duration(hours: 1)), '1 hour');
+    expect(adguardHomeRetentionLabel(const Duration(hours: 6)), '6 hours');
+    expect(adguardHomeRetentionLabel(const Duration(hours: 24)), '24 hours');
+    expect(adguardHomeRetentionLabel(const Duration(days: 7)), '7 days');
+    expect(adguardHomeRetentionLabel(const Duration(days: 90)), '90 days');
+    expect(adguardHomeRetentionLabel(const Duration(hours: 30)), '30 hours');
+  });
+
+  test('cache sizes read in steps of 1024', () {
+    expect(adguardHomeBytesLabel(0), '0 bytes');
+    expect(adguardHomeBytesLabel(1), '1 byte');
+    expect(adguardHomeBytesLabel(1023), '1023 bytes');
+    expect(adguardHomeBytesLabel(1024), '1 KB');
+    expect(adguardHomeBytesLabel(4194304), '4 MB');
+    expect(adguardHomeBytesLabel(1572864), '1.5 MB');
+    expect(adguardHomeBytesLabel(4294967295), '4 GB');
+  });
+
   group('when a query came in', () {
     // The server sends UTC. These are built in local time and turned into
     // UTC, so the test reads the same in every time zone.
@@ -232,5 +251,49 @@ void main() {
     expect(adguardHomeServicesBlockedLabel(0), 'No services blocked');
     expect(adguardHomeServicesBlockedLabel(1), '1 service blocked');
     expect(adguardHomeServicesBlockedLabel(12), '12 services blocked');
+  });
+
+  test('a weekday goes by its whole name', () {
+    expect(adguardHomeWeekdayName('mon'), 'Monday');
+    expect(adguardHomeWeekdayName('sun'), 'Sunday');
+    expect(adguardHomeWeekdayName('xyz'), 'xyz');
+  });
+
+  test('a time of day is written on the 24-hour clock', () {
+    expect(formatAdguardHomeClock(Duration.zero), '00:00');
+    expect(
+      formatAdguardHomeClock(const Duration(hours: 9, minutes: 5)),
+      '09:05',
+    );
+    expect(formatAdguardHomeClock(const Duration(hours: 24)), '24:00');
+  });
+
+  test('a pause reads as its hours, or all day', () {
+    expect(
+      adguardHomePauseLabel(
+        const AdguardHomeServicePause(
+          day: 'sat',
+          start: Duration(hours: 9),
+          end: Duration(hours: 17),
+        ),
+      ),
+      '09:00 to 17:00',
+    );
+    expect(
+      adguardHomePauseLabel(
+        const AdguardHomeServicePause(
+          day: 'sun',
+          start: Duration.zero,
+          end: Duration(hours: 24),
+        ),
+      ),
+      'All day',
+    );
+  });
+
+  test('the server\'s own time zone goes by a name, not its keyword', () {
+    expect(adguardHomeTimeZoneLabel('Local'), "The server's time zone");
+    expect(adguardHomeTimeZoneLabel(''), "The server's time zone");
+    expect(adguardHomeTimeZoneLabel('Europe/Berlin'), 'Europe/Berlin');
   });
 }

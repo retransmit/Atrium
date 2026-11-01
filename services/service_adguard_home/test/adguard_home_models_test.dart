@@ -274,6 +274,25 @@ void main() {
         expect(adguardHomeFilterListName(null, 0), 'Custom filtering rules');
       });
 
+      test('is the address of a list with no name', () {
+        const AdguardHomeFiltering unnamed = AdguardHomeFiltering(
+          blocklists: <AdguardHomeFilterList>[
+            AdguardHomeFilterList(
+              id: 7,
+              name: '',
+              url: 'https://lists.example/plain.txt',
+              enabled: true,
+              rulesCount: 1,
+            ),
+          ],
+        );
+
+        expect(
+          adguardHomeFilterListName(unnamed, 7),
+          'https://lists.example/plain.txt',
+        );
+      });
+
       test('says so when the list is gone or was never read', () {
         expect(adguardHomeFilterListName(filtering, 99), 'Unknown filter 99');
         expect(adguardHomeFilterListName(null, 1), 'Unknown filter 1');

@@ -16,7 +16,9 @@ abstract class SeerrRequestPage with _$SeerrRequestPage {
 
 /// A media request.
 ///
-/// `status`: 1 = pending approval, 2 = approved, 3 = declined.
+/// `status`: 1 = pending approval, 2 = approved, 3 = declined,
+/// 4 = failed (could not be sent on to Sonarr or Radarr), 5 = completed
+/// (approved, and the media is now available).
 @freezed
 abstract class SeerrRequest with _$SeerrRequest {
   const factory SeerrRequest({

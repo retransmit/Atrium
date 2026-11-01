@@ -35,12 +35,14 @@ SeerrStatusStyle? seerrMediaStatusStyle(int? status) => switch (status) {
     };
 
 /// Style for a request's approval status: 1 pending (amber), 2 approved
-/// (green), 3 declined (red), 4 failed (red). Returns null otherwise.
+/// (green), 3 declined (red), 4 failed (red), 5 completed (green).
+/// Returns null otherwise.
 SeerrStatusStyle? seerrRequestStatusStyle(int? status) => switch (status) {
       1 => const SeerrStatusStyle(_amber, Icons.pending, 'Pending'),
       2 => const SeerrStatusStyle(_green, Icons.check_circle, 'Approved'),
       3 => const SeerrStatusStyle(_red, Icons.cancel, 'Declined'),
       4 => const SeerrStatusStyle(_red, Icons.error_outline, 'Failed'),
+      5 => const SeerrStatusStyle(_green, Icons.task_alt, 'Completed'),
       _ => null,
     };
 

@@ -141,6 +141,7 @@ void main() {
         delugeInstances: <Instance>[],
         transmissionInstances: <Instance>[],
         rtorrentInstances: <Instance>[],
+        aria2Instances: <Instance>[],
       ),
     );
     expect(find.text('Ubuntu ISO'), findsOneWidget);

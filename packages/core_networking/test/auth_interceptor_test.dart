@@ -116,6 +116,33 @@ void main() {
     expect(request.headers.containsKey('Authorization'), isFalse);
   });
 
+  test('aria2 sends no auth header at all', () async {
+    // The daemon reads its `--rpc-secret` from the first parameter of every
+    // RPC call, not from a header. A header would hand the secret to every
+    // proxy on the path for no gain.
+    const String secret = 'placeholder-aria2-secret';
+    final _RecordingAdapter adapter = _RecordingAdapter();
+    final Dio dio = Dio(BaseOptions(baseUrl: 'http://aria2.example.test/'))
+      ..httpClientAdapter = adapter
+      ..interceptors.add(
+        const AuthInterceptor(
+          kind: ServiceKind.aria2,
+          auth: InstanceAuth.apiKey(apiKey: secret),
+        ),
+      );
+
+    await dio.post<dynamic>(
+      'jsonrpc',
+      data: <String, dynamic>{'method': 'aria2.getVersion'},
+    );
+
+    final RequestOptions request = adapter.request!;
+    expect(request.headers.containsKey('X-Api-Key'), isFalse);
+    expect(request.headers.containsKey('Authorization'), isFalse);
+    expect(request.headers.values.join(), isNot(contains(secret)));
+    expect(request.uri.toString(), isNot(contains(secret)));
+  });
+
   group('AdGuard Home', () {
     Dio dioFor(InstanceAuth auth, _RecordingAdapter adapter) =>
         Dio(BaseOptions(baseUrl: 'http://adguard.example.test/'))

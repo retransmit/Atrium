@@ -7,6 +7,7 @@ import 'package:core_profile/core_profile.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:service_deluge/service_deluge.dart';
+import 'package:service_aria2/service_aria2.dart';
 import 'package:service_qbittorrent/service_qbittorrent.dart';
 import 'package:service_rtorrent/service_rtorrent.dart';
 import 'package:service_transmission/service_transmission.dart';
@@ -137,7 +138,7 @@ class _TorrentShareListenerState extends ConsumerState<TorrentShareListener> {
     if (targets.isEmpty) {
       await _tell(
         'No torrent client is set up in Atrium yet. Add qBittorrent, '
-        'Deluge, Transmission or rTorrent, then share this again.',
+        'Deluge, Transmission, rTorrent or aria2, then share this again.',
       );
       return;
     }
@@ -278,7 +279,14 @@ class _TorrentShareListenerState extends ConsumerState<TorrentShareListener> {
           initialLink: link,
           initialFiles: files,
         );
-      // Unreachable: torrentTargets only yields the four kinds above.
+      case ServiceKind.aria2:
+        await showAria2AddSheet(
+          context,
+          target,
+          initialLink: link,
+          initialFiles: files,
+        );
+      // Unreachable: torrentTargets only yields the kinds above.
       default:
         break;
     }

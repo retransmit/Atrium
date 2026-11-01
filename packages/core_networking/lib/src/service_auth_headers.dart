@@ -27,6 +27,12 @@ Set<String> serviceAuthHeaderNames(ServiceKind kind, InstanceAuth auth) {
           return fitsHeaderValue(apiKey)
               ? const <String>{'password', 'x-password'}
               : const <String>{'x-password'};
+        case ServiceKind.aria2:
+          // The secret is an RPC parameter, not a header, so nothing is set
+          // here - see the aria2 arm of [AuthInterceptor.onRequest].
+          return const <String>{};
+        case ServiceKind.slskd:
+          return apiKey.isEmpty ? const <String>{} : const <String>{'X-Api-Key'};
         case _:
           return const <String>{'X-Api-Key'};
       }
