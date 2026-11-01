@@ -49,7 +49,7 @@ only name that survives every instance in a profile.
 | `Proxy-Authorization` | Use this for proxy credentials. |
 | `CF-Access-Client-Id`, `CF-Access-Client-Secret` | Safe, nothing touches them. |
 | `Authorization` | Overwritten by six services, refused by qBittorrent. |
-| `X-Api-Key` | Overwritten by every *arr. It is their own key header. |
+| `X-Api-Key` | Overwritten by every *arr, Seerr, Cleanuparr, slskd and most other services signed in with an API key. It is their own key header. |
 | Anything else | Fine unless the app warns you about it. |
 
 Whether your proxy *reads* `Proxy-Authorization` is a separate question, and

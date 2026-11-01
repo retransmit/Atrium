@@ -17,7 +17,8 @@ graph TD
 ```
 
 ### 1. Authentication
-- Authenticates using the `X-Api-Key` header mapped from `Instance.apiKey`.
+- Authenticates using the `X-Api-Key` header mapped from `Instance.apiKey`. The key is optional: a daemon with authentication turned off needs none, and then no header is sent.
+- The connection test treats an HTML answer (a reverse proxy's login page) as reachable but not passing, rather than connected.
 - Health probe verifies connectivity against `GET /api/v0/application` directly and checks the server's connected state.
 
 ### 2. Provider Lifecycle & Polling

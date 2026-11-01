@@ -16,9 +16,13 @@ Supported services:
 * Tautulli - active streams, history, statistics and users
 * Tracearr - who is streaming across Plex, Jellyfin and Emby, watch and
   library statistics, history, a media catalog and policy incidents
-* qBittorrent, Deluge, Transmission and rTorrent - torrent lists, transfers
-  and per-torrent files, peers and trackers
+* qBittorrent, Deluge, Transmission, rTorrent and aria2 - torrent and
+  download lists, transfers and per-download files, peers and trackers
 * SABnzbd and NZBGet - usenet queue control and history
+* slskd - Soulseek search, transfers, a peer's shares, chat rooms and
+  direct messages
+* Cleanuparr - malware blocked, strikes on stalled downloads and the audit
+  log of what it cleaned
 * Jellyfin, Emby and Plex - library browsing, item detail, resume rows and
   now-playing sessions
 * Navidrome - artists, albums and tracks, playlists, ratings and favorites
@@ -38,7 +42,8 @@ Features:
   one for the network you are on
 * A dashboard of at-a-glance widgets you can reorder: active downloads, now
   streaming, upcoming releases, recently added, recently downloaded, requests,
-  server vitals, speedtest results, VPN status, DNS protection and Wake-on-LAN
+  server vitals, speedtest results, VPN status, DNS protection, download
+  cleanup and Wake-on-LAN
 * Custom HTTP headers, for the whole profile or one instance, so services
   behind a reverse proxy keep working
 * Profile import and export

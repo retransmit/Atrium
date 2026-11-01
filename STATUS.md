@@ -1,6 +1,6 @@
 # Atrium - Status
 
-> Snapshot of what genuinely works and what is left, as of 2026-10-21.
+> Snapshot of what genuinely works and what is left, as of 2026-11-02.
 > Atrium is published on F-Droid and on the GitHub releases page. It is
 > still in early development and every module is work in progress; nothing
 > here is a release promise.
@@ -14,7 +14,12 @@ Atrium is a **controller** app. Video playback was removed by design
 ## App shell
 
 - Dashboard with role-grouped services sidebar (available on every tab
-  via the shell drawer) and a profile switcher
+  via the shell drawer) and a profile switcher. The groups are Automation,
+  Requests, Analytics, Media servers, Download clients and Extra (Cleanuparr,
+  moved out of Automation on 2026-11-02)
+- **Adding a service** (lxBlazarxl, PR #208, #199) starts from a searchable
+  grid of every service in the same groups, and the form opens set up for the
+  one picked
 - **Activity tab**: cross-instance live feed - summary bar, Now
   Streaming (backdrop session cards from Plex / Jellyfin / Emby /
   Tautulli, tap-through to each module's now-playing screen) and
@@ -24,11 +29,12 @@ Atrium is a **controller** app. Video playback was removed by design
   NZBGet groups, Sonarr/Radarr queues). Per-instance resilience: an unreachable server
   degrades to a chip, never blocks the feed
 - **Calendar tab**: month grid aggregating upcoming Sonarr + Radarr
-  airings/releases with status dots
+  airings/releases with status dots, or a list; the view picked is kept
+  across launches (Bhavyashah94, PR #205, #203)
 - **Dashboard widgets**, reorderable from Customize dashboard: Active
   downloads, Now streaming, Upcoming releases, Recently added, Recently
   downloaded, Requests (Seerr and Ombi), Glances, Dashdot, Speedtest
-  results, MySpeed, Gluetun VPN and Wake on LAN
+  results, MySpeed, Gluetun VPN, AdGuard Home, Cleanuparr and Wake on LAN
 - **Settings**: theme, biometric lock, profile import/export (SAF,
   live-verified), **Wake-on-LAN devices** (profile-stored, magic packets
   over pure Dart UDP), **custom HTTP headers** (global + per-instance,
@@ -58,7 +64,9 @@ Atrium is a **controller** app. Video playback was removed by design
   network interfaces the server actually routes. Torrents are marked
   private or public (contributed by lxBlazarxl in PR #171) wherever the
   server says which: in the list from qBittorrent 5.0, on a torrent's own
-  screen from 4.5.1, and nowhere while a magnet has no metadata
+  screen from 4.5.1, and nowhere while a magnet has no metadata. Settings >
+  System shows the external IPv4 and IPv6 address qBittorrent reports, from
+  5.0 (PR #210, #204)
 - **Sonarr** (the canonical *arr module): poster/banner grid with
   client-side sort & filter (status, network, airing, added, size on
   disk) and per-series disk sizes, the custom filters saved on the
@@ -257,8 +265,9 @@ Atrium is a **controller** app. Video playback was removed by design
   2026-09-20, when it was brought to parity with Transmission's own web UI):
   RPC client that rides the shared Dio and handles the CSRF-token handshake
   (409 plus a rotating session id) transparently, with optional HTTP Basic.
-  Torrent list with the web UI's nine filters (Active, Downloading, Seeding,
-  Paused, Finished, Error, Private, Public), tracker and label chips, search,
+  Torrent list with the web UI's nine filters (All, Active, Downloading,
+  Seeding, Paused, Finished, Error, Private, Public) plus trackers and labels
+  in a filter drawer (rebuilt by lxBlazarxl in PR #209, #200), search,
   ten sort fields, compact rows, long-press selection with bulk actions, pause
   all / start all, and per-torrent resume / resume now / pause / verify /
   reannounce / set location / rename / edit labels / copy magnet link / queue
@@ -295,7 +304,7 @@ Atrium is a **controller** app. Video playback was removed by design
   fetch deliberately uses a bare Dio rather than the instance one, so an
   instance's credentials are never sent to whatever host a pasted link names
 
-- **aria2** (added 2026-10-21, modernized 2026-10-22, live-verified against 1.37.0): the
+- **aria2** (beta; contributed by Bhavyashah94 in PR #202, #167; added 2026-10-21, modernized 2026-10-22, live-verified against 1.37.0): the
   client that speaks its own protocol rather than a REST API - JSON-RPC over
   `POST /jsonrpc`, with the daemon's `--rpc-secret` sent as `token:<secret>` as the first
   parameter of every call and nowhere else. It is a parameter, not a header,
@@ -337,9 +346,9 @@ Atrium is a **controller** app. Video playback was removed by design
   The live test lives in the package (`test/live_aria2_test.dart`) and needs
   `ARIA2_URL` and `ARIA2_SECRET` to run.
 
-- **Cleanuparr** (added 2026-10-23, Issue #188): the automated malware blocker and
+- **Cleanuparr** (beta; contributed by Bhavyashah94 in PR #207, #188; added 2026-10-23): the automated malware blocker and
   queue cleaner for the Servarr ecosystem and download clients (`service_cleanuparr`).
-  Default port 11011, role: `ServiceRole.automation`, API key authentication via
+  Default port 11011, role: `ServiceRole.extra` (the Extra group), API key authentication via
   `X-Api-Key` header.
   - **Overview tab**: System status card (version, uptime, memory, connected Arrs & clients),
     selectable timeframes (24h, 7d, 30d), 4 operational metric cards (Malware Blocked, Active Strikes,
@@ -354,10 +363,14 @@ Atrium is a **controller** app. Video playback was removed by design
   - Strictly zero hardcoded colors (`Theme.of(context).colorScheme`).
   - Pull-to-refresh (`EasyRefresh`) with `AlwaysScrollableScrollPhysics` on all tabs.
 
-- **slskd** (added 2026-10-28): the modern mobile client for the Soulseek peer-to-peer
+- **slskd** (beta; contributed by Bhavyashah94 in PR #211, #107; merged 2026-10-31): the modern mobile client for the Soulseek peer-to-peer
   music sharing network (`service_slskd`).
   Default port 5030, role: `ServiceRole.downloader`, API key authentication via
-  `X-Api-Key` header.
+  `X-Api-Key` header, optional for a daemon with auth turned off. The
+  connection test reads a login page in front of slskd as reachable but not
+  passing. Locked files are left out of folder and album downloads, an
+  offline peer's shares say so rather than look empty, and chats open on the
+  newest message.
   - **Transfers tab**: Active, Queued, Completed, and Failed transfer queues with real-time speed,
     progress indicators, grouped (by peer) and flat views, inline actions (cancel, retry, remove,
     prioritize), filter bottom sheet, and comprehensive analytics sheet (transfer telemetry,
