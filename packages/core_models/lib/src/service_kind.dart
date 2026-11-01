@@ -232,7 +232,6 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.radarr ||
         ServiceKind.prowlarr ||
         ServiceKind.bazarr ||
-        ServiceKind.cleanuparr ||
         ServiceKind.lidarr =>
           ServiceRole.automation,
         ServiceKind.seerr || ServiceKind.ombi => ServiceRole.requests,
@@ -259,6 +258,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.gluetun => ServiceRole.analytics,
         ServiceKind.myspeed => ServiceRole.analytics,
         ServiceKind.adguardHome => ServiceRole.analytics,
+        ServiceKind.cleanuparr => ServiceRole.extra,
       };
 
   /// Whether this service can be handed a torrent - a magnet URI, a link to a
@@ -309,4 +309,8 @@ enum ServiceRole {
   analytics,
   mediaServer,
   downloader,
+
+  /// Services that tend the stack rather than belong to one of the groups
+  /// above, such as Cleanuparr. Listed last.
+  extra,
 }

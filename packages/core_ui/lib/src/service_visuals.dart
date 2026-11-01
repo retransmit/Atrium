@@ -80,5 +80,6 @@ abstract final class ServiceVisuals {
         ServiceRole.analytics => 'Analytics',
         ServiceRole.mediaServer => 'Media servers',
         ServiceRole.downloader => 'Download clients',
+        ServiceRole.extra => 'Extra',
       };
 }

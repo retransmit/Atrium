@@ -149,13 +149,13 @@ void main() {
     expect(ServiceKind.aria2.acceptsTorrents, isTrue);
   });
 
-  test('Cleanuparr is registered as an apiKey automation service', () {
+  test('Cleanuparr is registered as an apiKey service under Extra', () {
     expect(ServiceKind.cleanuparr.displayName, 'Cleanuparr');
     expect(ServiceKind.cleanuparr.tagline, 'Malware blocker & cleaner');
     expect(ServiceKind.cleanuparr.isBeta, isTrue);
     expect(ServiceKind.cleanuparr.defaultPort, 11011);
     expect(ServiceKind.cleanuparr.authStyle, AuthStyle.apiKey);
-    expect(ServiceKind.cleanuparr.role, ServiceRole.automation);
+    expect(ServiceKind.cleanuparr.role, ServiceRole.extra);
     expect(ServiceKind.cleanuparr.acceptsTorrents, isFalse);
   });
 
