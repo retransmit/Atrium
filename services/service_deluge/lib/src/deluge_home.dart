@@ -114,66 +114,86 @@ class _DelugeHomeState extends ConsumerState<DelugeHome> {
   Widget build(BuildContext context) {
     final AsyncValue<List<DelugeTorrent>> torrents =
         ref.watch(delugeTorrentsProvider(widget.instance));
-    return AsyncValueView<List<DelugeTorrent>>(
-      value: torrents,
-      onRetry: _refresh,
-      data: (List<DelugeTorrent> list) {
-        return EasyRefresh(
-          header: const ClassicHeader(),
-          onRefresh: () async => _refresh(),
-          child: ListView(
-            padding: Insets.page,
-            children: <Widget>[
-              _SessionSummary(
-                instance: widget.instance,
-                onAdd: () => showDelugeAddSheet(context, widget.instance),
-                onTogglePause: (bool paused) =>
-                    _run((DelugeClient c) => c.setSessionPaused(paused: paused)),
-                onSetDownLimit: (double kib) =>
-                    _run((DelugeClient c) => c.setSpeedLimits(downloadKib: kib)),
-                onSetUpLimit: (double kib) =>
-                    _run((DelugeClient c) => c.setSpeedLimits(uploadKib: kib)),
+    return Scaffold(
+      // Adding a torrent is the one global action here, so it floats over the
+      // list instead of crowding the session card.
+      floatingActionButton: FloatingActionButton(
+        tooltip: 'Add torrent',
+        onPressed: () => showDelugeAddSheet(context, widget.instance),
+        child: const Icon(Icons.add),
+      ),
+      body: AsyncValueView<List<DelugeTorrent>>(
+        value: torrents,
+        onRetry: _refresh,
+        data: (List<DelugeTorrent> list) {
+          return EasyRefresh(
+            header: const ClassicHeader(),
+            onRefresh: () async => _refresh(),
+            child: ListView(
+              // Extra bottom inset so the add button never covers the last row.
+              padding: const EdgeInsets.fromLTRB(
+                Insets.lg,
+                Insets.lg,
+                Insets.lg,
+                80,
               ),
-              const SizedBox(height: Insets.md),
-              _FilterBar(instance: widget.instance),
-              const SizedBox(height: Insets.sm),
-              if (list.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.only(top: Insets.xl),
-                  child: EmptyView(
-                    icon: Icons.download_done_outlined,
-                    title: 'No torrents',
-                    message: 'Nothing matches this filter.',
+              children: <Widget>[
+                _SessionSummary(
+                  instance: widget.instance,
+                  onTogglePause: (bool paused) => _run(
+                    (DelugeClient c) => c.setSessionPaused(paused: paused),
                   ),
-                )
-              else
-                for (final DelugeTorrent t in list)
-                  _TorrentRow(
-                    torrent: t,
-                    onTap: () => _openDetail(t),
-                    onPauseResume: () => _run(
-                      (DelugeClient c) => t.isPaused
-                          ? c.resume(<String>[t.id])
-                          : c.pause(<String>[t.id]),
+                  onSetDownLimit: (double kib) => _run(
+                    (DelugeClient c) => c.setSpeedLimits(downloadKib: kib),
+                  ),
+                  onSetUpLimit: (double kib) => _run(
+                    (DelugeClient c) => c.setSpeedLimits(uploadKib: kib),
+                  ),
+                ),
+                const SizedBox(height: Insets.md),
+                _FilterBar(instance: widget.instance),
+                const SizedBox(height: Insets.sm),
+                if (list.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(top: Insets.xl),
+                    child: EmptyView(
+                      icon: Icons.download_done_outlined,
+                      title: 'No torrents',
+                      message: 'Nothing matches this filter.',
                     ),
-                    onRemove: () => _confirmRemove(t),
-                    onRecheck: () =>
-                        _run((DelugeClient c) => c.recheck(<String>[t.id])),
-                    onReannounce: () =>
-                        _run((DelugeClient c) => c.reannounce(<String>[t.id])),
-                    onQueueTop: () =>
-                        _run((DelugeClient c) => c.queueTop(<String>[t.id])),
-                    onQueueUp: () =>
-                        _run((DelugeClient c) => c.queueUp(<String>[t.id])),
-                    onQueueDown: () =>
-                        _run((DelugeClient c) => c.queueDown(<String>[t.id])),
-                    onQueueBottom: () =>
-                        _run((DelugeClient c) => c.queueBottom(<String>[t.id])),
-                  ),
-            ],
-          ),
-        );
-      },
+                  )
+                else
+                  for (final DelugeTorrent t in list)
+                    _TorrentRow(
+                      torrent: t,
+                      onTap: () => _openDetail(t),
+                      onPauseResume: () => _run(
+                        (DelugeClient c) => t.isPaused
+                            ? c.resume(<String>[t.id])
+                            : c.pause(<String>[t.id]),
+                      ),
+                      onRemove: () => _confirmRemove(t),
+                      onRecheck: () =>
+                          _run((DelugeClient c) => c.recheck(<String>[t.id])),
+                      onReannounce: () => _run(
+                        (DelugeClient c) => c.reannounce(<String>[t.id]),
+                      ),
+                      onQueueTop: () =>
+                          _run((DelugeClient c) => c.queueTop(<String>[t.id])),
+                      onQueueUp: () =>
+                          _run((DelugeClient c) => c.queueUp(<String>[t.id])),
+                      onQueueDown: () => _run(
+                        (DelugeClient c) => c.queueDown(<String>[t.id]),
+                      ),
+                      onQueueBottom: () => _run(
+                        (DelugeClient c) => c.queueBottom(<String>[t.id]),
+                      ),
+                    ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
@@ -182,14 +202,12 @@ class _DelugeHomeState extends ConsumerState<DelugeHome> {
 class _SessionSummary extends ConsumerWidget {
   const _SessionSummary({
     required this.instance,
-    required this.onAdd,
     required this.onTogglePause,
     required this.onSetDownLimit,
     required this.onSetUpLimit,
   });
 
   final Instance instance;
-  final VoidCallback onAdd;
   final void Function(bool paused) onTogglePause;
   final void Function(double kib) onSetDownLimit;
   final void Function(double kib) onSetUpLimit;
@@ -256,7 +274,8 @@ class _SessionSummary extends ConsumerWidget {
                 ),
                 const SizedBox(width: Insets.xs),
                 // Limits read as status first and controls second, so they are
-                // quiet text rather than buttons competing with Add.
+                // quiet text rather than buttons; adding a torrent lives in the
+                // page's floating action button.
                 Expanded(
                   child: _LimitButton(
                     icon: Icons.south,
@@ -284,12 +303,6 @@ class _SessionSummary extends ConsumerWidget {
                       if (kib != null) onSetUpLimit(kib);
                     },
                   ),
-                ),
-                const SizedBox(width: Insets.xs),
-                FilledButton.icon(
-                  onPressed: onAdd,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add'),
                 ),
               ],
             ),
