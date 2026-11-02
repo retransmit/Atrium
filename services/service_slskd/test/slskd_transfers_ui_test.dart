@@ -2,12 +2,14 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:core_models/core_models.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:service_slskd/service_slskd.dart';
+import 'package:service_slskd/src/tabs/slskd_transfers_tab.dart';
 import 'package:service_slskd/src/transfers/slskd_analytics_sheet.dart';
 
 final String? _fontDir = () {
@@ -643,6 +645,25 @@ void main() {
         tester.getTopLeft(find.text('RunningPeer')).dy,
         lessThan(tester.getTopLeft(find.text('FinishedPeer')).dy),
       );
+    });
+
+    testWidgets('transfers tab wires HeaderLocator below pinned search bar', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            slskdDownloadsProvider(testInstance).overrideWith((ref) => const []),
+            slskdUploadsProvider(testInstance).overrideWith((ref) => const []),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: SlskdTransfersTab(instance: testInstance),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(HeaderLocator, skipOffstage: false), findsOneWidget);
     });
   });
 }

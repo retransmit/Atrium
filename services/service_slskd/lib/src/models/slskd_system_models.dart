@@ -121,10 +121,17 @@ class SlskdVersionState {
   });
 
   factory SlskdVersionState.fromJson(Map<String, dynamic> json) {
+    String cleanVersion(dynamic v) {
+      final s = v?.toString() ?? '';
+      return s.replaceFirstMapped(RegExp(r'^(\d+\.\d+\.\d+)\.0$'), (match) => match[1]!);
+    }
+
     return SlskdVersionState(
-      current: (json['current'] ?? json['Current'] ?? '0.0.0').toString(),
+      current: cleanVersion(json['current'] ?? json['Current'] ?? '0.0.0'),
       full: (json['full'] ?? json['Full'])?.toString(),
-      latest: (json['latest'] ?? json['Latest'])?.toString(),
+      latest: json['latest'] != null || json['Latest'] != null
+          ? cleanVersion(json['latest'] ?? json['Latest'])
+          : null,
       isUpdateAvailable: (json['isUpdateAvailable'] ?? json['IsUpdateAvailable']) as bool?,
       isCanary: (json['isCanary'] ?? json['IsCanary'] ?? false) as bool? ?? false,
       isDevelopment: (json['isDevelopment'] ?? json['IsDevelopment'] ?? false) as bool? ?? false,

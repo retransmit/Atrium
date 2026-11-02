@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:core_models/core_models.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -9,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:service_slskd/service_slskd.dart';
+import 'package:service_slskd/src/tabs/slskd_search_tab.dart';
 
 final String? _fontDir = () {
   final String? flutterRoot = Platform.environment['FLUTTER_ROOT'];
@@ -519,6 +521,24 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(requested, <String>[r'Music\Daft Punk\Discovery\01 - One More Time.flac']);
+    });
+
+    testWidgets('search tab wires HeaderLocator below pinned search bar', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            slskdSearchesProvider(testInstance).overrideWith((ref) => const []),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: SlskdSearchTab(instance: testInstance),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(HeaderLocator, skipOffstage: false), findsOneWidget);
     });
   });
 }

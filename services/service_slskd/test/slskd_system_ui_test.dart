@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:core_models/core_models.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -589,6 +590,63 @@ void main() {
       expect(tester.takeException(), isNull);
       expect(find.textContaining('an old line'), findsNothing);
       expect(find.text('Live Stream (In-Memory)'), findsOneWidget);
+    });
+
+    test('SlskdVersionState trims trailing .0 from 4-part .NET assembly versions', () {
+      final v1 = SlskdVersionState.fromJson({'current': '0.26.2.0', 'latest': '0.26.3.0'});
+      expect(v1.current, '0.26.2');
+      expect(v1.latest, '0.26.3');
+
+      final v2 = SlskdVersionState.fromJson({'current': '0.26.2', 'latest': '0.26.3'});
+      expect(v2.current, '0.26.2');
+      expect(v2.latest, '0.26.3');
+
+      final v3 = SlskdVersionState.fromJson({'current': '0.26.2.1'});
+      expect(v3.current, '0.26.2.1');
+    });
+
+    testWidgets('SlskdLogsView shows helpful Administrator Access Required card on 403', (WidgetTester tester) async {
+      int loadCount = 0;
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            slskdLogsProvider(testInstance).overrideWith(
+              (ref) {
+                loadCount++;
+                throw DioException(
+                  requestOptions: RequestOptions(path: 'api/v0/logs/live'),
+                  response: Response(
+                    statusCode: 403,
+                    requestOptions: RequestOptions(path: 'api/v0/logs/live'),
+                  ),
+                );
+              },
+            ),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: ListView(children: const <Widget>[SlskdLogsView(instance: testInstance)]),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Administrator Access Required'), findsOneWidget);
+      expect(
+        find.text(
+          'The configured slskd API key needs the Administrator role to access live application logs.',
+        ),
+        findsOneWidget,
+      );
+      final retryButton = find.widgetWithText(FilledButton, 'Retry');
+      expect(retryButton, findsOneWidget);
+
+      final int loadsBefore = loadCount;
+      await tester.tap(retryButton);
+      await tester.pumpAndSettle();
+
+      expect(loadCount, greaterThan(loadsBefore));
     });
   });
 }
