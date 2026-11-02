@@ -180,10 +180,16 @@ List<DelugeTorrent> filterDelugeTorrents(
 ) {
   bool matches(String selected, String value) =>
       selected.isEmpty || selected == 'All' || selected == value;
+  // 'Active' is not a torrent state. Deluge's filter tree counts a torrent as
+  // active while either payload rate is above zero, so match it the same way
+  // or the bucket's count and the list disagree.
+  bool matchesState(DelugeTorrent t) => filter.state == 'Active'
+      ? t.downloadRate > 0 || t.uploadRate > 0
+      : matches(filter.state, t.state);
   return torrents
       .where(
         (DelugeTorrent t) =>
-            matches(filter.state, t.state) &&
+            matchesState(t) &&
             matches(filter.label, t.label) &&
             matches(filter.trackerHost, t.trackerHost),
       )
