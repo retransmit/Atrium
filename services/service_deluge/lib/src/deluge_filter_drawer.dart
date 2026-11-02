@@ -95,15 +95,24 @@ class DelugeFilterDrawer extends ConsumerWidget {
 /// App-bar button that opens [DelugeFilterDrawer].
 ///
 /// The page's Scaffold owns the drawer, so the fallback is what the AppBar
-/// resolves to when this sits in its actions.
-class DelugeFilterAppBarAction extends StatelessWidget {
-  const DelugeFilterAppBarAction({super.key});
+/// resolves to when this sits in its actions. A dot marks a state filter that
+/// is narrowing the list.
+class DelugeFilterAppBarAction extends ConsumerWidget {
+  const DelugeFilterAppBarAction({required this.instance, super.key});
+
+  final Instance instance;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bool filtered =
+        ref.watch(delugeFilterProvider(instance)).state != 'All';
     return IconButton(
-      tooltip: 'Filters',
-      icon: const Icon(Icons.view_sidebar_outlined),
+      tooltip: 'Filter torrents',
+      icon: Badge(
+        isLabelVisible: filtered,
+        smallSize: 8,
+        child: const Icon(Icons.filter_list),
+      ),
       onPressed: () => Scaffold.of(context).openEndDrawer(),
     );
   }

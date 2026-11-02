@@ -9,6 +9,7 @@ import 'deluge_client.dart';
 import 'deluge_format.dart';
 import 'deluge_providers.dart';
 import 'deluge_speed_dialog.dart';
+import 'deluge_speed_pill.dart';
 import 'deluge_torrent_detail_screen.dart';
 import 'models/deluge_filter_tree.dart';
 import 'models/deluge_session_status.dart';
@@ -114,6 +115,7 @@ class _DelugeHomeState extends ConsumerState<DelugeHome> {
   Widget build(BuildContext context) {
     final AsyncValue<List<DelugeTorrent>> torrents =
         ref.watch(delugeTorrentsProvider(widget.instance));
+    final bool filtered = ref.watch(delugeFilterProvider(widget.instance)).isActive;
     return Scaffold(
       // Adding a torrent is the one global action here, so it floats over the
       // list instead of crowding the session card.
@@ -154,12 +156,14 @@ class _DelugeHomeState extends ConsumerState<DelugeHome> {
                 _FilterBar(instance: widget.instance),
                 const SizedBox(height: Insets.sm),
                 if (list.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(top: Insets.xl),
+                  Padding(
+                    padding: const EdgeInsets.only(top: Insets.xl),
                     child: EmptyView(
                       icon: Icons.download_done_outlined,
                       title: 'No torrents',
-                      message: 'Nothing matches this filter.',
+                      message: filtered
+                          ? 'Nothing matches this filter.'
+                          : 'Add one with the + button.',
                     ),
                   )
                 else
@@ -452,7 +456,8 @@ class _StatBox extends StatelessWidget {
   }
 }
 
-/// Label filter chips, when the daemon offers labels, and the sort menu.
+/// The active state filter, label filter chips when the daemon offers labels,
+/// and the sort menu.
 class _FilterBar extends ConsumerWidget {
   const _FilterBar({required this.instance});
 
@@ -464,11 +469,26 @@ class _FilterBar extends ConsumerWidget {
         ref.watch(delugeFilterTreeProvider(instance)).value ??
             const DelugeFilterTree();
     final DelugeFilter filter = ref.watch(delugeFilterProvider(instance));
-    if (tree.states.isEmpty) return const SizedBox.shrink();
+    // The state filter lives in the drawer and outlasts the screen, so this is
+    // the one sign on the list that it is not showing everything. It does not
+    // wait for the filter tree, which can still be loading.
+    final Widget? active = filter.state == 'All'
+        ? null
+        : _ActiveStateFilter(
+            state: filter.state,
+            onClear: () => ref
+                .read(delugeFilterProvider(instance).notifier)
+                .update((DelugeFilter f) => f.copyWith(state: 'All')),
+          );
+    if (tree.states.isEmpty) return active ?? const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
+        if (active != null) ...<Widget>[
+          active,
+          const SizedBox(height: Insets.xs),
+        ],
         // Only rendered when the daemon has the Label plugin; otherwise there
         // is nothing to filter on and the row would always be empty.
         if (tree.hasLabels) ...<Widget>[
@@ -488,6 +508,40 @@ class _FilterBar extends ConsumerWidget {
             Expanded(child: _SortMenu(instance: instance)),
           ],
         ),
+      ],
+    );
+  }
+}
+
+/// "Filtered: Seeding" with a way back to the full list.
+class _ActiveStateFilter extends StatelessWidget {
+  const _ActiveStateFilter({required this.state, required this.onClear});
+
+  final String state;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme scheme = theme.colorScheme;
+    return Row(
+      key: const ValueKey<String>('deluge-active-filter'),
+      children: <Widget>[
+        Text(
+          'Filtered:',
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: scheme.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(width: Insets.xs),
+        _StatePill(
+          label: state,
+          background: scheme.primaryContainer,
+          foreground: scheme.onPrimaryContainer,
+        ),
+        const Spacer(),
+        TextButton(onPressed: onClear, child: const Text('Clear')),
       ],
     );
   }
@@ -599,6 +653,9 @@ class _TorrentRow extends StatelessWidget {
       context: context,
       useRootNavigator: true,
       showDragHandle: true,
+      // Size the sheet to its actions; at the default height Remove, the last
+      // one, only showed after a scroll.
+      isScrollControlled: true,
       builder: (BuildContext sheetContext) {
         final ColorScheme scheme = Theme.of(sheetContext).colorScheme;
         void run(VoidCallback action) {
@@ -675,8 +732,8 @@ class _TorrentRow extends StatelessWidget {
         delugeStateOnContainerColor(scheme, torrent.state);
     final double progress = torrent.progressFraction;
     final bool complete = progress >= 1.0;
-    final bool dlActive = torrent.downloadRate > 0;
-    final bool upActive = torrent.uploadRate > 0;
+    final bool dlActive = torrent.liveDownloadRate > 0;
+    final bool upActive = torrent.liveUploadRate > 0;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: Insets.xs),
@@ -787,15 +844,15 @@ class _TorrentRow extends StatelessWidget {
                   runSpacing: Insets.xs,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: <Widget>[
-                    _SpeedPill(
+                    DelugeSpeedPill(
                       icon: Icons.south,
-                      label: delugeFmtRate(torrent.downloadRate),
+                      label: delugeFmtRate(torrent.liveDownloadRate),
                       color: scheme.primary,
                       active: dlActive,
                     ),
-                    _SpeedPill(
+                    DelugeSpeedPill(
                       icon: Icons.north,
-                      label: delugeFmtRate(torrent.uploadRate),
+                      label: delugeFmtRate(torrent.liveUploadRate),
                       color: scheme.tertiary,
                       active: upActive,
                     ),
@@ -814,7 +871,7 @@ class _TorrentRow extends StatelessWidget {
                             color: scheme.onSurfaceVariant,
                           ),
                         ),
-                        if (!complete) ...<Widget>[
+                        if (torrent.liveEta > 0) ...<Widget>[
                           const SizedBox(width: Insets.sm),
                           Icon(
                             Icons.schedule,
@@ -823,7 +880,7 @@ class _TorrentRow extends StatelessWidget {
                           ),
                           const SizedBox(width: 2),
                           Text(
-                            delugeFmtEta(torrent.eta),
+                            delugeFmtEta(torrent.liveEta),
                             style: text.labelSmall?.copyWith(
                               color: scheme.onSurfaceVariant,
                             ),
@@ -868,56 +925,6 @@ class _StatePill extends StatelessWidget {
               color: foreground,
               fontWeight: FontWeight.w600,
             ),
-      ),
-    );
-  }
-}
-
-/// One live rate on the torrent card; muted while the direction is idle.
-class _SpeedPill extends StatelessWidget {
-  const _SpeedPill({
-    required this.icon,
-    required this.label,
-    required this.color,
-    this.active = true,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme scheme = Theme.of(context).colorScheme;
-    final Color foreground = active ? color : scheme.onSurfaceVariant;
-    final Color background = active
-        ? color.withValues(alpha: 0.12)
-        : scheme.surfaceContainerHighest;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, size: 14, color: foreground),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              softWrap: false,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: foreground,
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-          ),
-        ],
       ),
     );
   }

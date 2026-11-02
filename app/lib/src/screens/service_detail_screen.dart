@@ -358,7 +358,7 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
               if (instance.kind == ServiceKind.qbittorrent)
                 QbittorrentAppBarActions(instance: instance),
               if (instance.kind == ServiceKind.deluge)
-                const DelugeFilterAppBarAction(),
+                DelugeFilterAppBarAction(instance: instance),
               if (instance.kind == ServiceKind.emby ||
                   instance.kind == ServiceKind.jellyfin)
                 IconButton(
