@@ -495,138 +495,238 @@ class _TorrentRow extends StatelessWidget {
   final VoidCallback onQueueDown;
   final VoidCallback onQueueBottom;
 
+  void _showActions(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      builder: (BuildContext sheetContext) {
+        final ColorScheme scheme = Theme.of(sheetContext).colorScheme;
+        void run(VoidCallback action) {
+          Navigator.of(sheetContext).pop();
+          action();
+        }
+
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: <Widget>[
+              ListTile(
+                leading: Icon(
+                  torrent.isPaused ? Icons.play_arrow : Icons.pause,
+                ),
+                title: Text(torrent.isPaused ? 'Resume' : 'Pause'),
+                onTap: () => run(onPauseResume),
+              ),
+              ListTile(
+                leading: const Icon(Icons.fact_check_outlined),
+                title: const Text('Force recheck'),
+                onTap: () => run(onRecheck),
+              ),
+              ListTile(
+                leading: const Icon(Icons.campaign_outlined),
+                title: const Text('Reannounce'),
+                onTap: () => run(onReannounce),
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.vertical_align_top),
+                title: const Text('Queue to top'),
+                onTap: () => run(onQueueTop),
+              ),
+              ListTile(
+                leading: const Icon(Icons.arrow_upward),
+                title: const Text('Queue up'),
+                onTap: () => run(onQueueUp),
+              ),
+              ListTile(
+                leading: const Icon(Icons.arrow_downward),
+                title: const Text('Queue down'),
+                onTap: () => run(onQueueDown),
+              ),
+              ListTile(
+                leading: const Icon(Icons.vertical_align_bottom),
+                title: const Text('Queue to bottom'),
+                onTap: () => run(onQueueBottom),
+              ),
+              const Divider(),
+              ListTile(
+                leading: Icon(Icons.delete_outline, color: scheme.error),
+                title: Text(
+                  'Remove',
+                  style: TextStyle(color: scheme.error),
+                ),
+                onTap: () => run(onRemove),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ColorScheme scheme = Theme.of(context).colorScheme;
     final TextTheme text = Theme.of(context).textTheme;
     final Color stateColor = delugeStateColor(scheme, torrent.state);
-    final bool done = torrent.progress >= 100;
-    final bool moving = torrent.downloadRate > 0 || torrent.uploadRate > 0;
+    final Color stateContainer =
+        delugeStateContainerColor(scheme, torrent.state);
+    final Color stateOnContainer =
+        delugeStateOnContainerColor(scheme, torrent.state);
+    final double progress = torrent.progressFraction;
+    final bool complete = progress >= 1.0;
+    final bool dlActive = torrent.downloadRate > 0;
+    final bool upActive = torrent.uploadRate > 0;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: Insets.sm),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: Radii.card,
-        child: Padding(
-          padding: const EdgeInsets.all(Insets.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Icon(
-                    delugeStateIcon(torrent.state),
-                    size: 18,
-                    color: stateColor,
-                  ),
-                  const SizedBox(width: Insets.sm),
-                  Expanded(
-                    child: Text(
-                      torrent.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: text.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w500,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: Insets.xs),
+      child: Material(
+        color: scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          // The card carries no visible menu; the per-torrent actions live on
+          // a long press, the same way qBittorrent's cards behave.
+          onLongPress: () => _showActions(context),
+          child: Padding(
+            padding: const EdgeInsets.all(Insets.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Container(
+                      width: 44,
+                      height: 44,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: stateContainer,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        delugeStateIcon(torrent.state),
+                        size: 22,
+                        color: stateOnContainer,
                       ),
                     ),
-                  ),
-                  _RowMenu(
-                    isPaused: torrent.isPaused,
-                    onPauseResume: onPauseResume,
-                    onRemove: onRemove,
-                    onRecheck: onRecheck,
-                    onReannounce: onReannounce,
-                    onQueueTop: onQueueTop,
-                    onQueueUp: onQueueUp,
-                    onQueueDown: onQueueDown,
-                    onQueueBottom: onQueueBottom,
-                  ),
-                ],
-              ),
-              const SizedBox(height: Insets.sm),
-              // Once a torrent is finished its progress bar is pinned at 100%
-              // and says nothing. Give the bar a second job: show share ratio
-              // toward 1.0, which is the one number still moving.
-              LinearProgressIndicatorM3E(
-                value: done
-                    ? torrent.ratio.clamp(0, 1).toDouble()
-                    : torrent.progressFraction,
-                // The expressive wave reads as "moving right now", so it is
-                // spent only on torrents actually shifting bytes. A torrent
-                // parked at 100% stays flat.
-                shape: moving ? ProgressM3EShape.wavy : ProgressM3EShape.flat,
-                size: LinearProgressM3ESize.s,
-                activeColor: stateColor,
-                trackColor: scheme.surfaceContainerHighest,
-              ),
-              const SizedBox(height: Insets.sm),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: <Widget>[
-                  Expanded(
-                    child: Text.rich(
-                      TextSpan(
-                        children: <InlineSpan>[
-                          TextSpan(
-                            text: done
-                                ? 'Ratio ${torrent.ratio.toStringAsFixed(2)}'
-                                : '${torrent.progress.toStringAsFixed(0)}%',
+                    const SizedBox(width: Insets.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            torrent.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: text.titleSmall?.copyWith(
-                              color: scheme.onSurface,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                          TextSpan(
-                            text: done
-                                ? '  ${delugeFmtBytes(torrent.totalUploaded)} '
-                                    'shared of ${delugeFmtBytes(
-                                    torrent.totalWanted,
-                                  )}'
-                                : '  ${delugeFmtBytes(torrent.totalDone)} of '
-                                    '${delugeFmtBytes(torrent.totalWanted)}',
-                            style: text.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: Insets.sm,
+                            runSpacing: Insets.xs,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: <Widget>[
+                              _StatePill(
+                                label: torrent.state.isEmpty
+                                    ? 'Unknown'
+                                    : torrent.state,
+                                background: stateContainer,
+                                foreground: stateOnContainer,
+                              ),
+                              Text(
+                                '${delugeFmtBytes(torrent.totalDone)} / '
+                                '${delugeFmtBytes(torrent.totalWanted)}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: text.bodySmall?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(width: Insets.sm),
-                  Text(
-                    torrent.state,
-                    style: text.labelMedium?.copyWith(color: stateColor),
-                  ),
-                ],
-              ),
-              const SizedBox(height: Insets.xxs),
-              DefaultTextStyle.merge(
-                style: text.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-                child: Row(
-                  children: <Widget>[
-                    Icon(Icons.south, size: 12, color: scheme.onSurfaceVariant),
-                    Text(delugeFmtRate(torrent.downloadRate)),
-                    const SizedBox(width: Insets.sm),
-                    Icon(Icons.north, size: 12, color: scheme.onSurfaceVariant),
-                    Text(delugeFmtRate(torrent.uploadRate)),
-                    const SizedBox(width: Insets.sm),
-                    Expanded(
-                      child: Text(
-                        '${torrent.numSeeds}/${torrent.totalSeeds} seeds - '
-                        '${torrent.numPeers}/${torrent.totalPeers} peers',
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (torrent.eta > 0) Text(delugeFmtEta(torrent.eta)),
                   ],
                 ),
-              ),
-            ],
+                const SizedBox(height: Insets.md),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: LinearProgressIndicatorM3E(
+                          shape: ProgressM3EShape.flat,
+                          value: progress,
+                          activeColor:
+                              complete ? scheme.tertiary : stateColor,
+                          trackColor: scheme.surfaceContainerHighest,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: Insets.sm),
+                    Text(
+                      '${(progress * 100).toStringAsFixed(0)}%',
+                      style: text.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: complete ? scheme.tertiary : stateColor,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: Insets.md),
+                Row(
+                  children: <Widget>[
+                    _SpeedPill(
+                      icon: Icons.south,
+                      label: delugeFmtRate(torrent.downloadRate),
+                      color: scheme.primary,
+                      active: dlActive,
+                    ),
+                    const SizedBox(width: Insets.sm),
+                    _SpeedPill(
+                      icon: Icons.north,
+                      label: delugeFmtRate(torrent.uploadRate),
+                      color: scheme.tertiary,
+                      active: upActive,
+                    ),
+                    const Spacer(),
+                    Icon(
+                      Icons.swap_vert,
+                      size: 14,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 2),
+                    Text(
+                      torrent.ratio.toStringAsFixed(2),
+                      style: text.labelSmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                    if (!complete) ...<Widget>[
+                      const SizedBox(width: Insets.sm),
+                      Icon(
+                        Icons.schedule,
+                        size: 14,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        delugeFmtEta(torrent.eta),
+                        style: text.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -634,128 +734,78 @@ class _TorrentRow extends StatelessWidget {
   }
 }
 
-class _RowMenu extends StatelessWidget {
-  const _RowMenu({
-    required this.isPaused,
-    required this.onPauseResume,
-    required this.onRemove,
-    required this.onRecheck,
-    required this.onReannounce,
-    required this.onQueueTop,
-    required this.onQueueUp,
-    required this.onQueueDown,
-    required this.onQueueBottom,
+/// State word on the torrent card, tinted the same way qBittorrent's pill is.
+class _StatePill extends StatelessWidget {
+  const _StatePill({
+    required this.label,
+    required this.background,
+    required this.foreground,
   });
 
-  final bool isPaused;
-  final VoidCallback onPauseResume;
-  final VoidCallback onRemove;
-  final VoidCallback onRecheck;
-  final VoidCallback onReannounce;
-  final VoidCallback onQueueTop;
-  final VoidCallback onQueueUp;
-  final VoidCallback onQueueDown;
-  final VoidCallback onQueueBottom;
+  final String label;
+  final Color background;
+  final Color foreground;
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-        PopupMenuItem<String>(
-          value: 'pause',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(isPaused ? Icons.play_arrow : Icons.pause),
-            title: Text(isPaused ? 'Resume' : 'Pause'),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: foreground,
+              fontWeight: FontWeight.w600,
+            ),
+      ),
+    );
+  }
+}
+
+/// One live rate on the torrent card; muted while the direction is idle.
+class _SpeedPill extends StatelessWidget {
+  const _SpeedPill({
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.active = true,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme scheme = Theme.of(context).colorScheme;
+    final Color foreground = active ? color : scheme.onSurfaceVariant;
+    final Color background = active
+        ? color.withValues(alpha: 0.12)
+        : scheme.surfaceContainerHighest;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 14, color: foreground),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: foreground,
+                  fontWeight: FontWeight.w700,
+                ),
           ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'recheck',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.fact_check_outlined),
-            title: Text('Force recheck'),
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'reannounce',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.campaign_outlined),
-            title: Text('Reannounce'),
-          ),
-        ),
-        const PopupMenuDivider(),
-        const PopupMenuItem<String>(
-          value: 'top',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.vertical_align_top),
-            title: Text('Queue to top'),
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'up',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.arrow_upward),
-            title: Text('Queue up'),
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'down',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.arrow_downward),
-            title: Text('Queue down'),
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'bottom',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.vertical_align_bottom),
-            title: Text('Queue to bottom'),
-          ),
-        ),
-        const PopupMenuDivider(),
-        const PopupMenuItem<String>(
-          value: 'remove',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.delete_outline),
-            title: Text('Remove'),
-          ),
-        ),
-      ],
-      onSelected: (String value) {
-        switch (value) {
-          case 'pause':
-            onPauseResume();
-          case 'recheck':
-            onRecheck();
-          case 'reannounce':
-            onReannounce();
-          case 'top':
-            onQueueTop();
-          case 'up':
-            onQueueUp();
-          case 'down':
-            onQueueDown();
-          case 'bottom':
-            onQueueBottom();
-          case 'remove':
-            onRemove();
-        }
-      },
+        ],
+      ),
     );
   }
 }

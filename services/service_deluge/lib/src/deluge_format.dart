@@ -63,6 +63,26 @@ Color delugeStateColor(ColorScheme scheme, String state) => switch (state) {
       _ => scheme.secondary,
     };
 
+/// Container colour for a state badge, paired with [delugeStateOnContainerColor].
+Color delugeStateContainerColor(ColorScheme scheme, String state) =>
+    switch (state) {
+      'Downloading' => scheme.primaryContainer,
+      'Seeding' => scheme.tertiaryContainer,
+      'Paused' => scheme.surfaceContainerHighest,
+      'Error' => scheme.errorContainer,
+      _ => scheme.secondaryContainer,
+    };
+
+/// Foreground colour for a state badge drawn on [delugeStateContainerColor].
+Color delugeStateOnContainerColor(ColorScheme scheme, String state) =>
+    switch (state) {
+      'Downloading' => scheme.onPrimaryContainer,
+      'Seeding' => scheme.onTertiaryContainer,
+      'Paused' => scheme.onSurfaceVariant,
+      'Error' => scheme.onErrorContainer,
+      _ => scheme.onSecondaryContainer,
+    };
+
 /// Icon for a Deluge state.
 IconData delugeStateIcon(String state) => switch (state) {
       'Downloading' => Icons.download_outlined,
