@@ -592,7 +592,7 @@ void main() {
       expect(find.text('Live Stream (In-Memory)'), findsOneWidget);
     });
 
-    test('SlskdVersionState trims trailing .0 from 4-part .NET assembly versions', () {
+    test('SlskdVersionState trims a trailing .0 from four-part build versions', () {
       final v1 = SlskdVersionState.fromJson({'current': '0.26.2.0', 'latest': '0.26.3.0'});
       expect(v1.current, '0.26.2');
       expect(v1.latest, '0.26.3');
@@ -603,6 +603,12 @@ void main() {
 
       final v3 = SlskdVersionState.fromJson({'current': '0.26.2.1'});
       expect(v3.current, '0.26.2.1');
+      expect(v3.latest, isNull);
+
+      // A canary build's last part marks it as canary, so it stays.
+      final v4 = SlskdVersionState.fromJson({'Current': '0.26.2.65534', 'Latest': '0.26.2.0'});
+      expect(v4.current, '0.26.2.65534');
+      expect(v4.latest, '0.26.2');
     });
 
     testWidgets('SlskdLogsView shows helpful Administrator Access Required card on 403', (WidgetTester tester) async {

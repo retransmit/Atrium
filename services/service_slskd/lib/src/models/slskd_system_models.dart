@@ -121,17 +121,20 @@ class SlskdVersionState {
   });
 
   factory SlskdVersionState.fromJson(Map<String, dynamic> json) {
-    String cleanVersion(dynamic v) {
-      final s = v?.toString() ?? '';
-      return s.replaceFirstMapped(RegExp(r'^(\d+\.\d+\.\d+)\.0$'), (match) => match[1]!);
-    }
+    // slskd's Docker images are built from a four-part version string such as
+    // 0.26.2.0, which `current` carries as is. Drop a trailing .0 so it reads
+    // like the release tag. A canary build ends in .65534 instead, which marks
+    // it as canary, so only .0 is trimmed.
+    String cleanVersion(Object v) => v
+        .toString()
+        .replaceFirstMapped(RegExp(r'^(\d+\.\d+\.\d+)\.0$'), (Match m) => m[1]!);
 
+    final Object current = (json['current'] ?? json['Current'] ?? '0.0.0') as Object;
+    final Object? latest = json['latest'] ?? json['Latest'];
     return SlskdVersionState(
-      current: cleanVersion(json['current'] ?? json['Current'] ?? '0.0.0'),
+      current: cleanVersion(current),
       full: (json['full'] ?? json['Full'])?.toString(),
-      latest: json['latest'] != null || json['Latest'] != null
-          ? cleanVersion(json['latest'] ?? json['Latest'])
-          : null,
+      latest: latest == null ? null : cleanVersion(latest),
       isUpdateAvailable: (json['isUpdateAvailable'] ?? json['IsUpdateAvailable']) as bool?,
       isCanary: (json['isCanary'] ?? json['IsCanary'] ?? false) as bool? ?? false,
       isDevelopment: (json['isDevelopment'] ?? json['IsDevelopment'] ?? false) as bool? ?? false,
