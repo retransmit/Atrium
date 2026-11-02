@@ -8,6 +8,7 @@ import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 import 'deluge_client.dart';
 import 'deluge_format.dart';
 import 'deluge_providers.dart';
+import 'deluge_speed_pill.dart';
 import 'models/deluge_torrent.dart';
 import 'models/deluge_torrent_detail.dart';
 
@@ -283,7 +284,6 @@ class _OverviewTab extends StatelessWidget {
     final Color onContainer =
         delugeStateOnContainerColor(scheme, t?.state ?? '');
     final double progress = t?.progressFraction ?? 0;
-    final bool complete = progress >= 1.0;
     final DateFormat dateFormat = DateFormat.yMMMd().add_Hm();
     String added(int seconds) => seconds <= 0
         ? '-'
@@ -361,22 +361,22 @@ class _OverviewTab extends StatelessWidget {
                       spacing: Insets.sm,
                       runSpacing: Insets.sm,
                       children: <Widget>[
-                        _SpeedPill(
+                        DelugeSpeedPill(
                           icon: Icons.south,
-                          label: delugeFmtRate(t?.downloadRate ?? 0),
+                          label: delugeFmtRate(t?.liveDownloadRate ?? 0),
                           color: scheme.primary,
-                          active: (t?.downloadRate ?? 0) > 0,
+                          active: (t?.liveDownloadRate ?? 0) > 0,
                         ),
-                        _SpeedPill(
+                        DelugeSpeedPill(
                           icon: Icons.north,
-                          label: delugeFmtRate(t?.uploadRate ?? 0),
+                          label: delugeFmtRate(t?.liveUploadRate ?? 0),
                           color: scheme.tertiary,
-                          active: (t?.uploadRate ?? 0) > 0,
+                          active: (t?.liveUploadRate ?? 0) > 0,
                         ),
                       ],
                     ),
                   ),
-                  if (t != null && !complete) ...<Widget>[
+                  if (t != null && t.liveEta > 0) ...<Widget>[
                     const SizedBox(width: Insets.sm),
                     Icon(
                       Icons.schedule,
@@ -385,7 +385,7 @@ class _OverviewTab extends StatelessWidget {
                     ),
                     const SizedBox(width: 2),
                     Text(
-                      delugeFmtEta(t.eta),
+                      delugeFmtEta(t.liveEta),
                       style: text.labelSmall
                           ?.copyWith(color: scheme.onSurfaceVariant),
                     ),
@@ -410,7 +410,7 @@ class _OverviewTab extends StatelessWidget {
               ('Seeds', '${t.numSeeds} connected (${t.totalSeeds} total)'),
               ('Peers', '${t.numPeers} connected (${t.totalPeers} total)'),
               ('Queue', t.queue < 0 ? 'Not queued' : 'Position ${t.queue}'),
-              if (t.eta > 0) ('ETA', delugeFmtEta(t.eta)),
+              if (t.liveEta > 0) ('ETA', delugeFmtEta(t.liveEta)),
             ],
           ),
           const SizedBox(height: Insets.md),
@@ -672,7 +672,7 @@ class _PeersTab extends StatelessWidget {
                     Row(
                       children: <Widget>[
                         Expanded(
-                          child: _SpeedPill(
+                          child: DelugeSpeedPill(
                             icon: Icons.south,
                             label: delugeFmtRate(peer.downSpeed),
                             color: scheme.primary,
@@ -681,7 +681,7 @@ class _PeersTab extends StatelessWidget {
                         ),
                         const SizedBox(width: Insets.sm),
                         Expanded(
-                          child: _SpeedPill(
+                          child: DelugeSpeedPill(
                             icon: Icons.north,
                             label: delugeFmtRate(peer.upSpeed),
                             color: scheme.tertiary,
@@ -800,56 +800,6 @@ class _IconBlock extends StatelessWidget {
         borderRadius: BorderRadius.circular(size * 0.32),
       ),
       child: Icon(icon, size: size * 0.5, color: foreground),
-    );
-  }
-}
-
-/// Small tinted pill for a live rate; muted while that direction is idle.
-class _SpeedPill extends StatelessWidget {
-  const _SpeedPill({
-    required this.icon,
-    required this.label,
-    required this.color,
-    this.active = true,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    final ColorScheme scheme = Theme.of(context).colorScheme;
-    final Color foreground = active ? color : scheme.onSurfaceVariant;
-    final Color background = active
-        ? color.withValues(alpha: 0.12)
-        : scheme.surfaceContainerHighest;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, size: 14, color: foreground),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              softWrap: false,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: foreground,
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
