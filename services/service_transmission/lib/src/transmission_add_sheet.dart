@@ -215,9 +215,14 @@ class _TransmissionAddSheetState
           }
           if (mounted) setState(() => _done++);
         }
-        ref.invalidate(transmissionRawTorrentsProvider(widget.instance));
-        if (!mounted) return;
-        navigator.pop();
+        // The sheet may have been dismissed while the add was in flight. Its
+        // ref is unusable then, and popping would close the screen
+        // underneath. The list polls, so the torrent still appears, and the
+        // captured messenger can still report the result.
+        if (mounted) {
+          ref.invalidate(transmissionRawTorrentsProvider(widget.instance));
+          navigator.pop();
+        }
         messenger.showSnackBar(
           SnackBar(
             content: Text(_batchResult(_files.length, failed, duplicates)),
@@ -231,9 +236,11 @@ class _TransmissionAddSheetState
         downloadDir: dir,
         paused: !(_startWhenAdded ?? true),
       );
-      ref.invalidate(transmissionRawTorrentsProvider(widget.instance));
-      if (!mounted) return;
-      navigator.pop();
+      // See above: only a sheet that is still open refreshes and closes.
+      if (mounted) {
+        ref.invalidate(transmissionRawTorrentsProvider(widget.instance));
+        navigator.pop();
+      }
       messenger.showSnackBar(
         SnackBar(
           content: Text(
