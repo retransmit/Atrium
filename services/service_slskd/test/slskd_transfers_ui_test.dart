@@ -647,7 +647,7 @@ void main() {
       );
     });
 
-    testWidgets('transfers tab wires HeaderLocator below pinned search bar', (WidgetTester tester) async {
+    testWidgets('transfers tab places the refresh header below the pinned search bar', (WidgetTester tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -663,7 +663,18 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.byType(HeaderLocator, skipOffstage: false), findsOneWidget);
+      // Under test the shared wrapper swaps EasyRefresh for a RefreshIndicator
+      // and HeaderLocator renders nothing, so the placement is checked on the
+      // configuration: the header asks for a locator, and the locator is the
+      // sliver straight after the pinned bar.
+      final EasyRefresh refresh = tester.widget<EasyRefresh>(find.byType(EasyRefresh));
+      expect(refresh.header?.position, IndicatorPosition.locator);
+      final CustomScrollView scroll = tester.widget<CustomScrollView>(
+        find.descendant(of: find.byType(EasyRefresh), matching: find.byType(CustomScrollView)).first,
+      );
+      final int bar = scroll.slivers.indexWhere((Widget s) => s is SliverAppBar && s.pinned);
+      expect(bar, isNot(-1));
+      expect(scroll.slivers[bar + 1], isA<HeaderLocator>());
     });
   });
 }
