@@ -950,7 +950,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: <Widget>[
                                     if (hasDownloaded)
-                                      const _Dot(color: Colors.green),
+                                      _Dot(color: theme.colorScheme.tertiary),
                                     if (hasUpcoming)
                                       _Dot(color: theme.colorScheme.primary),
                                     if (hasMissing)
@@ -1182,7 +1182,7 @@ class _EventTile extends ConsumerWidget {
             'Downloaded',
             theme.colorScheme.primaryContainer,
             theme.colorScheme.onPrimaryContainer,
-            Colors.green,
+            theme.colorScheme.tertiary,
           )
         : isFuture
             ? (

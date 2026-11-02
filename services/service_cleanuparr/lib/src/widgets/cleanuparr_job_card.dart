@@ -45,7 +45,10 @@ class _CleanuparrJobCardState extends ConsumerState<CleanuparrJobCard> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to trigger job: ${describeCleanuparrError(e)}'),
+          content: Text(
+            'Failed to trigger job: ${describeCleanuparrError(e)}',
+            style: TextStyle(color: Theme.of(context).colorScheme.onError),
+          ),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );

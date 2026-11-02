@@ -27,6 +27,11 @@ class FakeTransmission implements HttpClientAdapter {
   final List<RpcCall> calls = <RpcCall>[];
   final Map<String, RpcAnswer> _answers = <String, RpcAnswer>{};
   final Map<String, String> _errors = <String, String>{};
+  final Map<String, Future<void>> _holds = <String, Future<void>>{};
+
+  /// Keeps [method]'s reply back until [release] completes, so a test can act
+  /// while the request is still in flight.
+  void hold(String method, Future<void> release) => _holds[method] = release;
 
   /// Answers [method] with [arguments] under `result: success`.
   void on(String method, Object? arguments) =>
@@ -71,6 +76,8 @@ class FakeTransmission implements HttpClientAdapter {
                 ?.cast<String, dynamic>() ??
             <String, dynamic>{};
     calls.add(RpcCall(method, args));
+    final Future<void>? held = _holds[method];
+    if (held != null) await held;
     final String? error = _errors[method];
     if (error != null) {
       return _json(<String, Object?>{
