@@ -52,7 +52,15 @@ class DelugeTorrentDetailScreen extends ConsumerWidget {
       // A removed torrent has no detail left to fetch, and this screen is about
       // to go away anyway.
       if (removed) {
-        Navigator.of(context).pop();
+        // Close this screen, not whatever is on top: if another route opened
+        // while the removal was in flight, popping would close that instead.
+        final ModalRoute<Object?>? route = ModalRoute.of(context);
+        if (route == null) return;
+        if (route.isCurrent) {
+          Navigator.of(context).pop();
+        } else {
+          Navigator.of(context).removeRoute(route);
+        }
       } else {
         ref.invalidate(delugeTorrentDetailProvider((instance, torrentId)));
       }
