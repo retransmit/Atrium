@@ -27,6 +27,25 @@ class ReleaseNote {
 /// Newest first. Update alongside appVersion and the pubspec at each release.
 const List<ReleaseNote> releaseNotes = <ReleaseNote>[
   ReleaseNote(
+    version: '1.10.1',
+    date: '2026-11-02',
+    groups: <ChangeGroup>[
+      ChangeGroup(ChangeCategory.improved, <String>[
+        'Deluge is redesigned to match qBittorrent and Transmission. Download, upload and free space sit on three tiles with the session pause and speed limits under them, and adding a torrent moves to a floating button. The state filters move into a side drawer, with a Filtered strip and a dot on the filter button while one is on. Torrents show as cards with their speeds, ratio and ETA, with the actions on a long press, and the detail screen is built from panels, with peer country flags and a menu holding every torrent action.',
+        "The calendar's downloaded marker follows your theme's colours.",
+      ]),
+      ChangeGroup(ChangeCategory.fixed, <String>[
+        'On the slskd Transfers and Search tabs, pull to refresh shows below the search bar instead of over it.',
+        "slskd's version shows as 0.26.2 rather than 0.26.2.0.",
+        "slskd's Logs tab explains that the API key needs the Administrator role instead of showing a raw error.",
+        "Deluge's Active filter lists the torrents that are moving, and a paused or finished torrent no longer shows a fading speed and an ETA.",
+        "Closing Transmission's add sheet while a torrent is still being added no longer reports the add as failed.",
+        "Cleanuparr's error messages are readable on their red background.",
+        'The service form rejects a malformed second URL even when the first one is valid.',
+      ]),
+    ],
+  ),
+  ReleaseNote(
     version: '1.10.0',
     date: '2026-11-02',
     groups: <ChangeGroup>[

@@ -18,6 +18,7 @@ graph TD
 
 ### 1. Authentication
 - Authenticates using the `X-Api-Key` header mapped from `Instance.apiKey`. The key is optional: a daemon with authentication turned off needs none, and then no header is sent.
+- slskd serves its logs only to a key with the `Administrator` role (`role: administrator` under `web.authentication.api_keys`). With a `ReadWrite` key everything else works and the Logs tab says why it is empty instead of showing the raw 403.
 - The connection test treats an HTML answer (a reverse proxy's login page) as reachable but not passing, rather than connected.
 - Health probe verifies connectivity against `GET /api/v0/application` directly and checks the server's connected state.
 
@@ -55,7 +56,8 @@ The interface uses standard Material 3 with 5 primary navigation tabs via `Atriu
 ### 5. System & Health (`SlskdSystemTab`)
 - **Health Tab**: Soulseek server connection status, VPN status, uptime, and system diagnostic counters.
 - **Shares Tab**: Local shared folders list with scanning progress and shared contents explorer.
-- **Logs Tab**: Historical application logs with log level filters (Error, Warning, Information, Debug) and text search.
+- **Logs Tab**: Historical application logs with log level filters (Error, Warning, Information, Debug) and text search. Needs an `Administrator` API key; see Authentication.
+- **Version**: slskd's Docker builds report a four-part version (`0.26.2.0`); the daemon card trims a trailing `.0` so it reads like the release tag, and leaves a canary's `.65534` alone.
 
 ## Theming & Conventions
 
