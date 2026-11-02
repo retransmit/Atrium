@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:core_models/core_models.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -9,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:service_slskd/service_slskd.dart';
+import 'package:service_slskd/src/tabs/slskd_search_tab.dart';
 
 final String? _fontDir = () {
   final String? flutterRoot = Platform.environment['FLUTTER_ROOT'];
@@ -519,6 +521,35 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(requested, <String>[r'Music\Daft Punk\Discovery\01 - One More Time.flac']);
+    });
+
+    testWidgets('search tab places the refresh header below the pinned search bar', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            slskdSearchesProvider(testInstance).overrideWith((ref) => const []),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(
+              body: SlskdSearchTab(instance: testInstance),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Under test the shared wrapper swaps EasyRefresh for a RefreshIndicator
+      // and HeaderLocator renders nothing, so the placement is checked on the
+      // configuration: the header asks for a locator, and the locator is the
+      // sliver straight after the pinned bar.
+      final EasyRefresh refresh = tester.widget<EasyRefresh>(find.byType(EasyRefresh));
+      expect(refresh.header?.position, IndicatorPosition.locator);
+      final CustomScrollView scroll = tester.widget<CustomScrollView>(
+        find.descendant(of: find.byType(EasyRefresh), matching: find.byType(CustomScrollView)).first,
+      );
+      final int bar = scroll.slivers.indexWhere((Widget s) => s is SliverAppBar && s.pinned);
+      expect(bar, isNot(-1));
+      expect(scroll.slivers[bar + 1], isA<HeaderLocator>());
     });
   });
 }
