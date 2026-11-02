@@ -353,8 +353,7 @@ class _StatBox extends StatelessWidget {
   }
 }
 
-/// State / label / tracker filter chips, built from whatever buckets the daemon
-/// actually offers.
+/// Label filter chips, when the daemon offers labels, and the sort menu.
 class _FilterBar extends ConsumerWidget {
   const _FilterBar({required this.instance});
 
@@ -371,17 +370,9 @@ class _FilterBar extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        _ChipRow(
-          buckets: tree.states,
-          selected: filter.state,
-          onSelected: (String v) => ref
-              .read(delugeFilterProvider(instance).notifier)
-              .update((DelugeFilter f) => f.copyWith(state: v)),
-        ),
         // Only rendered when the daemon has the Label plugin; otherwise there
         // is nothing to filter on and the row would always be empty.
         if (tree.hasLabels) ...<Widget>[
-          const SizedBox(height: Insets.xs),
           _ChipRow(
             buckets: tree.labels,
             selected: filter.label,
@@ -389,8 +380,8 @@ class _FilterBar extends ConsumerWidget {
                 .read(delugeFilterProvider(instance).notifier)
                 .update((DelugeFilter f) => f.copyWith(label: v)),
           ),
+          const SizedBox(height: Insets.xs),
         ],
-        const SizedBox(height: Insets.xs),
         Row(
           children: <Widget>[
             const Icon(Icons.sort, size: 18),
