@@ -2,12 +2,13 @@
 ///
 /// Deluge 2.x Web UI JSON-RPC client (password login exchanged for a session
 /// cookie), models, Riverpod providers, and the per-instance [DelugeHome] UI
-/// (torrent list with pause/resume/remove/recheck/queue, filters, global speed
-/// limits, add by magnet/URL/file, and a per-torrent detail screen).
+/// (torrent list with pause/resume/remove/recheck/queue, state filters in a
+/// sidebar, add by magnet/URL/file, and a per-torrent detail screen).
 library;
 
 export 'src/deluge_add_sheet.dart';
 export 'src/deluge_client.dart';
+export 'src/deluge_filter_drawer.dart';
 export 'src/deluge_format.dart';
 export 'src/deluge_home.dart';
 export 'src/deluge_providers.dart';
