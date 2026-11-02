@@ -9,6 +9,7 @@ import 'deluge_client.dart';
 import 'deluge_format.dart';
 import 'deluge_providers.dart';
 import 'deluge_speed_dialog.dart';
+import 'deluge_speed_pill.dart';
 import 'deluge_torrent_detail_screen.dart';
 import 'models/deluge_filter_tree.dart';
 import 'models/deluge_session_status.dart';
@@ -114,82 +115,104 @@ class _DelugeHomeState extends ConsumerState<DelugeHome> {
   Widget build(BuildContext context) {
     final AsyncValue<List<DelugeTorrent>> torrents =
         ref.watch(delugeTorrentsProvider(widget.instance));
-    return AsyncValueView<List<DelugeTorrent>>(
-      value: torrents,
-      onRetry: _refresh,
-      data: (List<DelugeTorrent> list) {
-        return EasyRefresh(
-          header: const ClassicHeader(),
-          onRefresh: () async => _refresh(),
-          child: ListView(
-            padding: Insets.page,
-            children: <Widget>[
-              _SessionSummary(
-                instance: widget.instance,
-                onAdd: () => showDelugeAddSheet(context, widget.instance),
-                onTogglePause: (bool paused) =>
-                    _run((DelugeClient c) => c.setSessionPaused(paused: paused)),
-                onSetDownLimit: (double kib) =>
-                    _run((DelugeClient c) => c.setSpeedLimits(downloadKib: kib)),
-                onSetUpLimit: (double kib) =>
-                    _run((DelugeClient c) => c.setSpeedLimits(uploadKib: kib)),
+    final bool filtered = ref.watch(delugeFilterProvider(widget.instance)).isActive;
+    return Scaffold(
+      // Adding a torrent is the one global action here, so it floats over the
+      // list instead of crowding the session card.
+      floatingActionButton: FloatingActionButton(
+        tooltip: 'Add torrent',
+        onPressed: () => showDelugeAddSheet(context, widget.instance),
+        child: const Icon(Icons.add),
+      ),
+      body: AsyncValueView<List<DelugeTorrent>>(
+        value: torrents,
+        onRetry: _refresh,
+        data: (List<DelugeTorrent> list) {
+          return EasyRefresh(
+            header: const ClassicHeader(),
+            onRefresh: () async => _refresh(),
+            child: ListView(
+              // Extra bottom inset so the add button never covers the last row.
+              padding: const EdgeInsets.fromLTRB(
+                Insets.lg,
+                Insets.lg,
+                Insets.lg,
+                80,
               ),
-              const SizedBox(height: Insets.md),
-              _FilterBar(instance: widget.instance),
-              const SizedBox(height: Insets.sm),
-              if (list.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.only(top: Insets.xl),
-                  child: EmptyView(
-                    icon: Icons.download_done_outlined,
-                    title: 'No torrents',
-                    message: 'Nothing matches this filter.',
+              children: <Widget>[
+                _SessionSummary(
+                  instance: widget.instance,
+                  onTogglePause: (bool paused) => _run(
+                    (DelugeClient c) => c.setSessionPaused(paused: paused),
                   ),
-                )
-              else
-                for (final DelugeTorrent t in list)
-                  _TorrentRow(
-                    torrent: t,
-                    onTap: () => _openDetail(t),
-                    onPauseResume: () => _run(
-                      (DelugeClient c) => t.isPaused
-                          ? c.resume(<String>[t.id])
-                          : c.pause(<String>[t.id]),
+                  onSetDownLimit: (double kib) => _run(
+                    (DelugeClient c) => c.setSpeedLimits(downloadKib: kib),
+                  ),
+                  onSetUpLimit: (double kib) => _run(
+                    (DelugeClient c) => c.setSpeedLimits(uploadKib: kib),
+                  ),
+                ),
+                const SizedBox(height: Insets.md),
+                _FilterBar(instance: widget.instance),
+                const SizedBox(height: Insets.sm),
+                if (list.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: Insets.xl),
+                    child: EmptyView(
+                      icon: Icons.download_done_outlined,
+                      title: 'No torrents',
+                      message: filtered
+                          ? 'Nothing matches this filter.'
+                          : 'Add one with the + button.',
                     ),
-                    onRemove: () => _confirmRemove(t),
-                    onRecheck: () =>
-                        _run((DelugeClient c) => c.recheck(<String>[t.id])),
-                    onReannounce: () =>
-                        _run((DelugeClient c) => c.reannounce(<String>[t.id])),
-                    onQueueTop: () =>
-                        _run((DelugeClient c) => c.queueTop(<String>[t.id])),
-                    onQueueUp: () =>
-                        _run((DelugeClient c) => c.queueUp(<String>[t.id])),
-                    onQueueDown: () =>
-                        _run((DelugeClient c) => c.queueDown(<String>[t.id])),
-                    onQueueBottom: () =>
-                        _run((DelugeClient c) => c.queueBottom(<String>[t.id])),
-                  ),
-            ],
-          ),
-        );
-      },
+                  )
+                else
+                  for (final DelugeTorrent t in list)
+                    _TorrentRow(
+                      torrent: t,
+                      onTap: () => _openDetail(t),
+                      onPauseResume: () => _run(
+                        (DelugeClient c) => t.isPaused
+                            ? c.resume(<String>[t.id])
+                            : c.pause(<String>[t.id]),
+                      ),
+                      onRemove: () => _confirmRemove(t),
+                      onRecheck: () =>
+                          _run((DelugeClient c) => c.recheck(<String>[t.id])),
+                      onReannounce: () => _run(
+                        (DelugeClient c) => c.reannounce(<String>[t.id]),
+                      ),
+                      onQueueTop: () =>
+                          _run((DelugeClient c) => c.queueTop(<String>[t.id])),
+                      onQueueUp: () =>
+                          _run((DelugeClient c) => c.queueUp(<String>[t.id])),
+                      onQueueDown: () => _run(
+                        (DelugeClient c) => c.queueDown(<String>[t.id]),
+                      ),
+                      onQueueBottom: () => _run(
+                        (DelugeClient c) => c.queueBottom(<String>[t.id]),
+                      ),
+                    ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
 
-/// Session speeds, free space, and the global controls.
+/// Live session rates and remaining disk space, one tile each, plus the global
+/// pause and speed-limit controls.
 class _SessionSummary extends ConsumerWidget {
   const _SessionSummary({
     required this.instance,
-    required this.onAdd,
     required this.onTogglePause,
     required this.onSetDownLimit,
     required this.onSetUpLimit,
   });
 
   final Instance instance;
-  final VoidCallback onAdd;
   final void Function(bool paused) onTogglePause;
   final void Function(double kib) onSetDownLimit;
   final void Function(double kib) onSetUpLimit;
@@ -197,10 +220,9 @@ class _SessionSummary extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ColorScheme scheme = Theme.of(context).colorScheme;
-    final DelugeSessionStatus status = ref
-            .watch(delugeSessionStatusProvider(instance))
-            .value ??
-        const DelugeSessionStatus();
+    final DelugeSessionStatus status =
+        ref.watch(delugeSessionStatusProvider(instance)).value ??
+            const DelugeSessionStatus();
     final bool paused =
         ref.watch(delugeSessionPausedProvider(instance)).value ?? false;
     final DelugeSpeedLimits limits =
@@ -208,12 +230,12 @@ class _SessionSummary extends ConsumerWidget {
             const DelugeSpeedLimits();
     final int? freeSpace = ref.watch(delugeFreeSpaceProvider(instance)).value;
 
-    final TextTheme text = Theme.of(context).textTheme;
-    final List<String> meta = <String>[
-      '${status.dhtNodes} DHT nodes',
-      '${status.numPeers} ${status.numPeers == 1 ? 'peer' : 'peers'}',
-      if (freeSpace != null) '${delugeFmtBytes(freeSpace)} free',
-    ];
+    final (String downValue, String downUnit) =
+        delugeSplitRate(status.downloadRate);
+    final (String upValue, String upUnit) = delugeSplitRate(status.uploadRate);
+    final (String freeValue, String freeUnit) = _splitSize(
+      freeSpace == null ? '--' : delugeFmtBytes(freeSpace),
+    );
 
     return Card(
       child: Padding(
@@ -221,124 +243,92 @@ class _SessionSummary extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            // The two live rates are the point of this card, so they get the
-            // only large type on the screen. Everything else stays quiet.
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: _SpeedReadout(
-                    icon: Icons.south,
-                    bytesPerSec: status.downloadRate,
-                    color: scheme.primary,
+            // IntrinsicHeight lets the three tiles stretch to the same height
+            // even when one figure has to scale down to fit its tile.
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Expanded(
+                    child: _StatBox(
+                      icon: Icons.south,
+                      label: 'Download',
+                      value: downValue,
+                      unit: downUnit,
+                      background: scheme.primaryContainer,
+                      foreground: scheme.onPrimaryContainer,
+                      accent: scheme.primary,
+                    ),
                   ),
-                ),
-                Expanded(
-                  child: _SpeedReadout(
-                    icon: Icons.north,
-                    bytesPerSec: status.uploadRate,
-                    color: scheme.tertiary,
+                  const SizedBox(width: Insets.sm),
+                  Expanded(
+                    child: _StatBox(
+                      icon: Icons.north,
+                      label: 'Upload',
+                      value: upValue,
+                      unit: upUnit,
+                      background: scheme.tertiaryContainer,
+                      foreground: scheme.onTertiaryContainer,
+                      accent: scheme.tertiary,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: Insets.sm),
+                  Expanded(
+                    child: _StatBox(
+                      icon: Icons.storage_outlined,
+                      label: 'Free space',
+                      value: freeValue,
+                      unit: freeUnit,
+                      background: scheme.surfaceContainerHighest,
+                      foreground: scheme.onSurface,
+                      accent: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: Insets.xs),
-            Text(
-              meta.join(' - '),
-              style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-            ),
-            const Divider(height: Insets.xl),
-            Row(
+            const SizedBox(height: Insets.sm),
+            // The global controls sit under the live figures. Wrap keeps them
+            // usable on narrow screens without clipping the limit labels.
+            Wrap(
+              spacing: Insets.xs,
+              runSpacing: Insets.xs,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: <Widget>[
                 IconButton.filledTonal(
-                  tooltip: paused ? 'Resume all' : 'Pause all',
+                  tooltip: paused ? 'Resume session' : 'Pause session',
                   onPressed: () => onTogglePause(!paused),
                   icon: Icon(paused ? Icons.play_arrow : Icons.pause),
                 ),
-                const SizedBox(width: Insets.xs),
-                // Limits read as status first and controls second, so they are
-                // quiet text rather than buttons competing with Add.
-                Expanded(
-                  child: _LimitButton(
-                    icon: Icons.south,
-                    label: delugeFmtLimitKib(limits.maxDownloadKib),
-                    onPressed: () async {
-                      final double? kib = await showDelugeSpeedDialog(
-                        context,
-                        title: 'Download limit',
-                        current: limits.maxDownloadKib,
-                      );
-                      if (kib != null) onSetDownLimit(kib);
-                    },
-                  ),
+                _LimitButton(
+                  icon: Icons.south,
+                  label: delugeFmtLimitKib(limits.maxDownloadKib),
+                  onPressed: () async {
+                    final double? kib = await showDelugeSpeedDialog(
+                      context,
+                      title: 'Download limit',
+                      current: limits.maxDownloadKib,
+                    );
+                    if (kib != null) onSetDownLimit(kib);
+                  },
                 ),
-                Expanded(
-                  child: _LimitButton(
-                    icon: Icons.north,
-                    label: delugeFmtLimitKib(limits.maxUploadKib),
-                    onPressed: () async {
-                      final double? kib = await showDelugeSpeedDialog(
-                        context,
-                        title: 'Upload limit',
-                        current: limits.maxUploadKib,
-                      );
-                      if (kib != null) onSetUpLimit(kib);
-                    },
-                  ),
-                ),
-                const SizedBox(width: Insets.xs),
-                FilledButton.icon(
-                  onPressed: onAdd,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add'),
+                _LimitButton(
+                  icon: Icons.north,
+                  label: delugeFmtLimitKib(limits.maxUploadKib),
+                  onPressed: () async {
+                    final double? kib = await showDelugeSpeedDialog(
+                      context,
+                      title: 'Upload limit',
+                      current: limits.maxUploadKib,
+                    );
+                    if (kib != null) onSetUpLimit(kib);
+                  },
                 ),
               ],
             ),
           ],
         ),
       ),
-    );
-  }
-}
-
-/// One live rate, typeset as a big figure with a small unit beside it.
-class _SpeedReadout extends StatelessWidget {
-  const _SpeedReadout({
-    required this.icon,
-    required this.bytesPerSec,
-    required this.color,
-  });
-
-  final IconData icon;
-  final num bytesPerSec;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final TextTheme text = Theme.of(context).textTheme;
-    final (String value, String unit) = delugeSplitRate(bytesPerSec);
-    final bool idle = bytesPerSec <= 0;
-    final ColorScheme scheme = Theme.of(context).colorScheme;
-    return Row(
-      children: <Widget>[
-        Icon(icon, size: 18, color: idle ? scheme.outline : color),
-        const SizedBox(width: Insets.xs),
-        Text(
-          value,
-          style: text.headlineSmall?.copyWith(
-            color: idle ? scheme.onSurfaceVariant : scheme.onSurface,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(width: Insets.xxs),
-        Padding(
-          padding: const EdgeInsets.only(top: Insets.xs),
-          child: Text(
-            unit,
-            style: text.labelSmall
-                ?.copyWith(color: scheme.onSurfaceVariant),
-          ),
-        ),
-      ],
     );
   }
 }
@@ -370,8 +360,104 @@ class _LimitButton extends StatelessWidget {
   }
 }
 
-/// State / label / tracker filter chips, built from whatever buckets the daemon
-/// actually offers.
+/// Splits `'123.4 GB'` into `('123.4', 'GB')`. A placeholder with no space is
+/// kept whole so it still renders without a unit.
+(String, String) _splitSize(String text) {
+  final int space = text.lastIndexOf(' ');
+  return space < 0
+      ? (text, '')
+      : (text.substring(0, space), text.substring(space + 1));
+}
+
+/// One session figure on a tinted tile: label, then the value and its unit.
+class _StatBox extends StatelessWidget {
+  const _StatBox({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.unit,
+    required this.background,
+    required this.foreground,
+    required this.accent,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final String unit;
+  final Color background;
+  final Color foreground;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final TextTheme text = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: Insets.sm,
+      ),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: Radii.card,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(icon, size: 14, color: accent),
+              const SizedBox(width: Insets.xs),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.labelSmall?.copyWith(
+                    color: foreground.withValues(alpha: 0.8),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: Insets.xs),
+          // The tile can be narrow on small phones; scale the figure down
+          // rather than let a long rate wrap or clip.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text.rich(
+              TextSpan(
+                children: <InlineSpan>[
+                  TextSpan(
+                    text: value,
+                    style: text.titleMedium?.copyWith(
+                      color: foreground,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (unit.isNotEmpty)
+                    TextSpan(
+                      text: ' $unit',
+                      style: text.labelSmall?.copyWith(
+                        color: foreground.withValues(alpha: 0.7),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The active state filter, label filter chips when the daemon offers labels,
+/// and the sort menu.
 class _FilterBar extends ConsumerWidget {
   const _FilterBar({required this.instance});
 
@@ -383,22 +469,29 @@ class _FilterBar extends ConsumerWidget {
         ref.watch(delugeFilterTreeProvider(instance)).value ??
             const DelugeFilterTree();
     final DelugeFilter filter = ref.watch(delugeFilterProvider(instance));
-    if (tree.states.isEmpty) return const SizedBox.shrink();
+    // The state filter lives in the drawer and outlasts the screen, so this is
+    // the one sign on the list that it is not showing everything. It does not
+    // wait for the filter tree, which can still be loading.
+    final Widget? active = filter.state == 'All'
+        ? null
+        : _ActiveStateFilter(
+            state: filter.state,
+            onClear: () => ref
+                .read(delugeFilterProvider(instance).notifier)
+                .update((DelugeFilter f) => f.copyWith(state: 'All')),
+          );
+    if (tree.states.isEmpty) return active ?? const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        _ChipRow(
-          buckets: tree.states,
-          selected: filter.state,
-          onSelected: (String v) => ref
-              .read(delugeFilterProvider(instance).notifier)
-              .update((DelugeFilter f) => f.copyWith(state: v)),
-        ),
+        if (active != null) ...<Widget>[
+          active,
+          const SizedBox(height: Insets.xs),
+        ],
         // Only rendered when the daemon has the Label plugin; otherwise there
         // is nothing to filter on and the row would always be empty.
         if (tree.hasLabels) ...<Widget>[
-          const SizedBox(height: Insets.xs),
           _ChipRow(
             buckets: tree.labels,
             selected: filter.label,
@@ -406,8 +499,8 @@ class _FilterBar extends ConsumerWidget {
                 .read(delugeFilterProvider(instance).notifier)
                 .update((DelugeFilter f) => f.copyWith(label: v)),
           ),
+          const SizedBox(height: Insets.xs),
         ],
-        const SizedBox(height: Insets.xs),
         Row(
           children: <Widget>[
             const Icon(Icons.sort, size: 18),
@@ -415,6 +508,40 @@ class _FilterBar extends ConsumerWidget {
             Expanded(child: _SortMenu(instance: instance)),
           ],
         ),
+      ],
+    );
+  }
+}
+
+/// "Filtered: Seeding" with a way back to the full list.
+class _ActiveStateFilter extends StatelessWidget {
+  const _ActiveStateFilter({required this.state, required this.onClear});
+
+  final String state;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme scheme = theme.colorScheme;
+    return Row(
+      key: const ValueKey<String>('deluge-active-filter'),
+      children: <Widget>[
+        Text(
+          'Filtered:',
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: scheme.onSurfaceVariant,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(width: Insets.xs),
+        _StatePill(
+          label: state,
+          background: scheme.primaryContainer,
+          foreground: scheme.onPrimaryContainer,
+        ),
+        const Spacer(),
+        TextButton(onPressed: onClear, child: const Text('Clear')),
       ],
     );
   }
@@ -521,138 +648,250 @@ class _TorrentRow extends StatelessWidget {
   final VoidCallback onQueueDown;
   final VoidCallback onQueueBottom;
 
+  void _showActions(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      // Size the sheet to its actions; at the default height Remove, the last
+      // one, only showed after a scroll.
+      isScrollControlled: true,
+      builder: (BuildContext sheetContext) {
+        final ColorScheme scheme = Theme.of(sheetContext).colorScheme;
+        void run(VoidCallback action) {
+          Navigator.of(sheetContext).pop();
+          action();
+        }
+
+        return SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            children: <Widget>[
+              ListTile(
+                leading: Icon(
+                  torrent.isPaused ? Icons.play_arrow : Icons.pause,
+                ),
+                title: Text(torrent.isPaused ? 'Resume' : 'Pause'),
+                onTap: () => run(onPauseResume),
+              ),
+              ListTile(
+                leading: const Icon(Icons.fact_check_outlined),
+                title: const Text('Force recheck'),
+                onTap: () => run(onRecheck),
+              ),
+              ListTile(
+                leading: const Icon(Icons.campaign_outlined),
+                title: const Text('Reannounce'),
+                onTap: () => run(onReannounce),
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.vertical_align_top),
+                title: const Text('Queue to top'),
+                onTap: () => run(onQueueTop),
+              ),
+              ListTile(
+                leading: const Icon(Icons.arrow_upward),
+                title: const Text('Queue up'),
+                onTap: () => run(onQueueUp),
+              ),
+              ListTile(
+                leading: const Icon(Icons.arrow_downward),
+                title: const Text('Queue down'),
+                onTap: () => run(onQueueDown),
+              ),
+              ListTile(
+                leading: const Icon(Icons.vertical_align_bottom),
+                title: const Text('Queue to bottom'),
+                onTap: () => run(onQueueBottom),
+              ),
+              const Divider(),
+              ListTile(
+                leading: Icon(Icons.delete_outline, color: scheme.error),
+                title: Text(
+                  'Remove',
+                  style: TextStyle(color: scheme.error),
+                ),
+                onTap: () => run(onRemove),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ColorScheme scheme = Theme.of(context).colorScheme;
     final TextTheme text = Theme.of(context).textTheme;
     final Color stateColor = delugeStateColor(scheme, torrent.state);
-    final bool done = torrent.progress >= 100;
-    final bool moving = torrent.downloadRate > 0 || torrent.uploadRate > 0;
+    final Color stateContainer =
+        delugeStateContainerColor(scheme, torrent.state);
+    final Color stateOnContainer =
+        delugeStateOnContainerColor(scheme, torrent.state);
+    final double progress = torrent.progressFraction;
+    final bool complete = progress >= 1.0;
+    final bool dlActive = torrent.liveDownloadRate > 0;
+    final bool upActive = torrent.liveUploadRate > 0;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: Insets.sm),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: Radii.card,
-        child: Padding(
-          padding: const EdgeInsets.all(Insets.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Icon(
-                    delugeStateIcon(torrent.state),
-                    size: 18,
-                    color: stateColor,
-                  ),
-                  const SizedBox(width: Insets.sm),
-                  Expanded(
-                    child: Text(
-                      torrent.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: text.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w500,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: Insets.xs),
+      child: Material(
+        color: scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          // The card carries no visible menu; the per-torrent actions live on
+          // a long press, the same way qBittorrent's cards behave.
+          onLongPress: () => _showActions(context),
+          child: Padding(
+            padding: const EdgeInsets.all(Insets.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Container(
+                      width: 44,
+                      height: 44,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: stateContainer,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        delugeStateIcon(torrent.state),
+                        size: 22,
+                        color: stateOnContainer,
                       ),
                     ),
-                  ),
-                  _RowMenu(
-                    isPaused: torrent.isPaused,
-                    onPauseResume: onPauseResume,
-                    onRemove: onRemove,
-                    onRecheck: onRecheck,
-                    onReannounce: onReannounce,
-                    onQueueTop: onQueueTop,
-                    onQueueUp: onQueueUp,
-                    onQueueDown: onQueueDown,
-                    onQueueBottom: onQueueBottom,
-                  ),
-                ],
-              ),
-              const SizedBox(height: Insets.sm),
-              // Once a torrent is finished its progress bar is pinned at 100%
-              // and says nothing. Give the bar a second job: show share ratio
-              // toward 1.0, which is the one number still moving.
-              LinearProgressIndicatorM3E(
-                value: done
-                    ? torrent.ratio.clamp(0, 1).toDouble()
-                    : torrent.progressFraction,
-                // The expressive wave reads as "moving right now", so it is
-                // spent only on torrents actually shifting bytes. A torrent
-                // parked at 100% stays flat.
-                shape: moving ? ProgressM3EShape.wavy : ProgressM3EShape.flat,
-                size: LinearProgressM3ESize.s,
-                activeColor: stateColor,
-                trackColor: scheme.surfaceContainerHighest,
-              ),
-              const SizedBox(height: Insets.sm),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: <Widget>[
-                  Expanded(
-                    child: Text.rich(
-                      TextSpan(
-                        children: <InlineSpan>[
-                          TextSpan(
-                            text: done
-                                ? 'Ratio ${torrent.ratio.toStringAsFixed(2)}'
-                                : '${torrent.progress.toStringAsFixed(0)}%',
+                    const SizedBox(width: Insets.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            torrent.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: text.titleSmall?.copyWith(
-                              color: scheme.onSurface,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                          TextSpan(
-                            text: done
-                                ? '  ${delugeFmtBytes(torrent.totalUploaded)} '
-                                    'shared of ${delugeFmtBytes(
-                                    torrent.totalWanted,
-                                  )}'
-                                : '  ${delugeFmtBytes(torrent.totalDone)} of '
-                                    '${delugeFmtBytes(torrent.totalWanted)}',
-                            style: text.bodySmall?.copyWith(
+                          const SizedBox(height: 6),
+                          Wrap(
+                            spacing: Insets.sm,
+                            runSpacing: Insets.xs,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: <Widget>[
+                              _StatePill(
+                                label: torrent.state.isEmpty
+                                    ? 'Unknown'
+                                    : torrent.state,
+                                background: stateContainer,
+                                foreground: stateOnContainer,
+                              ),
+                              Text(
+                                '${delugeFmtBytes(torrent.totalDone)} / '
+                                '${delugeFmtBytes(torrent.totalWanted)}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: text.bodySmall?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: Insets.md),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: LinearProgressIndicatorM3E(
+                          shape: ProgressM3EShape.flat,
+                          value: progress,
+                          activeColor:
+                              complete ? scheme.tertiary : stateColor,
+                          trackColor: scheme.surfaceContainerHighest,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: Insets.sm),
+                    Text(
+                      '${(progress * 100).toStringAsFixed(0)}%',
+                      style: text.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: complete ? scheme.tertiary : stateColor,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: Insets.md),
+                // Wrap instead of a Row: on a narrow phone or at a large text
+                // scale the trailing ratio and ETA move to a second line
+                // rather than clipping the speed pills.
+                Wrap(
+                  spacing: Insets.sm,
+                  runSpacing: Insets.xs,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: <Widget>[
+                    DelugeSpeedPill(
+                      icon: Icons.south,
+                      label: delugeFmtRate(torrent.liveDownloadRate),
+                      color: scheme.primary,
+                      active: dlActive,
+                    ),
+                    DelugeSpeedPill(
+                      icon: Icons.north,
+                      label: delugeFmtRate(torrent.liveUploadRate),
+                      color: scheme.tertiary,
+                      active: upActive,
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Icon(
+                          Icons.swap_vert,
+                          size: 14,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          torrent.ratio.toStringAsFixed(2),
+                          style: text.labelSmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                        if (torrent.liveEta > 0) ...<Widget>[
+                          const SizedBox(width: Insets.sm),
+                          Icon(
+                            Icons.schedule,
+                            size: 14,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            delugeFmtEta(torrent.liveEta),
+                            style: text.labelSmall?.copyWith(
                               color: scheme.onSurfaceVariant,
                             ),
                           ),
                         ],
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: Insets.sm),
-                  Text(
-                    torrent.state,
-                    style: text.labelMedium?.copyWith(color: stateColor),
-                  ),
-                ],
-              ),
-              const SizedBox(height: Insets.xxs),
-              DefaultTextStyle.merge(
-                style: text.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
-                child: Row(
-                  children: <Widget>[
-                    Icon(Icons.south, size: 12, color: scheme.onSurfaceVariant),
-                    Text(delugeFmtRate(torrent.downloadRate)),
-                    const SizedBox(width: Insets.sm),
-                    Icon(Icons.north, size: 12, color: scheme.onSurfaceVariant),
-                    Text(delugeFmtRate(torrent.uploadRate)),
-                    const SizedBox(width: Insets.sm),
-                    Expanded(
-                      child: Text(
-                        '${torrent.numSeeds}/${torrent.totalSeeds} seeds - '
-                        '${torrent.numPeers}/${torrent.totalPeers} peers',
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (torrent.eta > 0) Text(delugeFmtEta(torrent.eta)),
                   ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -660,128 +899,33 @@ class _TorrentRow extends StatelessWidget {
   }
 }
 
-class _RowMenu extends StatelessWidget {
-  const _RowMenu({
-    required this.isPaused,
-    required this.onPauseResume,
-    required this.onRemove,
-    required this.onRecheck,
-    required this.onReannounce,
-    required this.onQueueTop,
-    required this.onQueueUp,
-    required this.onQueueDown,
-    required this.onQueueBottom,
+/// State word on the torrent card, tinted the same way qBittorrent's pill is.
+class _StatePill extends StatelessWidget {
+  const _StatePill({
+    required this.label,
+    required this.background,
+    required this.foreground,
   });
 
-  final bool isPaused;
-  final VoidCallback onPauseResume;
-  final VoidCallback onRemove;
-  final VoidCallback onRecheck;
-  final VoidCallback onReannounce;
-  final VoidCallback onQueueTop;
-  final VoidCallback onQueueUp;
-  final VoidCallback onQueueDown;
-  final VoidCallback onQueueBottom;
+  final String label;
+  final Color background;
+  final Color foreground;
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-        PopupMenuItem<String>(
-          value: 'pause',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(isPaused ? Icons.play_arrow : Icons.pause),
-            title: Text(isPaused ? 'Resume' : 'Pause'),
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'recheck',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.fact_check_outlined),
-            title: Text('Force recheck'),
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'reannounce',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.campaign_outlined),
-            title: Text('Reannounce'),
-          ),
-        ),
-        const PopupMenuDivider(),
-        const PopupMenuItem<String>(
-          value: 'top',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.vertical_align_top),
-            title: Text('Queue to top'),
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'up',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.arrow_upward),
-            title: Text('Queue up'),
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'down',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.arrow_downward),
-            title: Text('Queue down'),
-          ),
-        ),
-        const PopupMenuItem<String>(
-          value: 'bottom',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.vertical_align_bottom),
-            title: Text('Queue to bottom'),
-          ),
-        ),
-        const PopupMenuDivider(),
-        const PopupMenuItem<String>(
-          value: 'remove',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.delete_outline),
-            title: Text('Remove'),
-          ),
-        ),
-      ],
-      onSelected: (String value) {
-        switch (value) {
-          case 'pause':
-            onPauseResume();
-          case 'recheck':
-            onRecheck();
-          case 'reannounce':
-            onReannounce();
-          case 'top':
-            onQueueTop();
-          case 'up':
-            onQueueUp();
-          case 'down':
-            onQueueDown();
-          case 'bottom':
-            onQueueBottom();
-          case 'remove':
-            onRemove();
-        }
-      },
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: foreground,
+              fontWeight: FontWeight.w600,
+            ),
+      ),
     );
   }
 }

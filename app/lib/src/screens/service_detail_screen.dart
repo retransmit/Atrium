@@ -216,9 +216,12 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
             instances: ref.watch(activeInstancesProvider),
             profile: ref.watch(activeProfileProvider),
           ),
-          endDrawer: instance.kind == ServiceKind.qbittorrent
-              ? QbittorrentFilterDrawer(instance: instance)
-              : null,
+          endDrawer: switch (instance.kind) {
+            ServiceKind.qbittorrent =>
+              QbittorrentFilterDrawer(instance: instance),
+            ServiceKind.deluge => DelugeFilterDrawer(instance: instance),
+            _ => null,
+          },
           appBar: AppBar(
             leading: Builder(
               builder: (BuildContext context) {
@@ -354,6 +357,8 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
                 ),
               if (instance.kind == ServiceKind.qbittorrent)
                 QbittorrentAppBarActions(instance: instance),
+              if (instance.kind == ServiceKind.deluge)
+                DelugeFilterAppBarAction(instance: instance),
               if (instance.kind == ServiceKind.emby ||
                   instance.kind == ServiceKind.jellyfin)
                 IconButton(
