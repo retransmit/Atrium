@@ -8,7 +8,6 @@ import 'deluge_add_sheet.dart';
 import 'deluge_client.dart';
 import 'deluge_format.dart';
 import 'deluge_providers.dart';
-import 'deluge_speed_dialog.dart';
 import 'deluge_torrent_detail_screen.dart';
 import 'models/deluge_filter_tree.dart';
 import 'models/deluge_session_status.dart';
@@ -34,9 +33,7 @@ class _DelugeHomeState extends ConsumerState<DelugeHome> {
     // one would re-filter stale data without going back to the server.
     ref.invalidate(delugeRawTorrentsProvider(widget.instance));
     ref.invalidate(delugeSessionStatusProvider(widget.instance));
-    ref.invalidate(delugeSessionPausedProvider(widget.instance));
     ref.invalidate(delugeFilterTreeProvider(widget.instance));
-    ref.invalidate(delugeSpeedLimitsProvider(widget.instance));
     ref.invalidate(delugeFreeSpaceProvider(widget.instance));
   }
 
@@ -138,18 +135,7 @@ class _DelugeHomeState extends ConsumerState<DelugeHome> {
                 80,
               ),
               children: <Widget>[
-                _SessionSummary(
-                  instance: widget.instance,
-                  onTogglePause: (bool paused) => _run(
-                    (DelugeClient c) => c.setSessionPaused(paused: paused),
-                  ),
-                  onSetDownLimit: (double kib) => _run(
-                    (DelugeClient c) => c.setSpeedLimits(downloadKib: kib),
-                  ),
-                  onSetUpLimit: (double kib) => _run(
-                    (DelugeClient c) => c.setSpeedLimits(uploadKib: kib),
-                  ),
-                ),
+                _SessionSummary(instance: widget.instance),
                 const SizedBox(height: Insets.md),
                 _FilterBar(instance: widget.instance),
                 const SizedBox(height: Insets.sm),
@@ -198,186 +184,170 @@ class _DelugeHomeState extends ConsumerState<DelugeHome> {
   }
 }
 
-/// Session speeds, free space, and the global controls.
+/// Live session rates and remaining disk space, one tile each.
 class _SessionSummary extends ConsumerWidget {
-  const _SessionSummary({
-    required this.instance,
-    required this.onTogglePause,
-    required this.onSetDownLimit,
-    required this.onSetUpLimit,
-  });
+  const _SessionSummary({required this.instance});
 
   final Instance instance;
-  final void Function(bool paused) onTogglePause;
-  final void Function(double kib) onSetDownLimit;
-  final void Function(double kib) onSetUpLimit;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ColorScheme scheme = Theme.of(context).colorScheme;
-    final DelugeSessionStatus status = ref
-            .watch(delugeSessionStatusProvider(instance))
-            .value ??
-        const DelugeSessionStatus();
-    final bool paused =
-        ref.watch(delugeSessionPausedProvider(instance)).value ?? false;
-    final DelugeSpeedLimits limits =
-        ref.watch(delugeSpeedLimitsProvider(instance)).value ??
-            const DelugeSpeedLimits();
+    final DelugeSessionStatus status =
+        ref.watch(delugeSessionStatusProvider(instance)).value ??
+            const DelugeSessionStatus();
     final int? freeSpace = ref.watch(delugeFreeSpaceProvider(instance)).value;
 
-    final TextTheme text = Theme.of(context).textTheme;
-    final List<String> meta = <String>[
-      '${status.dhtNodes} DHT nodes',
-      '${status.numPeers} ${status.numPeers == 1 ? 'peer' : 'peers'}',
-      if (freeSpace != null) '${delugeFmtBytes(freeSpace)} free',
-    ];
+    final (String downValue, String downUnit) =
+        delugeSplitRate(status.downloadRate);
+    final (String upValue, String upUnit) = delugeSplitRate(status.uploadRate);
+    final (String freeValue, String freeUnit) = _splitSize(
+      freeSpace == null ? '--' : delugeFmtBytes(freeSpace),
+    );
 
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(Insets.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            // The two live rates are the point of this card, so they get the
-            // only large type on the screen. Everything else stays quiet.
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: _SpeedReadout(
-                    icon: Icons.south,
-                    bytesPerSec: status.downloadRate,
-                    color: scheme.primary,
-                  ),
+        // IntrinsicHeight lets the three tiles stretch to the same height even
+        // when one figure has to scale down to fit its tile.
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Expanded(
+                child: _StatBox(
+                  icon: Icons.south,
+                  label: 'Download',
+                  value: downValue,
+                  unit: downUnit,
+                  background: scheme.primaryContainer,
+                  foreground: scheme.onPrimaryContainer,
+                  accent: scheme.primary,
                 ),
-                Expanded(
-                  child: _SpeedReadout(
-                    icon: Icons.north,
-                    bytesPerSec: status.uploadRate,
-                    color: scheme.tertiary,
-                  ),
+              ),
+              const SizedBox(width: Insets.sm),
+              Expanded(
+                child: _StatBox(
+                  icon: Icons.north,
+                  label: 'Upload',
+                  value: upValue,
+                  unit: upUnit,
+                  background: scheme.tertiaryContainer,
+                  foreground: scheme.onTertiaryContainer,
+                  accent: scheme.tertiary,
                 ),
-              ],
-            ),
-            const SizedBox(height: Insets.xs),
-            Text(
-              meta.join(' - '),
-              style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-            ),
-            const Divider(height: Insets.xl),
-            Row(
-              children: <Widget>[
-                IconButton.filledTonal(
-                  tooltip: paused ? 'Resume all' : 'Pause all',
-                  onPressed: () => onTogglePause(!paused),
-                  icon: Icon(paused ? Icons.play_arrow : Icons.pause),
+              ),
+              const SizedBox(width: Insets.sm),
+              Expanded(
+                child: _StatBox(
+                  icon: Icons.storage_outlined,
+                  label: 'Free space',
+                  value: freeValue,
+                  unit: freeUnit,
+                  background: scheme.surfaceContainerHighest,
+                  foreground: scheme.onSurface,
+                  accent: scheme.onSurfaceVariant,
                 ),
-                const SizedBox(width: Insets.xs),
-                // Limits read as status first and controls second, so they are
-                // quiet text rather than buttons; adding a torrent lives in the
-                // page's floating action button.
-                Expanded(
-                  child: _LimitButton(
-                    icon: Icons.south,
-                    label: delugeFmtLimitKib(limits.maxDownloadKib),
-                    onPressed: () async {
-                      final double? kib = await showDelugeSpeedDialog(
-                        context,
-                        title: 'Download limit',
-                        current: limits.maxDownloadKib,
-                      );
-                      if (kib != null) onSetDownLimit(kib);
-                    },
-                  ),
-                ),
-                Expanded(
-                  child: _LimitButton(
-                    icon: Icons.north,
-                    label: delugeFmtLimitKib(limits.maxUploadKib),
-                    onPressed: () async {
-                      final double? kib = await showDelugeSpeedDialog(
-                        context,
-                        title: 'Upload limit',
-                        current: limits.maxUploadKib,
-                      );
-                      if (kib != null) onSetUpLimit(kib);
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// One live rate, typeset as a big figure with a small unit beside it.
-class _SpeedReadout extends StatelessWidget {
-  const _SpeedReadout({
-    required this.icon,
-    required this.bytesPerSec,
-    required this.color,
-  });
-
-  final IconData icon;
-  final num bytesPerSec;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final TextTheme text = Theme.of(context).textTheme;
-    final (String value, String unit) = delugeSplitRate(bytesPerSec);
-    final bool idle = bytesPerSec <= 0;
-    final ColorScheme scheme = Theme.of(context).colorScheme;
-    return Row(
-      children: <Widget>[
-        Icon(icon, size: 18, color: idle ? scheme.outline : color),
-        const SizedBox(width: Insets.xs),
-        Text(
-          value,
-          style: text.headlineSmall?.copyWith(
-            color: idle ? scheme.onSurfaceVariant : scheme.onSurface,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(width: Insets.xxs),
-        Padding(
-          padding: const EdgeInsets.only(top: Insets.xs),
-          child: Text(
-            unit,
-            style: text.labelSmall
-                ?.copyWith(color: scheme.onSurfaceVariant),
-          ),
-        ),
-      ],
-    );
-  }
+/// Splits `'123.4 GB'` into `('123.4', 'GB')`. A placeholder with no space is
+/// kept whole so it still renders without a unit.
+(String, String) _splitSize(String text) {
+  final int space = text.lastIndexOf(' ');
+  return space < 0
+      ? (text, '')
+      : (text.substring(0, space), text.substring(space + 1));
 }
 
-/// A bandwidth cap shown as its current value; tapping changes it.
-class _LimitButton extends StatelessWidget {
-  const _LimitButton({
+/// One session figure on a tinted tile: label, then the value and its unit.
+class _StatBox extends StatelessWidget {
+  const _StatBox({
     required this.icon,
     required this.label,
-    required this.onPressed,
+    required this.value,
+    required this.unit,
+    required this.background,
+    required this.foreground,
+    required this.accent,
   });
 
   final IconData icon;
   final String label;
-  final VoidCallback onPressed;
+  final String value;
+  final String unit;
+  final Color background;
+  final Color foreground;
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
-    return TextButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 16),
-      label: Text(label, overflow: TextOverflow.ellipsis),
-      style: TextButton.styleFrom(
-        foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
-        padding: const EdgeInsets.symmetric(horizontal: Insets.xs),
-        visualDensity: VisualDensity.compact,
+    final TextTheme text = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: Insets.sm,
+      ),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: Radii.card,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(icon, size: 14, color: accent),
+              const SizedBox(width: Insets.xs),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.labelSmall?.copyWith(
+                    color: foreground.withValues(alpha: 0.8),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: Insets.xs),
+          // The tile can be narrow on small phones; scale the figure down
+          // rather than let a long rate wrap or clip.
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text.rich(
+              TextSpan(
+                children: <InlineSpan>[
+                  TextSpan(
+                    text: value,
+                    style: text.titleMedium?.copyWith(
+                      color: foreground,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (unit.isNotEmpty)
+                    TextSpan(
+                      text: ' $unit',
+                      style: text.labelSmall?.copyWith(
+                        color: foreground.withValues(alpha: 0.7),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
