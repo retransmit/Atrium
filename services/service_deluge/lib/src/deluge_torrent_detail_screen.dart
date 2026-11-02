@@ -613,6 +613,7 @@ class _PeersTab extends StatelessWidget {
           return _TabHeading('Peers (${detail.peers.length})');
         }
         final DelugePeer peer = detail.peers[index - 1];
+        final String? flag = delugeCountryFlag(peer.country);
         return _Panel(
           margin: const EdgeInsets.only(bottom: Insets.sm),
           child: Row(
@@ -635,10 +636,28 @@ class _PeersTab extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
-                      peer.ip.isEmpty ? 'Unknown peer' : peer.ip,
-                      style: text.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w600),
+                    Row(
+                      children: <Widget>[
+                        if (flag != null) ...<Widget>[
+                          Tooltip(
+                            message: peer.country.toUpperCase(),
+                            child: Text(
+                              flag,
+                              style: const TextStyle(fontSize: 18),
+                            ),
+                          ),
+                          const SizedBox(width: Insets.xs),
+                        ],
+                        Expanded(
+                          child: Text(
+                            peer.ip.isEmpty ? 'Unknown peer' : peer.ip,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: text.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(

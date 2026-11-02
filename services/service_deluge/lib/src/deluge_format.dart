@@ -53,6 +53,31 @@ String delugeFmtLimitKib(double kib) {
   return '${kib == kib.roundToDouble() ? kib.toInt() : kib} KB/s';
 }
 
+/// Regional-indicator flag emoji for an ISO 3166-1 alpha-2 country code.
+///
+/// Deluge puts the GeoIP code in each peer's `country` field. It can also be
+/// empty or a non-country marker, so anything that is not two ASCII letters
+/// returns null and the UI simply omits the flag.
+String? delugeCountryFlag(String country) {
+  final String code = country.trim().toUpperCase();
+  if (code.length != 2) return null;
+  final int first = code.codeUnitAt(0);
+  final int second = code.codeUnitAt(1);
+  const int letterA = 0x41;
+  const int letterZ = 0x5A;
+  if (first < letterA ||
+      first > letterZ ||
+      second < letterA ||
+      second > letterZ) {
+    return null;
+  }
+  const int regionalOffset = 0x1F1E6 - letterA;
+  return String.fromCharCodes(<int>[
+    first + regionalOffset,
+    second + regionalOffset,
+  ]);
+}
+
 /// Colour for a Deluge state, taken from the active scheme so the palette
 /// still follows the device's dynamic colour.
 Color delugeStateColor(ColorScheme scheme, String state) => switch (state) {

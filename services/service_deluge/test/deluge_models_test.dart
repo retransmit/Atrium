@@ -285,5 +285,19 @@ void main() {
       expect(delugeFmtLimitKib(512), '512 KB/s');
       expect(delugeFmtLimitKib(2048), '2 MB/s');
     });
+
+    test('country flags need a two-letter code', () {
+      expect(
+        delugeCountryFlag('US'),
+        String.fromCharCodes(<int>[0x1F1FA, 0x1F1F8]),
+      );
+      expect(
+        delugeCountryFlag(' de '),
+        String.fromCharCodes(<int>[0x1F1E9, 0x1F1EA]),
+      );
+      expect(delugeCountryFlag(''), isNull);
+      expect(delugeCountryFlag('USA'), isNull);
+      expect(delugeCountryFlag('1A'), isNull);
+    });
   });
 }
