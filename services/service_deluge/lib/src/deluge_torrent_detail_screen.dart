@@ -45,7 +45,8 @@ class DelugeTorrentDetailScreen extends ConsumerWidget {
         appBar: AppBar(
           title: Text(torrent?.name ?? initialName, maxLines: 1),
           bottom: const TabBar(
-            isScrollable: true,
+            // Four short labels always fit, so a fixed-fill bar spaces them
+            // evenly instead of packing a scrollable one to the left.
             tabs: <Widget>[
               Tab(text: 'Overview'),
               Tab(text: 'Files'),
