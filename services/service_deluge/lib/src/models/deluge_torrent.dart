@@ -84,6 +84,11 @@ abstract class DelugeTorrent with _$DelugeTorrent {
   /// keeps extrapolating from the fading rate once a torrent is paused.
   int get liveEta => isDownloading ? eta : 0;
 
+  /// Seconds until a seeding torrent reaches its stop ratio, or 0. For a
+  /// finished torrent Deluge's `eta` means this instead of time to completion,
+  /// and it only sets one when "stop at ratio" is on and data is going up.
+  int get seedStopEta => isSeeding && eta > 0 ? eta : 0;
+
   /// 0 - 1, for progress indicators that expect a fraction rather than
   /// Deluge's 0 - 100 percent.
   double get progressFraction => (progress / 100).clamp(0, 1).toDouble();

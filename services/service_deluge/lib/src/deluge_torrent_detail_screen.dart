@@ -411,6 +411,8 @@ class _OverviewTab extends StatelessWidget {
               ('Peers', '${t.numPeers} connected (${t.totalPeers} total)'),
               ('Queue', t.queue < 0 ? 'Not queued' : 'Position ${t.queue}'),
               if (t.liveEta > 0) ('ETA', delugeFmtEta(t.liveEta)),
+              if (t.seedStopEta > 0)
+                ('Seed-stop ETA', delugeFmtEta(t.seedStopEta)),
             ],
           ),
           const SizedBox(height: Insets.md),

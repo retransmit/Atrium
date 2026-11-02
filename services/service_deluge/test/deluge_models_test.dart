@@ -253,6 +253,8 @@ void main() {
       expect(t.liveDownloadRate, 0);
       expect(t.liveUploadRate, 20);
       expect(t.liveEta, 0);
+      // For a seed, Deluge's ETA is the time to its stop ratio.
+      expect(t.seedStopEta, 60);
     });
 
     test('a paused torrent shows nothing moving', () {
@@ -267,6 +269,7 @@ void main() {
       expect(t.liveDownloadRate, 0);
       expect(t.liveUploadRate, 0);
       expect(t.liveEta, 0);
+      expect(t.seedStopEta, 0);
     });
   });
 
