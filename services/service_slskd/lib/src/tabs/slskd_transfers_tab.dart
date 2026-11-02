@@ -108,6 +108,16 @@ class _SlskdTransfersTabState extends ConsumerState<SlskdTransfersTab> {
     return Scaffold(
       floatingActionButton: _buildMiniFab(context, downloads: downloads, uploads: uploads),
       body: EasyRefresh(
+        header: const ClassicHeader(
+          position: IndicatorPosition.locator,
+          dragText: 'Pull to refresh',
+          armedText: 'Release ready',
+          readyText: 'Refreshing...',
+          processingText: 'Refreshing...',
+          processedText: 'Succeeded',
+          failedText: 'Failed',
+          messageText: 'Last updated at %T',
+        ),
         onRefresh: () async {
           try {
             await Future.wait([
@@ -192,6 +202,7 @@ class _SlskdTransfersTabState extends ConsumerState<SlskdTransfersTab> {
                 const SizedBox(width: Insets.xs),
               ],
             ),
+            const HeaderLocator.sliver(),
 
             if (isLoading)
               const SliverFillRemaining(

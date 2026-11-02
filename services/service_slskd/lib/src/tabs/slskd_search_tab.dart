@@ -318,6 +318,16 @@ class _SlskdSearchTabState extends ConsumerState<SlskdSearchTab> {
       body: SafeArea(
         bottom: false,
         child: EasyRefresh(
+          header: const ClassicHeader(
+            position: IndicatorPosition.locator,
+            dragText: 'Pull to refresh',
+            armedText: 'Release ready',
+            readyText: 'Refreshing...',
+            processingText: 'Refreshing...',
+            processedText: 'Succeeded',
+            failedText: 'Failed',
+            messageText: 'Last updated at %T',
+          ),
           onRefresh: () async {
             ref.invalidate(slskdSearchesProvider(widget.instance));
             final selectedId =
@@ -393,6 +403,7 @@ class _SlskdSearchTabState extends ConsumerState<SlskdSearchTab> {
                 const SizedBox(width: Insets.xs),
               ],
             ),
+            const HeaderLocator.sliver(),
 
             // 2. Concurrent Active Searches Ribbon
             if (searches.isNotEmpty)

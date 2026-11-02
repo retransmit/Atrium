@@ -1,0 +1,6 @@
+Deluge is redesigned to match qBittorrent and Transmission: stat tiles, a
+filter drawer, torrent cards and a panel-based detail screen.
+
+Fixes for slskd's pull to refresh, version and logs message, Deluge's Active
+filter and stale speeds, Transmission's add sheet, Cleanuparr's error
+messages and the service form's URL check.

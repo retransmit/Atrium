@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:core_networking/core_networking.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -112,6 +114,35 @@ void main() {
       fake.single('torrent-add').arguments['download-dir'],
       '/downloads/complete',
     );
+  });
+
+  testWidgets('closing the sheet mid-add keeps the screen and reports success',
+      (WidgetTester tester) async {
+    // The sheet stays dismissible while it adds. Once the reply lands, the
+    // closed sheet must not pop the screen it sat on, and must not report a
+    // failure for a torrent the daemon did add.
+    final Completer<void> reply = Completer<void>();
+    fake.hold('torrent-add', reply.future);
+    await open(tester);
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'magnet: link or .torrent URL'),
+      'magnet:?xt=urn:btih:zzzz',
+    );
+    await settle(tester);
+    await tester.tap(find.widgetWithText(FilledButton, 'Add'));
+    await tester.pump();
+    // Tap the scrim above the sheet to dismiss it while the add is held.
+    await tester.tapAt(const Offset(20, 20));
+    await settle(tester);
+    expect(find.text('magnet: link or .torrent URL'), findsNothing);
+
+    reply.complete();
+    await settle(tester);
+
+    expect(find.text('open'), findsOneWidget);
+    expect(find.textContaining('Add failed'), findsNothing);
+    expect(find.text('Torrent added'), findsOneWidget);
   });
 
   testWidgets('the fields read as boxes, not floating labels',

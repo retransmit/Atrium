@@ -230,7 +230,7 @@ class TransmissionPill extends StatelessWidget {
 
 /// The value style of a speed or ratio pill, shared so that
 /// [TransmissionPillLine] measures a value the way the pill draws it.
-TextStyle? _pillValueStyle(BuildContext context, Color color) =>
+TextStyle? _pillValueStyle(BuildContext context, [Color? color]) =>
     Theme.of(context).textTheme.labelSmall?.copyWith(
           color: color,
           fontWeight: FontWeight.w700,
@@ -249,7 +249,7 @@ abstract class TransmissionMeasuredPill extends StatelessWidget {
     final TextPainter painter = TextPainter(
       text: TextSpan(
         text: value,
-        style: _pillValueStyle(context, const Color(0xFF000000)),
+        style: _pillValueStyle(context),
       ),
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),

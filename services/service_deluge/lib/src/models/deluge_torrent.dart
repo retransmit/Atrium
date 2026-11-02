@@ -30,8 +30,9 @@ abstract class DelugeTorrent with _$DelugeTorrent {
     @JsonKey(name: 'download_payload_rate') @Default(0) int downloadRate,
     @JsonKey(name: 'upload_payload_rate') @Default(0) int uploadRate,
 
-    /// Seconds remaining. Deluge reports `0` when there is nothing to wait
-    /// for (seeding, paused), not a sentinel like qBittorrent's 8640000.
+    /// Seconds remaining, with no sentinel like qBittorrent's 8640000. A
+    /// paused torrent keeps extrapolating from its fading rate, so the UI
+    /// reads [liveEta] instead.
     @Default(0) int eta,
 
     /// Bytes of the selected files, and how many of them are done.
@@ -70,6 +71,23 @@ abstract class DelugeTorrent with _$DelugeTorrent {
   bool get isSeeding => state == 'Seeding';
   bool get isDownloading => state == 'Downloading';
   bool get isError => state == 'Error';
+
+  /// The download rate to show. Deluge's payload rates are moving averages
+  /// that keep falling for a while after a torrent stops, so a paused or
+  /// finished torrent would otherwise show a speed it is no longer doing.
+  int get liveDownloadRate => isDownloading ? downloadRate : 0;
+
+  /// The upload rate to show; see [liveDownloadRate].
+  int get liveUploadRate => isDownloading || isSeeding ? uploadRate : 0;
+
+  /// Seconds to completion, or 0 when the torrent is not downloading. Deluge
+  /// keeps extrapolating from the fading rate once a torrent is paused.
+  int get liveEta => isDownloading ? eta : 0;
+
+  /// Seconds until a seeding torrent reaches its stop ratio, or 0. For a
+  /// finished torrent Deluge's `eta` means this instead of time to completion,
+  /// and it only sets one when "stop at ratio" is on and data is going up.
+  int get seedStopEta => isSeeding && eta > 0 ? eta : 0;
 
   /// 0 - 1, for progress indicators that expect a fraction rather than
   /// Deluge's 0 - 100 percent.

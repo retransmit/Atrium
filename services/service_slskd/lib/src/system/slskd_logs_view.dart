@@ -1,5 +1,6 @@
 import 'package:core_models/core_models.dart';
 import 'package:core_ui/core_ui.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -380,15 +381,69 @@ class _SlskdLogsViewState extends ConsumerState<SlskdLogsView> {
               child: ExpressiveProgressIndicator(),
             ),
           ),
-          error: (error, _) => Center(
-            child: Padding(
-              padding: const EdgeInsets.all(Insets.md),
-              child: Text(
-                'Failed to load logs: $error',
-                style: TextStyle(color: colorScheme.error),
+          error: (error, _) {
+            final bool isForbidden =
+                error is DioException && error.response?.statusCode == 403;
+            if (isForbidden) {
+              return Card(
+                elevation: 0,
+                color: colorScheme.surfaceContainerLow,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(Insets.xl),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Icon(
+                          Icons.lock_outline_rounded,
+                          size: 40,
+                          color: colorScheme.error,
+                        ),
+                        const SizedBox(height: Insets.sm),
+                        Text(
+                          'Administrator Access Required',
+                          style: textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.error,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: Insets.xs),
+                        Text(
+                          'The configured slskd API key needs the Administrator role to access live application logs.',
+                          style: textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: Insets.md),
+                        FilledButton.tonalIcon(
+                          onPressed: () => ref.invalidate(slskdLogsProvider(widget.instance)),
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(Insets.md),
+                child: Text(
+                  'Failed to load logs: $error',
+                  style: TextStyle(color: colorScheme.error),
+                ),
               ),
-            ),
-          ),
+            );
+          },
           data: (logs) {
             if (logs.isEmpty) {
               return Card(

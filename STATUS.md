@@ -29,7 +29,9 @@ Atrium is a **controller** app. Video playback was removed by design
   NZBGet groups, Sonarr/Radarr queues). Per-instance resilience: an unreachable server
   degrades to a chip, never blocks the feed
 - **Calendar tab**: month grid aggregating upcoming Sonarr + Radarr
-  airings/releases with status dots, or a list; the view picked is kept
+  airings/releases with status dots (downloaded in the theme's tertiary
+  colour since PR #213, upcoming in primary, missing in error), or a list;
+  the view picked is kept
   across launches (Bhavyashah94, PR #205, #203)
 - **Dashboard widgets**, reorderable from Customize dashboard: Active
   downloads, Now streaming, Upcoming releases, Recently added, Recently
@@ -48,7 +50,9 @@ Atrium is a **controller** app. Video playback was removed by design
 - Core foundation: profiles, multi-instance, dual-URL routing, secure
   key storage, import/export, per-service health dots, theming; an
   instance that allows a self-signed certificate has it accepted for its
-  artwork too, not only its API (per host, 2026-10-19, #189)
+  artwork too, not only its API (per host, 2026-10-19, #189); the
+  instance form needs one valid URL and rejects a malformed one in either
+  field (PR #213)
 - **qBittorrent**: cookie login (qBit 5.x 204 fix), realtime polling of
   only what changed (per-instance interval, default 5s), add
   magnet/file (with skip hash check), categories, tag and tracker
@@ -254,13 +258,22 @@ Atrium is a **controller** app. Video playback was removed by design
   reorder / per-item pause / priority / category, whole-queue pause and a
   speed-limit control, add NZB by URL or file, history with retry on
   failures, dashboard widget and Activity feed integration
-- **Deluge** (live-verified against 2.2.0): JSON-RPC client over a session
-  cookie, torrent list with per-item pause / resume / remove (optionally with
-  data), force recheck, reannounce and queue moves, state and tracker filter
-  chips read from the daemon's own filter tree, nine sort fields, whole-session
-  pause and global bandwidth caps, add by magnet / .torrent URL / file, a
-  detail screen with files, trackers and peers, plus dashboard widget and
-  Activity feed integration
+- **Deluge** (live-verified against 2.2.0; redesigned by lxBlazarxl in PR #219,
+  #201, to the qBittorrent and Transmission layout): JSON-RPC client over a
+  session cookie. Download, upload and free-space tiles with whole-session
+  pause and global bandwidth caps under them, and an add button for magnet /
+  .torrent URL / file. State filters from the daemon's own filter tree sit in
+  a right-hand drawer, with a Filtered strip and a dot on the filter button
+  while one is on; Active matches a moving payload rate, as Deluge counts it.
+  Label chips (with the Label plugin) and nine sort fields stay on the list.
+  Torrent cards show state, progress, speeds, ratio and ETA, counting speeds
+  and ETA only while they are live (Deluge's rates fade for a while after a
+  torrent stops); a long press offers pause / resume, force recheck,
+  reannounce, queue moves and remove (optionally with data). A panel-based
+  detail screen with Transfer and Details sections (a seeding torrent shows
+  its seed-stop ETA), files, trackers and peers with country flags, and an
+  app-bar menu for every action, plus dashboard widget and Activity feed
+  integration
 - **Transmission** (live-verified against 4.1.3, RPC 19; out of beta since
   2026-09-20, when it was brought to parity with Transmission's own web UI):
   RPC client that rides the shared Dio and handles the CSRF-token handshake
@@ -279,7 +292,8 @@ Atrium is a **controller** app. Video playback was removed by design
   preferences (each change written on its own, then read back) with the
   session and all-time statistics, a per-protocol port test and blocklist
   update; add by magnet / .torrent URL / file with the daemon's folder
-  prefilled and its free space shown; dashboard widget and Activity feed
+  prefilled and its free space shown (closing the sheet mid-add leaves the
+  screen alone and still reports the result); dashboard widget and Activity feed
   integration. Every action and every setting was exercised against the live
   daemon. Restyled to the expressive look on 2026-09-20, and the screen owns
   its scaffold so back unwinds a selection, then the tab, then the drawer,
@@ -370,7 +384,10 @@ Atrium is a **controller** app. Video playback was removed by design
   connection test reads a login page in front of slskd as reachable but not
   passing. Locked files are left out of folder and album downloads, an
   offline peer's shares say so rather than look empty, and chats open on the
-  newest message.
+  newest message. Pull to refresh on Transfers and Search drops in below the
+  pinned search bar (PR #218, #217), the daemon card trims the `.0` slskd's
+  Docker builds add to the version, and the Logs tab says the API key needs
+  the Administrator role when slskd refuses the logs with a 403.
   - **Transfers tab**: Active, Queued, Completed, and Failed transfer queues with real-time speed,
     progress indicators, grouped (by peer) and flat views, inline actions (cancel, retry, remove,
     prioritize), filter bottom sheet, and comprehensive analytics sheet (transfer telemetry,

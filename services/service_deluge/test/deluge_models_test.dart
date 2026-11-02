@@ -212,6 +212,65 @@ void main() {
       );
       expect(out.single.id, 'b');
     });
+
+    test('"Active" matches a moving payload rate, as Deluge counts it', () {
+      // No torrent is ever in state "Active"; Deluge's filter tree counts a
+      // torrent there while either payload rate is above zero.
+      final List<DelugeTorrent> out = filterDelugeTorrents(
+        const <DelugeTorrent>[
+          DelugeTorrent(id: 'down', state: 'Downloading', downloadRate: 10),
+          DelugeTorrent(id: 'up', state: 'Seeding', uploadRate: 10),
+          DelugeTorrent(id: 'still', state: 'Seeding'),
+        ],
+        const DelugeFilter(state: 'Active'),
+      );
+      expect(out.map((DelugeTorrent t) => t.id), <String>['down', 'up']);
+    });
+  });
+
+  group('DelugeTorrent live rates', () {
+    test('a downloading torrent shows both rates and its ETA', () {
+      const DelugeTorrent t = DelugeTorrent(
+        id: 'a',
+        state: 'Downloading',
+        downloadRate: 100,
+        uploadRate: 20,
+        eta: 60,
+      );
+      expect(t.liveDownloadRate, 100);
+      expect(t.liveUploadRate, 20);
+      expect(t.liveEta, 60);
+    });
+
+    test('a seeding torrent drops the fading download rate and the ETA', () {
+      const DelugeTorrent t = DelugeTorrent(
+        id: 'a',
+        state: 'Seeding',
+        downloadRate: 2000000,
+        uploadRate: 20,
+        eta: 60,
+      );
+      expect(t.liveDownloadRate, 0);
+      expect(t.liveUploadRate, 20);
+      expect(t.liveEta, 0);
+      // For a seed, Deluge's ETA is the time to its stop ratio.
+      expect(t.seedStopEta, 60);
+    });
+
+    test('a paused torrent shows nothing moving', () {
+      // Seen live: 5.1 MB/s and an ETA of hours, seconds after pausing.
+      const DelugeTorrent t = DelugeTorrent(
+        id: 'a',
+        state: 'Paused',
+        downloadRate: 5300000,
+        uploadRate: 3000,
+        eta: 59100,
+      );
+      expect(t.liveDownloadRate, 0);
+      expect(t.liveUploadRate, 0);
+      expect(t.liveEta, 0);
+      expect(t.seedStopEta, 0);
+    });
   });
 
   group('sortDelugeTorrents', () {
@@ -284,6 +343,20 @@ void main() {
       expect(delugeFmtLimitKib(0), 'Stopped');
       expect(delugeFmtLimitKib(512), '512 KB/s');
       expect(delugeFmtLimitKib(2048), '2 MB/s');
+    });
+
+    test('country flags need a two-letter code', () {
+      expect(
+        delugeCountryFlag('US'),
+        String.fromCharCodes(<int>[0x1F1FA, 0x1F1F8]),
+      );
+      expect(
+        delugeCountryFlag(' de '),
+        String.fromCharCodes(<int>[0x1F1E9, 0x1F1EA]),
+      );
+      expect(delugeCountryFlag(''), isNull);
+      expect(delugeCountryFlag('USA'), isNull);
+      expect(delugeCountryFlag('1A'), isNull);
     });
   });
 }
