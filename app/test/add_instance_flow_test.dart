@@ -114,6 +114,35 @@ void main() {
     expect(find.text('home'), findsOneWidget);
   });
 
+  testWidgets('a malformed external URL blocks saving even beside a valid local one', (
+    WidgetTester tester,
+  ) async {
+    await pumpApp(tester, '/add-instance/form/aria2');
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Name'),
+      'Home aria2',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Local URL'),
+      'http://192.168.1.10:6800',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'External URL'),
+      'not a url',
+    );
+    final Finder save = find.widgetWithText(FilledButton, 'Add service');
+    await tester.scrollUntilVisible(
+      save,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Enter a valid URL'), findsOneWidget);
+    expect(profiles.saved, isEmpty);
+  });
+
   testWidgets('backing out of the form returns to the grid', (
     WidgetTester tester,
   ) async {
