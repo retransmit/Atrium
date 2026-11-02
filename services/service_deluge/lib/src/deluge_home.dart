@@ -8,6 +8,7 @@ import 'deluge_add_sheet.dart';
 import 'deluge_client.dart';
 import 'deluge_format.dart';
 import 'deluge_providers.dart';
+import 'deluge_speed_dialog.dart';
 import 'deluge_torrent_detail_screen.dart';
 import 'models/deluge_filter_tree.dart';
 import 'models/deluge_session_status.dart';
@@ -33,7 +34,9 @@ class _DelugeHomeState extends ConsumerState<DelugeHome> {
     // one would re-filter stale data without going back to the server.
     ref.invalidate(delugeRawTorrentsProvider(widget.instance));
     ref.invalidate(delugeSessionStatusProvider(widget.instance));
+    ref.invalidate(delugeSessionPausedProvider(widget.instance));
     ref.invalidate(delugeFilterTreeProvider(widget.instance));
+    ref.invalidate(delugeSpeedLimitsProvider(widget.instance));
     ref.invalidate(delugeFreeSpaceProvider(widget.instance));
   }
 
@@ -135,7 +138,18 @@ class _DelugeHomeState extends ConsumerState<DelugeHome> {
                 80,
               ),
               children: <Widget>[
-                _SessionSummary(instance: widget.instance),
+                _SessionSummary(
+                  instance: widget.instance,
+                  onTogglePause: (bool paused) => _run(
+                    (DelugeClient c) => c.setSessionPaused(paused: paused),
+                  ),
+                  onSetDownLimit: (double kib) => _run(
+                    (DelugeClient c) => c.setSpeedLimits(downloadKib: kib),
+                  ),
+                  onSetUpLimit: (double kib) => _run(
+                    (DelugeClient c) => c.setSpeedLimits(uploadKib: kib),
+                  ),
+                ),
                 const SizedBox(height: Insets.md),
                 _FilterBar(instance: widget.instance),
                 const SizedBox(height: Insets.sm),
@@ -184,11 +198,20 @@ class _DelugeHomeState extends ConsumerState<DelugeHome> {
   }
 }
 
-/// Live session rates and remaining disk space, one tile each.
+/// Live session rates and remaining disk space, one tile each, plus the global
+/// pause and speed-limit controls.
 class _SessionSummary extends ConsumerWidget {
-  const _SessionSummary({required this.instance});
+  const _SessionSummary({
+    required this.instance,
+    required this.onTogglePause,
+    required this.onSetDownLimit,
+    required this.onSetUpLimit,
+  });
 
   final Instance instance;
+  final void Function(bool paused) onTogglePause;
+  final void Function(double kib) onSetDownLimit;
+  final void Function(double kib) onSetUpLimit;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -196,6 +219,11 @@ class _SessionSummary extends ConsumerWidget {
     final DelugeSessionStatus status =
         ref.watch(delugeSessionStatusProvider(instance)).value ??
             const DelugeSessionStatus();
+    final bool paused =
+        ref.watch(delugeSessionPausedProvider(instance)).value ?? false;
+    final DelugeSpeedLimits limits =
+        ref.watch(delugeSpeedLimitsProvider(instance)).value ??
+            const DelugeSpeedLimits();
     final int? freeSpace = ref.watch(delugeFreeSpaceProvider(instance)).value;
 
     final (String downValue, String downUnit) =
@@ -208,50 +236,121 @@ class _SessionSummary extends ConsumerWidget {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(Insets.md),
-        // IntrinsicHeight lets the three tiles stretch to the same height even
-        // when one figure has to scale down to fit its tile.
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Expanded(
-                child: _StatBox(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            // IntrinsicHeight lets the three tiles stretch to the same height
+            // even when one figure has to scale down to fit its tile.
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  Expanded(
+                    child: _StatBox(
+                      icon: Icons.south,
+                      label: 'Download',
+                      value: downValue,
+                      unit: downUnit,
+                      background: scheme.primaryContainer,
+                      foreground: scheme.onPrimaryContainer,
+                      accent: scheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: Insets.sm),
+                  Expanded(
+                    child: _StatBox(
+                      icon: Icons.north,
+                      label: 'Upload',
+                      value: upValue,
+                      unit: upUnit,
+                      background: scheme.tertiaryContainer,
+                      foreground: scheme.onTertiaryContainer,
+                      accent: scheme.tertiary,
+                    ),
+                  ),
+                  const SizedBox(width: Insets.sm),
+                  Expanded(
+                    child: _StatBox(
+                      icon: Icons.storage_outlined,
+                      label: 'Free space',
+                      value: freeValue,
+                      unit: freeUnit,
+                      background: scheme.surfaceContainerHighest,
+                      foreground: scheme.onSurface,
+                      accent: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: Insets.sm),
+            // The global controls sit under the live figures. Wrap keeps them
+            // usable on narrow screens without clipping the limit labels.
+            Wrap(
+              spacing: Insets.xs,
+              runSpacing: Insets.xs,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: <Widget>[
+                IconButton.filledTonal(
+                  tooltip: paused ? 'Resume session' : 'Pause session',
+                  onPressed: () => onTogglePause(!paused),
+                  icon: Icon(paused ? Icons.play_arrow : Icons.pause),
+                ),
+                _LimitButton(
                   icon: Icons.south,
-                  label: 'Download',
-                  value: downValue,
-                  unit: downUnit,
-                  background: scheme.primaryContainer,
-                  foreground: scheme.onPrimaryContainer,
-                  accent: scheme.primary,
+                  label: delugeFmtLimitKib(limits.maxDownloadKib),
+                  onPressed: () async {
+                    final double? kib = await showDelugeSpeedDialog(
+                      context,
+                      title: 'Download limit',
+                      current: limits.maxDownloadKib,
+                    );
+                    if (kib != null) onSetDownLimit(kib);
+                  },
                 ),
-              ),
-              const SizedBox(width: Insets.sm),
-              Expanded(
-                child: _StatBox(
+                _LimitButton(
                   icon: Icons.north,
-                  label: 'Upload',
-                  value: upValue,
-                  unit: upUnit,
-                  background: scheme.tertiaryContainer,
-                  foreground: scheme.onTertiaryContainer,
-                  accent: scheme.tertiary,
+                  label: delugeFmtLimitKib(limits.maxUploadKib),
+                  onPressed: () async {
+                    final double? kib = await showDelugeSpeedDialog(
+                      context,
+                      title: 'Upload limit',
+                      current: limits.maxUploadKib,
+                    );
+                    if (kib != null) onSetUpLimit(kib);
+                  },
                 ),
-              ),
-              const SizedBox(width: Insets.sm),
-              Expanded(
-                child: _StatBox(
-                  icon: Icons.storage_outlined,
-                  label: 'Free space',
-                  value: freeValue,
-                  unit: freeUnit,
-                  background: scheme.surfaceContainerHighest,
-                  foreground: scheme.onSurface,
-                  accent: scheme.onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+/// A bandwidth cap shown as its current value; tapping changes it.
+class _LimitButton extends StatelessWidget {
+  const _LimitButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: 16),
+      label: Text(label, overflow: TextOverflow.ellipsis),
+      style: TextButton.styleFrom(
+        foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
+        padding: const EdgeInsets.symmetric(horizontal: Insets.xs),
+        visualDensity: VisualDensity.compact,
       ),
     );
   }
@@ -680,7 +779,13 @@ class _TorrentRow extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: Insets.md),
-                Row(
+                // Wrap instead of a Row: on a narrow phone or at a large text
+                // scale the trailing ratio and ETA move to a second line
+                // rather than clipping the speed pills.
+                Wrap(
+                  spacing: Insets.sm,
+                  runSpacing: Insets.xs,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: <Widget>[
                     _SpeedPill(
                       icon: Icons.south,
@@ -688,41 +793,44 @@ class _TorrentRow extends StatelessWidget {
                       color: scheme.primary,
                       active: dlActive,
                     ),
-                    const SizedBox(width: Insets.sm),
                     _SpeedPill(
                       icon: Icons.north,
                       label: delugeFmtRate(torrent.uploadRate),
                       color: scheme.tertiary,
                       active: upActive,
                     ),
-                    const Spacer(),
-                    Icon(
-                      Icons.swap_vert,
-                      size: 14,
-                      color: scheme.onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 2),
-                    Text(
-                      torrent.ratio.toStringAsFixed(2),
-                      style: text.labelSmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                    if (!complete) ...<Widget>[
-                      const SizedBox(width: Insets.sm),
-                      Icon(
-                        Icons.schedule,
-                        size: 14,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 2),
-                      Text(
-                        delugeFmtEta(torrent.eta),
-                        style: text.labelSmall?.copyWith(
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Icon(
+                          Icons.swap_vert,
+                          size: 14,
                           color: scheme.onSurfaceVariant,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 2),
+                        Text(
+                          torrent.ratio.toStringAsFixed(2),
+                          style: text.labelSmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                        if (!complete) ...<Widget>[
+                          const SizedBox(width: Insets.sm),
+                          Icon(
+                            Icons.schedule,
+                            size: 14,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            delugeFmtEta(torrent.eta),
+                            style: text.labelSmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ],
                 ),
               ],
@@ -797,12 +905,17 @@ class _SpeedPill extends StatelessWidget {
         children: <Widget>[
           Icon(icon, size: 14, color: foreground),
           const SizedBox(width: 4),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: foreground,
-                  fontWeight: FontWeight.w700,
-                ),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              softWrap: false,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: foreground,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
           ),
         ],
       ),

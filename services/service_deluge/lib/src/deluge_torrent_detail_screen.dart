@@ -44,11 +44,14 @@ class DelugeTorrentDetailScreen extends ConsumerWidget {
       final DelugeClient client =
           await ref.read(delugeClientProvider(instance).future);
       await action(client);
+      // The screen may have been popped while the action was in flight; using
+      // ref after disposal throws and would report a completed action as failed.
+      if (!context.mounted) return;
       ref.invalidate(delugeRawTorrentsProvider(instance));
       // A removed torrent has no detail left to fetch, and this screen is about
       // to go away anyway.
       if (removed) {
-        if (context.mounted) Navigator.of(context).pop();
+        Navigator.of(context).pop();
       } else {
         ref.invalidate(delugeTorrentDetailProvider((instance, torrentId)));
       }
@@ -451,60 +454,63 @@ class _FilesTab extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme scheme = theme.colorScheme;
     final TextTheme text = theme.textTheme;
-    return ListView(
+    return ListView.builder(
       padding: Insets.page,
-      children: <Widget>[
-        _TabHeading('Files (${detail.files.length})'),
-        for (final DelugeFile f in detail.files)
-          _Panel(
-            margin: const EdgeInsets.only(bottom: Insets.sm),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                _IconBlock(
-                  icon: f.priority == 0
-                      ? Icons.visibility_off_outlined
-                      : Icons.insert_drive_file_outlined,
-                  background: scheme.surfaceContainerHighest,
-                  foreground: scheme.onSurfaceVariant,
-                  size: 40,
+      itemCount: detail.files.length + 1,
+      itemBuilder: (BuildContext context, int index) {
+        if (index == 0) {
+          return _TabHeading('Files (${detail.files.length})');
+        }
+        final DelugeFile f = detail.files[index - 1];
+        return _Panel(
+          margin: const EdgeInsets.only(bottom: Insets.sm),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              _IconBlock(
+                icon: f.priority == 0
+                    ? Icons.visibility_off_outlined
+                    : Icons.insert_drive_file_outlined,
+                background: scheme.surfaceContainerHighest,
+                foreground: scheme.onSurfaceVariant,
+                size: 40,
+              ),
+              const SizedBox(width: Insets.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      f.displayName,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: Insets.xs),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicatorM3E(
+                        value: f.progress.clamp(0, 1).toDouble(),
+                        shape: ProgressM3EShape.flat,
+                        size: LinearProgressM3ESize.s,
+                      ),
+                    ),
+                    const SizedBox(height: Insets.xs),
+                    Text(
+                      '${(f.progress * 100).toStringAsFixed(0)}% • '
+                      '${delugeFmtBytes(f.size)} • '
+                      '${delugeFilePriorityLabel(f.priority)}',
+                      style: text.bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: Insets.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        f.displayName,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: text.titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: Insets.xs),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: LinearProgressIndicatorM3E(
-                          value: f.progress.clamp(0, 1).toDouble(),
-                          shape: ProgressM3EShape.flat,
-                          size: LinearProgressM3ESize.s,
-                        ),
-                      ),
-                      const SizedBox(height: Insets.xs),
-                      Text(
-                        '${(f.progress * 100).toStringAsFixed(0)}% • '
-                        '${delugeFmtBytes(f.size)} • '
-                        '${delugeFilePriorityLabel(f.priority)}',
-                        style: text.bodySmall
-                            ?.copyWith(color: scheme.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-      ],
+        );
+      },
     );
   }
 }
@@ -526,55 +532,58 @@ class _TrackersTab extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme scheme = theme.colorScheme;
     final TextTheme text = theme.textTheme;
-    return ListView(
+    return ListView.builder(
       padding: Insets.page,
-      children: <Widget>[
-        _TabHeading('Trackers (${detail.trackers.length})'),
-        for (final DelugeTracker tracker in detail.trackers)
-          _Panel(
-            margin: const EdgeInsets.only(bottom: Insets.sm),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                _IconBlock(
-                  icon: tracker.verified
-                      ? Icons.verified_outlined
-                      : Icons.dns_outlined,
-                  background: tracker.verified
-                      ? scheme.tertiaryContainer
-                      : scheme.surfaceContainerHighest,
-                  foreground: tracker.verified
-                      ? scheme.onTertiaryContainer
-                      : scheme.onSurfaceVariant,
-                  size: 40,
+      itemCount: detail.trackers.length + 1,
+      itemBuilder: (BuildContext context, int index) {
+        if (index == 0) {
+          return _TabHeading('Trackers (${detail.trackers.length})');
+        }
+        final DelugeTracker tracker = detail.trackers[index - 1];
+        return _Panel(
+          margin: const EdgeInsets.only(bottom: Insets.sm),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              _IconBlock(
+                icon: tracker.verified
+                    ? Icons.verified_outlined
+                    : Icons.dns_outlined,
+                background: tracker.verified
+                    ? scheme.tertiaryContainer
+                    : scheme.surfaceContainerHighest,
+                foreground: tracker.verified
+                    ? scheme.onTertiaryContainer
+                    : scheme.onSurfaceVariant,
+                size: 40,
+              ),
+              const SizedBox(width: Insets.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      tracker.url,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: Insets.xs),
+                    Text(
+                      tracker.message.isEmpty
+                          ? 'Tier ${tracker.tier}'
+                          : '${tracker.message} • tier ${tracker.tier}',
+                      style: text.bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: Insets.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        tracker.url,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: text.titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: Insets.xs),
-                      Text(
-                        tracker.message.isEmpty
-                            ? 'Tier ${tracker.tier}'
-                            : '${tracker.message} • tier ${tracker.tier}',
-                        style: text.bodySmall
-                            ?.copyWith(color: scheme.onSurfaceVariant),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-      ],
+        );
+      },
     );
   }
 }
@@ -596,76 +605,79 @@ class _PeersTab extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ColorScheme scheme = theme.colorScheme;
     final TextTheme text = theme.textTheme;
-    return ListView(
+    return ListView.builder(
       padding: Insets.page,
-      children: <Widget>[
-        _TabHeading('Peers (${detail.peers.length})'),
-        for (final DelugePeer peer in detail.peers)
-          _Panel(
-            margin: const EdgeInsets.only(bottom: Insets.sm),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                _IconBlock(
-                  icon: peer.seed
-                      ? Icons.upload_outlined
-                      : Icons.download_outlined,
-                  background: peer.seed
-                      ? scheme.tertiaryContainer
-                      : scheme.primaryContainer,
-                  foreground: peer.seed
-                      ? scheme.onTertiaryContainer
-                      : scheme.onPrimaryContainer,
-                  size: 40,
-                ),
-                const SizedBox(width: Insets.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        peer.ip.isEmpty ? 'Unknown peer' : peer.ip,
-                        style: text.titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${peer.client.isEmpty ? 'Unknown client' : peer.client}'
-                        ' • ${(peer.progress * 100).toStringAsFixed(0)}%',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: text.bodySmall
-                            ?.copyWith(color: scheme.onSurfaceVariant),
-                      ),
-                      const SizedBox(height: Insets.sm),
-                      Row(
-                        children: <Widget>[
-                          Expanded(
-                            child: _SpeedPill(
-                              icon: Icons.south,
-                              label: delugeFmtRate(peer.downSpeed),
-                              color: scheme.primary,
-                              active: peer.downSpeed > 0,
-                            ),
+      itemCount: detail.peers.length + 1,
+      itemBuilder: (BuildContext context, int index) {
+        if (index == 0) {
+          return _TabHeading('Peers (${detail.peers.length})');
+        }
+        final DelugePeer peer = detail.peers[index - 1];
+        return _Panel(
+          margin: const EdgeInsets.only(bottom: Insets.sm),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              _IconBlock(
+                icon: peer.seed
+                    ? Icons.upload_outlined
+                    : Icons.download_outlined,
+                background: peer.seed
+                    ? scheme.tertiaryContainer
+                    : scheme.primaryContainer,
+                foreground: peer.seed
+                    ? scheme.onTertiaryContainer
+                    : scheme.onPrimaryContainer,
+                size: 40,
+              ),
+              const SizedBox(width: Insets.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      peer.ip.isEmpty ? 'Unknown peer' : peer.ip,
+                      style: text.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${peer.client.isEmpty ? 'Unknown client' : peer.client}'
+                      ' • ${(peer.progress * 100).toStringAsFixed(0)}%',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: text.bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: Insets.sm),
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: _SpeedPill(
+                            icon: Icons.south,
+                            label: delugeFmtRate(peer.downSpeed),
+                            color: scheme.primary,
+                            active: peer.downSpeed > 0,
                           ),
-                          const SizedBox(width: Insets.sm),
-                          Expanded(
-                            child: _SpeedPill(
-                              icon: Icons.north,
-                              label: delugeFmtRate(peer.upSpeed),
-                              color: scheme.tertiary,
-                              active: peer.upSpeed > 0,
-                            ),
+                        ),
+                        const SizedBox(width: Insets.sm),
+                        Expanded(
+                          child: _SpeedPill(
+                            icon: Icons.north,
+                            label: delugeFmtRate(peer.upSpeed),
+                            color: scheme.tertiary,
+                            active: peer.upSpeed > 0,
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-      ],
+        );
+      },
     );
   }
 }
@@ -805,12 +817,17 @@ class _SpeedPill extends StatelessWidget {
         children: <Widget>[
           Icon(icon, size: 14, color: foreground),
           const SizedBox(width: 4),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: foreground,
-                  fontWeight: FontWeight.w700,
-                ),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              softWrap: false,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: foreground,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
           ),
         ],
       ),
