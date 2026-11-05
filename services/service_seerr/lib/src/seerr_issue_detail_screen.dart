@@ -7,6 +7,7 @@ import 'models/seerr_discover.dart';
 import 'models/seerr_issue.dart';
 import 'models/seerr_request.dart';
 import 'seerr_api.dart';
+import 'seerr_permissions.dart';
 import 'seerr_providers.dart';
 
 /// Icon for a Seerr issue type (1 video, 2 audio, 3 subtitles, 4 other).
@@ -212,6 +213,11 @@ class _SeerrIssueDetailScreenState
     final SeerrIssue issue =
         ref.watch(seerrIssueDetailProvider(_args)).value ?? widget.issue;
     final List<SeerrIssueComment> comments = issue.comments;
+    // Seerr lets only the reporter or an issue manager comment on an issue or
+    // change its status. Until the user is known, both stay.
+    final bool canWork =
+        ref.watch(seerrMeProvider(widget.instance)).value?.canWorkOn(issue) ??
+            true;
 
     return Scaffold(
       appBar: AppBar(title: Text('Issue #${issue.id}')),
@@ -236,25 +242,27 @@ class _SeerrIssueDetailScreenState
                   padding: Insets.page,
                   children: <Widget>[
                     _IssueHeader(instance: widget.instance, issue: issue),
-                    const SizedBox(height: Insets.md),
-                    SizedBox(
-                      width: double.infinity,
-                      child: issue.isOpen
-                          ? FilledButton.tonalIcon(
-                              onPressed: _updatingStatus
-                                  ? null
-                                  : () => _setStatus(resolved: true),
-                              icon: const Icon(Icons.check_circle_outline),
-                              label: const Text('Resolve'),
-                            )
-                          : OutlinedButton.icon(
-                              onPressed: _updatingStatus
-                                  ? null
-                                  : () => _setStatus(resolved: false),
-                              icon: const Icon(Icons.refresh),
-                              label: const Text('Reopen'),
-                            ),
-                    ),
+                    if (canWork) ...<Widget>[
+                      const SizedBox(height: Insets.md),
+                      SizedBox(
+                        width: double.infinity,
+                        child: issue.isOpen
+                            ? FilledButton.tonalIcon(
+                                onPressed: _updatingStatus
+                                    ? null
+                                    : () => _setStatus(resolved: true),
+                                icon: const Icon(Icons.check_circle_outline),
+                                label: const Text('Resolve'),
+                              )
+                            : OutlinedButton.icon(
+                                onPressed: _updatingStatus
+                                    ? null
+                                    : () => _setStatus(resolved: false),
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('Reopen'),
+                              ),
+                      ),
+                    ],
                     const SizedBox(height: Insets.lg),
                     Text(
                       'Comments',
@@ -278,7 +286,7 @@ class _SeerrIssueDetailScreenState
                 ),
               ),
             ),
-            _buildComposer(theme),
+            if (canWork) _buildComposer(theme),
           ],
         ),
       ),

@@ -10,11 +10,13 @@ environment:
 dependencies:
   cached_network_image: ^3.4.1
   collection: ^1.18.0
+  cookie_jar: ^4.0.8
   core_models:
   core_networking:
   core_profile:
   core_ui:
   dio: ^5.7.0
+  dio_cookie_manager: ^3.1.1
   flutter:
     sdk: flutter
   flutter_riverpod: ^3.3.2

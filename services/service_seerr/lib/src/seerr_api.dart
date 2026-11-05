@@ -9,8 +9,9 @@ import 'models/seerr_service.dart';
 
 /// Thin client over the Seerr / Jellyseerr API.
 ///
-/// Auth is an `X-Api-Key` header (added by `core_networking`'s
-/// [AuthInterceptor]), so this rides the shared `instanceDioProvider` Dio.
+/// Auth is either an `X-Api-Key` header (added by `core_networking`'s
+/// [AuthInterceptor]) or a user's own session, which the Dio from
+/// `createSeerrDio` signs in for. This client does not care which.
 class SeerrApi {
   SeerrApi(this._dio);
 
@@ -129,6 +130,17 @@ class SeerrApi {
         rethrow;
       }
       return null;
+    }
+  }
+
+  /// The user the instance acts as: the signed-in account, or for an API key
+  /// Seerr's owner.
+  Future<SeerrUser> me() async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/auth/me');
+      return SeerrUser.fromJson(resp.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
     }
   }
 

@@ -1,8 +1,8 @@
 /// Public surface of `service_seerr`.
 ///
-/// Seerr / Jellyseerr API client (X-Api-Key via the shared Dio), models,
-/// Riverpod providers, and the per-instance [SeerrHome] UI (request list
-/// with approve / decline).
+/// Seerr / Jellyseerr API client (an API key, or a local, Jellyfin or Emby
+/// account signed in with its password), models, Riverpod providers, and the
+/// per-instance [SeerrHome] UI (request list with approve / decline).
 library;
 
 export 'src/models/seerr_counts.dart';
@@ -17,8 +17,10 @@ export 'src/seerr_issue_detail_screen.dart';
 export 'src/seerr_issues_screen.dart';
 export 'src/seerr_item_detail.dart';
 export 'src/seerr_media_card.dart';
+export 'src/seerr_permissions.dart';
 export 'src/seerr_providers.dart';
 export 'src/seerr_report_issue_sheet.dart';
 export 'src/seerr_request_filter.dart';
 export 'src/seerr_search.dart';
+export 'src/seerr_session.dart';
 export 'src/seerr_status_badge.dart';

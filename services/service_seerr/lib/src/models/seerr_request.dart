@@ -54,11 +54,16 @@ abstract class SeerrMedia with _$SeerrMedia {
       _$SeerrMediaFromJson(json);
 }
 
+/// A Seerr user, as a request or issue names them and as `auth/me` answers.
+///
+/// [permissions] is Seerr's permission bit field; see `SeerrPermission`.
 @freezed
 abstract class SeerrUser with _$SeerrUser {
   const factory SeerrUser({
+    @Default(0) int id,
     @Default('') String displayName,
     @Default('') String username,
+    @Default(0) int permissions,
   }) = _SeerrUser;
 
   factory SeerrUser.fromJson(Map<String, dynamic> json) =>
