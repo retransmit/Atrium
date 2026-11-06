@@ -8,6 +8,7 @@ import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 
 import 'models/qbit_detail.dart';
 import 'models/qbit_torrent.dart';
+import 'qbit_tracker_edit.dart';
 import 'qbittorrent_client.dart';
 import 'qbittorrent_home.dart' show fmtBytes, friendlyState;
 import 'qbittorrent_providers.dart';
@@ -1223,6 +1224,135 @@ class _TrackersTab extends ConsumerWidget {
   final Instance instance;
   final String hash;
 
+  void _refresh(WidgetRef ref) =>
+      ref.invalidate(qbitTrackersProvider((instance, hash)));
+
+  /// Runs [action] against the server, then reads the trackers again. Says
+  /// [failed] and why when the server refuses.
+  Future<bool> _apply(
+    BuildContext context,
+    WidgetRef ref,
+    String failed,
+    Future<void> Function(QbittorrentClient c) action,
+  ) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    try {
+      final QbittorrentClient client =
+          await ref.read(qbittorrentClientProvider(instance).future);
+      await action(client);
+      return true;
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('$failed: $e')));
+      return false;
+    } finally {
+      _refresh(ref);
+    }
+  }
+
+  Future<void> _openEditor(
+    BuildContext context,
+    WidgetRef ref,
+    List<QbitTracker> trackers,
+  ) async {
+    final bool? saved = await showModalBottomSheet<bool>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) =>
+          _TrackerEditorSheet(instance: instance, hash: hash, current: trackers),
+    );
+    _refresh(ref);
+    if (saved == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Trackers updated')),
+      );
+    }
+  }
+
+  Future<void> _editOne(
+    BuildContext context,
+    WidgetRef ref,
+    QbitTracker tracker,
+  ) async {
+    final TextEditingController ctrl = TextEditingController(text: tracker.url);
+    final String? newUrl = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) => StatefulBuilder(
+        builder: (BuildContext context, StateSetter setState) {
+          final String value = ctrl.text.trim();
+          final bool valid = qbitIsTrackerUrl(value) && value != tracker.url;
+          return AlertDialog(
+            title: const Text('Edit tracker URL'),
+            content: TextField(
+              controller: ctrl,
+              autofocus: true,
+              keyboardType: TextInputType.url,
+              autocorrect: false,
+              decoration: InputDecoration(
+                errorText: value.isEmpty || qbitIsTrackerUrl(value)
+                    ? null
+                    : 'Not a tracker URL',
+              ),
+              onChanged: (_) => setState(() {}),
+              onSubmitted: (_) {
+                if (valid) Navigator.of(context).pop(value);
+              },
+            ),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: valid ? () => Navigator.of(context).pop(value) : null,
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    if (newUrl == null || !context.mounted) return;
+    await _apply(
+      context,
+      ref,
+      'Could not change the tracker',
+      (QbittorrentClient c) => c.editTracker(hash, tracker.url, newUrl),
+    );
+  }
+
+  Future<void> _removeOne(
+    BuildContext context,
+    WidgetRef ref,
+    QbitTracker tracker,
+  ) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Remove tracker?'),
+        content: Text(tracker.url),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    await _apply(
+      context,
+      ref,
+      'Could not remove the tracker',
+      (QbittorrentClient c) => c.removeTrackers(hash, <String>[tracker.url]),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
@@ -1230,61 +1360,80 @@ class _TrackersTab extends ConsumerWidget {
     final AsyncValue<List<QbitTracker>> trackers =
         ref.watch(qbitTrackersProvider((instance, hash)));
 
+    const ClassicHeader header = ClassicHeader(
+      dragText: 'Pull to refresh',
+      armedText: 'Release ready',
+      readyText: 'Refreshing...',
+      processingText: 'Refreshing...',
+      processedText: 'Succeeded',
+      failedText: 'Failed',
+      messageText: 'Last updated at %T',
+    );
+
     return AsyncValueView<List<QbitTracker>>(
       value: trackers,
-      onRetry: () => ref.invalidate(qbitTrackersProvider((instance, hash))),
+      onRetry: () => _refresh(ref),
       data: (List<QbitTracker> list) {
         // Hide qBittorrent's synthetic DHT/PeX/LSD pseudo-trackers.
-        final List<QbitTracker> real =
-            list.where((QbitTracker t) => !t.url.startsWith('** ')).toList();
+        final List<QbitTracker> real = list.where(qbitIsRealTracker).toList();
         if (real.isEmpty) {
           return EasyRefresh(
-            header: const ClassicHeader(
-              dragText: 'Pull to refresh',
-              armedText: 'Release ready',
-              readyText: 'Refreshing...',
-              processingText: 'Refreshing...',
-              processedText: 'Succeeded',
-              failedText: 'Failed',
-              messageText: 'Last updated at %T',
-            ),
-            onRefresh: () async =>
-                ref.invalidate(qbitTrackersProvider((instance, hash))),
+            header: header,
+            onRefresh: () async => _refresh(ref),
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              children: const <Widget>[
-                SizedBox(height: 100),
-                EmptyView(
+              children: <Widget>[
+                const SizedBox(height: 100),
+                const EmptyView(
                   icon: Icons.dns_outlined,
                   title: 'No trackers',
                   message: 'This torrent has no HTTP trackers (DHT only).',
+                ),
+                const SizedBox(height: Insets.lg),
+                Center(
+                  child: FilledButton.tonalIcon(
+                    onPressed: () => _openEditor(context, ref, list),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add trackers'),
+                  ),
                 ),
               ],
             ),
           );
         }
         return EasyRefresh(
-          header: const ClassicHeader(
-            dragText: 'Pull to refresh',
-            armedText: 'Release ready',
-            readyText: 'Refreshing...',
-            processingText: 'Refreshing...',
-            processedText: 'Succeeded',
-            failedText: 'Failed',
-            messageText: 'Last updated at %T',
-          ),
-          onRefresh: () async =>
-              ref.invalidate(qbitTrackersProvider((instance, hash))),
+          header: header,
+          onRefresh: () async => _refresh(ref),
           child: ListView.separated(
             padding: Insets.page,
-            itemCount: real.length,
+            itemCount: real.length + 1,
             separatorBuilder: (_, __) => const SizedBox(height: Insets.sm),
             itemBuilder: (BuildContext context, int index) {
-              final QbitTracker t = real[index];
+              if (index == 0) {
+                return Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Text(
+                        real.length == 1 ? '1 tracker' : '${real.length} trackers',
+                        style: theme.textTheme.titleSmall
+                            ?.copyWith(color: cs.onSurfaceVariant),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _openEditor(context, ref, list),
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      label: const Text('Edit trackers'),
+                    ),
+                  ],
+                );
+              }
+              final QbitTracker t = real[index - 1];
               final (Color c, IconData ic, String label) = switch (t.status) {
                 2 => (cs.tertiary, Icons.check_circle, 'Working'),
                 3 => (cs.primary, Icons.sync, 'Updating'),
                 4 => (cs.error, Icons.error_outline, 'Not working'),
+                5 => (cs.error, Icons.error_outline, 'Tracker error'),
+                6 => (cs.error, Icons.cloud_off_outlined, 'Unreachable'),
                 1 => (
                     cs.outline,
                     Icons.radio_button_unchecked,
@@ -1293,6 +1442,7 @@ class _TrackersTab extends ConsumerWidget {
                 0 => (cs.outline, Icons.block, 'Disabled'),
                 _ => (cs.outline, Icons.help_outline, 'Unknown'),
               };
+              final bool failing = t.status >= 4 && t.status <= 6;
               return Container(
                 padding: const EdgeInsets.all(Insets.md),
                 decoration: BoxDecoration(
@@ -1327,6 +1477,8 @@ class _TrackersTab extends ConsumerWidget {
                           Text(
                             <String>[
                               label,
+                              // Counted from 0, as qBittorrent shows it.
+                              if (t.tier >= 0) 'Tier ${t.tier}',
                               if (t.numSeeds >= 0) '${t.numSeeds} seeds',
                               if (t.numPeers >= 0) '${t.numPeers} peers',
                             ].join(' • '),
@@ -1345,24 +1497,47 @@ class _TrackersTab extends ConsumerWidget {
                             Text(
                               t.msg,
                               style: theme.textTheme.bodySmall?.copyWith(
-                                color: t.status == 4 ? c : cs.onSurfaceVariant,
+                                color: failing ? c : cs.onSurfaceVariant,
                               ),
                             ),
                           ],
                         ],
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.copy, size: 18),
-                      tooltip: 'Copy tracker URL',
-                      visualDensity: VisualDensity.compact,
-                      onPressed: () async {
-                        await Clipboard.setData(ClipboardData(text: t.url));
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Tracker URL copied')),
-                        );
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert, size: 20),
+                      tooltip: 'Tracker actions',
+                      onSelected: (String action) async {
+                        switch (action) {
+                          case 'copy':
+                            await Clipboard.setData(ClipboardData(text: t.url));
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Tracker URL copied'),
+                              ),
+                            );
+                          case 'edit':
+                            await _editOne(context, ref, t);
+                          case 'remove':
+                            await _removeOne(context, ref, t);
+                        }
                       },
+                      itemBuilder: (BuildContext context) =>
+                          const <PopupMenuEntry<String>>[
+                        PopupMenuItem<String>(
+                          value: 'copy',
+                          child: Text('Copy URL'),
+                        ),
+                        PopupMenuItem<String>(
+                          value: 'edit',
+                          child: Text('Edit URL'),
+                        ),
+                        PopupMenuItem<String>(
+                          value: 'remove',
+                          child: Text('Remove'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -1371,6 +1546,162 @@ class _TrackersTab extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Every tracker of a torrent as text, edited the way qBittorrent's own
+/// "Edit trackers" works: one URL per line, a blank line between tiers.
+/// Saving adds the new URLs and removes the missing ones; the rest keep
+/// their state.
+class _TrackerEditorSheet extends ConsumerStatefulWidget {
+  const _TrackerEditorSheet({
+    required this.instance,
+    required this.hash,
+    required this.current,
+  });
+
+  final Instance instance;
+  final String hash;
+  final List<QbitTracker> current;
+
+  @override
+  ConsumerState<_TrackerEditorSheet> createState() =>
+      _TrackerEditorSheetState();
+}
+
+class _TrackerEditorSheetState extends ConsumerState<_TrackerEditorSheet> {
+  late final TextEditingController _text =
+      TextEditingController(text: qbitTrackerText(widget.current));
+  bool _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _text.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save(QbitTrackerEdit edit) async {
+    final NavigatorState navigator = Navigator.of(context);
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      final QbittorrentClient client =
+          await ref.read(qbittorrentClientProvider(widget.instance).future);
+      // Add before removing, so a failure part way never leaves the torrent
+      // with fewer trackers than it started with.
+      if (edit.added.isNotEmpty) {
+        await client.addTrackers(widget.hash, edit.addText);
+      }
+      if (edit.removed.isNotEmpty) {
+        await client.removeTrackers(widget.hash, edit.removed);
+      }
+      if (mounted) navigator.pop(true);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = 'Could not save: $e';
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final QbitTrackerEdit edit = qbitTrackerEdit(widget.current, _text.text);
+    final String summary = edit.invalid.isNotEmpty
+        ? edit.invalid.length == 1
+            ? 'Not a tracker URL: ${edit.invalid.single}'
+            : '${edit.invalid.length} lines are not tracker URLs'
+        : <String>[
+            if (edit.added.isNotEmpty) '${edit.added.length} to add',
+            if (edit.removed.isNotEmpty) '${edit.removed.length} to remove',
+          ].join(', ');
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: Insets.lg,
+        right: Insets.lg,
+        bottom: MediaQuery.of(context).viewInsets.bottom + Insets.lg,
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text('Edit trackers', style: theme.textTheme.titleLarge),
+            const SizedBox(height: Insets.xs),
+            Text(
+              'One URL per line. A blank line starts the next tier.',
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: cs.onSurfaceVariant),
+            ),
+            const SizedBox(height: Insets.md),
+            TextField(
+              controller: _text,
+              minLines: 6,
+              maxLines: 14,
+              keyboardType: TextInputType.multiline,
+              autocorrect: false,
+              enableSuggestions: false,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(fontFamily: 'monospace'),
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'udp://tracker.example.org:1337/announce',
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            if (summary.isNotEmpty) ...<Widget>[
+              const SizedBox(height: Insets.sm),
+              Text(
+                summary,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: edit.invalid.isNotEmpty ? cs.error : cs.onSurfaceVariant,
+                ),
+              ),
+            ],
+            if (_error != null) ...<Widget>[
+              const SizedBox(height: Insets.sm),
+              Text(
+                _error!,
+                style: theme.textTheme.bodySmall?.copyWith(color: cs.error),
+              ),
+            ],
+            const SizedBox(height: Insets.md),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: <Widget>[
+                TextButton(
+                  onPressed: _saving ? null : () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                const SizedBox(width: Insets.sm),
+                FilledButton(
+                  onPressed: _saving || !edit.changes || edit.invalid.isNotEmpty
+                      ? null
+                      : () => _save(edit),
+                  child: _saving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicatorM3E(
+                            size: CircularProgressM3ESize.s,
+                          ),
+                        )
+                      : const Text('Save'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
