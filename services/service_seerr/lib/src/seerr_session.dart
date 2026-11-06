@@ -252,11 +252,18 @@ class SeerrSessionInterceptor extends Interceptor {
       // A sign-in since this request left means its session is already
       // replaced, so it only needs sending again.
       if (sentUnder == _generation) {
-        if (await _sessionStands()) {
-          handler.next(err);
-          return;
+        final bool stands = await _sessionStands();
+        // Another request may have signed in while auth/me was out, and the
+        // cookie manager may have sent auth/me with the new session. Then
+        // "stands" speaks for the new session, not the one this request
+        // failed under, so it is sent again instead of given up on.
+        if (sentUnder == _generation) {
+          if (stands) {
+            handler.next(err);
+            return;
+          }
+          await _signIn();
         }
-        await _signIn();
       }
       options.extra[_retried] = true;
       _dropSessionCookie(options);

@@ -29,6 +29,11 @@ class _FakeSeerr implements HttpClientAdapter {
   final bool held;
   Completer<void> _gate = Completer<void>();
 
+  /// When set, the next `auth/me` waits for it and then answers for the
+  /// newest session, as if the cookie manager had attached the cookie of a
+  /// sign-in that finished while it waited.
+  Completer<void>? meGate;
+
   final List<RequestOptions> asked = <RequestOptions>[];
   final Set<String> _live = <String>{};
   int _issued = 0;
@@ -112,7 +117,13 @@ class _FakeSeerr implements HttpClientAdapter {
     }
 
     final bool byKey = options.headers['X-Api-Key'] == apiKey;
-    final String? sid = _session(options);
+    String? sid = _session(options);
+    final Completer<void>? gate = meGate;
+    if (gate != null && path.endsWith('auth/me')) {
+      meGate = null;
+      await gate.future;
+      sid = 's$_issued';
+    }
     if (!byKey && (sid == null || !_live.contains(sid))) {
       return _json(
         <String, dynamic>{
@@ -287,6 +298,28 @@ void main() {
       // The retry carried the new session alone, not the dead one first.
       final RequestOptions retry = seerr.askedFor('request/count').last;
       expect(retry.headers['cookie'], 'connect.sid=s2');
+    });
+
+    test('a call that failed on the old session is sent again even when a '
+        'sign-in lands while it checks', () async {
+      final _FakeSeerr seerr = _FakeSeerr();
+      final SeerrApi api = _api(seerr, _local);
+      await api.me();
+      seerr.expireSessions();
+
+      // B fails on the dead session and asks auth/me, which is held.
+      final Completer<void> gate = Completer<void>();
+      seerr.meGate = gate;
+      final Future<SeerrCounts> b = api.getRequestCounts();
+      await pumpEventQueue();
+      // Meanwhile A fails the same way and signs in afresh.
+      await api.getRequestCounts();
+      expect(seerr.signIns, 2);
+      // B's auth/me now answers for A's new session.
+      gate.complete();
+
+      expect((await b).total, 3);
+      expect(seerr.signIns, 2);
     });
 
     test('a refused action with a live session is not signed in again',
