@@ -19,7 +19,7 @@ import 'connection_test_result.dart';
 /// LAN URL, `forceExternal` tests the WAN URL. The form calls this once per
 /// filled-in URL.
 ///
-/// Key and token services (the *arr family, Seerr, Tautulli, SABnzbd, Glances,
+/// Key and token services (the *arr family, Tautulli, SABnzbd, Glances,
 /// Speedtest) are verified by [HealthProbe], whose authed endpoints already
 /// return 401/403 on a bad key. The session services log in for real, since
 /// that is the only way to check their credentials: Jellyfin and Emby each
