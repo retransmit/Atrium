@@ -326,6 +326,45 @@ void main() {
       expect(seerr.askedFor('auth/me'), isEmpty);
     });
 
+    test('refused credentials are not sent again', () async {
+      final _FakeSeerr seerr = _FakeSeerr();
+      final SeerrApi api = _api(
+        seerr,
+        const InstanceAuth.userPass(
+          username: _FakeSeerr.username,
+          password: 'wrong',
+        ),
+      );
+
+      // As the polled request list would, over and over.
+      for (int i = 0; i < 3; i++) {
+        await expectLater(
+          api.getRequestCounts(),
+          throwsA(
+            isA<NetworkAuthException>().having(
+              (NetworkAuthException e) => e.message,
+              'message',
+              startsWith('Seerr rejected the sign-in.'),
+            ),
+          ),
+        );
+      }
+
+      // Each try would reach Jellyfin, which locks the account after three.
+      expect(seerr.signIns, 1);
+      expect(seerr.askedFor('request/count'), isEmpty);
+    });
+
+    test('a switched-off sign-in method is tried again later', () async {
+      final _FakeSeerr seerr = _FakeSeerr(localDisabled: true);
+      final SeerrApi api = _api(seerr, _local);
+
+      await expectLater(api.me(), throwsA(isA<NetworkAuthException>()));
+      await expectLater(api.me(), throwsA(isA<NetworkAuthException>()));
+
+      expect(seerr.signIns, 2);
+    });
+
     test('a wrong Jellyfin password reads as a rejected sign-in', () async {
       final _FakeSeerr seerr = _FakeSeerr();
       final SeerrApi api = _api(

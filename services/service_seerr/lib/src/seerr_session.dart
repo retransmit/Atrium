@@ -117,8 +117,24 @@ class SeerrSessionInterceptor extends Interceptor {
   int _generation = 0;
   Future<void>? _signingIn;
 
+  /// The answer to credentials Seerr refused, given from then on without
+  /// asking again.
+  ///
+  /// The request list and issues poll every ten seconds, so retrying a wrong
+  /// or stale password would send it over and over, and for a Jellyfin or
+  /// Emby account Seerr passes every try on to the media server, which locks
+  /// the account after a few (Jellyfin's default is three). Waiting between
+  /// tries would only slow that down, since the count does not reset with
+  /// time. The refusal lasts as long as this client, which is until the
+  /// instance is edited or the app restarts.
+  DioException? _refused;
+
   /// Signs in, sharing one attempt between every request waiting on it.
   Future<void> _signIn() {
+    final DioException? refused = _refused;
+    if (refused != null) {
+      return Future<void>.error(refused);
+    }
     return _signingIn ??= _postSignIn().whenComplete(() => _signingIn = null);
   }
 
@@ -142,7 +158,14 @@ class SeerrSessionInterceptor extends Interceptor {
       );
       _generation++;
     } on DioException catch (e) {
-      throw _signInFailure(e);
+      final DioException failure = _signInFailure(e);
+      // Only the credentials being refused sticks. A network error or a
+      // switched-off sign-in method can clear up by itself.
+      final int? status = e.response?.statusCode;
+      if (status == 401 || status == 403) {
+        _refused = failure;
+      }
+      throw failure;
     }
   }
 

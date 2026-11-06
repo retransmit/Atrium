@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:core_models/core_models.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -137,17 +139,124 @@ void main() {
       await _unmount(tester);
     });
   });
+
+  group('request sheet without server options', () {
+    testWidgets('an account allowed only 4K asks for 4K',
+        (WidgetTester tester) async {
+      final _FakeApi api = _FakeApi(_user(SeerrPermission.request4kMovie));
+      await _pumpDetail(tester, api);
+
+      await tester.tap(find.text('Request'));
+      await tester.pumpAndSettle();
+      // The servers failed to load, so the sheet offers Seerr's defaults.
+      expect(
+        find.textContaining('Advanced options are unavailable'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Request').last);
+      await tester.pumpAndSettle();
+
+      expect(api.requested, <bool>[true]);
+    });
+
+    testWidgets('an account that cannot request gets no Request button',
+        (WidgetTester tester) async {
+      // Opened before auth/me answered, which then says no.
+      final Completer<SeerrUser> me = Completer<SeerrUser>();
+      final _FakeApi api = _FakeApi(_user(0), meFuture: me.future);
+      await _pumpDetail(tester, api);
+
+      await tester.tap(find.text('Request'));
+      await tester.pumpAndSettle();
+      // The screen's button and the sheet's, while nobody knows better.
+      final Finder buttons = find.byWidgetPredicate(
+        (Widget w) =>
+            w is ButtonStyleButton &&
+            find
+                .descendant(
+                  of: find.byWidget(w),
+                  matching: find.text('Request'),
+                )
+                .evaluate()
+                .isNotEmpty,
+      );
+      expect(buttons, findsNWidgets(2));
+
+      me.complete(_user(SeerrPermission.createIssues));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('This account cannot request movies in Seerr.'),
+        findsOneWidget,
+      );
+      expect(buttons, findsNothing);
+      expect(api.requested, isEmpty);
+    });
+  });
+}
+
+Future<void> _pumpDetail(WidgetTester tester, _FakeApi api) async {
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        seerrApiProvider.overrideWith((Ref ref, Instance i) async => api),
+      ],
+      child: const MaterialApp(
+        home: SeerrItemDetailScreen(
+          instance: _instance,
+          item: SeerrDiscoverResult(id: 5, title: 'Film'),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
 }
 
 /// A Seerr with two pending requests, one by the user (id 7) and one by
 /// someone else, answering `auth/me` with [me].
 class _FakeApi extends SeerrApi {
-  _FakeApi(this.user) : super(Dio(BaseOptions(baseUrl: 'http://seerr.test/')));
+  _FakeApi(this.user, {this.meFuture})
+      : super(Dio(BaseOptions(baseUrl: 'http://seerr.test/')));
 
   final SeerrUser user;
+  final Future<SeerrUser>? meFuture;
+
+  /// The is4k of every request made.
+  final List<bool> requested = <bool>[];
 
   @override
-  Future<SeerrUser> me() async => user;
+  Future<SeerrUser> me() => meFuture ?? Future<SeerrUser>.value(user);
+
+  @override
+  Future<List<SeerrServer>> getServers(String mediaType) async =>
+      throw Exception('servers unavailable');
+
+  @override
+  Future<SeerrRequest> createRequest({
+    required String mediaType,
+    required int mediaId,
+    bool is4k = false,
+    int? serverId,
+    int? profileId,
+    String? rootFolder,
+  }) async {
+    requested.add(is4k);
+    return SeerrRequest(id: 1, type: mediaType);
+  }
+
+  @override
+  Future<List<SeerrDiscoverResult>> getRecommendations(
+    String mediaType,
+    int tmdbId,
+  ) async =>
+      <SeerrDiscoverResult>[];
+
+  @override
+  Future<List<SeerrDiscoverResult>> getSimilar(
+    String mediaType,
+    int tmdbId,
+  ) async =>
+      <SeerrDiscoverResult>[];
 
   @override
   Future<List<SeerrRequest>> getAllRequests({

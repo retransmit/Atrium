@@ -1196,14 +1196,28 @@ class _RequestOptionsSheetState extends ConsumerState<_RequestOptionsSheet> {
     );
   }
 
+  /// A plain request with Seerr's defaults, for when the servers are unknown
+  /// or none can be used. It still follows the user's permissions, which may
+  /// have loaded only after the sheet opened.
   Widget _fallback(String message) {
+    final SeerrUser? me = ref.watch(seerrMeProvider(widget.instance)).value;
+    final bool standard = me?.canRequest(_mediaType) ?? true;
+    final bool fourK = me?.canRequest(_mediaType, is4k: true) ?? false;
+    if (!standard && !fourK) {
+      return Text(
+        'This account cannot request '
+        '${_mediaType == 'tv' ? 'series' : 'movies'} in Seerr.',
+        style: Theme.of(context).textTheme.bodyMedium,
+      );
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Text(message, style: Theme.of(context).textTheme.bodyMedium),
         const SizedBox(height: Insets.lg),
-        _submitButton('Request', _submit),
+        // An account allowed only 4K has to ask for 4K.
+        _submitButton('Request', () => _submit(is4k: !standard)),
         if (_error != null) ...<Widget>[
           const SizedBox(height: Insets.sm),
           Text(
