@@ -9,8 +9,9 @@ import 'models/seerr_service.dart';
 
 /// Thin client over the Seerr / Jellyseerr API.
 ///
-/// Auth is an `X-Api-Key` header (added by `core_networking`'s
-/// [AuthInterceptor]), so this rides the shared `instanceDioProvider` Dio.
+/// Auth is either an `X-Api-Key` header (added by `core_networking`'s
+/// [AuthInterceptor]) or a user's own session, which the Dio from
+/// `createSeerrDio` signs in for. This client does not care which.
 class SeerrApi {
   SeerrApi(this._dio);
 
@@ -76,13 +77,20 @@ class SeerrApi {
   /// total the page count is unknown. A count of 0 takes the loop too - a
   /// reply without `total` reads as 0, and the loop settles a truly empty
   /// server in one request. A count that cannot reach the server throws.
+  ///
+  /// [ownOnly] is for a user who sees only their own requests. The count is
+  /// of every request on the server, while `/request` answers such a user
+  /// with theirs alone, so sizing the pages from it would fetch every page
+  /// the owner would. Their few requests take the loop instead.
   Future<List<SeerrRequest>> getAllRequests({
     String sort = 'added',
     String? filter,
+    bool ownOnly = false,
   }) async {
     const int pageSize = 100;
     const int maxItems = 2000;
-    final int? total = filter != null ? null : await _requestTotal();
+    final int? total =
+        filter != null || ownOnly ? null : await _requestTotal();
     if (total != null) {
       final List<List<SeerrRequest>> pages = await Future.wait(
         <Future<List<SeerrRequest>>>[
@@ -129,6 +137,17 @@ class SeerrApi {
         rethrow;
       }
       return null;
+    }
+  }
+
+  /// The user the instance acts as: the signed-in account, or for an API key
+  /// Seerr's owner.
+  Future<SeerrUser> me() async {
+    try {
+      final Response<dynamic> resp = await _dio.get<dynamic>('$_base/auth/me');
+      return SeerrUser.fromJson(resp.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
     }
   }
 

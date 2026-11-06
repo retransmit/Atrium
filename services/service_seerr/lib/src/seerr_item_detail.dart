@@ -8,9 +8,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:palette_generator_plus/palette_generator_plus.dart';
 
 import 'models/seerr_discover.dart';
+import 'models/seerr_request.dart';
 import 'models/seerr_service.dart';
 import 'seerr_api.dart';
 import 'seerr_media_card.dart';
+import 'seerr_permissions.dart';
 import 'seerr_providers.dart';
 import 'seerr_report_issue_sheet.dart';
 import 'seerr_status_badge.dart';
@@ -427,8 +429,9 @@ class _RatingPill extends StatelessWidget {
 }
 
 /// The request action/status plus (when the item exists in Seerr's media
-/// table) the report-issue button.
-class _ActionRow extends StatelessWidget {
+/// table) the report-issue button. Either is left out when the user's Seerr
+/// permissions do not allow it, though the request status still shows.
+class _ActionRow extends ConsumerWidget {
   const _ActionRow({
     required this.instance,
     required this.item,
@@ -440,15 +443,24 @@ class _ActionRow extends StatelessWidget {
   final ColorScheme accent;
 
   @override
-  Widget build(BuildContext context) {
-    final bool canReport = item.mediaInfo?.id != null;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final SeerrUser? me = ref.watch(seerrMeProvider(instance)).value;
+    final bool canReport =
+        item.mediaInfo?.id != null && (me?.canReportIssues ?? true);
+    // Past "unknown", the button is a status panel, which everyone may see.
+    final bool showRequest = (item.mediaInfo?.status ?? 1) > 1 ||
+        me == null ||
+        me.canRequest(item.mediaType) ||
+        me.canRequest(item.mediaType, is4k: true);
     return Row(
       children: <Widget>[
-        Expanded(
-          child: _RequestButton(instance: instance, item: item, accent: accent),
-        ),
+        if (showRequest)
+          Expanded(
+            child:
+                _RequestButton(instance: instance, item: item, accent: accent),
+          ),
         if (canReport) ...<Widget>[
-          const SizedBox(width: Insets.sm),
+          if (showRequest) const SizedBox(width: Insets.sm),
           Expanded(
             child: _ReportIssueButton(
               instance: instance,
@@ -868,9 +880,9 @@ class _StatusPanel extends StatelessWidget {
 }
 
 /// Sheet to pick the quality profile / root folder / server (and 4K when the
-/// instance has 4K servers) before submitting a request. Falls back to a
-/// defaults-only request when the service options can't be loaded (e.g. the
-/// user lacks the advanced-request permission).
+/// instance has 4K servers) before submitting a request. A user without
+/// advanced requests only picks 4K. Falls back to a defaults-only request
+/// when the service options can't be loaded.
 class _RequestOptionsSheet extends ConsumerStatefulWidget {
   const _RequestOptionsSheet({required this.instance, required this.item});
 
@@ -975,11 +987,52 @@ class _RequestOptionsSheetState extends ConsumerState<_RequestOptionsSheet> {
   }
 
   Widget _options(List<SeerrServer> servers) {
-    final bool has4k = servers.any((SeerrServer s) => s.is4k);
-    final bool hasStandard = servers.any((SeerrServer s) => !s.is4k);
+    final SeerrUser? me = ref.watch(seerrMeProvider(widget.instance)).value;
+    // A pool counts only when the user may request into it.
+    final bool has4k = servers.any((SeerrServer s) => s.is4k) &&
+        (me?.canRequest(_mediaType, is4k: true) ?? true);
+    final bool hasStandard = servers.any((SeerrServer s) => !s.is4k) &&
+        (me?.canRequest(_mediaType) ?? true);
+    if (!has4k && !hasStandard) {
+      return _fallback('Requesting will use the Seerr defaults.');
+    }
     // Only offer/force 4K when a 4K server exists; when nothing but 4K
     // servers are configured the request has to be 4K.
     final bool is4k = has4k && (_is4k || !hasStandard);
+    final Widget fourK = SwitchListTile(
+      value: is4k,
+      contentPadding: EdgeInsets.zero,
+      title: const Text('Request in 4K'),
+      onChanged: (bool v) => setState(() {
+        _is4k = v;
+        _serverId = null;
+        _profileId = null;
+        _rootFolder = null;
+      }),
+    );
+
+    // Seerr drops the server, profile and folder of anyone without advanced
+    // requests, so they only choose 4K, and Seerr picks the rest.
+    if (!(me?.canRequestAdvanced ?? true)) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          if (has4k && hasStandard) ...<Widget>[
+            fourK,
+            const SizedBox(height: Insets.md),
+          ],
+          _submitButton('Request', () => _submit(is4k: is4k)),
+          if (_error != null) ...<Widget>[
+            const SizedBox(height: Insets.sm),
+            Text(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+        ],
+      );
+    }
     final List<SeerrServer> pool =
         servers.where((SeerrServer s) => s.is4k == is4k).toList();
 
@@ -1004,17 +1057,7 @@ class _RequestOptionsSheetState extends ConsumerState<_RequestOptionsSheet> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         if (has4k && hasStandard) ...<Widget>[
-          SwitchListTile(
-            value: is4k,
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Request in 4K'),
-            onChanged: (bool v) => setState(() {
-              _is4k = v;
-              _serverId = null;
-              _profileId = null;
-              _rootFolder = null;
-            }),
-          ),
+          fourK,
           const SizedBox(height: Insets.xs),
         ],
         if (pool.length > 1) ...<Widget>[
@@ -1153,14 +1196,28 @@ class _RequestOptionsSheetState extends ConsumerState<_RequestOptionsSheet> {
     );
   }
 
+  /// A plain request with Seerr's defaults, for when the servers are unknown
+  /// or none can be used. It still follows the user's permissions, which may
+  /// have loaded only after the sheet opened.
   Widget _fallback(String message) {
+    final SeerrUser? me = ref.watch(seerrMeProvider(widget.instance)).value;
+    final bool standard = me?.canRequest(_mediaType) ?? true;
+    final bool fourK = me?.canRequest(_mediaType, is4k: true) ?? false;
+    if (!standard && !fourK) {
+      return Text(
+        'This account cannot request '
+        '${_mediaType == 'tv' ? 'series' : 'movies'} in Seerr.',
+        style: Theme.of(context).textTheme.bodyMedium,
+      );
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Text(message, style: Theme.of(context).textTheme.bodyMedium),
         const SizedBox(height: Insets.lg),
-        _submitButton('Request', _submit),
+        // An account allowed only 4K has to ask for 4K.
+        _submitButton('Request', () => _submit(is4k: !standard)),
         if (_error != null) ...<Widget>[
           const SizedBox(height: Insets.sm),
           Text(

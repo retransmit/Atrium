@@ -35,7 +35,7 @@ enum _HealthMode {
 /// service packages.
 ({String path, _HealthMode mode}) _config(ServiceKind kind) {
   switch (kind) {
-    // *arr family + Seerr: authed REST status endpoints.
+    // *arr family: authed REST status endpoints.
     case ServiceKind.sonarr:
     case ServiceKind.radarr:
       return (path: 'api/v3/system/status', mode: _HealthMode.authed);
@@ -45,7 +45,10 @@ enum _HealthMode {
     case ServiceKind.bazarr:
       return (path: 'api/system/status', mode: _HealthMode.authed);
     case ServiceKind.seerr:
-      return (path: 'api/v1/status', mode: _HealthMode.authed);
+      // `status` answers anyone, so it proves no key. `auth/me` refuses a
+      // wrong one. A signed-in instance is probed at `status` instead; see
+      // [_probePath].
+      return (path: 'api/v1/auth/me', mode: _HealthMode.authed);
     case ServiceKind.ombi:
       // Status, about and the request count answer anyone, so none of them
       // can prove a key works. The smallest protected read is one movie
@@ -141,6 +144,18 @@ enum _HealthMode {
   }
 }
 
+/// The path to probe [instance] at, where its auth changes it.
+///
+/// A Seerr signed in as a user has no key to send, only a session, and the
+/// probe must not sign in: it runs on every dashboard refresh, and with a
+/// wrong password each sign-in reaches Jellyfin or Emby, which lock an
+/// account after a few. So the probe asks the public `status` and proves only
+/// that Seerr is up; the Seerr screens report a refused sign-in.
+String _probePath(Instance instance, String path) =>
+    instance.kind == ServiceKind.seerr && instance.auth is! InstanceAuthApiKey
+        ? 'api/v1/status'
+        : path;
+
 /// The request body to POST for [instance], or null to probe with a plain GET.
 ///
 /// Only rTorrent, Unraid and aria2 need this: none of them has a GET-able
@@ -229,9 +244,10 @@ class HealthProbe {
             body == null ? null : _probeContentType(instance.kind),
         responseType: body == null ? null : ResponseType.plain,
       );
+      final String path = _probePath(instance, cfg.path);
       final Response<dynamic> resp = body == null
-          ? await dio.get<dynamic>(cfg.path, options: options)
-          : await dio.post<dynamic>(cfg.path, data: body, options: options);
+          ? await dio.get<dynamic>(path, options: options)
+          : await dio.post<dynamic>(path, data: body, options: options);
       final int status = resp.statusCode ?? 0;
       return interpretServiceHealthResponse(
         instance.kind,

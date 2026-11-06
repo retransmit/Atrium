@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:service_plex/service_plex.dart';
+import 'package:service_seerr/service_seerr.dart';
 import 'package:service_speedtest_tracker/service_speedtest_tracker.dart';
 
 import '../connection_test/connection_test_result.dart';
@@ -69,6 +70,13 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
   /// qBittorrent 5.2+ supports both username/password and API-key auth; this
   /// tracks which the user picked (qBit only).
   bool _qbitUseApiKey = false;
+
+  /// Seerr takes either its API key, which acts as the owner, or one person's
+  /// own account; this tracks which the user picked (Seerr only).
+  bool _seerrSignIn = false;
+
+  /// Which kind of account a Seerr sign-in uses.
+  SeerrAccountKind _seerrAccount = SeerrAccountKind.local;
   bool _testingConnection = false;
   Map<String, ConnectionTestResult> _connectionResults =
       <String, ConnectionTestResult>{};
@@ -134,9 +142,22 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     // A qBittorrent instance saved with key auth reopens on the API-key tab.
     _qbitUseApiKey = instance.kind == ServiceKind.qbittorrent &&
         instance.auth is InstanceAuthApiKey;
+    // A Seerr instance saved with an account reopens on the sign-in tab.
+    if (instance.kind == ServiceKind.seerr) {
+      final SeerrSignIn? signIn = SeerrSignIn.fromAuth(instance.auth);
+      _seerrSignIn = signIn != null;
+      _seerrAccount = signIn?.kind ?? SeerrAccountKind.local;
+    }
   }
 
   InstanceAuth _buildAuth() {
+    if (_kind == ServiceKind.seerr && _seerrSignIn) {
+      return SeerrSignIn(
+        kind: _seerrAccount,
+        username: _username.text.trim(),
+        password: _password.text,
+      ).toAuth();
+    }
     return switch (_kind.authStyle) {
       AuthStyle.apiKey => InstanceAuth.apiKey(apiKey: _apiKey.text.trim()),
       AuthStyle.bearerToken => InstanceAuth.apiKey(apiKey: _apiKey.text.trim()),
@@ -733,9 +754,104 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     );
   }
 
+  /// Seerr's API key, or a person's own Seerr, Jellyfin or Emby account so
+  /// friends and family get only what their Seerr permissions allow.
+  List<Widget> _seerrAuthFields() {
+    final bool local = _seerrAccount == SeerrAccountKind.local;
+    return <Widget>[
+      SegmentedButton<bool>(
+        segments: const <ButtonSegment<bool>>[
+          ButtonSegment<bool>(
+            value: false,
+            label: Text('API key'),
+            icon: Icon(Icons.key),
+          ),
+          ButtonSegment<bool>(
+            value: true,
+            label: Text('Sign in'),
+            icon: Icon(Icons.person_outline),
+          ),
+        ],
+        selected: <bool>{_seerrSignIn},
+        onSelectionChanged: (Set<bool> s) => setState(() {
+          _seerrSignIn = s.first;
+          _connectionResults = <String, ConnectionTestResult>{};
+        }),
+      ),
+      const SizedBox(height: Insets.md),
+      if (!_seerrSignIn)
+        TextFormField(
+          controller: _apiKey,
+          decoration: const InputDecoration(
+            border: OutlineInputBorder(),
+            labelText: 'API key',
+            helperText: 'Settings, General in Seerr. Acts as the Seerr owner.',
+          ),
+          autocorrect: false,
+          onChanged: _clearConnectionTest,
+          validator: (String? v) =>
+              (v == null || v.trim().isEmpty) ? 'Required' : null,
+        )
+      else ...<Widget>[
+        SegmentedButton<SeerrAccountKind>(
+          segments: const <ButtonSegment<SeerrAccountKind>>[
+            ButtonSegment<SeerrAccountKind>(
+              value: SeerrAccountKind.local,
+              label: Text('Seerr account'),
+            ),
+            ButtonSegment<SeerrAccountKind>(
+              value: SeerrAccountKind.mediaServer,
+              label: Text('Jellyfin or Emby'),
+            ),
+          ],
+          selected: <SeerrAccountKind>{_seerrAccount},
+          onSelectionChanged: (Set<SeerrAccountKind> s) => setState(() {
+            _seerrAccount = s.first;
+            _connectionResults = <String, ConnectionTestResult>{};
+          }),
+        ),
+        const SizedBox(height: Insets.md),
+        TextFormField(
+          controller: _username,
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            labelText: local ? 'Email' : 'Username',
+          ),
+          keyboardType:
+              local ? TextInputType.emailAddress : TextInputType.text,
+          autocorrect: false,
+          textInputAction: TextInputAction.next,
+          onChanged: _clearConnectionTest,
+          validator: (String? v) =>
+              (v == null || v.trim().isEmpty) ? 'Required' : null,
+        ),
+        const SizedBox(height: Insets.md),
+        TextFormField(
+          controller: _password,
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            // A Jellyfin or Emby account may have no password.
+            labelText: local ? 'Password' : 'Password (Optional)',
+            helperText:
+                'What this account may do follows its permissions in Seerr.',
+            helperMaxLines: 2,
+          ),
+          obscureText: true,
+          onChanged: _clearConnectionTest,
+          validator: local
+              ? (String? v) => (v == null || v.isEmpty) ? 'Required' : null
+              : (String? v) => null,
+        ),
+      ],
+    ];
+  }
+
   List<Widget> _authFields() {
     switch (_kind.authStyle) {
       case AuthStyle.apiKey:
+        if (_kind == ServiceKind.seerr) {
+          return _seerrAuthFields();
+        }
         if (_kind == ServiceKind.myspeed) {
           return <Widget>[
             TextFormField(

@@ -61,7 +61,7 @@ each one covers:
 | Lidarr                 | artists, albums and tracks, wanted, activity, settings, log reader    |
 | Prowlarr               | indexers, search + grab, history, settings, system                    |
 | Bazarr                 | series/movies, wanted, manual subtitle search, system                 |
-| Seerr                  | discover, search, requests management filtered by status              |
+| Seerr                  | discover, search, requests management filtered by status, sign in as a Seerr, Jellyfin or Emby user |
 | Ombi                   | requests with approve/deny/delete, search, discover                   |
 | Tautulli               | activity, history, stats, users, terminate                            |
 | Tracearr               | fleet overview, live streams, media catalog, user profiles, policy incidents |
