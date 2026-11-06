@@ -11,6 +11,7 @@ import 'models/seerr_issue.dart';
 import 'models/seerr_request.dart';
 import 'models/seerr_service.dart';
 import 'seerr_api.dart';
+import 'seerr_permissions.dart';
 import 'seerr_session.dart';
 
 /// An [SeerrApi] for an instance.
@@ -39,6 +40,17 @@ final seerrMeProvider = FutureProvider.family<SeerrUser, Instance>((
   return api.me();
 });
 
+/// Whether the instance's user sees everyone's requests. True when that is
+/// unknown, which keeps the owner's fast path.
+Future<bool> _seesAllRequests(Ref ref, Instance instance) async {
+  try {
+    final SeerrUser me = await ref.watch(seerrMeProvider(instance).future);
+    return me.canViewAllRequests;
+  } on Object {
+    return true;
+  }
+}
+
 final seerrRequestCountsProvider =
     FutureProvider.family<SeerrCounts, Instance>((
   Ref ref,
@@ -59,7 +71,7 @@ final seerrRequestsProvider =
 ) {
   return ref.polled(const Duration(seconds: 10), () async {
     final SeerrApi api = await ref.watch(seerrApiProvider(instance).future);
-    return api.getAllRequests();
+    return api.getAllRequests(ownOnly: !await _seesAllRequests(ref, instance));
   });
 });
 

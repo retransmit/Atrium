@@ -262,6 +262,7 @@ class _FakeApi extends SeerrApi {
   Future<List<SeerrRequest>> getAllRequests({
     String sort = 'added',
     String? filter,
+    bool ownOnly = false,
   }) async =>
       <SeerrRequest>[_request(by: 7), _request(by: 3)];
 
