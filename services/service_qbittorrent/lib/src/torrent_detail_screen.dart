@@ -1576,6 +1576,10 @@ class _TrackerEditorSheet extends ConsumerStatefulWidget {
 class _TrackerEditorSheetState extends ConsumerState<_TrackerEditorSheet> {
   late final TextEditingController _text =
       TextEditingController(text: qbitTrackerText(widget.current));
+
+  /// The trackers the text is compared against. Read again after a failed
+  /// save, since part of it may have gone through.
+  late List<QbitTracker> _current = widget.current;
   bool _saving = false;
   String? _error;
 
@@ -1591,21 +1595,34 @@ class _TrackerEditorSheetState extends ConsumerState<_TrackerEditorSheet> {
       _saving = true;
       _error = null;
     });
+    QbittorrentClient? client;
     try {
-      final QbittorrentClient client =
+      final QbittorrentClient c =
           await ref.read(qbittorrentClientProvider(widget.instance).future);
+      client = c;
       // Add before removing, so a failure part way never leaves the torrent
       // with fewer trackers than it started with.
       if (edit.added.isNotEmpty) {
-        await client.addTrackers(widget.hash, edit.addText);
+        await c.addTrackers(widget.hash, edit.addText);
       }
       if (edit.removed.isNotEmpty) {
-        await client.removeTrackers(widget.hash, edit.removed);
+        await c.removeTrackers(widget.hash, edit.removed);
       }
       if (mounted) navigator.pop(true);
     } catch (e) {
+      // The additions may have gone through before the removals failed. The
+      // text stays as typed, but the next save has to be worked out against
+      // what the torrent has now, or a URL just added and then deleted from
+      // the text would never be removed.
+      List<QbitTracker>? now;
+      try {
+        now = await client?.getTrackers(widget.hash);
+      } catch (_) {
+        // Keep the old list; the error above is the one to show.
+      }
       if (mounted) {
         setState(() {
+          if (now != null) _current = now;
           _saving = false;
           _error = 'Could not save: $e';
         });
@@ -1617,7 +1634,7 @@ class _TrackerEditorSheetState extends ConsumerState<_TrackerEditorSheet> {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
-    final QbitTrackerEdit edit = qbitTrackerEdit(widget.current, _text.text);
+    final QbitTrackerEdit edit = qbitTrackerEdit(_current, _text.text);
     final String summary = edit.invalid.isNotEmpty
         ? edit.invalid.length == 1
             ? 'Not a tracker URL: ${edit.invalid.single}'
@@ -1641,7 +1658,8 @@ class _TrackerEditorSheetState extends ConsumerState<_TrackerEditorSheet> {
             Text('Edit trackers', style: theme.textTheme.titleLarge),
             const SizedBox(height: Insets.xs),
             Text(
-              'One URL per line. A blank line starts the next tier.',
+              'One URL per line. A blank line starts the next tier. Trackers '
+              'the torrent already has keep their tier.',
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: cs.onSurfaceVariant),
             ),
