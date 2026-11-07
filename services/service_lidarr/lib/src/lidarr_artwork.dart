@@ -6,9 +6,46 @@ import 'generated/models/media_cover_types.dart';
 
 /// Artwork helpers for Lidarr items.
 abstract final class LidarrArtwork {
-  static const String _apiBase = '/api/v1';
+  static const String _apiBase = 'api/v1';
+
+  /// The URL each instance's API connection resolved to, by instance id.
+  static final Map<String, String> _baseUrls = <String, String>{};
+
+  /// Records that [instance] is being reached at [baseUrl], so its artwork
+  /// is fetched from the same place as its data.
+  static void rememberBaseUrl(Instance instance, String baseUrl) {
+    if (baseUrl.isNotEmpty) {
+      _baseUrls[instance.id] = baseUrl;
+    }
+  }
+
+  /// Forgets every recorded URL. For tests.
+  static void forgetBaseUrls() => _baseUrls.clear();
+
+  /// The base to build [instance]'s artwork URLs on: the URL its API
+  /// connection resolved to, local or external, or before there is one, the
+  /// URL its mode points at.
+  static String _baseFor(Instance instance) {
+    final String? resolved = _baseUrls[instance.id];
+    if (resolved != null) return resolved;
+    final bool external = instance.urlMode == UrlMode.forceExternal ||
+        instance.localUrl.isEmpty;
+    return external ? instance.externalUrl : instance.localUrl;
+  }
+
+  static bool _isRemote(String? url) =>
+      url != null && url.isNotEmpty && url.startsWith('http');
 
   /// Builds an absolute, authenticated image URL for an item's [MediaCover].
+  ///
+  /// Lidarr hands out web paths, prefixed with its URL Base when one is set:
+  /// `/base/MediaCover/<artistId>/poster.jpg`,
+  /// `/base/MediaCover/Albums/<albumId>/cover.jpg`, and for art it has not
+  /// cached, `/base/MediaCoverProxy/<hash>/<file>`. The web paths are served
+  /// by its frontend, which ignores the API key and sends anything else to
+  /// its login, as does a single sign-on portal guarding everything outside
+  /// `/api`. So cached art is fetched from the matching `api/v1/mediacover`
+  /// route instead, and uncached art from where Lidarr itself got it.
   static String? imageUrl({
     required Instance instance,
     required List<MediaCover>? images,
@@ -23,41 +60,21 @@ abstract final class LidarrArtwork {
     );
     if (cover == null) return null;
 
-    final bool isProxy = cover.url != null &&
-        cover.url!.toLowerCase().startsWith('/mediacoverproxy/');
-
-    if ((preferRemote || isProxy) &&
-        cover.remoteUrl != null &&
-        cover.remoteUrl!.isNotEmpty &&
-        cover.remoteUrl!.startsWith('http')) {
-      return cover.remoteUrl;
-    }
-
+    final String? remote = _isRemote(cover.remoteUrl) ? cover.remoteUrl : null;
     final String? localUrl = cover.url;
-    if (localUrl == null || localUrl.isEmpty) {
-      if (cover.remoteUrl != null &&
-          cover.remoteUrl!.isNotEmpty &&
-          cover.remoteUrl!.startsWith('http')) {
-        return cover.remoteUrl;
-      }
-      return null;
-    }
+    final bool isProxy =
+        localUrl != null && localUrl.toLowerCase().contains('/mediacoverproxy/');
 
-    final String rawBase =
-        instance.localUrl.isNotEmpty ? instance.localUrl : instance.externalUrl;
-    if (rawBase.isEmpty) {
-      if (cover.remoteUrl != null &&
-          cover.remoteUrl!.isNotEmpty &&
-          cover.remoteUrl!.startsWith('http')) {
-        return cover.remoteUrl;
-      }
-      return null;
-    }
+    if ((preferRemote || isProxy) && remote != null) return remote;
+    if (localUrl == null || localUrl.isEmpty) return remote;
+
+    final String rawBase = _baseFor(instance);
+    if (rawBase.isEmpty) return remote;
 
     String pathOrUrl = localUrl;
 
-    // Width suffix handling (e.g. poster.jpg -> poster-250.jpg)
-    // Only apply width suffixes to local /MediaCover/ paths, never /MediaCoverProxy/
+    // Width suffix (poster.jpg -> poster-250.jpg). Lidarr serves the full
+    // size when a resized one does not exist. Never on proxied art.
     if (width != null && !isProxy) {
       final int queryIdx = pathOrUrl.indexOf('?');
       final String pathPart =
@@ -75,40 +92,32 @@ abstract final class LidarrArtwork {
       }
     }
 
-    // Rewrite internal /MediaCover/ paths to official Lidarr /api/v1/mediacover/ routes
-    final String lower = pathOrUrl.toLowerCase();
-    if (lower.startsWith('/mediacover/albums/')) {
-      pathOrUrl =
-          '$_apiBase/mediacover/album/${pathOrUrl.substring('/MediaCover/Albums/'.length)}';
-    } else if (lower.startsWith('/mediacover/album/')) {
-      pathOrUrl =
-          '$_apiBase/mediacover/album/${pathOrUrl.substring('/MediaCover/album/'.length)}';
-    } else if (lower.startsWith('/mediacover/artists/') ||
-        lower.startsWith('/mediacover/artist/')) {
-      final int prefixLen = lower.startsWith('/mediacover/artists/')
-          ? '/MediaCover/artists/'.length
-          : '/MediaCover/artist/'.length;
-      pathOrUrl =
-          '$_apiBase/mediacover/artist/${pathOrUrl.substring(prefixLen)}';
-    } else if (lower.startsWith('/mediacover/')) {
-      pathOrUrl =
-          '$_apiBase/mediacover/artist/${pathOrUrl.substring('/MediaCover/'.length)}';
+    // Find the segment wherever the URL Base put it, and rebuild relative to
+    // the instance's own URL, which already carries its subpath.
+    final int coverIdx = pathOrUrl.toLowerCase().indexOf('/mediacover/');
+    final String resolvedPath;
+    if (coverIdx != -1) {
+      final String tail =
+          pathOrUrl.substring(coverIdx + '/MediaCover/'.length);
+      resolvedPath = tail.toLowerCase().startsWith('albums/')
+          ? '$_apiBase/mediacover/album/${tail.substring('albums/'.length)}'
+          : '$_apiBase/mediacover/artist/$tail';
+    } else {
+      // Anything else is a web path from the host root, URL Base included.
+      resolvedPath = pathOrUrl;
     }
 
     final String? apiKey = switch (instance.auth) {
-      InstanceAuthApiKey(:final String apiKey) => apiKey,
+      InstanceAuthApiKey(:final String apiKey) when apiKey.isNotEmpty => apiKey,
       _ => null,
     };
-
-    final String cleanPath =
-        pathOrUrl.startsWith('/') ? pathOrUrl.substring(1) : pathOrUrl;
-    final String separator = cleanPath.contains('?') ? '&' : '?';
-    final String resolvedPath = apiKey != null && apiKey.isNotEmpty
-        ? '$cleanPath${separator}apikey=$apiKey'
-        : cleanPath;
+    final String separator = resolvedPath.contains('?') ? '&' : '?';
+    final String withKey = apiKey != null
+        ? '$resolvedPath${separator}apikey=$apiKey'
+        : resolvedPath;
 
     final Uri base = Uri.parse(rawBase.endsWith('/') ? rawBase : '$rawBase/');
-    return base.resolve(resolvedPath).toString();
+    return base.resolve(withKey).toString();
   }
 
   /// Poster / artwork image for an artist. Defaults to optimized 250px thumbnail.
