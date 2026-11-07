@@ -6,7 +6,7 @@ import 'generated/models/media_cover_types.dart';
 
 /// Artwork helpers for Lidarr items.
 abstract final class LidarrArtwork {
-  static const String _apiBase = '/api/v1';
+  static const String _apiBase = 'api/v1';
 
   /// Builds an absolute, authenticated image URL for an item's [MediaCover].
   static String? imageUrl({
@@ -15,6 +15,7 @@ abstract final class LidarrArtwork {
     required MediaCoverTypes coverType,
     int? width,
     bool preferRemote = false,
+    String? baseUrl,
   }) {
     if (images == null || images.isEmpty) return null;
 
@@ -24,7 +25,7 @@ abstract final class LidarrArtwork {
     if (cover == null) return null;
 
     final bool isProxy = cover.url != null &&
-        cover.url!.toLowerCase().startsWith('/mediacoverproxy/');
+        cover.url!.toLowerCase().contains('/mediacoverproxy/');
 
     if ((preferRemote || isProxy) &&
         cover.remoteUrl != null &&
@@ -43,8 +44,19 @@ abstract final class LidarrArtwork {
       return null;
     }
 
-    final String rawBase =
-        instance.localUrl.isNotEmpty ? instance.localUrl : instance.externalUrl;
+    final String rawBase = (baseUrl != null && baseUrl.isNotEmpty)
+        ? baseUrl
+        : switch (instance.urlMode) {
+            UrlMode.forceExternal => instance.externalUrl.isNotEmpty
+                ? instance.externalUrl
+                : instance.localUrl,
+            UrlMode.forceLocal => instance.localUrl.isNotEmpty
+                ? instance.localUrl
+                : instance.externalUrl,
+            UrlMode.auto => instance.localUrl.isNotEmpty
+                ? instance.localUrl
+                : instance.externalUrl,
+          };
     if (rawBase.isEmpty) {
       if (cover.remoteUrl != null &&
           cover.remoteUrl!.isNotEmpty &&
@@ -75,24 +87,29 @@ abstract final class LidarrArtwork {
       }
     }
 
-    // Rewrite internal /MediaCover/ paths to official Lidarr /api/v1/mediacover/ routes
-    final String lower = pathOrUrl.toLowerCase();
-    if (lower.startsWith('/mediacover/albums/')) {
-      pathOrUrl =
-          '$_apiBase/mediacover/album/${pathOrUrl.substring('/MediaCover/Albums/'.length)}';
-    } else if (lower.startsWith('/mediacover/album/')) {
-      pathOrUrl =
-          '$_apiBase/mediacover/album/${pathOrUrl.substring('/MediaCover/album/'.length)}';
-    } else if (lower.startsWith('/mediacover/artists/') ||
-        lower.startsWith('/mediacover/artist/')) {
-      final int prefixLen = lower.startsWith('/mediacover/artists/')
-          ? '/MediaCover/artists/'.length
-          : '/MediaCover/artist/'.length;
-      pathOrUrl =
-          '$_apiBase/mediacover/artist/${pathOrUrl.substring(prefixLen)}';
-    } else if (lower.startsWith('/mediacover/')) {
-      pathOrUrl =
-          '$_apiBase/mediacover/artist/${pathOrUrl.substring('/MediaCover/'.length)}';
+    // Lidarr prefixes its configured URL Base onto images[].url, so this
+    // arrives as either /MediaCover/... or /base/MediaCover/.... Match
+    // the segment wherever it starts and rebuild relative to the API:
+    // the frontend /MediaCover route is served by the web UI, which
+    // ignores the api key and 302s to the login page.
+    final int coverIdx = pathOrUrl.toLowerCase().indexOf('/mediacover/');
+    if (coverIdx != -1) {
+      final String tail =
+          pathOrUrl.substring(coverIdx + '/mediacover/'.length);
+      final String lowerTail = tail.toLowerCase();
+      final String apiTail;
+      if (lowerTail.startsWith('albums/')) {
+        apiTail = 'album/${tail.substring('albums/'.length)}';
+      } else if (lowerTail.startsWith('album/')) {
+        apiTail = 'album/${tail.substring('album/'.length)}';
+      } else if (lowerTail.startsWith('artists/')) {
+        apiTail = 'artist/${tail.substring('artists/'.length)}';
+      } else if (lowerTail.startsWith('artist/')) {
+        apiTail = 'artist/${tail.substring('artist/'.length)}';
+      } else {
+        apiTail = 'artist/$tail';
+      }
+      pathOrUrl = '$_apiBase/mediacover/$apiTail';
     }
 
     final String? apiKey = switch (instance.auth) {
@@ -117,6 +134,7 @@ abstract final class LidarrArtwork {
     List<MediaCover>? images, {
     int? width = 250,
     bool preferRemote = false,
+    String? baseUrl,
   }) =>
       imageUrl(
         instance: instance,
@@ -124,6 +142,7 @@ abstract final class LidarrArtwork {
         coverType: MediaCoverTypes.poster,
         width: width,
         preferRemote: preferRemote,
+        baseUrl: baseUrl,
       ) ??
       imageUrl(
         instance: instance,
@@ -131,6 +150,7 @@ abstract final class LidarrArtwork {
         coverType: MediaCoverTypes.cover,
         width: width,
         preferRemote: preferRemote,
+        baseUrl: baseUrl,
       );
 
   /// Fanart / backdrop image for an artist with progressive fallback.
@@ -139,6 +159,7 @@ abstract final class LidarrArtwork {
     List<MediaCover>? images, {
     int? width,
     bool preferRemote = false,
+    String? baseUrl,
   }) =>
       imageUrl(
         instance: instance,
@@ -146,6 +167,7 @@ abstract final class LidarrArtwork {
         coverType: MediaCoverTypes.fanart,
         width: width,
         preferRemote: preferRemote,
+        baseUrl: baseUrl,
       ) ??
       imageUrl(
         instance: instance,
@@ -153,6 +175,7 @@ abstract final class LidarrArtwork {
         coverType: MediaCoverTypes.banner,
         width: width,
         preferRemote: preferRemote,
+        baseUrl: baseUrl,
       ) ??
       imageUrl(
         instance: instance,
@@ -160,6 +183,7 @@ abstract final class LidarrArtwork {
         coverType: MediaCoverTypes.poster,
         width: width,
         preferRemote: preferRemote,
+        baseUrl: baseUrl,
       ) ??
       imageUrl(
         instance: instance,
@@ -167,6 +191,7 @@ abstract final class LidarrArtwork {
         coverType: MediaCoverTypes.cover,
         width: width,
         preferRemote: preferRemote,
+        baseUrl: baseUrl,
       );
 
   /// Cover artwork for an album. Defaults to optimized 250px thumbnail.
@@ -175,6 +200,7 @@ abstract final class LidarrArtwork {
     List<MediaCover>? images, {
     int? width = 250,
     bool preferRemote = false,
+    String? baseUrl,
   }) =>
       imageUrl(
         instance: instance,
@@ -182,6 +208,7 @@ abstract final class LidarrArtwork {
         coverType: MediaCoverTypes.cover,
         width: width,
         preferRemote: preferRemote,
+        baseUrl: baseUrl,
       ) ??
       imageUrl(
         instance: instance,
@@ -189,5 +216,6 @@ abstract final class LidarrArtwork {
         coverType: MediaCoverTypes.poster,
         width: width,
         preferRemote: preferRemote,
+        baseUrl: baseUrl,
       );
 }

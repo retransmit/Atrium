@@ -166,6 +166,68 @@ void main() {
           'http://192.168.1.100:8686/lidarr/api/v1/mediacover/artist/5/poster-250.jpg?lastWrite=639210363806026257&apikey=key',
         ),
       );
+
+      // 5. URL Base prefix on images (daemon configured with URL Base e.g. /lidarr)
+      final subpathPrefixedImages = [
+        const MediaCover(
+          coverType: MediaCoverTypes.poster,
+          url: '/lidarr/MediaCover/5/poster.jpg?lastWrite=639210363806026257',
+        ),
+        const MediaCover(
+          coverType: MediaCoverTypes.cover,
+          url: '/lidarr/MediaCover/Albums/30/cover.jpg?lastWrite=639223812709425181',
+        ),
+      ];
+      final prefixedAlbumUrl =
+          LidarrArtwork.albumCoverUrl(subpathInstance, subpathPrefixedImages);
+      expect(
+        prefixedAlbumUrl,
+        equals(
+          'http://192.168.1.100:8686/lidarr/api/v1/mediacover/album/30/cover-250.jpg?lastWrite=639223812709425181&apikey=key',
+        ),
+      );
+      final prefixedPosterUrl =
+          LidarrArtwork.artistPosterUrl(subpathInstance, subpathPrefixedImages);
+      expect(
+        prefixedPosterUrl,
+        equals(
+          'http://192.168.1.100:8686/lidarr/api/v1/mediacover/artist/5/poster-250.jpg?lastWrite=639210363806026257&apikey=key',
+        ),
+      );
+
+      // 6. External URL selected when UrlMode.forceExternal
+      const externalOnlyInstance = Instance(
+        id: 'lidarr-ext',
+        name: 'Lidarr External',
+        kind: ServiceKind.lidarr,
+        localUrl: 'http://192.168.1.100:8686/lidarr',
+        externalUrl: 'https://lidarr.example.com/lidarr',
+        urlMode: UrlMode.forceExternal,
+        auth: InstanceAuthApiKey(apiKey: 'key'),
+      );
+      final externalAlbumUrl = LidarrArtwork.albumCoverUrl(
+        externalOnlyInstance,
+        subpathPrefixedImages,
+      );
+      expect(
+        externalAlbumUrl,
+        equals(
+          'https://lidarr.example.com/lidarr/api/v1/mediacover/album/30/cover-250.jpg?lastWrite=639223812709425181&apikey=key',
+        ),
+      );
+
+      // 7. Explicit baseUrl parameter takes precedence
+      final explicitBaseUrl = LidarrArtwork.albumCoverUrl(
+        subpathInstance,
+        subpathPrefixedImages,
+        baseUrl: 'https://proxy.internal:8443/music/lidarr',
+      );
+      expect(
+        explicitBaseUrl,
+        equals(
+          'https://proxy.internal:8443/music/lidarr/api/v1/mediacover/album/30/cover-250.jpg?lastWrite=639223812709425181&apikey=key',
+        ),
+      );
     });
   });
 }
