@@ -1245,7 +1245,9 @@ class _TrackersTab extends ConsumerWidget {
       messenger.showSnackBar(SnackBar(content: Text('$failed: $e')));
       return false;
     } finally {
-      _refresh(ref);
+      // The screen may have been left while the server answered, and a
+      // disposed widget's ref throws.
+      if (context.mounted) _refresh(ref);
     }
   }
 
@@ -1262,8 +1264,9 @@ class _TrackersTab extends ConsumerWidget {
       builder: (_) =>
           _TrackerEditorSheet(instance: instance, hash: hash, current: trackers),
     );
+    if (!context.mounted) return;
     _refresh(ref);
-    if (saved == true && context.mounted) {
+    if (saved == true) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Trackers updated')),
       );
