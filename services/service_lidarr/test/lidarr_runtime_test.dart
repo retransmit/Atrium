@@ -95,8 +95,6 @@ void main() {
     });
 
     test('LidarrArtwork builds correct API routes and scales width', () {
-      // Earlier tests connect an instance with this id at another address.
-      LidarrArtwork.forgetBaseUrls();
       const instance = Instance(
         id: 'lidarr-instance-1',
         name: 'My Lidarr',

@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:core_models/core_models.dart';
+import 'package:meta/meta.dart';
 
 import 'generated/models/media_cover.dart';
 import 'generated/models/media_cover_types.dart';
@@ -8,29 +9,37 @@ import 'generated/models/media_cover_types.dart';
 abstract final class LidarrArtwork {
   static const String _apiBase = 'api/v1';
 
-  /// The URL each instance's API connection resolved to, by instance id.
-  static final Map<String, String> _baseUrls = <String, String>{};
+  /// The URL each instance's API connection resolved to, by instance id,
+  /// with the instance as it was when it connected.
+  static final Map<String, (Instance, String)> _baseUrls =
+      <String, (Instance, String)>{};
 
   /// Records that [instance] is being reached at [baseUrl], so its artwork
   /// is fetched from the same place as its data.
   static void rememberBaseUrl(Instance instance, String baseUrl) {
     if (baseUrl.isNotEmpty) {
-      _baseUrls[instance.id] = baseUrl;
+      _baseUrls[instance.id] = (instance, baseUrl);
     }
   }
 
-  /// Forgets every recorded URL. For tests.
+  /// Forgets every recorded URL.
+  @visibleForTesting
   static void forgetBaseUrls() => _baseUrls.clear();
 
   /// The base to build [instance]'s artwork URLs on: the URL its API
   /// connection resolved to, local or external, or before there is one, the
-  /// URL its mode points at.
+  /// URL its mode points at. A URL recorded before the instance was edited
+  /// is not used.
   static String _baseFor(Instance instance) {
-    final String? resolved = _baseUrls[instance.id];
-    if (resolved != null) return resolved;
-    final bool external = instance.urlMode == UrlMode.forceExternal ||
-        instance.localUrl.isEmpty;
-    return external ? instance.externalUrl : instance.localUrl;
+    final (Instance, String)? resolved = _baseUrls[instance.id];
+    if (resolved != null && resolved.$1 == instance) return resolved.$2;
+    if (instance.urlMode == UrlMode.forceExternal &&
+        instance.externalUrl.isNotEmpty) {
+      return instance.externalUrl;
+    }
+    return instance.localUrl.isNotEmpty
+        ? instance.localUrl
+        : instance.externalUrl;
   }
 
   static bool _isRemote(String? url) =>

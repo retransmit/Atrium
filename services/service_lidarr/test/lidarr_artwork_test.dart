@@ -1,4 +1,8 @@
 import 'package:core_models/core_models.dart';
+import 'package:core_networking/core_networking.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:service_lidarr/service_lidarr.dart';
 
@@ -83,7 +87,11 @@ void main() {
           ),
         ],
       );
-      expect(url, startsWith('http://192.168.1.10:8686/lidarr/MediaCoverProxy/'));
+      expect(
+        url,
+        'http://192.168.1.10:8686/lidarr/MediaCoverProxy/0a1b2c/1-500.jpg'
+        '?apikey=k',
+      );
     });
   });
 
@@ -117,6 +125,48 @@ void main() {
           <MediaCover>[_albumCover],
         ),
         startsWith('https://domain.tld/lidarr/api/v1/'),
+      );
+    });
+
+    test('is the one the API provider connected to', () async {
+      final Instance instance = _lidarr();
+      final ProviderContainer container = ProviderContainer(
+        overrides: <Override>[
+          instanceDioProvider(instance).overrideWith(
+            (Ref ref) async =>
+                Dio(BaseOptions(baseUrl: 'https://domain.tld/lidarr/')),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await container.read(lidarrApiProvider(instance).future);
+
+      expect(
+        LidarrArtwork.albumCoverUrl(instance, <MediaCover>[_albumCover]),
+        startsWith('https://domain.tld/lidarr/api/v1/mediacover/album/30/'),
+      );
+    });
+
+    test('is not taken from before the instance was edited', () {
+      LidarrArtwork.rememberBaseUrl(_lidarr(), 'https://domain.tld/lidarr/');
+
+      expect(
+        LidarrArtwork.albumCoverUrl(
+          _lidarr(local: 'http://192.168.1.20:8686/lidarr', external: ''),
+          <MediaCover>[_albumCover],
+        ),
+        startsWith('http://192.168.1.20:8686/lidarr/api/v1/'),
+      );
+    });
+
+    test('with external forced but no external URL, falls back to local', () {
+      expect(
+        LidarrArtwork.albumCoverUrl(
+          _lidarr(mode: UrlMode.forceExternal, external: ''),
+          <MediaCover>[_albumCover],
+        ),
+        startsWith('http://192.168.1.10:8686/lidarr/api/v1/'),
       );
     });
 
