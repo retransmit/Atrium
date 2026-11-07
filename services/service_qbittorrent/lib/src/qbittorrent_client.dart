@@ -297,6 +297,48 @@ class QbittorrentClient {
             .toList();
       });
 
+  /// Adds trackers to one torrent (`/torrents/addTrackers`).
+  ///
+  /// [urls] is qBittorrent's own tracker list text: one URL per line, where
+  /// each empty line moves the following URLs one tier down. URLs the torrent
+  /// already has are skipped by the server.
+  Future<void> addTrackers(String hash, String urls) => _guarded(() async {
+        await _dio.post<dynamic>(
+          'api/v2/torrents/addTrackers',
+          data: <String, dynamic>{'hash': hash, 'urls': urls},
+          options: Options(contentType: Headers.formUrlEncodedContentType),
+        );
+      });
+
+  /// Removes trackers from one torrent (`/torrents/removeTrackers`).
+  Future<void> removeTrackers(String hash, List<String> urls) =>
+      _guarded(() async {
+        await _dio.post<dynamic>(
+          'api/v2/torrents/removeTrackers',
+          data: <String, dynamic>{'hash': hash, 'urls': urls.join('|')},
+          options: Options(contentType: Headers.formUrlEncodedContentType),
+        );
+      });
+
+  /// Replaces one tracker's URL (`/torrents/editTracker`), keeping its tier.
+  ///
+  /// qBittorrent 5.2 renamed the old URL's parameter from `origUrl` to `url`
+  /// and checks only the name it knows, so both are sent and either server
+  /// reads its own.
+  Future<void> editTracker(String hash, String url, String newUrl) =>
+      _guarded(() async {
+        await _dio.post<dynamic>(
+          'api/v2/torrents/editTracker',
+          data: <String, dynamic>{
+            'hash': hash,
+            'url': url,
+            'origUrl': url,
+            'newUrl': newUrl,
+          },
+          options: Options(contentType: Headers.formUrlEncodedContentType),
+        );
+      });
+
   /// Peers list of one torrent (`/sync/torrentPeers`).
   Future<List<QbitPeer>> getPeers(String hash) => _guarded(() async {
         final Response<dynamic> resp = await _dio.get<dynamic>(
