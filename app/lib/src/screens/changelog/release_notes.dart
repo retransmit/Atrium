@@ -27,6 +27,21 @@ class ReleaseNote {
 /// Newest first. Update alongside appVersion and the pubspec at each release.
 const List<ReleaseNote> releaseNotes = <ReleaseNote>[
   ReleaseNote(
+    version: '1.10.2',
+    date: '2026-11-09',
+    groups: <ChangeGroup>[
+      ChangeGroup(ChangeCategory.added, <String>[
+        "Seerr can sign in with one person's own account instead of the API key: a Seerr account, or a Jellyfin or Emby one. The screens then follow that account's Seerr permissions, so friends and family can request without being handed the admin key.",
+        "qBittorrent can edit a torrent's trackers. Edit trackers opens them as text, one URL per line with a blank line between tiers, and shows what Save will add and remove. Each tracker's menu can copy, edit or remove it, and rows show their tier.",
+      ]),
+      ChangeGroup(ChangeCategory.fixed, <String>[
+        'Lidarr artwork loads when Lidarr runs under a URL Base or behind a sign-in portal that only lets /api through, and it comes from the address Atrium is connected to, so covers show away from home too.',
+        "Seerr's Test connection and status check that the API key actually works. Before, any key passed.",
+        "qBittorrent's Tracker error and Unreachable states no longer show as Unknown.",
+      ]),
+    ],
+  ),
+  ReleaseNote(
     version: '1.10.1',
     date: '2026-11-02',
     groups: <ChangeGroup>[

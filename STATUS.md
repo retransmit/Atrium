@@ -1,6 +1,6 @@
 # Atrium - Status
 
-> Snapshot of what genuinely works and what is left, as of 2026-11-02.
+> Snapshot of what genuinely works and what is left, as of 2026-11-09.
 > Atrium is published on F-Droid and on the GitHub releases page. It is
 > still in early development and every module is work in progress; nothing
 > here is a release promise.
@@ -58,7 +58,8 @@ Atrium is a **controller** app. Video playback was removed by design
   magnet/file (with skip hash check), categories, tag and tracker
   filters, pause/resume/delete/recheck, queue moves and reordering
   (top/up/down/bottom) with sort by queue position, torrent detail
-  (overview/files/trackers), per-file priority, and a settings screen
+  (overview/files/trackers), tracker editing (add, edit and remove by
+  tier, as text like the web UI, or one at a time), per-file priority, and a settings screen
   mirroring the web UI across nine tabs. The four settings that would cut
   Atrium off from the server - web UI address and port, CSRF and
   clickjacking protection - confirm before applying, because once the
@@ -94,7 +95,9 @@ Atrium is a **controller** app. Video playback was removed by design
   tree (profiles, download clients, indexers, import lists, notifications,
   metadata, media management, quality definitions), system diagnostics and
   an in-app log viewer with level filtering and search. Album releases also
-  appear in the shared calendar
+  appear in the shared calendar. Artwork loads through `api/v1/mediacover`
+  from the address the app connected to, so it works under a URL Base and
+  behind a sign-in portal that only lets `/api` through (#222)
 - **Prowlarr**: indexers (add/edit/test from schema), manual search
   across indexers with grab-to-client, history, full settings menu,
   system

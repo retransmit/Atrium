@@ -10,7 +10,7 @@ the home Wi-Fi or out in the world.
 
 **[Website][site]** - screenshots and a tour, no install needed.
 
-> **Status:** v1.10.1. Install from [F-Droid][fdroid], or grab a signed APK
+> **Status:** v1.10.2. Install from [F-Droid][fdroid], or grab a signed APK
 > from the [releases page][releases].
 
 ## Why
@@ -69,7 +69,7 @@ each one covers:
 | Emby                   | same depth as Jellyfin                                                |
 | Plex                   | libraries, detail, seasons, music, genres, now-playing controller, plex.tv sign-in |
 | Navidrome              | artists, albums and tracks, playlists, ratings and favorites, search |
-| qBittorrent            | realtime list, add/manage, torrent detail, private/public badges, queue reorder, full settings, execution log, external IP |
+| qBittorrent            | realtime list, add/manage, torrent detail, tracker editing, private/public badges, queue reorder, full settings, execution log, external IP |
 | Deluge                 | torrent list with a filter drawer, add/manage, queue moves, speed limits, torrent detail (beta) |
 | Transmission           | the web UI's filters in a drawer, actions and inspector, full settings, turtle mode |
 | rTorrent               | torrent list, add/manage, priorities, speed limits, torrent detail (beta) |
