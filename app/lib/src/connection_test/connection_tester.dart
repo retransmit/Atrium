@@ -8,6 +8,7 @@ import 'package:service_emby/service_emby.dart';
 import 'package:service_jellyfin/service_jellyfin.dart';
 import 'package:service_plex/service_plex.dart';
 import 'package:service_qbittorrent/service_qbittorrent.dart';
+import 'package:service_seerr/service_seerr.dart';
 
 import 'connection_test_result.dart';
 
@@ -18,7 +19,7 @@ import 'connection_test_result.dart';
 /// LAN URL, `forceExternal` tests the WAN URL. The form calls this once per
 /// filled-in URL.
 ///
-/// Key and token services (the *arr family, Seerr, Tautulli, SABnzbd, Glances,
+/// Key and token services (the *arr family, Tautulli, SABnzbd, Glances,
 /// Speedtest) are verified by [HealthProbe], whose authed endpoints already
 /// return 401/403 on a bad key. The session services log in for real, since
 /// that is the only way to check their credentials: Jellyfin and Emby each
@@ -29,6 +30,10 @@ import 'connection_test_result.dart';
 /// PocketBase's auth-with-password: its `api/health` endpoint is public (a
 /// lightweight probe would pass with any password), so it must attempt the real
 /// login, where a rejected email or password comes back as HTTP 400.
+///
+/// Seerr is asked who it is talking to. Its status endpoint answers anyone, so
+/// it proves neither an API key nor a sign-in; `auth/me` needs either, and
+/// a sign-in instance signs in for it first.
 ///
 /// AdGuard Home is asked once, signed. Its health probe carries no password,
 /// because AdGuard Home locks an address out after a few wrong ones, so the
@@ -107,6 +112,8 @@ class ConnectionTester {
         return _testAdguardHome(candidate, forced);
       case ServiceKind.slskd:
         return _testSlskd(forced);
+      case ServiceKind.seerr:
+        return _testSeerr(forced);
       default:
         final HealthProbe probe =
             HealthProbe(dioFactory: _ref.read(dioFactoryProvider));
@@ -231,6 +238,36 @@ class ConnectionTester {
         );
       }
       return connectionResultFromError(error);
+    } on Object catch (error) {
+      return connectionResultFromError(error);
+    } finally {
+      dio?.close(force: true);
+    }
+  }
+
+  Future<ConnectionTestResult> _testSeerr(Instance forced) async {
+    Dio? dio;
+    try {
+      dio = await createSeerrDio(_ref.read(dioFactoryProvider), forced);
+      final SeerrUser me = await SeerrApi(dio).me();
+      if (SeerrSignIn.fromAuth(forced.auth) == null) {
+        return const ConnectionTestResult(
+          ConnectionOutcome.connected,
+          'Connected',
+        );
+      }
+      final String name =
+          me.displayName.isNotEmpty ? me.displayName : me.username;
+      return ConnectionTestResult(
+        ConnectionOutcome.connected,
+        name.isEmpty ? 'Signed in' : 'Signed in as $name',
+      );
+    } on NetworkAuthException catch (e) {
+      // The sign-in's own reason, such as a wrong password or a sign-in
+      // method switched off in Seerr, says more than a generic refusal.
+      return SeerrSignIn.fromAuth(forced.auth) == null
+          ? connectionResultFromError(e)
+          : ConnectionTestResult(ConnectionOutcome.authFailed, e.message);
     } on Object catch (error) {
       return connectionResultFromError(error);
     } finally {

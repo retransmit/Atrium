@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../generated/generated.dart';
 import '../lidarr_api.dart';
+import '../lidarr_artwork.dart';
 
 /// Helper to unwrap [ApiResponse] and throw [LidarrException] on failure.
 T unwrapLidarrApiResponse<T>(ApiResponse<T> resp, String defaultMessage) {
@@ -30,5 +31,8 @@ final lidarrApiProvider = FutureProvider.family<LidarrApi, Instance>((
   Instance instance,
 ) async {
   final dio = await ref.watch(instanceDioProvider(instance).future);
+  // Artwork is built outside any provider, so it learns here which of the
+  // instance's URLs this connection resolved to.
+  LidarrArtwork.rememberBaseUrl(instance, dio.options.baseUrl);
   return LidarrApi(dio);
 });

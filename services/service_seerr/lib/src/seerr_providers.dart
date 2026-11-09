@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'models/seerr_counts.dart';
@@ -10,15 +11,45 @@ import 'models/seerr_issue.dart';
 import 'models/seerr_request.dart';
 import 'models/seerr_service.dart';
 import 'seerr_api.dart';
+import 'seerr_permissions.dart';
+import 'seerr_session.dart';
 
-/// An [SeerrApi] for an instance, over the shared `instanceDioProvider`.
+/// An [SeerrApi] for an instance.
+///
+/// An API key instance rides a plain factory Dio; a signed-in one gets the
+/// session-keeping Dio from [createSeerrDio]. Not autoDispose, so the session
+/// outlives the screens that use it.
 final seerrApiProvider = FutureProvider.family<SeerrApi, Instance>((
   Ref ref,
   Instance instance,
 ) async {
-  final dio = await ref.watch(instanceDioProvider(instance).future);
+  final Dio dio = await createSeerrDio(ref.watch(dioFactoryProvider), instance);
+  ref.onDispose(() => dio.close(force: true));
   return SeerrApi(dio);
 });
+
+/// Who the instance acts as, and so what it may do.
+///
+/// Screens hide what this user cannot do. While it loads, or if it fails,
+/// they read it as null and hide nothing, leaving Seerr to refuse.
+final seerrMeProvider = FutureProvider.family<SeerrUser, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final SeerrApi api = await ref.watch(seerrApiProvider(instance).future);
+  return api.me();
+});
+
+/// Whether the instance's user sees everyone's requests. True when that is
+/// unknown, which keeps the owner's fast path.
+Future<bool> _seesAllRequests(Ref ref, Instance instance) async {
+  try {
+    final SeerrUser me = await ref.watch(seerrMeProvider(instance).future);
+    return me.canViewAllRequests;
+  } on Object {
+    return true;
+  }
+}
 
 final seerrRequestCountsProvider =
     FutureProvider.family<SeerrCounts, Instance>((
@@ -40,7 +71,7 @@ final seerrRequestsProvider =
 ) {
   return ref.polled(const Duration(seconds: 10), () async {
     final SeerrApi api = await ref.watch(seerrApiProvider(instance).future);
-    return api.getAllRequests();
+    return api.getAllRequests(ownOnly: !await _seesAllRequests(ref, instance));
   });
 });
 

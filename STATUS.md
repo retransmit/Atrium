@@ -1,6 +1,6 @@
 # Atrium - Status
 
-> Snapshot of what genuinely works and what is left, as of 2026-11-02.
+> Snapshot of what genuinely works and what is left, as of 2026-11-09.
 > Atrium is published on F-Droid and on the GitHub releases page. It is
 > still in early development and every module is work in progress; nothing
 > here is a release promise.
@@ -58,7 +58,8 @@ Atrium is a **controller** app. Video playback was removed by design
   magnet/file (with skip hash check), categories, tag and tracker
   filters, pause/resume/delete/recheck, queue moves and reordering
   (top/up/down/bottom) with sort by queue position, torrent detail
-  (overview/files/trackers), per-file priority, and a settings screen
+  (overview/files/trackers), tracker editing (add, edit and remove by
+  tier, as text like the web UI, or one at a time), per-file priority, and a settings screen
   mirroring the web UI across nine tabs. The four settings that would cut
   Atrium off from the server - web UI address and port, CSRF and
   clickjacking protection - confirm before applying, because once the
@@ -94,7 +95,9 @@ Atrium is a **controller** app. Video playback was removed by design
   tree (profiles, download clients, indexers, import lists, notifications,
   metadata, media management, quality definitions), system diagnostics and
   an in-app log viewer with level filtering and search. Album releases also
-  appear in the shared calendar
+  appear in the shared calendar. Artwork loads through `api/v1/mediacover`
+  from the address the app connected to, so it works under a URL Base and
+  behind a sign-in portal that only lets `/api` through (#222)
 - **Prowlarr**: indexers (add/edit/test from schema), manual search
   across indexers with grab-to-client, history, full settings menu,
   system
@@ -108,7 +111,20 @@ Atrium is a **controller** app. Video playback was removed by design
   with thousands of requests finishes loading (fixed 2026-10-12, #185).
   The requests list is filtered by status (pending, approved, completed,
   declined, failed) on the phone, as Seerr's own filters split them, and
-  the chip picked stays across tab switches (#196)
+  the chip picked stays across tab switches (#196). Besides the API key,
+  which acts as Seerr's owner, an instance can sign in as one person with a
+  local Seerr account (email and password) or a Jellyfin or Emby account
+  (#224). The session is kept in a cookie and signed in again when it runs
+  out; a refused call first asks `auth/me` whether the session still
+  stands, so a permission refusal is not mistaken for an expired session.
+  The screens follow the user's Seerr permissions: approve, decline and
+  retry need Manage Requests, a requester may delete their own pending
+  request, the server, profile and folder pickers need Advanced Requests,
+  the 4K switch needs a 4K permission, the Issues tab needs an issue
+  permission, and commenting on or resolving an issue needs Manage Issues
+  or being its reporter. Test connection asks `auth/me` for both kinds,
+  since Seerr's status endpoint answers without a key. Live-tested
+  2026-11-05 against Seerr 3.5.1 with Jellyfin in local Docker
 - **Ombi** (added 2026-09-19, out of beta since 2026-10-05, live-verified
   against 4.53, restyled 2026-10-02): its own screen with a bottom bar for Requests and Discover
   and search in the app bar. Requests for movies, TV and, where Lidarr is

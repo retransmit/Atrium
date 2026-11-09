@@ -144,6 +144,25 @@ void main() {
       expect(r.server.skips, unorderedEquals(<int>[0, 100, 200]));
     });
 
+    test(
+      'for a user who sees only their own, pages until a short page without '
+      'asking the count',
+      () async {
+        // The count is the whole server's, but this user gets only theirs.
+        final r = _build(150, countBody: <String, dynamic>{'total': 1500});
+
+        final List<SeerrRequest> all =
+            await r.api.getAllRequests(ownOnly: true);
+
+        expect(
+          r.server.asked.map((RequestOptions o) => o.path),
+          isNot(contains(endsWith('/request/count'))),
+        );
+        expect(r.server.skips, <int>[0, 100]);
+        expect(all, hasLength(150));
+      },
+    );
+
     test('asks for one page when the count is zero', () async {
       final r = _build(0);
 

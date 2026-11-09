@@ -1,0 +1,7 @@
+Seerr can sign in with your own Seerr, Jellyfin or Emby account instead of
+the API key, and the app follows that account's permissions.
+
+qBittorrent can edit a torrent's trackers.
+
+Fixes for Lidarr artwork under a URL Base, behind sign-in portals and away
+from home, and Seerr's connection test passing any API key.

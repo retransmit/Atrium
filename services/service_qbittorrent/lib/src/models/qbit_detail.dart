@@ -3,6 +3,13 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'qbit_detail.freezed.dart';
 part 'qbit_detail.g.dart';
 
+int _tierFromJson(Object? value) => switch (value) {
+      final int n => n,
+      final num n => n.toInt(),
+      final String s => int.tryParse(s) ?? -1,
+      _ => -1,
+    };
+
 /// Detailed torrent properties from `GET /api/v2/torrents/properties`.
 ///
 /// Only the fields the detail screen renders are modeled.
@@ -74,8 +81,13 @@ abstract class QbitTracker with _$QbitTracker {
   const factory QbitTracker({
     @Default('') String url,
 
-    /// 0 disabled, 1 not-contacted, 2 working, 3 updating, 4 not-working.
+    /// 0 disabled, 1 not-contacted, 2 working, 3 updating, 4 not-working,
+    /// and since qBittorrent 5.2, 5 tracker error and 6 unreachable.
     @Default(0) int status,
+
+    /// The announce tier, lowest first. The synthetic DHT, PeX and LSD rows
+    /// have none, sent as -1 or, by older servers, an empty string.
+    @JsonKey(fromJson: _tierFromJson) @Default(-1) int tier,
     @JsonKey(name: 'num_seeds') @Default(-1) int numSeeds,
     @JsonKey(name: 'num_peers') @Default(-1) int numPeers,
     @JsonKey(name: 'num_leeches') @Default(-1) int numLeeches,

@@ -11,28 +11,40 @@ import 'seerr_filter_chips.dart';
 import 'seerr_issues_screen.dart';
 import 'seerr_item_detail.dart';
 import 'seerr_media_card.dart';
+import 'seerr_permissions.dart';
 import 'seerr_providers.dart';
 import 'seerr_request_filter.dart';
 import 'seerr_status_badge.dart';
 
 /// Seerr's per-instance UI: the recent request list. Pending requests get
 /// approve / decline actions - the key thing you want to do from a phone.
-class SeerrHome extends StatelessWidget {
+///
+/// A signed-in user sees only what their Seerr permissions allow, so the
+/// Issues tab is left out for an account that cannot see issues.
+class SeerrHome extends ConsumerWidget {
   const SeerrHome({required this.instance, super.key});
 
   final Instance instance;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bool issues =
+        ref.watch(seerrMeProvider(instance)).value?.canSeeIssues ?? true;
     return DefaultTabController(
-      length: 3,
+      // A new controller when the tab count changes, since one cannot shrink.
+      key: ValueKey<bool>(issues),
+      length: issues ? 3 : 2,
       child: Column(
         children: <Widget>[
-          const TabBar(
+          TabBar(
             tabs: <Widget>[
-              Tab(text: 'Requests', icon: Icon(Icons.playlist_play)),
-              Tab(text: 'Discover', icon: Icon(Icons.explore_outlined)),
-              Tab(text: 'Issues', icon: Icon(Icons.report_problem_outlined)),
+              const Tab(text: 'Requests', icon: Icon(Icons.playlist_play)),
+              const Tab(text: 'Discover', icon: Icon(Icons.explore_outlined)),
+              if (issues)
+                const Tab(
+                  text: 'Issues',
+                  icon: Icon(Icons.report_problem_outlined),
+                ),
             ],
           ),
           Expanded(
@@ -40,7 +52,7 @@ class SeerrHome extends StatelessWidget {
               children: <Widget>[
                 _SeerrRequestsTab(instance: instance),
                 SeerrDiscoverScreen(instance: instance),
-                SeerrIssuesScreen(instance: instance),
+                if (issues) SeerrIssuesScreen(instance: instance),
               ],
             ),
           ),
@@ -198,9 +210,17 @@ class _RequestTileState extends ConsumerState<_RequestTile> {
     }
   }
 
+  /// What the user may do with this request, read in [build]. Both stay true
+  /// while the user is unknown, so every action shows.
+  bool _canManage = true;
+  bool _canDelete = true;
+
   @override
   Widget build(BuildContext context) {
     final SeerrRequest request = widget.request;
+    final SeerrUser? me = ref.watch(seerrMeProvider(widget.instance)).value;
+    _canManage = me?.canManageRequests ?? true;
+    _canDelete = me?.canDelete(request) ?? true;
     final String mediaType = request.media?.mediaType ?? request.type;
     final int? tmdbId = request.media?.tmdbId;
 
@@ -255,8 +275,12 @@ class _RequestTileState extends ConsumerState<_RequestTile> {
   }
 
   /// The overflow menu keeps every request action reachable (approve /
-  /// decline while pending, retry, delete).
-  Widget _actionsMenu() {
+  /// decline while pending, retry, delete), or the ones the user may take.
+  /// Null when they may take none.
+  Widget? _actionsMenu() {
+    if (!_canManage && !_canDelete) {
+      return null;
+    }
     if (_busy) {
       return const Padding(
         padding: EdgeInsets.all(12.0),
@@ -271,28 +295,31 @@ class _RequestTileState extends ConsumerState<_RequestTile> {
       icon: const Icon(Icons.more_vert),
       onSelected: _handleAction,
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-        if (widget.request.status == 1) ...<PopupMenuEntry<String>>[
+        if (_canManage) ...<PopupMenuEntry<String>>[
+          if (widget.request.status == 1) ...<PopupMenuEntry<String>>[
+            const PopupMenuItem<String>(
+              value: 'approve',
+              child: Text('Approve'),
+            ),
+            const PopupMenuItem<String>(
+              value: 'decline',
+              child: Text('Decline'),
+            ),
+          ],
           const PopupMenuItem<String>(
-            value: 'approve',
-            child: Text('Approve'),
-          ),
-          const PopupMenuItem<String>(
-            value: 'decline',
-            child: Text('Decline'),
+            value: 'retry',
+            child: Text('Retry'),
           ),
         ],
-        const PopupMenuItem<String>(
-          value: 'retry',
-          child: Text('Retry'),
-        ),
-        const PopupMenuDivider(),
-        PopupMenuItem<String>(
-          value: 'delete',
-          child: Text(
-            'Delete',
-            style: TextStyle(color: Theme.of(context).colorScheme.error),
+        if (_canManage && _canDelete) const PopupMenuDivider(),
+        if (_canDelete)
+          PopupMenuItem<String>(
+            value: 'delete',
+            child: Text(
+              'Delete',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           ),
-        ),
       ],
     );
   }
@@ -301,7 +328,7 @@ class _RequestTileState extends ConsumerState<_RequestTile> {
   /// pending. Delete is deliberately not inline - a one-tap destructive
   /// action invites mis-taps, so it stays in the overflow menu only.
   Widget? _inlineActions() {
-    if (widget.request.status != 1) {
+    if (widget.request.status != 1 || !_canManage) {
       return null;
     }
     return Row(
