@@ -108,12 +108,12 @@ void main() {
       );
     });
 
-    test('reports text that holds no torrent', () {
+    test('turns text that holds no torrent into a title share', () {
       expect(
         decodeTorrentShare(
           <Object?, Object?>{'kind': 'text', 'value': 'hello there'},
         ),
-        isA<TorrentShareProblem>(),
+        isA<TitleShare>(),
       );
     });
 

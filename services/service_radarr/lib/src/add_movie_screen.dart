@@ -224,12 +224,12 @@ class _AddMovieScreenState extends ConsumerState<AddMovieScreen>
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: InkWell(
-                          onTap: () {
+                          onTap: () async {
                             if (_searchFocusNode.hasFocus) {
                               _searchFocusNode.unfocus();
                             }
                             if (isAdded) {
-                              Navigator.of(context).push(
+                              await Navigator.of(context).push(
                                 MaterialPageRoute<void>(
                                   builder: (_) => MovieDetailScreen(
                                     instance: widget.instance,
@@ -239,7 +239,8 @@ class _AddMovieScreenState extends ConsumerState<AddMovieScreen>
                                 ),
                               );
                             } else {
-                              showModalBottomSheet<void>(
+                              final bool? added =
+                                  await showModalBottomSheet<bool>(
                                 context: context,
                                 useRootNavigator: true,
                                 isScrollControlled: true,
@@ -255,6 +256,9 @@ class _AddMovieScreenState extends ConsumerState<AddMovieScreen>
                                   movie: m,
                                 ),
                               );
+                              if ((added ?? false) && context.mounted) {
+                                Navigator.of(context).pop();
+                              }
                             }
                           },
                           child: IntrinsicHeight(
@@ -783,8 +787,8 @@ class _RadarrAddMovieSheetState extends ConsumerState<RadarrAddMovieSheet> {
           ),
         );
         ref.invalidate(radarrMoviesProvider(widget.instance));
-        Navigator.of(context).pop(); // Pops the sheet
-        Navigator.of(context).pop(); // Pops the search screen
+        // Only the sheet: whoever opened it decides what else closes.
+        Navigator.of(context).pop(true);
       }
     } catch (e) {
       if (mounted) {
