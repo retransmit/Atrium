@@ -2,26 +2,59 @@ import 'package:dio/dio.dart';
 
 import 'title_share.dart';
 
-/// What a Letterboxd film page says about its film.
-typedef LetterboxdFilm = ({int tmdbId, TitleKind kind});
+/// What a Letterboxd film page says about its film. At least one ID is set.
+typedef LetterboxdFilm = ({int? tmdbId, String? imdbId, TitleKind kind});
 
+final RegExp _anchor = RegExp(r'<a\s[^>]*>');
+final RegExp _tmdbLink = RegExp(r'themoviedb\.org/(movie|tv)/(\d+)');
+final RegExp _imdbLink = RegExp(r'imdb\.com/title/(tt\d{7,})');
 final RegExp _tmdbId = RegExp(r'data-tmdb-id="(\d+)"');
 final RegExp _tmdbType = RegExp(r'data-tmdb-type="([a-z]+)"');
 
-/// Reads the TMDB ID and type a Letterboxd film page carries on its body,
-/// `data-tmdb-id="860" data-tmdb-type="movie"`. Letterboxd also lists some
-/// TV, typed `tv`. Null when either is missing or the type is neither.
+/// The link of the page's button marked `data-track-action="[action]"`,
+/// matched against [link]. Only the film's own button counts, so a TMDB or
+/// IMDb link anywhere else on the page, a review or the footer, does not.
+RegExpMatch? _button(String html, String action, RegExp link) {
+  for (final RegExpMatch a in _anchor.allMatches(html)) {
+    final String tag = a.group(0)!;
+    if (tag.contains('data-track-action="$action"')) {
+      return link.firstMatch(tag);
+    }
+  }
+  return null;
+}
+
+/// Reads which film a Letterboxd page is about.
+///
+/// The page's IMDb and TMDB buttons come first. Letterboxd also lists some
+/// TV, and on those pages the body still says `data-tmdb-type="movie"`,
+/// with the ID empty or naming some other entry, while the TMDB button
+/// links the show (`themoviedb.org/tv/87108`). The body's
+/// `data-tmdb-id="860" data-tmdb-type="movie"` is used only when there is
+/// no TMDB button. Null when no ID is found at all.
 LetterboxdFilm? parseLetterboxdFilmPage(String html) {
+  final String? imdbId = _button(html, 'IMDb', _imdbLink)?.group(1);
+  final RegExpMatch? tmdb = _button(html, 'TMDB', _tmdbLink);
+  if (tmdb != null) {
+    return (
+      tmdbId: int.parse(tmdb.group(2)!),
+      imdbId: imdbId,
+      kind: tmdb.group(1) == 'tv' ? TitleKind.show : TitleKind.movie,
+    );
+  }
   final String? id = _tmdbId.firstMatch(html)?.group(1);
   final TitleKind? kind = switch (_tmdbType.firstMatch(html)?.group(1)) {
     'movie' => TitleKind.movie,
     'tv' => TitleKind.show,
     _ => null,
   };
-  if (id == null || kind == null) {
-    return null;
+  if (id != null && kind != null) {
+    return (tmdbId: int.parse(id), imdbId: imdbId, kind: kind);
   }
-  return (tmdbId: int.parse(id), kind: kind);
+  if (imdbId != null) {
+    return (tmdbId: null, imdbId: imdbId, kind: TitleKind.unknown);
+  }
+  return null;
 }
 
 /// The client for Letterboxd. It times out like the app's server clients

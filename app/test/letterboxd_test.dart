@@ -8,6 +8,24 @@ import 'package:flutter_test/flutter_test.dart';
 const String _filmPage = '<html><body class="film" data-tmdb-id="860" '
     'data-tmdb-type="movie"><h1>WarGames</h1></body></html>';
 
+/// The film's own IMDb and TMDB buttons, as Letterboxd writes them.
+String _buttons(String imdb, String tmdb) =>
+    '<a href="http://www.imdb.com/title/$imdb/maindetails" '
+    'class="micro-button track-event" data-track-action="IMDb" '
+    'target="_blank" >IMDb</a> <a href="https://www.themoviedb.org/$tmdb/" '
+    'class="micro-button track-event" data-track-action="TMDB" '
+    'target="_blank" >TMDB</a>';
+
+/// The footer credit every page carries, a TMDB link that is no film.
+const String _footer = '<a href="https://letterboxd.com/about/film-data/" '
+    'class="mute">Film data</a> from <a href="https://www.themoviedb.org" '
+    'class="mute">TMDB</a>.';
+
+/// A page as Letterboxd serves it: the body tags, the buttons, the footer.
+String _page(String bodyTags, String buttons) =>
+    '<html><body class="film backdropped" data-type="film" $bodyTags>'
+    '$buttons$_footer</body></html>';
+
 class _Adapter implements HttpClientAdapter {
   _Adapter(this.respond);
 
@@ -33,7 +51,7 @@ void main() {
     test('reads a film page', () {
       expect(
         parseLetterboxdFilmPage(_filmPage),
-        (tmdbId: 860, kind: TitleKind.movie),
+        (tmdbId: 860, imdbId: null, kind: TitleKind.movie),
       );
     });
 
@@ -42,7 +60,70 @@ void main() {
         parseLetterboxdFilmPage(
           '<body data-tmdb-type="tv" data-tmdb-id="1396">',
         ),
-        (tmdbId: 1396, kind: TitleKind.show),
+        (tmdbId: 1396, imdbId: null, kind: TitleKind.show),
+      );
+    });
+
+    test('a movie page is read from its buttons', () {
+      expect(
+        parseLetterboxdFilmPage(
+          _page(
+            'data-tmdb-type="movie" data-tmdb-id="550"',
+            _buttons('tt0137523', 'movie/550'),
+          ),
+        ),
+        (tmdbId: 550, imdbId: 'tt0137523', kind: TitleKind.movie),
+      );
+    });
+
+    // Chernobyl: Letterboxd tags the page a movie and leaves the ID empty,
+    // but its TMDB button links the show.
+    test('a show tagged as a movie with no ID is read from its buttons', () {
+      expect(
+        parseLetterboxdFilmPage(
+          _page(
+            'data-tmdb-type="movie" data-tmdb-id=""',
+            _buttons('tt7366338', 'tv/87108'),
+          ),
+        ),
+        (tmdbId: 87108, imdbId: 'tt7366338', kind: TitleKind.show),
+      );
+    });
+
+    // Band of Brothers: the page's ID tag names a movie Radarr cannot find;
+    // the TMDB button names the show.
+    test('a show whose ID tag names a movie follows the TMDB button', () {
+      expect(
+        parseLetterboxdFilmPage(
+          _page(
+            'data-tmdb-type="movie" data-tmdb-id="331214"',
+            _buttons('tt0185906', 'tv/4613'),
+          ),
+        ),
+        (tmdbId: 4613, imdbId: 'tt0185906', kind: TitleKind.show),
+      );
+    });
+
+    test('only an IMDb button gives the IMDb ID, kind unknown', () {
+      expect(
+        parseLetterboxdFilmPage(
+          _page(
+            'data-tmdb-type="movie" data-tmdb-id=""',
+            '<a href="http://www.imdb.com/title/tt7366338/maindetails" '
+                'class="micro-button track-event" data-track-action="IMDb" '
+                'target="_blank" >IMDb</a>',
+          ),
+        ),
+        (tmdbId: null, imdbId: 'tt7366338', kind: TitleKind.unknown),
+      );
+    });
+
+    test('null when the ID tag is empty and there are no buttons', () {
+      expect(
+        parseLetterboxdFilmPage(
+          _page('data-tmdb-type="movie" data-tmdb-id=""', ''),
+        ),
+        isNull,
       );
     });
 
@@ -94,7 +175,7 @@ void main() {
       final Dio dio = Dio()..httpClientAdapter = adapter;
       expect(
         await readLetterboxdFilm(dio, Uri.parse('https://boxd.it/29qU')),
-        (tmdbId: 860, kind: TitleKind.movie),
+        (tmdbId: 860, imdbId: null, kind: TitleKind.movie),
       );
       expect(adapter.requests.single.uri.host, 'boxd.it');
       expect(adapter.requests.single.followRedirects, isTrue);

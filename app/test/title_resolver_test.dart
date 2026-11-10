@@ -106,11 +106,43 @@ void main() {
         letterboxdUrl: Uri.parse('https://boxd.it/29qU'),
       ),
       calls,
-      readLetterboxd: (Uri _) async => (tmdbId: 860, kind: TitleKind.movie),
+      readLetterboxd: (Uri _) async =>
+          (tmdbId: 860, imdbId: null, kind: TitleKind.movie),
     );
     expect(calls.movies, <String>['radarr-a|tmdb:860']);
     expect(calls.series, isEmpty);
     expect(r.byId, isTrue);
+  });
+
+  test('a Letterboxd show asks only Sonarr, by its IMDb ID', () async {
+    final _Calls calls = _Calls();
+    final TitleResolution r = await _resolve(
+      TitleShare(
+        kind: TitleKind.unknown,
+        letterboxdUrl: Uri.parse('https://boxd.it/hIUy'),
+      ),
+      calls,
+      readLetterboxd: (Uri _) async =>
+          (tmdbId: 87108, imdbId: 'tt7366338', kind: TitleKind.show),
+    );
+    expect(calls.movies, isEmpty);
+    expect(calls.series, <String>['sonarr|imdb:tt7366338']);
+    expect(r.byId, isTrue);
+  });
+
+  test('a Letterboxd IMDb ID of unknown kind asks both', () async {
+    final _Calls calls = _Calls();
+    await _resolve(
+      TitleShare(
+        kind: TitleKind.unknown,
+        letterboxdUrl: Uri.parse('https://boxd.it/hIUy'),
+      ),
+      calls,
+      readLetterboxd: (Uri _) async =>
+          (tmdbId: null, imdbId: 'tt7366338', kind: TitleKind.unknown),
+    );
+    expect(calls.movies, <String>['radarr-a|imdb:tt7366338']);
+    expect(calls.series, <String>['sonarr|imdb:tt7366338']);
   });
 
   test('Letterboxd unreadable falls back to the title', () async {

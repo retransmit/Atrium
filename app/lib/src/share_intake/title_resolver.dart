@@ -65,19 +65,21 @@ Future<TitleResolution> resolveTitleShare(
   required SeriesLookup lookupSeries,
   required LetterboxdReader readLetterboxd,
 }) async {
+  String? imdbId = share.imdbId;
   int? tmdbId = share.tmdbId;
   TitleKind kind = share.kind;
   final Uri? letterboxd = share.letterboxdUrl;
-  if (letterboxd != null && share.imdbId == null && tmdbId == null) {
+  if (letterboxd != null && imdbId == null && tmdbId == null) {
     final LetterboxdFilm? film = await readLetterboxd(letterboxd);
     if (film != null) {
+      imdbId = film.imdbId;
       tmdbId = film.tmdbId;
       kind = film.kind;
     }
   }
 
-  final String? idTerm = share.imdbId != null
-      ? 'imdb:${share.imdbId}'
+  final String? idTerm = imdbId != null
+      ? 'imdb:$imdbId'
       : tmdbId != null
           ? 'tmdb:$tmdbId'
           : null;
