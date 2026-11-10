@@ -167,6 +167,27 @@ void main() {
     expect((o.adding! as MovieMatch).movie.tmdbId, 438631);
   });
 
+  testWidgets(
+      'a title in the first Radarr but not found on the chosen one opens the '
+      'add sheet, not the first library entry',
+      (WidgetTester tester) async {
+    final _Outcome o = await _run(
+      tester,
+      const TitleShare(kind: TitleKind.movie, imdbId: 'tt0086567'),
+      instances: <Instance>[_radarr, _radarr2],
+      lookupMovies: (Instance i, String term) async => i == _radarr
+          ? <RadarrMovie>[
+              const RadarrMovie(id: 7, title: 'WarGames', tmdbId: 860),
+            ]
+          : <RadarrMovie>[],
+    );
+    await tester.tap(find.text('Radarr Two'));
+    await tester.pumpAndSettle();
+    expect(o.opened, isNull);
+    expect(o.addingOn, _radarr2);
+    expect((o.adding! as MovieMatch).movie.id, 0);
+  });
+
   testWidgets('two Radarrs ask which, and the chosen one is checked again',
       (WidgetTester tester) async {
     final List<String> asked = <String>[];

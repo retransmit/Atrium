@@ -108,24 +108,28 @@ Future<void> runTitleShare(
   }
 
   // The lookup ran on one instance; whether the title is already in the
-  // library is a question for the one the user picked.
+  // library is a question for the one the user picked. The first result's
+  // id is that first instance's library id, so when the chosen one cannot
+  // answer for it, the title is treated as not in its library (id 0).
   TitleMatch match = picked;
   if (target != picked.source) {
     try {
       match = switch (picked) {
-        MovieMatch(:final RadarrMovie movie) => movie.tmdbId == null
-            ? picked
-            : MovieMatch(
-                target,
-                (await movies(target, 'tmdb:${movie.tmdbId}')).firstOrNull ??
-                    movie,
-              ),
-        SeriesMatch(series: final SonarrSeries s) => s.tvdbId == null
-            ? picked
-            : SeriesMatch(
-                target,
-                (await series(target, 'tvdb:${s.tvdbId}')).firstOrNull ?? s,
-              ),
+        MovieMatch(:final RadarrMovie movie) => MovieMatch(
+            target,
+            (movie.tmdbId == null
+                    ? null
+                    : (await movies(target, 'tmdb:${movie.tmdbId}'))
+                        .firstOrNull) ??
+                movie.copyWith(id: 0),
+          ),
+        SeriesMatch(series: final SonarrSeries s) => SeriesMatch(
+            target,
+            (s.tvdbId == null
+                    ? null
+                    : (await series(target, 'tvdb:${s.tvdbId}')).firstOrNull) ??
+                s.copyWith(id: 0),
+          ),
       };
     } catch (_) {
       await tell('Could not reach ${target.name}, so nothing was added.');
