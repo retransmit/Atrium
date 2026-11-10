@@ -519,9 +519,8 @@ class _SonarrAddSeriesSheetState extends ConsumerState<SonarrAddSeriesSheet> {
         );
         // Refresh local series list provider
         ref.invalidate(sonarrSeriesProvider(widget.instance));
-        // Close sheet and the search screen
-        Navigator.of(context).pop(); // Pops the sheet
-        Navigator.of(context).pop(); // Pops the search screen
+        // Only the sheet: whoever opened it decides what else closes.
+        Navigator.of(context).pop(true);
       }
     } catch (e) {
       if (mounted) {
