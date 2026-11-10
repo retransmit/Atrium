@@ -4,7 +4,6 @@ import 'package:collection/collection.dart';
 import 'package:core_models/core_models.dart';
 import 'package:core_profile/core_profile.dart';
 import 'package:core_ui/core_ui.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
@@ -75,7 +74,7 @@ Future<void> runTitleShare(
       lookupMovies: movies,
       lookupSeries: series,
       readLetterboxd: readLetterboxd ??
-          (Uri url) => readLetterboxdFilm(Dio(), url),
+          (Uri url) => readLetterboxdFilm(letterboxdDio(), url),
     ),
   );
 

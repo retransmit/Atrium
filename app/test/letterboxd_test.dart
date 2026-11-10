@@ -60,6 +60,12 @@ void main() {
     });
   });
 
+  test('the Letterboxd client gives up instead of waiting forever', () {
+    final BaseOptions options = letterboxdDio().options;
+    expect(options.connectTimeout, const Duration(seconds: 10));
+    expect(options.receiveTimeout, const Duration(seconds: 15));
+  });
+
   group('readLetterboxdFilm', () {
     test('returns null on a network error', () async {
       final Dio dio = Dio()

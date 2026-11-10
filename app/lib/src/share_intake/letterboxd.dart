@@ -24,6 +24,15 @@ LetterboxdFilm? parseLetterboxdFilmPage(String html) {
   return (tmdbId: int.parse(id), kind: kind);
 }
 
+/// The client for Letterboxd. It times out like the app's server clients
+/// do, so a stalled connection cannot keep the share waiting forever.
+Dio letterboxdDio() => Dio(
+      BaseOptions(
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 15),
+      ),
+    );
+
 /// Follows a shared Letterboxd link to its film page and reads it.
 ///
 /// A `boxd.it` short link answers with a redirect to the page, so redirects
