@@ -24,6 +24,7 @@ Instance _instance(String name, ServiceKind kind) => Instance(
 final Instance _radarr = _instance('Radarr Test', ServiceKind.radarr);
 final Instance _radarr2 = _instance('Radarr Two', ServiceKind.radarr);
 final Instance _sonarr = _instance('Sonarr Test', ServiceKind.sonarr);
+final Instance _sonarr2 = _instance('Sonarr Two', ServiceKind.sonarr);
 
 /// What the flow did at the end, captured instead of building the real
 /// detail screen or add sheet, which need a live server's providers.
@@ -216,5 +217,79 @@ void main() {
     ]);
     expect(o.openedOn, _radarr2);
     expect((o.opened! as MovieMatch).movie.id, 12);
+  });
+
+  testWidgets('two Sonarrs ask which, and the chosen one is checked by TVDB',
+      (WidgetTester tester) async {
+    final List<String> asked = <String>[];
+    final _Outcome o = await _run(
+      tester,
+      const TitleShare(kind: TitleKind.show, imdbId: 'tt7366338'),
+      instances: <Instance>[_radarr, _sonarr, _sonarr2],
+      lookupSeries: (Instance i, String term) async {
+        asked.add('${i.name}|$term');
+        // Only the second Sonarr already has it.
+        return <SonarrSeries>[
+          SonarrSeries(
+            id: i == _sonarr2 ? 21 : 0,
+            title: 'Chernobyl',
+            tvdbId: 360893,
+          ),
+        ];
+      },
+    );
+    expect(find.text('Add to'), findsOneWidget);
+    expect(find.text('Radarr Test'), findsNothing);
+    await tester.tap(find.text('Sonarr Two'));
+    await tester.pumpAndSettle();
+    expect(asked, <String>[
+      'Sonarr Test|imdb:tt7366338',
+      'Sonarr Two|tvdb:360893',
+    ]);
+    expect(o.openedOn, _sonarr2);
+    expect((o.opened! as SeriesMatch).series.id, 21);
+    expect(o.adding, isNull);
+  });
+
+  testWidgets(
+      'a show in the first Sonarr but not found on the chosen one opens the '
+      'add sheet, not the first library entry',
+      (WidgetTester tester) async {
+    final _Outcome o = await _run(
+      tester,
+      const TitleShare(kind: TitleKind.show, imdbId: 'tt7366338'),
+      instances: <Instance>[_sonarr, _sonarr2],
+      lookupSeries: (Instance i, String term) async => i == _sonarr
+          ? <SonarrSeries>[
+              const SonarrSeries(id: 9, title: 'Chernobyl', tvdbId: 360893),
+            ]
+          : <SonarrSeries>[],
+    );
+    await tester.tap(find.text('Sonarr Two'));
+    await tester.pumpAndSettle();
+    expect(o.opened, isNull);
+    expect(o.addingOn, _sonarr2);
+    expect((o.adding! as SeriesMatch).series.id, 0);
+    expect((o.adding! as SeriesMatch).series.tvdbId, 360893);
+  });
+
+  testWidgets('the chosen Sonarr being down says so and adds nothing',
+      (WidgetTester tester) async {
+    final _Outcome o = await _run(
+      tester,
+      const TitleShare(kind: TitleKind.show, imdbId: 'tt7366338'),
+      instances: <Instance>[_sonarr, _sonarr2],
+      lookupSeries: (Instance i, String term) async {
+        if (i == _sonarr2) throw Exception('down');
+        return <SonarrSeries>[
+          const SonarrSeries(title: 'Chernobyl', tvdbId: 360893),
+        ];
+      },
+    );
+    await tester.tap(find.text('Sonarr Two'));
+    await tester.pumpAndSettle();
+    expect(o.told.single, contains('Could not reach Sonarr Two'));
+    expect(o.adding, isNull);
+    expect(o.opened, isNull);
   });
 }
