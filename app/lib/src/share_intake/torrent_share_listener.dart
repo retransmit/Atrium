@@ -14,6 +14,7 @@ import 'package:service_transmission/service_transmission.dart';
 
 import '../router.dart';
 import 'share_intake.dart';
+import 'title_share_flow.dart';
 import 'torrent_share.dart';
 
 /// The instances a shared torrent can be sent to.
@@ -130,6 +131,17 @@ class _TorrentShareListenerState extends ConsumerState<TorrentShareListener> {
       return;
     }
     if (!mounted) {
+      return;
+    }
+
+    // A movie or show goes to Radarr or Sonarr, not a torrent client.
+    if (share is TitleShare) {
+      await runTitleShare(
+        ref,
+        share,
+        presentContext: () => _presentContext,
+        tell: _tell,
+      );
       return;
     }
 
