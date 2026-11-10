@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'title_share.dart';
+
 /// A torrent another app handed to Atrium through the Android share sheet or
 /// the "open with" chooser.
 ///
@@ -84,6 +86,50 @@ final class TorrentShareProblem extends TorrentShare {
   int get hashCode => message.hashCode;
 }
 
+/// Whether a shared title is a movie, a show, or not yet known.
+enum TitleKind { movie, show, unknown }
+
+/// A movie or show shared as text, to be looked up on Radarr or Sonarr.
+///
+/// It extends [TorrentShare] only because that is the share queue's item
+/// type; it has nothing to do with torrents. It lives in this file because a
+/// sealed class can only be extended from its own library. The parsing is in
+/// `title_share.dart`.
+final class TitleShare extends TorrentShare {
+  const TitleShare({
+    required this.kind,
+    this.imdbId,
+    this.tmdbId,
+    this.letterboxdUrl,
+    this.title,
+  });
+
+  final TitleKind kind;
+
+  /// An IMDb title ID such as `tt0086567`.
+  final String? imdbId;
+
+  final int? tmdbId;
+
+  /// A Letterboxd link not yet followed to its film page.
+  final Uri? letterboxdUrl;
+
+  /// What to search by when no ID resolves.
+  final String? title;
+
+  @override
+  bool operator ==(Object other) =>
+      other is TitleShare &&
+      other.kind == kind &&
+      other.imdbId == imdbId &&
+      other.tmdbId == tmdbId &&
+      other.letterboxdUrl == letterboxdUrl &&
+      other.title == title;
+
+  @override
+  int get hashCode => Object.hash(kind, imdbId, tmdbId, letterboxdUrl, title);
+}
+
 /// Decodes the map delivered over the `app.atrium/share` channel.
 ///
 /// Returns null when the intent carried nothing to add - a plain launcher tap
@@ -105,14 +151,19 @@ TorrentShare? decodeTorrentShare(Object? payload) {
       if (value is! String) {
         return null;
       }
+      // A torrent wins over a title, so torrent shares behave as before.
       final String? found = extractTorrentUri(value);
-      if (found == null) {
-        return const TorrentShareProblem(
-          'That share had no magnet link and no link to a .torrent file, so '
-          'there was nothing to add.',
-        );
+      if (found != null) {
+        return TorrentShareLink(found);
       }
-      return TorrentShareLink(found);
+      final TitleShare? title = extractTitleShare(value);
+      if (title != null) {
+        return title;
+      }
+      return const TorrentShareProblem(
+        'That share had no torrent and no movie or show in it, so there was '
+        'nothing to add.',
+      );
 
     case 'file':
       final Object? bytes = payload['bytes'];
