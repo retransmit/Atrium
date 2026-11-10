@@ -127,6 +127,25 @@ void main() {
       );
     });
 
+    test('an ID too long to be a number counts as no ID', () {
+      const String tooLong = '99999999999999999999';
+      expect(
+        parseLetterboxdFilmPage(
+          _page(
+            'data-tmdb-type="movie" data-tmdb-id="$tooLong"',
+            _buttons('tt7366338', 'tv/$tooLong'),
+          ),
+        ),
+        (tmdbId: null, imdbId: 'tt7366338', kind: TitleKind.unknown),
+      );
+      expect(
+        parseLetterboxdFilmPage(
+          _page('data-tmdb-type="movie" data-tmdb-id="$tooLong"', ''),
+        ),
+        isNull,
+      );
+    });
+
     test('null without the attributes', () {
       expect(parseLetterboxdFilmPage('<html></html>'), isNull);
     });

@@ -31,25 +31,28 @@ RegExpMatch? _button(String html, String action, RegExp link) {
 /// with the ID empty or naming some other entry, while the TMDB button
 /// links the show (`themoviedb.org/tv/87108`). The body's
 /// `data-tmdb-id="860" data-tmdb-type="movie"` is used only when there is
-/// no TMDB button. Null when no ID is found at all.
+/// no TMDB button. An ID too long to be a number counts as missing. Null
+/// when no ID is found at all.
 LetterboxdFilm? parseLetterboxdFilmPage(String html) {
   final String? imdbId = _button(html, 'IMDb', _imdbLink)?.group(1);
   final RegExpMatch? tmdb = _button(html, 'TMDB', _tmdbLink);
-  if (tmdb != null) {
+  final int? buttonId = tmdb == null ? null : int.tryParse(tmdb.group(2)!);
+  if (buttonId != null) {
     return (
-      tmdbId: int.parse(tmdb.group(2)!),
+      tmdbId: buttonId,
       imdbId: imdbId,
-      kind: tmdb.group(1) == 'tv' ? TitleKind.show : TitleKind.movie,
+      kind: tmdb!.group(1) == 'tv' ? TitleKind.show : TitleKind.movie,
     );
   }
-  final String? id = _tmdbId.firstMatch(html)?.group(1);
+  final String? idText = _tmdbId.firstMatch(html)?.group(1);
+  final int? id = idText == null ? null : int.tryParse(idText);
   final TitleKind? kind = switch (_tmdbType.firstMatch(html)?.group(1)) {
     'movie' => TitleKind.movie,
     'tv' => TitleKind.show,
     _ => null,
   };
   if (id != null && kind != null) {
-    return (tmdbId: int.parse(id), imdbId: imdbId, kind: kind);
+    return (tmdbId: id, imdbId: imdbId, kind: kind);
   }
   if (imdbId != null) {
     return (tmdbId: null, imdbId: imdbId, kind: TitleKind.unknown);
