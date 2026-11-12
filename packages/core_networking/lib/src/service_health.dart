@@ -141,6 +141,10 @@ enum _HealthMode {
       return (path: 'jsonrpc', mode: _HealthMode.authed);
     case ServiceKind.slskd:
       return (path: 'api/v0/application', mode: _HealthMode.authed);
+    case ServiceKind.gotify:
+      // `health` and `version` answer anyone; `current/user` refuses a wrong
+      // token, and an application token too, which cannot read messages.
+      return (path: 'current/user', mode: _HealthMode.authed);
   }
 }
 
