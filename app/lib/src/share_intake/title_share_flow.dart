@@ -317,8 +317,9 @@ String? _sonarrPoster(WidgetRef ref, Instance on, SonarrSeries s) {
 /// when there is nowhere to show it.
 Future<Instance?> pickInstance(
   BuildContext? context,
-  List<Instance> instances,
-) async {
+  List<Instance> instances, {
+  String title = 'Add to',
+}) async {
   if (context == null || !context.mounted) {
     return null;
   }
@@ -333,17 +334,13 @@ Future<Instance?> pickInstance(
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 4),
             child: Text(
-              'Add to',
+              title,
               style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
           for (final Instance instance in instances)
             ListTile(
-              leading: Icon(
-                instance.kind == ServiceKind.radarr
-                    ? Icons.movie_outlined
-                    : Icons.tv_outlined,
-              ),
+              leading: Icon(ServiceVisuals.icon(instance.kind)),
               title: Text(instance.name),
               subtitle: Text(instance.kind.displayName),
               onTap: () => Navigator.of(context).pop(instance),

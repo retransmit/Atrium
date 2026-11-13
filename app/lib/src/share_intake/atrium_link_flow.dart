@@ -66,7 +66,7 @@ Future<void> openAtriumLink(
 
   Future<Instance?> chosen() async => candidates.length == 1
       ? candidates.single
-      : pickInstance(presentContext(), candidates);
+      : pickInstance(presentContext(), candidates, title: 'Open in');
 
   if (link.item == LinkItem.none) {
     final Instance? on = await chosen();

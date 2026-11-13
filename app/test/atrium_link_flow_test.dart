@@ -28,6 +28,8 @@ Instance _instance(String name, ServiceKind kind) => Instance(
 final Instance _radarr = _instance('Radarr Test', ServiceKind.radarr);
 final Instance _sonarr = _instance('Sonarr Test', ServiceKind.sonarr);
 final Instance _sonarr2 = _instance('Sonarr Two', ServiceKind.sonarr);
+final Instance _qbit = _instance('qBit One', ServiceKind.qbittorrent);
+final Instance _qbit2 = _instance('qBit Two', ServiceKind.qbittorrent);
 
 /// What the flow did, captured instead of routing or building real screens.
 class _Outcome {
@@ -119,9 +121,23 @@ void main() {
       instances: <Instance>[_sonarr, _sonarr2],
     );
     expect(o.went, isEmpty);
+    expect(find.text('Open in'), findsOneWidget);
+    expect(find.text('Add to'), findsNothing);
     await tester.tap(find.text('Sonarr Two'));
     await tester.pumpAndSettle();
     expect(o.went, <String>['/service/sonarr/Sonarr Two']);
+  });
+
+  testWidgets('the picker shows a service by its own kind, not as a show',
+      (WidgetTester tester) async {
+    await _run(
+      tester,
+      const AtriumLink(service: ServiceKind.qbittorrent),
+      instances: <Instance>[_qbit, _qbit2],
+    );
+    expect(find.text('qBit Two'), findsOneWidget);
+    expect(find.byIcon(Icons.tv_outlined), findsNothing);
+    expect(find.byIcon(Icons.movie_outlined), findsNothing);
   });
 
   testWidgets('a named instance is matched ignoring case',
