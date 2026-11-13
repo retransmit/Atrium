@@ -76,16 +76,21 @@ final class TorrentShareFiles extends TorrentShare {
 
 /// Something arrived but cannot be added. Carries the message to show.
 final class TorrentShareProblem extends TorrentShare {
-  const TorrentShareProblem(this.message);
+  const TorrentShareProblem(this.message, {this.title = 'Nothing added'});
 
   final String message;
 
-  @override
-  bool operator ==(Object other) =>
-      other is TorrentShareProblem && other.message == message;
+  /// The heading the message is shown under.
+  final String title;
 
   @override
-  int get hashCode => message.hashCode;
+  bool operator ==(Object other) =>
+      other is TorrentShareProblem &&
+      other.message == message &&
+      other.title == title;
+
+  @override
+  int get hashCode => Object.hash(message, title);
 }
 
 /// Whether a shared title is a movie, a show, or not yet known.
@@ -134,7 +139,8 @@ final class TitleShare extends TorrentShare {
       other.title == title;
 
   @override
-  int get hashCode => Object.hash(kind, imdbId, tmdbId, tvdbId, letterboxdUrl, title);
+  int get hashCode =>
+      Object.hash(kind, imdbId, tmdbId, tvdbId, letterboxdUrl, title);
 }
 
 /// What an `atrium://` link points at within its service.

@@ -29,6 +29,7 @@ void main() {
         const TorrentShareProblem(
           'Atrium does not know a service called "nope", so that link went '
           'nowhere.',
+          title: 'Could not open that link',
         ),
       );
     });
@@ -42,6 +43,16 @@ void main() {
           service: ServiceKind.radarr,
           item: LinkItem.movie,
           tmdbId: 550,
+        ),
+      );
+    });
+
+    test('a + in an instance name reads as a space', () {
+      expect(
+        parseAtriumLink('atrium://sonarr?instance=Sonarr+Two'),
+        const AtriumLink(
+          service: ServiceKind.sonarr,
+          instanceName: 'Sonarr Two',
         ),
       );
     });
@@ -98,6 +109,7 @@ void main() {
           parseAtriumLink(bad),
           const TorrentShareProblem(
             'That Atrium link could not be read, so it went nowhere.',
+            title: 'Could not open that link',
           ),
         );
       });
