@@ -97,6 +97,14 @@ Future<void> openAtriumLink(
       final String what = link.item == LinkItem.movie ? 'movie' : 'series';
       await tell('${on.name} has no $what with ID $libraryId.');
       return;
+    } on NetworkUnreachableException {
+      await tell('Could not reach ${on.name}.');
+      return;
+    } on NetworkException catch (e) {
+      // The server answered, so "could not reach" would be wrong. Its own
+      // reason, a refused API key or a server error, says what to fix.
+      await tell('${on.name}: ${e.message}');
+      return;
     } catch (_) {
       await tell('Could not reach ${on.name}.');
       return;

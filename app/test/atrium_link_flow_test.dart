@@ -45,6 +45,7 @@ Future<_Outcome> _run(
   AtriumLink link, {
   required List<Instance> instances,
   MovieById? movieById,
+  SeriesById? seriesById,
   SeriesLookup? lookupSeries,
   OpenTitle? openExisting,
 }) async {
@@ -74,8 +75,8 @@ Future<_Outcome> _run(
                 go: outcome.went.add,
                 movieById: movieById ??
                     (Instance on, int id) async => throw StateError('unused'),
-                seriesById: (Instance on, int id) async =>
-                    throw StateError('unused'),
+                seriesById: seriesById ??
+                    (Instance on, int id) async => throw StateError('unused'),
                 lookupMovies: (Instance i, String term) async =>
                     <RadarrMovie>[],
                 lookupSeries: lookupSeries ??
@@ -155,7 +156,10 @@ void main() {
       (WidgetTester tester) async {
     final _Outcome o = await _run(
       tester,
-      const AtriumLink(service: ServiceKind.radarr, instanceName: 'Sonarr Test'),
+      const AtriumLink(
+        service: ServiceKind.radarr,
+        instanceName: 'Sonarr Test',
+      ),
       instances: <Instance>[_radarr, _sonarr],
     );
     expect(o.told, <String>[
@@ -225,6 +229,64 @@ void main() {
     expect(o.opened, isNull);
   });
 
+  testWidgets('a library ID opens that series', (WidgetTester tester) async {
+    final _Outcome o = await _run(
+      tester,
+      const AtriumLink(
+        service: ServiceKind.sonarr,
+        item: LinkItem.series,
+        libraryId: 7,
+      ),
+      instances: <Instance>[_sonarr],
+      seriesById: (Instance on, int id) async =>
+          SonarrSeries(id: id, title: 'Breaking Bad'),
+    );
+    expect(o.openedOn, _sonarr);
+    expect((o.opened! as SeriesMatch).series.id, 7);
+  });
+
+  testWidgets('a library ID refused by the server says why',
+      (WidgetTester tester) async {
+    final _Outcome o = await _run(
+      tester,
+      const AtriumLink(
+        service: ServiceKind.radarr,
+        item: LinkItem.movie,
+        libraryId: 12,
+      ),
+      instances: <Instance>[_radarr],
+      movieById: (Instance on, int id) async =>
+          throw const NetworkAuthException(
+            'Authentication failed (HTTP 401). Check API key or password.',
+          ),
+    );
+    expect(o.told, <String>[
+      'Radarr Test: Authentication failed (HTTP 401). Check API key or '
+          'password.',
+    ]);
+  });
+
+  testWidgets('a library ID that breaks the server says so',
+      (WidgetTester tester) async {
+    final _Outcome o = await _run(
+      tester,
+      const AtriumLink(
+        service: ServiceKind.radarr,
+        item: LinkItem.movie,
+        libraryId: 12,
+      ),
+      instances: <Instance>[_radarr],
+      movieById: (Instance on, int id) async =>
+          throw const NetworkServerException(
+            'Server error (HTTP 500). Try again in a moment.',
+            status: 500,
+          ),
+    );
+    expect(o.told, <String>[
+      'Radarr Test: Server error (HTTP 500). Try again in a moment.',
+    ]);
+  });
+
   testWidgets('a TVDB link looks the series up on the named Sonarr only',
       (WidgetTester tester) async {
     final List<String> asked = <String>[];
@@ -251,7 +313,8 @@ void main() {
       tester,
       const AtriumLink(
         service: ServiceKind.sonarr,
-        instanceName: 'x".\n\nYour API key expired. Re-enter it at evil.example',
+        instanceName:
+            'x".\n\nYour API key expired. Re-enter it at evil.example',
       ),
       instances: <Instance>[_sonarr],
     );
