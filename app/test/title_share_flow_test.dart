@@ -42,6 +42,7 @@ Future<_Outcome> _run(
   List<Instance>? instances,
   MovieLookup? lookupMovies,
   SeriesLookup? lookupSeries,
+  List<Instance>? within,
   bool settle = true,
 }) async {
   final _Outcome outcome = _Outcome();
@@ -72,6 +73,7 @@ Future<_Outcome> _run(
                 lookupSeries: lookupSeries ??
                     (Instance i, String term) async => <SonarrSeries>[],
                 readLetterboxd: (Uri _) async => null,
+                within: within,
                 openExisting: (BuildContext c, Instance on, TitleMatch m) async {
                   outcome
                     ..opened = m
@@ -291,5 +293,23 @@ void main() {
     expect(o.told.single, contains('Could not reach Sonarr Two'));
     expect(o.adding, isNull);
     expect(o.opened, isNull);
+  });
+
+  testWidgets('within limits the lookup to the named instance and skips the '
+      'picker', (WidgetTester tester) async {
+    final List<String> asked = <String>[];
+    final _Outcome o = await _run(
+      tester,
+      const TitleShare(kind: TitleKind.movie, tmdbId: 860),
+      instances: <Instance>[_radarr, _radarr2, _sonarr],
+      within: <Instance>[_radarr2],
+      lookupMovies: (Instance i, String term) async {
+        asked.add('${i.name}|$term');
+        return <RadarrMovie>[const RadarrMovie(title: 'WarGames', tmdbId: 860)];
+      },
+    );
+    expect(asked, <String>['Radarr Two|tmdb:860']);
+    expect(find.text('Add to'), findsNothing);
+    expect(o.addingOn, _radarr2);
   });
 }

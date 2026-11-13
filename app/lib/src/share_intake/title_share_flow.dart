@@ -26,6 +26,9 @@ typedef OpenTitle = Future<void> Function(
 /// there is a choice, then opens it if that instance already has it, or the
 /// usual add sheet if not. Returns once the last sheet or screen is done.
 ///
+/// [within], when set, limits the search to those instances, as when a link
+/// names the one to use.
+///
 /// The lookups, the Letterboxd reader and the two endings are parameters so
 /// tests can stand in for a server; the defaults are the real ones.
 Future<void> runTitleShare(
@@ -38,6 +41,7 @@ Future<void> runTitleShare(
   LetterboxdReader? readLetterboxd,
   OpenTitle? openExisting,
   OpenTitle? openAdd,
+  List<Instance>? within,
 }) async {
   final MovieLookup movies = lookupMovies ??
       (Instance i, String term) async =>
@@ -46,7 +50,10 @@ Future<void> runTitleShare(
       (Instance i, String term) async =>
           (await ref.read(sonarrApiProvider(i).future)).lookupSeries(term);
 
-  final List<Instance> active = ref.read(activeInstancesProvider);
+  final List<Instance> active = <Instance>[
+    for (final Instance i in ref.read(activeInstancesProvider))
+      if (within == null || within.contains(i)) i,
+  ];
   final List<Instance> radarrs = active
       .where((Instance i) => i.kind == ServiceKind.radarr)
       .toList(growable: false);
@@ -102,7 +109,7 @@ Future<void> runTitleShare(
       picked is MovieMatch ? radarrs : sonarrs;
   final Instance? target = choices.length == 1
       ? choices.single
-      : await _pickInstance(presentContext(), choices);
+      : await pickInstance(presentContext(), choices);
   if (target == null) {
     return;
   }
@@ -146,7 +153,7 @@ Future<void> runTitleShare(
     SeriesMatch(series: final SonarrSeries s) => s.id > 0,
   };
   await (inLibrary
-      ? (openExisting ?? _openExisting)
+      ? (openExisting ?? openExistingTitle)
       : (openAdd ?? _openAdd))(context, target, match);
 }
 
@@ -303,7 +310,9 @@ String? _sonarrPoster(WidgetRef ref, Instance on, SonarrSeries s) {
   return image == null ? null : api?.posterUrl(image, preferRemote: true);
 }
 
-Future<Instance?> _pickInstance(
+/// Asks which of [instances] to use, in a sheet. Null when dismissed or
+/// when there is nowhere to show it.
+Future<Instance?> pickInstance(
   BuildContext? context,
   List<Instance> instances,
 ) async {
@@ -343,7 +352,8 @@ Future<Instance?> _pickInstance(
   );
 }
 
-Future<void> _openExisting(
+/// Opens a movie's or series' own screen on [on].
+Future<void> openExistingTitle(
   BuildContext context,
   Instance on,
   TitleMatch match,
