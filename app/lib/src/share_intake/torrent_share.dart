@@ -1,5 +1,7 @@
+import 'package:core_models/core_models.dart';
 import 'package:flutter/foundation.dart';
 
+import 'atrium_link.dart';
 import 'title_share.dart';
 
 /// A torrent another app handed to Atrium through the Android share sheet or
@@ -135,6 +137,64 @@ final class TitleShare extends TorrentShare {
   int get hashCode => Object.hash(kind, imdbId, tmdbId, tvdbId, letterboxdUrl, title);
 }
 
+/// What an `atrium://` link points at within its service.
+enum LinkItem { none, movie, series }
+
+/// An `atrium://` link another app opened, to go to a service, or to a movie
+/// or series in it.
+///
+/// Like [TitleShare] it extends [TorrentShare] only to ride the share queue.
+/// The parsing is in `atrium_link.dart`.
+final class AtriumLink extends TorrentShare {
+  const AtriumLink({
+    required this.service,
+    this.item = LinkItem.none,
+    this.instanceName,
+    this.libraryId,
+    this.tmdbId,
+    this.tvdbId,
+    this.imdbId,
+  });
+
+  final ServiceKind service;
+
+  final LinkItem item;
+
+  /// The instance named in the link, when it named one.
+  final String? instanceName;
+
+  /// The item's ID in that instance's own library.
+  final int? libraryId;
+
+  final int? tmdbId;
+
+  final int? tvdbId;
+
+  final String? imdbId;
+
+  @override
+  bool operator ==(Object other) =>
+      other is AtriumLink &&
+      other.service == service &&
+      other.item == item &&
+      other.instanceName == instanceName &&
+      other.libraryId == libraryId &&
+      other.tmdbId == tmdbId &&
+      other.tvdbId == tvdbId &&
+      other.imdbId == imdbId;
+
+  @override
+  int get hashCode => Object.hash(
+        service,
+        item,
+        instanceName,
+        libraryId,
+        tmdbId,
+        tvdbId,
+        imdbId,
+      );
+}
+
 /// Decodes the map delivered over the `app.atrium/share` channel.
 ///
 /// Returns null when the intent carried nothing to add - a plain launcher tap
@@ -169,6 +229,13 @@ TorrentShare? decodeTorrentShare(Object? payload) {
         'That share had no torrent and no movie or show in it, so there was '
         'nothing to add.',
       );
+
+    case 'link':
+      final Object? uri = payload['uri'];
+      if (uri is! String || uri.trim().isEmpty) {
+        return null;
+      }
+      return parseAtriumLink(uri.trim());
 
     case 'file':
       final Object? bytes = payload['bytes'];
