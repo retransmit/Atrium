@@ -13,6 +13,7 @@ import 'package:service_rtorrent/service_rtorrent.dart';
 import 'package:service_transmission/service_transmission.dart';
 
 import '../router.dart';
+import 'atrium_link_flow.dart';
 import 'share_intake.dart';
 import 'title_share_flow.dart';
 import 'torrent_share.dart';
@@ -141,6 +142,18 @@ class _TorrentShareListenerState extends ConsumerState<TorrentShareListener> {
         share,
         presentContext: () => _presentContext,
         tell: _tell,
+      );
+      return;
+    }
+
+    // A link from another app goes where it points.
+    if (share is AtriumLink) {
+      await openAtriumLink(
+        ref,
+        share,
+        presentContext: () => _presentContext,
+        tell: _tell,
+        go: (String location) => ref.read(routerProvider).go(location),
       );
       return;
     }

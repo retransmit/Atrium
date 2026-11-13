@@ -71,6 +71,15 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="magnet"/>
             </intent-filter>
+            <!-- atrium:// links, so ntfy, Termux, Tasker or a browser can open
+                 a service, a movie or a series directly. They only navigate;
+                 nothing is added without a tap. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="atrium"/>
+            </intent-filter>
             <!-- Sharing a magnet or a link to a .torrent as text. -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND"/>
