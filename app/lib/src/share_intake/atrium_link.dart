@@ -42,7 +42,17 @@ TorrentShare parseAtriumLink(String link) {
     );
   }
 
-  final String? name = uri.queryParameters['instance']?.trim();
+  // A broken escape such as `%FF` only shows up when the query is decoded.
+  final Map<String, String> query;
+  try {
+    query = uri.queryParameters;
+  } on FormatException {
+    return _unreadable;
+  } on ArgumentError {
+    return _unreadable;
+  }
+
+  final String? name = query['instance']?.trim();
   final String? instanceName = name == null || name.isEmpty ? null : name;
 
   final String path = uri.path.replaceAll(RegExp(r'^/+|/+$'), '').toLowerCase();
@@ -60,14 +70,14 @@ TorrentShare parseAtriumLink(String link) {
   }
 
   int? number(String key) {
-    final int? n = int.tryParse(uri.queryParameters[key] ?? '');
+    final int? n = int.tryParse(query[key] ?? '');
     return n != null && n > 0 ? n : null;
   }
 
   final int? id = number('id');
   final int? tmdb = number('tmdb');
   final int? tvdb = item == LinkItem.series ? number('tvdb') : null;
-  final String? imdbText = uri.queryParameters['imdb'];
+  final String? imdbText = query['imdb'];
   final String? imdb =
       imdbText != null && _imdbId.hasMatch(imdbText) ? imdbText : null;
 

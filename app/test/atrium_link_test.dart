@@ -90,6 +90,8 @@ void main() {
       'atrium://radarr/movie?imdb=tt12',
       'atrium://lidarr/artist?id=1',
       'https://sonarr.example.com',
+      'atrium://sonarr?instance=%FF',
+      'atrium://radarr/movie?tmdb=550&instance=%E0%A4',
     ]) {
       test('$bad cannot be read', () {
         expect(
