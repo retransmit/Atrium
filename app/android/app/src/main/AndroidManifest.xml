@@ -31,10 +31,9 @@
               />
             <!-- Flutter otherwise feeds the launch intent's data URI to the
                  router as the initial route, so opening a magnet link landed
-                 the app on "no routes for location: magnet:?xt=...". Atrium
-                 receives no deep links of its own - the torrent intents below
-                 are read natively and handed to the share channel - so nothing
-                 needs this. -->
+                 the app on "no routes for location: magnet:?xt=...". Every
+                 intent below, atrium:// links included, is read natively and
+                 handed to the share channel, so nothing needs this. -->
             <meta-data
               android:name="flutter_deeplinking_enabled"
               android:value="false"
