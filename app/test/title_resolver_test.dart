@@ -98,6 +98,17 @@ void main() {
     expect(calls.movies, isEmpty);
   });
 
+  test('a TVDB ID asks Sonarr by tvdb: term', () async {
+    final _Calls calls = _Calls();
+    final TitleResolution r = await _resolve(
+      const TitleShare(kind: TitleKind.show, tvdbId: 81189),
+      calls,
+    );
+    expect(calls.series, <String>['sonarr|tvdb:81189']);
+    expect(calls.movies, isEmpty);
+    expect(r.byId, isTrue);
+  });
+
   test('Letterboxd supplies a TMDB ID and kind', () async {
     final _Calls calls = _Calls();
     final TitleResolution r = await _resolve(

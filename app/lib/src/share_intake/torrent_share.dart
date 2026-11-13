@@ -100,6 +100,7 @@ final class TitleShare extends TorrentShare {
     required this.kind,
     this.imdbId,
     this.tmdbId,
+    this.tvdbId,
     this.letterboxdUrl,
     this.title,
   });
@@ -110,6 +111,9 @@ final class TitleShare extends TorrentShare {
   final String? imdbId;
 
   final int? tmdbId;
+
+  /// A TheTVDB series ID, which Sonarr keys its series by.
+  final int? tvdbId;
 
   /// A Letterboxd link not yet followed to its film page.
   final Uri? letterboxdUrl;
@@ -123,11 +127,12 @@ final class TitleShare extends TorrentShare {
       other.kind == kind &&
       other.imdbId == imdbId &&
       other.tmdbId == tmdbId &&
+      other.tvdbId == tvdbId &&
       other.letterboxdUrl == letterboxdUrl &&
       other.title == title;
 
   @override
-  int get hashCode => Object.hash(kind, imdbId, tmdbId, letterboxdUrl, title);
+  int get hashCode => Object.hash(kind, imdbId, tmdbId, tvdbId, letterboxdUrl, title);
 }
 
 /// Decodes the map delivered over the `app.atrium/share` channel.
