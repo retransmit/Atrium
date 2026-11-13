@@ -24,7 +24,8 @@ typedef OpenTitle = Future<void> Function(
 /// Takes a movie or show shared from another app all the way to Radarr or
 /// Sonarr: finds it, lets the user pick the title and the instance when
 /// there is a choice, then opens it if that instance already has it, or the
-/// usual add sheet if not. Returns once the last sheet or screen is done.
+/// usual add sheet if not. Returns once the add sheet is done, or as soon as
+/// the title's own screen is open, so the next share does not wait on it.
 ///
 /// [within], when set, limits the search to those instances, as when a link
 /// names the one to use.
@@ -152,9 +153,11 @@ Future<void> runTitleShare(
     MovieMatch(:final RadarrMovie movie) => movie.id > 0,
     SeriesMatch(series: final SonarrSeries s) => s.id > 0,
   };
-  await (inLibrary
-      ? (openExisting ?? openExistingTitle)
-      : (openAdd ?? _openAdd))(context, target, match);
+  if (inLibrary) {
+    unawaited((openExisting ?? openExistingTitle)(context, target, match));
+    return;
+  }
+  await (openAdd ?? _openAdd)(context, target, match);
 }
 
 /// Runs [work] behind a "Finding that title" sheet, closed when it ends.

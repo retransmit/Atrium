@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
 import 'package:core_profile/core_profile.dart';
@@ -55,10 +57,10 @@ Future<void> openAtriumLink(
       : ofKind
           .where((Instance i) => i.name.toLowerCase() == name)
           .toList(growable: false);
+  // The name is not repeated back: any web page can open a link, and the
+  // message would show its text inside Atrium.
   if (candidates.isEmpty) {
-    await tell(
-      'No $service called "${link.instanceName}" is set up in Atrium.',
-    );
+    await tell('No $service with that name is set up in Atrium.');
     return;
   }
 
@@ -103,7 +105,9 @@ Future<void> openAtriumLink(
     if (context == null || !context.mounted) {
       return;
     }
-    await (openExisting ?? openExistingTitle)(context, on, match);
+    // Not awaited: the screen's future ends only when the user leaves it,
+    // and the next link or share should not wait for that.
+    unawaited((openExisting ?? openExistingTitle)(context, on, match));
     return;
   }
 

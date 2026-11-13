@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:atrium/src/share_intake/atrium_link.dart';
 import 'package:atrium/src/share_intake/atrium_link_flow.dart';
 import 'package:atrium/src/share_intake/title_resolver.dart';
+import 'package:atrium/src/share_intake/title_share_flow.dart';
 import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
 import 'package:core_profile/core_profile.dart';
@@ -32,6 +35,7 @@ class _Outcome {
   final List<String> went = <String>[];
   TitleMatch? opened;
   Instance? openedOn;
+  bool done = false;
 }
 
 Future<_Outcome> _run(
@@ -40,6 +44,7 @@ Future<_Outcome> _run(
   required List<Instance> instances,
   MovieById? movieById,
   SeriesLookup? lookupSeries,
+  OpenTitle? openExisting,
 }) async {
   final _Outcome outcome = _Outcome();
   final GlobalKey<NavigatorState> navigator = GlobalKey<NavigatorState>();
@@ -58,7 +63,8 @@ Future<_Outcome> _run(
         home: Consumer(
           builder: (BuildContext context, WidgetRef ref, _) => Scaffold(
             body: ElevatedButton(
-              onPressed: () => openAtriumLink(
+              onPressed: () async {
+                await openAtriumLink(
                 ref,
                 link,
                 presentContext: () => navigator.currentContext,
@@ -72,12 +78,15 @@ Future<_Outcome> _run(
                     <RadarrMovie>[],
                 lookupSeries: lookupSeries ??
                     (Instance i, String term) async => <SonarrSeries>[],
-                openExisting: (BuildContext c, Instance on, TitleMatch m) async {
-                  outcome
-                    ..opened = m
-                    ..openedOn = on;
-                },
-              ),
+                openExisting: openExisting ??
+                    (BuildContext c, Instance on, TitleMatch m) async {
+                      outcome
+                        ..opened = m
+                        ..openedOn = on;
+                    },
+                );
+                outcome.done = true;
+              },
               child: const Text('Open'),
             ),
           ),
@@ -134,7 +143,7 @@ void main() {
       instances: <Instance>[_radarr, _sonarr],
     );
     expect(o.told, <String>[
-      'No Radarr called "Sonarr Test" is set up in Atrium.',
+      'No Radarr with that name is set up in Atrium.',
     ]);
     expect(o.went, isEmpty);
   });
@@ -218,5 +227,37 @@ void main() {
       },
     );
     expect(asked, <String>['Sonarr Two|tvdb:81189']);
+  });
+
+  testWidgets('a name from the link is never shown back',
+      (WidgetTester tester) async {
+    final _Outcome o = await _run(
+      tester,
+      const AtriumLink(
+        service: ServiceKind.sonarr,
+        instanceName: 'x".\n\nYour API key expired. Re-enter it at evil.example',
+      ),
+      instances: <Instance>[_sonarr],
+    );
+    expect(o.told, <String>['No Sonarr with that name is set up in Atrium.']);
+  });
+
+  testWidgets('a screen a link opened does not hold the next link back',
+      (WidgetTester tester) async {
+    final _Outcome o = await _run(
+      tester,
+      const AtriumLink(
+        service: ServiceKind.radarr,
+        item: LinkItem.movie,
+        libraryId: 12,
+      ),
+      instances: <Instance>[_radarr],
+      movieById: (Instance on, int id) async =>
+          RadarrMovie(id: id, title: 'WarGames'),
+      // A pushed screen's future ends only when the user leaves it.
+      openExisting: (BuildContext c, Instance on, TitleMatch m) =>
+          Completer<void>().future,
+    );
+    expect(o.done, isTrue);
   });
 }
