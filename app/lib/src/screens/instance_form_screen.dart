@@ -651,7 +651,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                     _kind == ServiceKind.dashdot ||
                     _kind == ServiceKind.gluetun ||
                     _kind == ServiceKind.qbittorrent ||
-                    _kind == ServiceKind.slskd) ...<Widget>[
+                    _kind == ServiceKind.slskd ||
+                    _kind == ServiceKind.gotify) ...<Widget>[
                   const SizedBox(height: Insets.md),
                   TextFormField(
                     controller: _pollingInterval,
@@ -890,6 +891,26 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
               enableSuggestions: false,
               onChanged: _clearConnectionTest,
               validator: (String? v) => null,
+            ),
+          ];
+        }
+        if (_kind == ServiceKind.gotify) {
+          return <Widget>[
+            TextFormField(
+              controller: _apiKey,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'Client token',
+                helperText: 'Create one under Clients in Gotify. An app '
+                    'token can only send messages, not read them.',
+                helperMaxLines: 2,
+              ),
+              obscureText: true,
+              autocorrect: false,
+              enableSuggestions: false,
+              onChanged: _clearConnectionTest,
+              validator: (String? v) =>
+                  (v == null || v.trim().isEmpty) ? 'Required' : null,
             ),
           ];
         }

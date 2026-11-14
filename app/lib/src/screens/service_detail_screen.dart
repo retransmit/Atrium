@@ -18,6 +18,7 @@ import 'package:service_qbittorrent/service_qbittorrent.dart';
 import 'package:service_radarr/service_radarr.dart';
 import 'package:service_sabnzbd/service_sabnzbd.dart';
 import 'package:service_glances/service_glances.dart';
+import 'package:service_gotify/service_gotify.dart';
 import 'package:service_beszel/service_beszel.dart';
 import 'package:service_sonarr/service_sonarr.dart';
 import 'package:service_speedtest_tracker/service_speedtest_tracker.dart';
@@ -416,6 +417,7 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
       ServiceKind.cleanuparr => const SizedBox.shrink(),
       // Owns its own scaffold, handled above.
       ServiceKind.slskd => const SizedBox.shrink(),
+      ServiceKind.gotify => GotifyHome(instance: instance),
     };
   }
 }

@@ -47,6 +47,7 @@ dependencies:
   service_sabnzbd:
   service_sonarr:
   service_glances:
+  service_gotify:
   service_beszel:
   service_dashdot:
   service_speedtest_tracker:

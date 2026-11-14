@@ -78,6 +78,7 @@ body:
         - Gluetun
         - AdGuard Home
         - Cleanuparr
+        - Gotify
         - Unraid
         - Something else
     validations:

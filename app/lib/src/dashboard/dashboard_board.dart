@@ -8,6 +8,7 @@ import 'package:service_adguard_home/service_adguard_home.dart';
 import 'package:service_dashdot/service_dashdot.dart';
 import 'package:service_emby/service_emby.dart' as emby;
 import 'package:service_glances/service_glances.dart';
+import 'package:service_gotify/service_gotify.dart';
 import 'package:service_jellyfin/service_jellyfin.dart' as jf;
 import 'package:service_deluge/service_deluge.dart';
 import 'package:service_nzbget/service_nzbget.dart';
@@ -37,6 +38,7 @@ import 'widgets/cleanuparr_widget.dart';
 import 'widgets/dashdot_widget.dart';
 import 'widgets/downloads_widget.dart';
 import 'widgets/gluetun_status_widget.dart';
+import 'widgets/gotify_widget.dart';
 import 'widgets/myspeed_widget.dart';
 import 'widgets/recently_added_widget.dart';
 import 'widgets/recently_downloaded_widget.dart';
@@ -218,6 +220,10 @@ class DashboardBoard extends ConsumerWidget {
         return DashboardCleanuparrWidget(
           instances: _byKind(instances, ServiceKind.cleanuparr),
         );
+      case DashboardWidgetKind.gotify:
+        return DashboardGotifyWidget(
+          instances: _byKind(instances, ServiceKind.gotify),
+        );
       case DashboardWidgetKind.wakeOnLan:
         return const DashboardWakeOnLanWidget();
     }
@@ -295,6 +301,8 @@ class DashboardBoard extends ConsumerWidget {
           ref.invalidate(cleanuparrStrikesProvider(i));
           ref.invalidate(cleanuparrStrikesCountProvider(i));
           ref.invalidate(cleanuparrJobsProvider(i));
+        case ServiceKind.gotify:
+          ref.invalidate(gotifyMessagesProvider(i));
         case ServiceKind.slskd:
           ref.invalidate(slskdDownloadsProvider(i));
           ref.invalidate(slskdUploadsProvider(i));
