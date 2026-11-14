@@ -90,6 +90,7 @@ Future<void> _openAndAdd(
   WidgetTester tester,
   _Server server, {
   Future<List<RootFolderResource>>? folders,
+  Future<List<MetadataProfileResource>>? metadata,
   Future<void> Function()? beforeAdd,
 }) async {
   tester.view.physicalSize = const Size(1080, 2400);
@@ -106,6 +107,9 @@ Future<void> _openAndAdd(
         lidarrArtistsProvider(testInstance).overrideWith((ref) async => []),
         if (folders != null)
           lidarrRootFoldersProvider(testInstance).overrideWith((ref) => folders),
+        if (metadata != null)
+          lidarrMetadataProfilesProvider(testInstance)
+              .overrideWith((ref) => metadata),
       ],
       child: const MaterialApp(
         home: Scaffold(
@@ -114,10 +118,10 @@ Future<void> _openAndAdd(
       ),
     ),
   );
-  if (folders == null) {
+  if (folders == null && metadata == null) {
     await tester.pumpAndSettle();
   } else {
-    // A loading spinner never settles: let everything but folders arrive.
+    // A loading spinner never settles: let everything else arrive.
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
   }
@@ -222,6 +226,39 @@ void main() {
     expect(server.posted!['rootFolderPath'], '/data/music');
     expect(server.posted!['qualityProfileId'], 2);
     expect(server.posted!['metadataProfileId'], 2);
+  });
+
+  testWidgets('a change made while lists load is kept',
+      (WidgetTester tester) async {
+    AddChoices.write('lidarr', testInstance.id, <String, Object?>{
+      'qualityProfileId': 1,
+      'searchForMissingAlbums': false,
+    });
+    final Completer<List<MetadataProfileResource>> late =
+        Completer<List<MetadataProfileResource>>();
+    final _Server server = _Server();
+    await _openAndAdd(
+      tester,
+      server,
+      metadata: late.future,
+      beforeAdd: () async {
+        await tester.tap(
+          find.widgetWithText(SwitchListTile, 'Search for Missing Albums'),
+        );
+        await tester.pump();
+        await tester.tap(find.text('Any'));
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.tap(find.text('FLAC Lossless').last);
+        await tester.pump(const Duration(milliseconds: 500));
+        late.complete(const <MetadataProfileResource>[
+          MetadataProfileResource(id: 1, name: 'Standard'),
+        ]);
+        await tester.pumpAndSettle();
+      },
+    );
+
+    expect(server.posted!['qualityProfileId'], 2);
+    expect(_options(server.posted!)['searchForMissingAlbums'], isTrue);
   });
 
   testWidgets('a deleted profile or unknown option falls back',

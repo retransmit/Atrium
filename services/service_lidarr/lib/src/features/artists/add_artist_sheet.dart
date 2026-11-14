@@ -50,6 +50,8 @@ class _LidarrAddArtistSheetState extends ConsumerState<LidarrAddArtistSheet> {
   /// What was picked on the last add to this instance (issue #234).
   late final Map<String, Object?> _remembered =
       AddChoices.read('lidarr', widget.instance.id) ?? <String, Object?>{};
+  /// Also set by any change the user makes, so the last choices never land
+  /// on top of a pick made while the lists were still loading.
   bool _rememberedApplied = false;
 
   /// The remembered folder while the server still has it, else the first.
@@ -418,6 +420,7 @@ class _LidarrAddArtistSheetState extends ConsumerState<LidarrAddArtistSheet> {
                                     );
                                   }).toList(),
                                   onChanged: (String? val) {
+                                    _rememberedApplied = true;
                                     if (val != null) {
                                       setState(() {
                                         _selectedRootFolder = val;
@@ -507,6 +510,7 @@ class _LidarrAddArtistSheetState extends ConsumerState<LidarrAddArtistSheet> {
                                     );
                                   }).toList(),
                                   onChanged: (int? val) {
+                                    _rememberedApplied = true;
                                     setState(() {
                                       _selectedQualityProfileId = val;
                                     });
@@ -563,6 +567,7 @@ class _LidarrAddArtistSheetState extends ConsumerState<LidarrAddArtistSheet> {
                                     );
                                   }).toList(),
                                   onChanged: (int? val) {
+                                    _rememberedApplied = true;
                                     setState(() {
                                       _selectedMetadataProfileId = val;
                                     });
@@ -636,6 +641,7 @@ class _LidarrAddArtistSheetState extends ConsumerState<LidarrAddArtistSheet> {
                                 );
                               }).toList(),
                               onChanged: (MonitorTypes? val) {
+                                _rememberedApplied = true;
                                 if (val != null) {
                                   setState(() {
                                     _selectedMonitor = val;
@@ -672,6 +678,7 @@ class _LidarrAddArtistSheetState extends ConsumerState<LidarrAddArtistSheet> {
                                 );
                               }).toList(),
                               onChanged: (NewItemMonitorTypes? val) {
+                                _rememberedApplied = true;
                                 if (val != null) {
                                   setState(() {
                                     _selectedMonitorNewItems = val;
@@ -705,6 +712,7 @@ class _LidarrAddArtistSheetState extends ConsumerState<LidarrAddArtistSheet> {
                             ),
                             value: _monitored,
                             onChanged: (bool val) {
+                              _rememberedApplied = true;
                               setState(() {
                                 _monitored = val;
                               });
@@ -718,6 +726,7 @@ class _LidarrAddArtistSheetState extends ConsumerState<LidarrAddArtistSheet> {
                             ),
                             value: _searchForMissingAlbums,
                             onChanged: (bool val) {
+                              _rememberedApplied = true;
                               setState(() {
                                 _searchForMissingAlbums = val;
                               });
