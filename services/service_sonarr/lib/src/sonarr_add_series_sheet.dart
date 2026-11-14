@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:core_models/core_models.dart';
+import 'package:core_storage/core_storage.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,6 +35,44 @@ class _SonarrAddSeriesSheetState extends ConsumerState<SonarrAddSeriesSheet> {
   bool _searchForCutoffUnmet = false;
   final List<int> _selectedTagIds = [];
   bool _submitting = false;
+
+  static const List<String> _monitorTypes = <String>[
+    'all',
+    'future',
+    'missing',
+    'existing',
+    'firstSeason',
+    'latestSeason',
+    'none',
+  ];
+  static const List<String> _seriesTypes = <String>[
+    'standard',
+    'daily',
+    'anime',
+  ];
+
+  /// What was picked on the last add to this instance (issue #234).
+  late final Map<String, Object?> _remembered =
+      AddChoices.read('sonarr', widget.instance.id) ?? <String, Object?>{};
+
+  @override
+  void initState() {
+    super.initState();
+    final Object? monitor = _remembered['monitor'];
+    if (monitor is String && _monitorTypes.contains(monitor)) {
+      _selectedMonitorType = monitor;
+    }
+    final Object? seriesType = _remembered['seriesType'];
+    if (seriesType is String && _seriesTypes.contains(seriesType)) {
+      _selectedSeriesType = seriesType;
+    }
+    final Object? seasonFolder = _remembered['seasonFolder'];
+    if (seasonFolder is bool) _seasonFolder = seasonFolder;
+    final Object? missing = _remembered['searchForMissing'];
+    if (missing is bool) _searchForMissing = missing;
+    final Object? cutoff = _remembered['searchForCutoffUnmet'];
+    if (cutoff is bool) _searchForCutoffUnmet = cutoff;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -165,8 +204,15 @@ class _SonarrAddSeriesSheetState extends ConsumerState<SonarrAddSeriesSheet> {
                                     style: TextStyle(color: cs.error),
                                   );
                                 }
-                                _selectedRootFolder ??=
-                                    folders.first['path'] as String;
+                                if (_selectedRootFolder == null) {
+                                  final Object? last =
+                                      _remembered['rootFolderPath'];
+                                  _selectedRootFolder = folders.any(
+                                    (f) => f['path'] == last,
+                                  )
+                                      ? last! as String
+                                      : folders.first['path'] as String;
+                                }
 
                                 return DropdownButtonFormField<String>(
                                   initialValue: _selectedRootFolder,
@@ -213,8 +259,15 @@ class _SonarrAddSeriesSheetState extends ConsumerState<SonarrAddSeriesSheet> {
                                     style: TextStyle(color: cs.error),
                                   );
                                 }
-                                _selectedQualityProfileId ??=
-                                    profiles.first['id'] as int;
+                                if (_selectedQualityProfileId == null) {
+                                  final Object? last =
+                                      _remembered['qualityProfileId'];
+                                  _selectedQualityProfileId = profiles.any(
+                                    (p) => p['id'] == last,
+                                  )
+                                      ? last! as int
+                                      : profiles.first['id'] as int;
+                                }
 
                                 return DropdownButtonFormField<int>(
                                   initialValue: _selectedQualityProfileId,
@@ -509,6 +562,15 @@ class _SonarrAddSeriesSheetState extends ConsumerState<SonarrAddSeriesSheet> {
       };
 
       await api.addSeries(payload);
+      AddChoices.write('sonarr', widget.instance.id, <String, Object?>{
+        'rootFolderPath': _selectedRootFolder,
+        'qualityProfileId': _selectedQualityProfileId,
+        'monitor': _selectedMonitorType,
+        'seriesType': _selectedSeriesType,
+        'seasonFolder': _seasonFolder,
+        'searchForMissing': _searchForMissing,
+        'searchForCutoffUnmet': _searchForCutoffUnmet,
+      });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
