@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
 import 'package:core_models/core_models.dart';
+import 'package:core_storage/core_storage.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -46,6 +47,55 @@ class _LidarrAddArtistSheetState extends ConsumerState<LidarrAddArtistSheet> {
   final List<int> _selectedTagIds = [];
   bool _submitting = false;
 
+  /// What was picked on the last add to this instance (issue #234).
+  late final Map<String, Object?> _remembered =
+      AddChoices.read('lidarr', widget.instance.id) ?? <String, Object?>{};
+  bool _rememberedApplied = false;
+
+  /// The remembered folder while the server still has it, else the first.
+  RootFolderResource _initialFolder(List<RootFolderResource> folders) =>
+      folders.firstWhereOrNull(
+        (f) => f.path != null && f.path == _remembered['rootFolderPath'],
+      ) ??
+      folders.first;
+
+  /// Puts the last choices over the folder's defaults, once every list they
+  /// are checked against has loaded. Anything the server no longer has is
+  /// skipped, so that field keeps its default.
+  void _applyRemembered(
+    AsyncValue<List<RootFolderResource>> folders,
+    AsyncValue<List<QualityProfileResource>> qualityProfiles,
+    AsyncValue<List<MetadataProfileResource>> metadataProfiles,
+  ) {
+    if (_rememberedApplied ||
+        folders.isLoading ||
+        qualityProfiles.isLoading ||
+        metadataProfiles.isLoading) {
+      return;
+    }
+    _rememberedApplied = true;
+    final Object? quality = _remembered['qualityProfileId'];
+    if ((qualityProfiles.value ?? <QualityProfileResource>[])
+        .any((p) => p.id != null && p.id == quality)) {
+      _selectedQualityProfileId = quality! as int;
+    }
+    final Object? metadata = _remembered['metadataProfileId'];
+    if ((metadataProfiles.value ?? <MetadataProfileResource>[])
+        .any((p) => p.id != null && p.id == metadata)) {
+      _selectedMetadataProfileId = metadata! as int;
+    }
+    final Object? monitored = _remembered['monitored'];
+    if (monitored is bool) _monitored = monitored;
+    final MonitorTypes? monitor = MonitorTypes.values
+        .firstWhereOrNull((t) => t.name == _remembered['monitor']);
+    if (monitor != null) _selectedMonitor = monitor;
+    final NewItemMonitorTypes? newItems = NewItemMonitorTypes.values
+        .firstWhereOrNull((t) => t.name == _remembered['monitorNewItems']);
+    if (newItems != null) _selectedMonitorNewItems = newItems;
+    final Object? search = _remembered['searchForMissingAlbums'];
+    if (search is bool) _searchForMissingAlbums = search;
+  }
+
   String _formatFreeSpace(int? bytes) =>
       '${LidarrFormatters.formatBytes(bytes)} free';
 
@@ -78,7 +128,7 @@ class _LidarrAddArtistSheetState extends ConsumerState<LidarrAddArtistSheet> {
     ref.listen(lidarrRootFoldersProvider(widget.instance), (previous, next) {
       if (next.hasValue && next.value != null && next.value!.isNotEmpty) {
         if (_selectedRootFolder == null) {
-          final first = next.value!.first;
+          final first = _initialFolder(next.value!);
           setState(() {
             _selectedRootFolder = first.path;
             if (first.defaultQualityProfileId != null &&
@@ -142,7 +192,7 @@ class _LidarrAddArtistSheetState extends ConsumerState<LidarrAddArtistSheet> {
 
     rootFoldersAsync.whenData((List<RootFolderResource> folders) {
       if (_selectedRootFolder == null && folders.isNotEmpty) {
-        final first = folders.first;
+        final first = _initialFolder(folders);
         _selectedRootFolder = first.path;
         if (first.defaultQualityProfileId != null &&
             first.defaultQualityProfileId! > 0) {
@@ -175,6 +225,11 @@ class _LidarrAddArtistSheetState extends ConsumerState<LidarrAddArtistSheet> {
         _selectedMetadataProfileId = profiles.first.id;
       }
     });
+    _applyRemembered(
+      rootFoldersAsync,
+      qualityProfilesAsync,
+      metadataProfilesAsync,
+    );
 
     final String? posterUrl = LidarrArtwork.artistPosterUrl(
           widget.instance,
@@ -906,6 +961,15 @@ class _LidarrAddArtistSheetState extends ConsumerState<LidarrAddArtistSheet> {
                 : 'Unknown server error');
         throw Exception(errorMsg);
       }
+      AddChoices.write('lidarr', widget.instance.id, <String, Object?>{
+        'rootFolderPath': rootFolder,
+        'qualityProfileId': qualityProfileId,
+        'metadataProfileId': metadataProfileId,
+        'monitored': _monitored,
+        'monitor': _selectedMonitor.name,
+        'monitorNewItems': _selectedMonitorNewItems.name,
+        'searchForMissingAlbums': _searchForMissingAlbums,
+      });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
