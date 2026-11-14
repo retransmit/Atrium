@@ -21,7 +21,16 @@ export const servicesList = [
   'glances',
   'speedtest-tracker',
   'cleanuparr',
-  'slskd'
+  'slskd',
+  'lidarr',
+  'ombi',
+  'navidrome',
+  'myspeed',
+  'beszel',
+  'dashdot',
+  'gluetun',
+  'adguard-home',
+  'unraid'
 ];
 
 export const servicesData = {
@@ -377,6 +386,125 @@ export const servicesData = {
       'Hierarchical Peer Shares Navigation with Breadcrumb Traversal',
       'Unified Community Hub with Public Rooms & 1-on-1 Messages',
       'Deep Transfer Telemetry with Queue Rank & Peer Analytics'
+    ]
+  },
+  lidarr: {
+    name: 'Lidarr',
+    category: 'The *arr Stack',
+    icon: asset('assets/service_icons/lidarr.png'),
+    screenshots: [],
+    description: 'Run your automated music collection from your phone. Add artists, browse their discographies, search for releases, and keep every album at the quality you want.',
+    features: [
+      'Artist, Album & Track Library with Bulk Editing',
+      'Add Artists with Quality & Metadata Profiles',
+      'Interactive Release Search & Release Calendar',
+      'Wanted, Queue, History & Blocklist Views',
+      'Full Settings Editor & In-App Log Reader'
+    ]
+  },
+  ombi: {
+    name: 'Ombi',
+    category: 'Downloads & Utilities',
+    icon: asset('assets/service_icons/ombi.png'),
+    screenshots: [],
+    description: 'Handle the requests your users send through Ombi. Approve or deny them on the go, and find something new to request.',
+    features: [
+      'Approve, Deny & Delete Requests',
+      'Search Movies & TV Shows to Request',
+      'Discover Tab for Popular & Upcoming Titles',
+      'Request Status at a Glance'
+    ]
+  },
+  navidrome: {
+    name: 'Navidrome',
+    category: 'Media Servers',
+    icon: asset('assets/service_icons/navidrome.png'),
+    screenshots: [],
+    description: 'Browse your Navidrome music server. Look through artists and albums, keep your playlists tidy, and rate the tracks you love.',
+    features: [
+      'Artist, Album & Track Browsing',
+      'Create & Edit Playlists',
+      'Star Ratings & Favorites',
+      'Search Across Your Whole Library'
+    ]
+  },
+  myspeed: {
+    name: 'MySpeed',
+    category: 'Downloads & Utilities',
+    icon: asset('assets/service_icons/myspeed.png'),
+    screenshots: [],
+    description: 'Keep watch over your MySpeed internet speed monitor. See how today is going, look back over past results, and run a test when you need one.',
+    features: [
+      'Live Status with Manual Test Runs',
+      'The Day\'s Results at a Glance',
+      'History with Download, Upload & Ping Averages',
+      'Password Sign-In & Dashboard Widget'
+    ]
+  },
+  beszel: {
+    name: 'Beszel',
+    category: 'Downloads & Utilities',
+    icon: asset('assets/service_icons/beszel.png'),
+    screenshots: [],
+    description: 'Lightweight server monitoring for every machine Beszel watches. Check the whole fleet at once, then drill into a single system.',
+    features: [
+      'Systems List with Up & Down Status',
+      'Live CPU, Memory, Disk & Network Metrics',
+      'Per-System Detail Screen',
+      'Containers & Services on Each System'
+    ]
+  },
+  dashdot: {
+    name: 'dashdot',
+    category: 'Downloads & Utilities',
+    icon: asset('assets/service_icons/dashdot.png'),
+    screenshots: [],
+    description: 'A clean view of your dashdot server dashboard. Follow CPU, memory, disk, and GPU usage live, and check the hardware behind it.',
+    features: [
+      'Live CPU, Memory, Disk & GPU Usage',
+      'Usage History Charts',
+      'System Information Tab',
+      'Dashboard Widget'
+    ]
+  },
+  gluetun: {
+    name: 'Gluetun',
+    category: 'Downloads & Utilities',
+    icon: asset('assets/service_icons/gluetun.png'),
+    screenshots: [],
+    description: 'Check on the VPN container your downloads run through. See whether the tunnel is up, which port is forwarded, and reconnect with one tap.',
+    features: [
+      'VPN Connection Status & Public IP',
+      'Forwarded Port Display',
+      'One-Tap Reconnect',
+      'Dashboard Widget'
+    ]
+  },
+  'adguard-home': {
+    name: 'AdGuard Home',
+    category: 'Downloads & Utilities',
+    icon: asset('assets/service_icons/adguard-home.png'),
+    screenshots: [],
+    description: 'Full control of your network-wide ad and tracker blocker. Pause protection, read the query log, and manage filters, clients, and server settings.',
+    features: [
+      'Protection Switch with Timed Pauses',
+      'Statistics with Top Clients & Domains',
+      'Query Log with One-Tap Block & Unblock',
+      'Blocklists, Custom Rules, Blocked Services & Rewrites',
+      'Client, DNS, Cache, Access & Retention Settings'
+    ]
+  },
+  unraid: {
+    name: 'Unraid',
+    category: 'Downloads & Utilities',
+    icon: asset('assets/service_icons/unraid.svg'),
+    screenshots: [],
+    description: 'Look after your Unraid server from anywhere. Check array and disk health, follow system load, and manage Docker containers and virtual machines.',
+    features: [
+      'Array & Disk Health',
+      'System Overview with Per-Core Load',
+      'Docker Container Management',
+      'Virtual Machine Control'
     ]
   }
 };
