@@ -77,14 +77,16 @@ class _LidarrAddArtistSheetState extends ConsumerState<LidarrAddArtistSheet> {
     }
     _rememberedApplied = true;
     final Object? quality = _remembered['qualityProfileId'];
-    if ((qualityProfiles.value ?? <QualityProfileResource>[])
-        .any((p) => p.id != null && p.id == quality)) {
-      _selectedQualityProfileId = quality! as int;
+    if (quality is int &&
+        (qualityProfiles.value ?? <QualityProfileResource>[])
+            .any((p) => p.id == quality)) {
+      _selectedQualityProfileId = quality;
     }
     final Object? metadata = _remembered['metadataProfileId'];
-    if ((metadataProfiles.value ?? <MetadataProfileResource>[])
-        .any((p) => p.id != null && p.id == metadata)) {
-      _selectedMetadataProfileId = metadata! as int;
+    if (metadata is int &&
+        (metadataProfiles.value ?? <MetadataProfileResource>[])
+            .any((p) => p.id == metadata)) {
+      _selectedMetadataProfileId = metadata;
     }
     final Object? monitored = _remembered['monitored'];
     if (monitored is bool) _monitored = monitored;
@@ -960,6 +962,17 @@ class _LidarrAddArtistSheetState extends ConsumerState<LidarrAddArtistSheet> {
         ),
       );
 
+      // Taken with the payload: the controls stay live while the add runs.
+      final Map<String, Object?> choices = <String, Object?>{
+        'rootFolderPath': rootFolder,
+        'qualityProfileId': qualityProfileId,
+        'metadataProfileId': metadataProfileId,
+        'monitored': _monitored,
+        'monitor': _selectedMonitor.name,
+        'monitorNewItems': _selectedMonitorNewItems.name,
+        'searchForMissingAlbums': _searchForMissingAlbums,
+      };
+
       final ApiResponse<ArtistResource> resp =
           await api.artist.postArtist(body: payload);
 
@@ -970,15 +983,7 @@ class _LidarrAddArtistSheetState extends ConsumerState<LidarrAddArtistSheet> {
                 : 'Unknown server error');
         throw Exception(errorMsg);
       }
-      AddChoices.write('lidarr', widget.instance.id, <String, Object?>{
-        'rootFolderPath': rootFolder,
-        'qualityProfileId': qualityProfileId,
-        'metadataProfileId': metadataProfileId,
-        'monitored': _monitored,
-        'monitor': _selectedMonitor.name,
-        'monitorNewItems': _selectedMonitorNewItems.name,
-        'searchForMissingAlbums': _searchForMissingAlbums,
-      });
+      AddChoices.write('lidarr', widget.instance.id, choices);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

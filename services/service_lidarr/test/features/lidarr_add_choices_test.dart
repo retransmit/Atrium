@@ -17,6 +17,9 @@ class _Server {
   final int status;
   Map<String, dynamic>? posted;
 
+  /// Holds the add request open until completed.
+  Completer<void>? gate;
+
   Dio dio() {
     final Dio dio = Dio(BaseOptions(baseUrl: 'http://localhost:8686/'));
     dio.interceptors.add(
@@ -54,26 +57,35 @@ class _Server {
             default:
               return h.next(options);
           }
-          if (code >= 400) {
-            return h.reject(
-              DioException.badResponse(
-                statusCode: code,
-                requestOptions: options,
-                response: Response<dynamic>(
-                  requestOptions: options,
+          void finish() {
+            if (code >= 400) {
+              return h.reject(
+                DioException.badResponse(
                   statusCode: code,
-                  data: data,
+                  requestOptions: options,
+                  response: Response<dynamic>(
+                    requestOptions: options,
+                    statusCode: code,
+                    data: data,
+                  ),
                 ),
+              );
+            }
+            h.resolve(
+              Response<dynamic>(
+                requestOptions: options,
+                statusCode: code,
+                data: data,
               ),
             );
           }
-          return h.resolve(
-            Response<dynamic>(
-              requestOptions: options,
-              statusCode: code,
-              data: data,
-            ),
-          );
+
+          final Completer<void>? held = gate;
+          if (options.method == 'POST' && held != null) {
+            unawaited(held.future.then((_) => finish()));
+            return;
+          }
+          finish();
         },
       ),
     );
@@ -92,6 +104,7 @@ Future<void> _openAndAdd(
   Future<List<RootFolderResource>>? folders,
   Future<List<MetadataProfileResource>>? metadata,
   Future<void> Function()? beforeAdd,
+  Future<void> Function()? whileAdding,
 }) async {
   tester.view.physicalSize = const Size(1080, 2400);
   tester.view.devicePixelRatio = 1.0;
@@ -127,6 +140,13 @@ Future<void> _openAndAdd(
   }
   await beforeAdd?.call();
   await tester.tap(find.widgetWithText(FilledButton, 'Add Artist'));
+  if (whileAdding != null) {
+    // The add button spins while the request is held, so no settling here.
+    for (int i = 0; i < 50 && server.posted == null; i++) {
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    await whileAdding();
+  }
   await tester.pumpAndSettle();
 }
 
@@ -279,6 +299,44 @@ void main() {
     expect(body['metadataProfileId'], 1);
     expect(body['monitorNewItems'], 'all');
     expect(_options(body)['monitor'], 'all');
+  });
+
+  testWidgets('profile ids saved as decimals fall back',
+      (WidgetTester tester) async {
+    AddChoices.write('lidarr', testInstance.id, <String, Object?>{
+      'qualityProfileId': 2.0,
+      'metadataProfileId': 2.0,
+    });
+    final _Server server = _Server();
+    await _openAndAdd(tester, server);
+
+    expect(server.posted!['qualityProfileId'], 1);
+    expect(server.posted!['metadataProfileId'], 1);
+  });
+
+  testWidgets('saves what was sent, not a change made while adding',
+      (WidgetTester tester) async {
+    final _Server server = _Server()..gate = Completer<void>();
+    await _openAndAdd(
+      tester,
+      server,
+      whileAdding: () async {
+        expect(server.posted, isNotNull);
+        final Finder tile =
+            find.widgetWithText(SwitchListTile, 'Search for Missing Albums');
+        await tester.ensureVisible(tile);
+        await tester.pump();
+        await tester.tap(tile);
+        await tester.pump();
+        server.gate!.complete();
+      },
+    );
+
+    expect(_options(server.posted!)['searchForMissingAlbums'], isFalse);
+    expect(
+      AddChoices.read('lidarr', testInstance.id)!['searchForMissingAlbums'],
+      isFalse,
+    );
   });
 
   testWidgets('saves what was picked after a successful add',
