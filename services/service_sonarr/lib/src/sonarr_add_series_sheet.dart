@@ -262,10 +262,9 @@ class _SonarrAddSeriesSheetState extends ConsumerState<SonarrAddSeriesSheet> {
                                 if (_selectedQualityProfileId == null) {
                                   final Object? last =
                                       _remembered['qualityProfileId'];
-                                  _selectedQualityProfileId = profiles.any(
-                                    (p) => p['id'] == last,
-                                  )
-                                      ? last! as int
+                                  _selectedQualityProfileId = last is int &&
+                                          profiles.any((p) => p['id'] == last)
+                                      ? last
                                       : profiles.first['id'] as int;
                                 }
 
@@ -561,8 +560,8 @@ class _SonarrAddSeriesSheetState extends ConsumerState<SonarrAddSeriesSheet> {
         },
       };
 
-      await api.addSeries(payload);
-      AddChoices.write('sonarr', widget.instance.id, <String, Object?>{
+      // Taken with the payload: the controls stay live while the add runs.
+      final Map<String, Object?> choices = <String, Object?>{
         'rootFolderPath': _selectedRootFolder,
         'qualityProfileId': _selectedQualityProfileId,
         'monitor': _selectedMonitorType,
@@ -570,7 +569,10 @@ class _SonarrAddSeriesSheetState extends ConsumerState<SonarrAddSeriesSheet> {
         'seasonFolder': _seasonFolder,
         'searchForMissing': _searchForMissing,
         'searchForCutoffUnmet': _searchForCutoffUnmet,
-      });
+      };
+
+      await api.addSeries(payload);
+      AddChoices.write('sonarr', widget.instance.id, choices);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
