@@ -27,11 +27,10 @@ function htmlIncludePlugin() {
 
 export default defineConfig({
   plugins: [htmlIncludePlugin()],
-  // Served from a GitHub Pages project subpath (retransmit.github.io/Atrium/),
-  // so built asset URLs have to carry that prefix. Without it the root-relative
-  // /assets/... paths in index.html resolve against the domain root and 404.
-  // Anything built in JS should use import.meta.env.BASE_URL, not a literal.
-  base: '/Atrium/',
+  // Served at the root of a custom domain (atrium.kurai.cloud). Under the bare
+  // GitHub Pages project URL it would need base: '/Atrium/' instead, or every
+  // asset 404s. Anything built in JS should use import.meta.env.BASE_URL.
+  base: '/',
   server: {
     allowedHosts: [
       'atrium.betelgeuse.fun'
