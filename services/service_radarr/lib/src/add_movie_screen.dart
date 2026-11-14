@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:core_models/core_models.dart';
+import 'package:core_storage/core_storage.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -399,6 +400,31 @@ class _RadarrAddMovieSheetState extends ConsumerState<RadarrAddMovieSheet> {
   final List<int> _selectedTagIds = [];
   bool _submitting = false;
 
+  static const List<String> _availabilities = <String>[
+    'announced',
+    'inCinemas',
+    'released',
+  ];
+
+  /// What was picked on the last add to this instance (issue #234).
+  late final Map<String, Object?> _remembered =
+      AddChoices.read('radarr', widget.instance.id) ?? <String, Object?>{};
+
+  @override
+  void initState() {
+    super.initState();
+    final Object? monitored = _remembered['monitored'];
+    if (monitored is bool) _monitored = monitored;
+    final Object? collection = _remembered['monitorCollection'];
+    if (collection is bool) _monitorCollection = _monitored && collection;
+    final Object? availability = _remembered['minimumAvailability'];
+    if (availability is String && _availabilities.contains(availability)) {
+      _minimumAvailability = availability;
+    }
+    final Object? search = _remembered['searchForMovie'];
+    if (search is bool) _searchForMovie = search;
+  }
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
@@ -518,8 +544,13 @@ class _RadarrAddMovieSheetState extends ConsumerState<RadarrAddMovieSheet> {
                               data: (folders) {
                                 if (_selectedRootFolder == null &&
                                     folders.isNotEmpty) {
-                                  _selectedRootFolder =
-                                      folders.first['path'] as String;
+                                  final Object? last =
+                                      _remembered['rootFolderPath'];
+                                  _selectedRootFolder = folders.any(
+                                    (f) => f['path'] == last,
+                                  )
+                                      ? last! as String
+                                      : folders.first['path'] as String;
                                 }
                                 return DropdownButtonFormField<String>(
                                   initialValue: _selectedRootFolder,
@@ -554,8 +585,13 @@ class _RadarrAddMovieSheetState extends ConsumerState<RadarrAddMovieSheet> {
                               data: (profiles) {
                                 if (_selectedQualityProfileId == null &&
                                     profiles.isNotEmpty) {
-                                  _selectedQualityProfileId =
-                                      profiles.first['id'] as int;
+                                  final Object? last =
+                                      _remembered['qualityProfileId'];
+                                  _selectedQualityProfileId = profiles.any(
+                                    (p) => p['id'] == last,
+                                  )
+                                      ? last! as int
+                                      : profiles.first['id'] as int;
                                 }
                                 return DropdownButtonFormField<int>(
                                   initialValue: _selectedQualityProfileId,
@@ -773,11 +809,21 @@ class _RadarrAddMovieSheetState extends ConsumerState<RadarrAddMovieSheet> {
           'searchForMovie': _searchForMovie,
           'monitor': !_monitored
               ? 'none'
-              : (_monitorCollection ? 'movieAndCollection' : 'movieOnly'),
+              : (_monitorCollection && widget.movie.collection != null
+                  ? 'movieAndCollection'
+                  : 'movieOnly'),
         },
       };
 
       await api.addMovie(payload);
+      AddChoices.write('radarr', widget.instance.id, <String, Object?>{
+        'rootFolderPath': _selectedRootFolder,
+        'qualityProfileId': _selectedQualityProfileId,
+        'monitored': _monitored,
+        'monitorCollection': _monitorCollection,
+        'minimumAvailability': _minimumAvailability,
+        'searchForMovie': _searchForMovie,
+      });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
