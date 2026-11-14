@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:atrium/src/share_intake/title_resolver.dart';
 import 'package:atrium/src/share_intake/title_share.dart';
 import 'package:atrium/src/share_intake/title_share_flow.dart';
@@ -34,6 +36,7 @@ class _Outcome {
   Instance? openedOn;
   TitleMatch? adding;
   Instance? addingOn;
+  bool done = false;
 }
 
 Future<_Outcome> _run(
@@ -42,6 +45,8 @@ Future<_Outcome> _run(
   List<Instance>? instances,
   MovieLookup? lookupMovies,
   SeriesLookup? lookupSeries,
+  List<Instance>? within,
+  OpenTitle? openExisting,
   bool settle = true,
 }) async {
   final _Outcome outcome = _Outcome();
@@ -62,7 +67,8 @@ Future<_Outcome> _run(
         home: Consumer(
           builder: (BuildContext context, WidgetRef ref, _) => Scaffold(
             body: ElevatedButton(
-              onPressed: () => runTitleShare(
+              onPressed: () async {
+                await runTitleShare(
                 ref,
                 share,
                 presentContext: () => navigator.currentContext,
@@ -72,17 +78,21 @@ Future<_Outcome> _run(
                 lookupSeries: lookupSeries ??
                     (Instance i, String term) async => <SonarrSeries>[],
                 readLetterboxd: (Uri _) async => null,
-                openExisting: (BuildContext c, Instance on, TitleMatch m) async {
-                  outcome
-                    ..opened = m
-                    ..openedOn = on;
-                },
+                within: within,
+                openExisting: openExisting ??
+                    (BuildContext c, Instance on, TitleMatch m) async {
+                      outcome
+                        ..opened = m
+                        ..openedOn = on;
+                    },
                 openAdd: (BuildContext c, Instance on, TitleMatch m) async {
                   outcome
                     ..adding = m
                     ..addingOn = on;
                 },
-              ),
+                );
+                outcome.done = true;
+              },
               child: const Text('Share'),
             ),
           ),
@@ -291,5 +301,38 @@ void main() {
     expect(o.told.single, contains('Could not reach Sonarr Two'));
     expect(o.adding, isNull);
     expect(o.opened, isNull);
+  });
+
+  testWidgets('within limits the lookup to the named instance and skips the '
+      'picker', (WidgetTester tester) async {
+    final List<String> asked = <String>[];
+    final _Outcome o = await _run(
+      tester,
+      const TitleShare(kind: TitleKind.movie, tmdbId: 860),
+      instances: <Instance>[_radarr, _radarr2, _sonarr],
+      within: <Instance>[_radarr2],
+      lookupMovies: (Instance i, String term) async {
+        asked.add('${i.name}|$term');
+        return <RadarrMovie>[const RadarrMovie(title: 'WarGames', tmdbId: 860)];
+      },
+    );
+    expect(asked, <String>['Radarr Two|tmdb:860']);
+    expect(find.text('Add to'), findsNothing);
+    expect(o.addingOn, _radarr2);
+  });
+
+  testWidgets('opening a title already in the library does not wait for its '
+      'screen to close', (WidgetTester tester) async {
+    final _Outcome o = await _run(
+      tester,
+      const TitleShare(kind: TitleKind.movie, imdbId: 'tt0086567'),
+      lookupMovies: (Instance i, String term) async => <RadarrMovie>[
+        const RadarrMovie(id: 7, title: 'WarGames', tmdbId: 860),
+      ],
+      // A pushed screen's future ends only when the user leaves it.
+      openExisting: (BuildContext c, Instance on, TitleMatch m) =>
+          Completer<void>().future,
+    );
+    expect(o.done, isTrue);
   });
 }

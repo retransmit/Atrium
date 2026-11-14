@@ -24,7 +24,11 @@ typedef OpenTitle = Future<void> Function(
 /// Takes a movie or show shared from another app all the way to Radarr or
 /// Sonarr: finds it, lets the user pick the title and the instance when
 /// there is a choice, then opens it if that instance already has it, or the
-/// usual add sheet if not. Returns once the last sheet or screen is done.
+/// usual add sheet if not. Returns once the add sheet is done, or as soon as
+/// the title's own screen is open, so the next share does not wait on it.
+///
+/// [within], when set, limits the search to those instances, as when a link
+/// names the one to use.
 ///
 /// The lookups, the Letterboxd reader and the two endings are parameters so
 /// tests can stand in for a server; the defaults are the real ones.
@@ -38,6 +42,7 @@ Future<void> runTitleShare(
   LetterboxdReader? readLetterboxd,
   OpenTitle? openExisting,
   OpenTitle? openAdd,
+  List<Instance>? within,
 }) async {
   final MovieLookup movies = lookupMovies ??
       (Instance i, String term) async =>
@@ -46,7 +51,10 @@ Future<void> runTitleShare(
       (Instance i, String term) async =>
           (await ref.read(sonarrApiProvider(i).future)).lookupSeries(term);
 
-  final List<Instance> active = ref.read(activeInstancesProvider);
+  final List<Instance> active = <Instance>[
+    for (final Instance i in ref.read(activeInstancesProvider))
+      if (within == null || within.contains(i)) i,
+  ];
   final List<Instance> radarrs = active
       .where((Instance i) => i.kind == ServiceKind.radarr)
       .toList(growable: false);
@@ -102,7 +110,7 @@ Future<void> runTitleShare(
       picked is MovieMatch ? radarrs : sonarrs;
   final Instance? target = choices.length == 1
       ? choices.single
-      : await _pickInstance(presentContext(), choices);
+      : await pickInstance(presentContext(), choices);
   if (target == null) {
     return;
   }
@@ -145,9 +153,11 @@ Future<void> runTitleShare(
     MovieMatch(:final RadarrMovie movie) => movie.id > 0,
     SeriesMatch(series: final SonarrSeries s) => s.id > 0,
   };
-  await (inLibrary
-      ? (openExisting ?? _openExisting)
-      : (openAdd ?? _openAdd))(context, target, match);
+  if (inLibrary) {
+    unawaited((openExisting ?? openExistingTitle)(context, target, match));
+    return;
+  }
+  await (openAdd ?? _openAdd)(context, target, match);
 }
 
 /// Runs [work] behind a "Finding that title" sheet, closed when it ends.
@@ -303,10 +313,13 @@ String? _sonarrPoster(WidgetRef ref, Instance on, SonarrSeries s) {
   return image == null ? null : api?.posterUrl(image, preferRemote: true);
 }
 
-Future<Instance?> _pickInstance(
+/// Asks which of [instances] to use, in a sheet. Null when dismissed or
+/// when there is nowhere to show it.
+Future<Instance?> pickInstance(
   BuildContext? context,
-  List<Instance> instances,
-) async {
+  List<Instance> instances, {
+  String title = 'Add to',
+}) async {
   if (context == null || !context.mounted) {
     return null;
   }
@@ -321,17 +334,13 @@ Future<Instance?> _pickInstance(
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 4),
             child: Text(
-              'Add to',
+              title,
               style: Theme.of(context).textTheme.titleLarge,
             ),
           ),
           for (final Instance instance in instances)
             ListTile(
-              leading: Icon(
-                instance.kind == ServiceKind.radarr
-                    ? Icons.movie_outlined
-                    : Icons.tv_outlined,
-              ),
+              leading: Icon(ServiceVisuals.icon(instance.kind)),
               title: Text(instance.name),
               subtitle: Text(instance.kind.displayName),
               onTap: () => Navigator.of(context).pop(instance),
@@ -343,7 +352,8 @@ Future<Instance?> _pickInstance(
   );
 }
 
-Future<void> _openExisting(
+/// Opens a movie's or series' own screen on [on].
+Future<void> openExistingTitle(
   BuildContext context,
   Instance on,
   TitleMatch match,

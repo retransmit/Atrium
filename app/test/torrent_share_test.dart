@@ -265,4 +265,14 @@ void main() {
       });
     });
   });
+
+  test('decodes an atrium:// link', () {
+    expect(
+      decodeTorrentShare(<String, Object?>{
+        'kind': 'link',
+        'uri': 'atrium://radarr',
+      }),
+      const AtriumLink(service: ServiceKind.radarr),
+    );
+  });
 }

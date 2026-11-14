@@ -107,6 +107,7 @@ class MainActivity : FlutterFragmentActivity() {
                 val uri = intent.data ?: return null
                 when (uri.scheme?.lowercase()) {
                     "magnet" -> mapOf("kind" to "magnet", "uri" to uri.toString())
+                    "atrium" -> mapOf("kind" to "link", "uri" to uri.toString())
                     "content" -> filePayload(uri)
                     else -> null
                 }

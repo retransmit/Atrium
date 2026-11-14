@@ -53,10 +53,11 @@ typedef LetterboxdReader = Future<LetterboxdFilm?> Function(Uri url);
 
 /// Looks a shared title up on the user's own Radarr and Sonarr.
 ///
-/// An ID is searched as `imdb:` or `tmdb:`, which both servers accept, and
-/// otherwise the title is. Only the service matching the kind is asked, or
-/// both when the kind is unknown. Within a service the instances are tried
-/// in order until one answers, since they all draw on the same metadata.
+/// An ID is searched as `imdb:` or `tmdb:`, which both servers accept, or
+/// `tvdb:`, which Sonarr does, and otherwise the title is. Only the service
+/// matching the kind is asked, or both when the kind is unknown. Within a
+/// service the instances are tried in order until one answers, since they
+/// all draw on the same metadata.
 Future<TitleResolution> resolveTitleShare(
   TitleShare share, {
   required List<Instance> radarrs,
@@ -69,7 +70,10 @@ Future<TitleResolution> resolveTitleShare(
   int? tmdbId = share.tmdbId;
   TitleKind kind = share.kind;
   final Uri? letterboxd = share.letterboxdUrl;
-  if (letterboxd != null && imdbId == null && tmdbId == null) {
+  if (letterboxd != null &&
+      imdbId == null &&
+      tmdbId == null &&
+      share.tvdbId == null) {
     final LetterboxdFilm? film = await readLetterboxd(letterboxd);
     if (film != null) {
       imdbId = film.imdbId;
@@ -82,7 +86,9 @@ Future<TitleResolution> resolveTitleShare(
       ? 'imdb:$imdbId'
       : tmdbId != null
           ? 'tmdb:$tmdbId'
-          : null;
+          : share.tvdbId != null
+              ? 'tvdb:${share.tvdbId}'
+              : null;
   final String? term = idTerm ?? share.title;
   if (term == null) {
     return const TitleResolution(matches: <TitleMatch>[], byId: false);
