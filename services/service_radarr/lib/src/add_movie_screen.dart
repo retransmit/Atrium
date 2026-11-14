@@ -587,10 +587,9 @@ class _RadarrAddMovieSheetState extends ConsumerState<RadarrAddMovieSheet> {
                                     profiles.isNotEmpty) {
                                   final Object? last =
                                       _remembered['qualityProfileId'];
-                                  _selectedQualityProfileId = profiles.any(
-                                    (p) => p['id'] == last,
-                                  )
-                                      ? last! as int
+                                  _selectedQualityProfileId = last is int &&
+                                          profiles.any((p) => p['id'] == last)
+                                      ? last
                                       : profiles.first['id'] as int;
                                 }
                                 return DropdownButtonFormField<int>(
@@ -815,15 +814,18 @@ class _RadarrAddMovieSheetState extends ConsumerState<RadarrAddMovieSheet> {
         },
       };
 
-      await api.addMovie(payload);
-      AddChoices.write('radarr', widget.instance.id, <String, Object?>{
+      // Taken with the payload: the controls stay live while the add runs.
+      final Map<String, Object?> choices = <String, Object?>{
         'rootFolderPath': _selectedRootFolder,
         'qualityProfileId': _selectedQualityProfileId,
         'monitored': _monitored,
         'monitorCollection': _monitorCollection,
         'minimumAvailability': _minimumAvailability,
         'searchForMovie': _searchForMovie,
-      });
+      };
+
+      await api.addMovie(payload);
+      AddChoices.write('radarr', widget.instance.id, choices);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

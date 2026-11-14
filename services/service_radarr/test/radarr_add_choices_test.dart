@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:core_models/core_models.dart';
@@ -15,6 +16,9 @@ class _Adapter implements HttpClientAdapter {
   final int status;
   Map<String, dynamic>? posted;
 
+  /// Holds the add request open until completed.
+  Completer<void>? gate;
+
   @override
   void close({bool force = false}) {}
 
@@ -26,6 +30,7 @@ class _Adapter implements HttpClientAdapter {
   ) async {
     final bool post = options.method == 'POST';
     if (post) posted = options.data as Map<String, dynamic>;
+    if (post) await gate?.future;
     return ResponseBody.fromString(
       post ? '{"id": 9}' : '[]',
       post ? status : 200,
@@ -202,6 +207,44 @@ void main() {
     expect(_options(body)['searchForMovie'], isFalse);
     expect(body['minimumAvailability'], 'announced');
     expect(body['monitored'], isTrue);
+  });
+
+  testWidgets('a profile id saved as a decimal falls back',
+      (WidgetTester tester) async {
+    AddChoices.write('radarr', _instance.id, <String, Object?>{
+      'qualityProfileId': 2.0,
+    });
+    final _Adapter adapter = _Adapter();
+    await _open(tester, adapter);
+    await _add(tester);
+
+    expect(adapter.posted!['qualityProfileId'], 1);
+  });
+
+  testWidgets('saves what was sent, not a change made while adding',
+      (WidgetTester tester) async {
+    final _Adapter adapter = _Adapter()..gate = Completer<void>();
+    await _open(tester, adapter);
+    await tester.tap(find.widgetWithText(FilledButton, 'Add Movie'));
+    for (int i = 0; i < 50 && adapter.posted == null; i++) {
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    expect(adapter.posted, isNotNull);
+
+    final Finder tile =
+        find.widgetWithText(SwitchListTile, 'Start search for movie');
+    await tester.ensureVisible(tile);
+    await tester.pump();
+    await tester.tap(tile);
+    await tester.pump();
+    adapter.gate!.complete();
+    await tester.pumpAndSettle();
+
+    expect(_options(adapter.posted!)['searchForMovie'], isFalse);
+    expect(
+      AddChoices.read('radarr', _instance.id)!['searchForMovie'],
+      isFalse,
+    );
   });
 
   testWidgets('saves what was picked after a successful add',
