@@ -8,6 +8,7 @@ export 'src/models/rtorrent_torrent.dart';
 export 'src/rtorrent_add_sheet.dart';
 export 'src/rtorrent_api.dart';
 export 'src/rtorrent_detail_screen.dart';
+export 'src/rtorrent_endpoint.dart';
 export 'src/rtorrent_format.dart';
 export 'src/rtorrent_home.dart';
 export 'src/rtorrent_providers.dart';
