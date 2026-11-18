@@ -44,6 +44,10 @@ Features:
   streaming, upcoming releases, recently added, recently downloaded, requests,
   server vitals, speedtest results, VPN status, DNS protection, download
   cleanup and Wake-on-LAN
+* Share a magnet or torrent file to a download client, or a movie or show
+  link (IMDb, TMDB, Letterboxd, Trakt) to Radarr or Sonarr
+* atrium:// links that open a service, movie or show from notifications and
+  automation apps
 * Custom HTTP headers, for the whole profile or one instance, so services
   behind a reverse proxy keep working
 * Profile import and export
@@ -61,7 +65,8 @@ Artwork is loaded from your own servers, which cache it, rather than from
 sites like TheTVDB or TMDB. There is one exception worth knowing about.
 Searching for something to add that your servers have never seen has nothing
 cached for it yet, so its poster comes from the artwork site directly, which
-then sees your address. Everything else goes only to the servers you
-configure.
+then sees your address. The other is sharing a Letterboxd link to Atrium:
+Letterboxd's short link has to be opened on letterboxd.com to learn which
+film it is. Everything else goes only to the servers you configure.
 
 Free software under the GPL-3.0-or-later.

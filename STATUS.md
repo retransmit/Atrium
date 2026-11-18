@@ -1,6 +1,6 @@
 # Atrium - Status
 
-> Snapshot of what genuinely works and what is left, as of 2026-11-09.
+> Snapshot of what genuinely works and what is left, as of 2026-11-18.
 > Atrium is published on F-Droid and on the GitHub releases page. It is
 > still in early development and every module is work in progress; nothing
 > here is a release promise.
@@ -42,6 +42,15 @@ Atrium is a **controller** app. Video playback was removed by design
   over pure Dart UDP), **custom HTTP headers** (global + per-instance,
   for reverse-proxy auth, kept intact when an instance's own form is
   saved), all carried by profile export/import
+- **Shares and links**: a magnet or `.torrent` shared to Atrium goes to a
+  torrent client; a movie or show shared from another app (an IMDb, TMDB,
+  Letterboxd or Trakt link, Showly's text, or a bare title) is looked up on
+  the user's Radarr or Sonarr and opens its screen or the add sheet (#226,
+  PR #236). `atrium://` links open a service, a movie or a series by library
+  ID, TMDB, TVDB or IMDb, with `instance=` to pick one (#241, PR #242). A link
+  only navigates; adding still takes a tap. Both run through one queue under
+  the biometric lock. A Letterboxd share is the one request to a site the
+  user did not set up (its `boxd.it` short link is opened to learn the film)
 - Material 3 Expressive look app-wide: tonal cards, pills,
   poster-palette theming, backdrop session cards, M3 pull-to-refresh
 
@@ -79,13 +88,15 @@ Atrium is a **controller** app. Video playback was removed by design
   page judges them (contributed by Bhavyashah94 in PR #179), series
   detail (fanart backdrop, season monitor/search), search-and-add (the
   list's search query carries over to the Add screen, contributed by
-  Bhavyashah94 in PR #160),
+  Bhavyashah94 in PR #160; the add sheet starts from the last choices made
+  on that instance, tags excepted, #234),
   queue/wanted/history/blocklist/system tabs, and a full Settings editor
   (17 panels) - settings writes live-verified
 - **Radarr**: same depth as Sonarr, movie flavored, plus collection
   monitoring when adding a movie and from its detail screen (contributed by
   Bhavyashah94 in PR #173); the custom filters saved on the server for its
-  movie list sit beside the built-in ones, as in Sonarr (PR #179)
+  movie list sit beside the built-in ones, as in Sonarr (PR #179); its add
+  sheet remembers the last choices per instance too (#234)
 - **Lidarr** (added in 1.5.0, out of beta since 2026-10-01): artists and
   discography with grid and
   list views and bulk actions, artist detail with release-type filters,
@@ -95,7 +106,9 @@ Atrium is a **controller** app. Video playback was removed by design
   tree (profiles, download clients, indexers, import lists, notifications,
   metadata, media management, quality definitions), system diagnostics and
   an in-app log viewer with level filtering and search. Album releases also
-  appear in the shared calendar. Artwork loads through `api/v1/mediacover`
+  appear in the shared calendar. The add sheet remembers the last choices
+  per instance; until the first add, the root folder's own defaults apply
+  (#234). Artwork loads through `api/v1/mediacover`
   from the address the app connected to, so it works under a URL Base and
   behind a sign-in portal that only lets `/api` through (#222)
 - **Prowlarr**: indexers (add/edit/test from schema), manual search
