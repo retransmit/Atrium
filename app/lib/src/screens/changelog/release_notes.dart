@@ -27,6 +27,20 @@ class ReleaseNote {
 /// Newest first. Update alongside appVersion and the pubspec at each release.
 const List<ReleaseNote> releaseNotes = <ReleaseNote>[
   ReleaseNote(
+    version: '1.11.0',
+    date: '2026-11-18',
+    groups: <ChangeGroup>[
+      ChangeGroup(ChangeCategory.added, <String>[
+        'Share a movie or show to Atrium from another app to add it to Radarr or Sonarr. IMDb, TMDB, Letterboxd and Trakt links work, and so does a plain title. If it is already in your library its screen opens, otherwise the usual add sheet.',
+        'atrium:// links open Atrium at a service, a movie or a show, so a ntfy notification, a Tasker task or a shell command can take you straight there. For example atrium://sonarr/series?tvdb=81189. A link only ever opens a screen; adding still takes your tap.',
+        'The Radarr, Sonarr and Lidarr add sheets start from the choices you made on the last add to the same instance: root folder, quality profile, monitoring, search on add and the rest. Tags are not carried over.',
+      ]),
+      ChangeGroup(ChangeCategory.improved, <String>[
+        "The Radarr and Sonarr search screens close themselves after an add, and opening a title that is already in your library no longer holds up the next share or link.",
+      ]),
+    ],
+  ),
+  ReleaseNote(
     version: '1.10.2',
     date: '2026-11-09',
     groups: <ChangeGroup>[

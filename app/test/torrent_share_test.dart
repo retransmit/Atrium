@@ -108,12 +108,12 @@ void main() {
       );
     });
 
-    test('reports text that holds no torrent', () {
+    test('turns text that holds no torrent into a title share', () {
       expect(
         decodeTorrentShare(
           <Object?, Object?>{'kind': 'text', 'value': 'hello there'},
         ),
-        isA<TorrentShareProblem>(),
+        isA<TitleShare>(),
       );
     });
 
@@ -264,5 +264,15 @@ void main() {
         ServiceKind.aria2,
       });
     });
+  });
+
+  test('decodes an atrium:// link', () {
+    expect(
+      decodeTorrentShare(<String, Object?>{
+        'kind': 'link',
+        'uri': 'atrium://radarr',
+      }),
+      const AtriumLink(service: ServiceKind.radarr),
+    );
   });
 }

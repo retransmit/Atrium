@@ -31,10 +31,9 @@
               />
             <!-- Flutter otherwise feeds the launch intent's data URI to the
                  router as the initial route, so opening a magnet link landed
-                 the app on "no routes for location: magnet:?xt=...". Atrium
-                 receives no deep links of its own - the torrent intents below
-                 are read natively and handed to the share channel - so nothing
-                 needs this. -->
+                 the app on "no routes for location: magnet:?xt=...". Every
+                 intent below, atrium:// links included, is read natively and
+                 handed to the share channel, so nothing needs this. -->
             <meta-data
               android:name="flutter_deeplinking_enabled"
               android:value="false"
@@ -70,6 +69,15 @@
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="magnet"/>
+            </intent-filter>
+            <!-- atrium:// links, so ntfy, Termux, Tasker or a browser can open
+                 a service, a movie or a series directly. They only navigate;
+                 nothing is added without a tap. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="atrium"/>
             </intent-filter>
             <!-- Sharing a magnet or a link to a .torrent as text. -->
             <intent-filter>

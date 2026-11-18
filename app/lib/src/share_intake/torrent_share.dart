@@ -1,4 +1,8 @@
+import 'package:core_models/core_models.dart';
 import 'package:flutter/foundation.dart';
+
+import 'atrium_link.dart';
+import 'title_share.dart';
 
 /// A torrent another app handed to Atrium through the Android share sheet or
 /// the "open with" chooser.
@@ -72,16 +76,129 @@ final class TorrentShareFiles extends TorrentShare {
 
 /// Something arrived but cannot be added. Carries the message to show.
 final class TorrentShareProblem extends TorrentShare {
-  const TorrentShareProblem(this.message);
+  const TorrentShareProblem(this.message, {this.title = 'Nothing added'});
 
   final String message;
 
-  @override
-  bool operator ==(Object other) =>
-      other is TorrentShareProblem && other.message == message;
+  /// The heading the message is shown under.
+  final String title;
 
   @override
-  int get hashCode => message.hashCode;
+  bool operator ==(Object other) =>
+      other is TorrentShareProblem &&
+      other.message == message &&
+      other.title == title;
+
+  @override
+  int get hashCode => Object.hash(message, title);
+}
+
+/// Whether a shared title is a movie, a show, or not yet known.
+enum TitleKind { movie, show, unknown }
+
+/// A movie or show shared as text, to be looked up on Radarr or Sonarr.
+///
+/// It extends [TorrentShare] only because that is the share queue's item
+/// type; it has nothing to do with torrents. It lives in this file because a
+/// sealed class can only be extended from its own library. The parsing is in
+/// `title_share.dart`.
+final class TitleShare extends TorrentShare {
+  const TitleShare({
+    required this.kind,
+    this.imdbId,
+    this.tmdbId,
+    this.tvdbId,
+    this.letterboxdUrl,
+    this.title,
+  });
+
+  final TitleKind kind;
+
+  /// An IMDb title ID such as `tt0086567`.
+  final String? imdbId;
+
+  final int? tmdbId;
+
+  /// A TheTVDB series ID, which Sonarr keys its series by.
+  final int? tvdbId;
+
+  /// A Letterboxd link not yet followed to its film page.
+  final Uri? letterboxdUrl;
+
+  /// What to search by when no ID resolves.
+  final String? title;
+
+  @override
+  bool operator ==(Object other) =>
+      other is TitleShare &&
+      other.kind == kind &&
+      other.imdbId == imdbId &&
+      other.tmdbId == tmdbId &&
+      other.tvdbId == tvdbId &&
+      other.letterboxdUrl == letterboxdUrl &&
+      other.title == title;
+
+  @override
+  int get hashCode =>
+      Object.hash(kind, imdbId, tmdbId, tvdbId, letterboxdUrl, title);
+}
+
+/// What an `atrium://` link points at within its service.
+enum LinkItem { none, movie, series }
+
+/// An `atrium://` link another app opened, to go to a service, or to a movie
+/// or series in it.
+///
+/// Like [TitleShare] it extends [TorrentShare] only to ride the share queue.
+/// The parsing is in `atrium_link.dart`.
+final class AtriumLink extends TorrentShare {
+  const AtriumLink({
+    required this.service,
+    this.item = LinkItem.none,
+    this.instanceName,
+    this.libraryId,
+    this.tmdbId,
+    this.tvdbId,
+    this.imdbId,
+  });
+
+  final ServiceKind service;
+
+  final LinkItem item;
+
+  /// The instance named in the link, when it named one.
+  final String? instanceName;
+
+  /// The item's ID in that instance's own library.
+  final int? libraryId;
+
+  final int? tmdbId;
+
+  final int? tvdbId;
+
+  final String? imdbId;
+
+  @override
+  bool operator ==(Object other) =>
+      other is AtriumLink &&
+      other.service == service &&
+      other.item == item &&
+      other.instanceName == instanceName &&
+      other.libraryId == libraryId &&
+      other.tmdbId == tmdbId &&
+      other.tvdbId == tvdbId &&
+      other.imdbId == imdbId;
+
+  @override
+  int get hashCode => Object.hash(
+        service,
+        item,
+        instanceName,
+        libraryId,
+        tmdbId,
+        tvdbId,
+        imdbId,
+      );
 }
 
 /// Decodes the map delivered over the `app.atrium/share` channel.
@@ -105,14 +222,26 @@ TorrentShare? decodeTorrentShare(Object? payload) {
       if (value is! String) {
         return null;
       }
+      // A torrent wins over a title, so torrent shares behave as before.
       final String? found = extractTorrentUri(value);
-      if (found == null) {
-        return const TorrentShareProblem(
-          'That share had no magnet link and no link to a .torrent file, so '
-          'there was nothing to add.',
-        );
+      if (found != null) {
+        return TorrentShareLink(found);
       }
-      return TorrentShareLink(found);
+      final TitleShare? title = extractTitleShare(value);
+      if (title != null) {
+        return title;
+      }
+      return const TorrentShareProblem(
+        'That share had no torrent and no movie or show in it, so there was '
+        'nothing to add.',
+      );
+
+    case 'link':
+      final Object? uri = payload['uri'];
+      if (uri is! String || uri.trim().isEmpty) {
+        return null;
+      }
+      return parseAtriumLink(uri.trim());
 
     case 'file':
       final Object? bytes = payload['bytes'];

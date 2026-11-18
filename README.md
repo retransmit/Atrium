@@ -10,7 +10,7 @@ the home Wi-Fi or out in the world.
 
 **[Website][site]** - screenshots and a tour, no install needed.
 
-> **Status:** v1.10.2. Install from [F-Droid][fdroid], or grab a signed APK
+> **Status:** v1.11.0. Install from [F-Droid][fdroid], or grab a signed APK
 > from the [releases page][releases].
 
 ## Why
@@ -35,6 +35,10 @@ external URLs.
 - **Controller, not a player.** Media servers are browse/manage/remote-
   control surfaces; playback stays with the official apps (deep links
   provided).
+- **Share and links.** Share a magnet or `.torrent` to a torrent client, or
+  a movie or show (IMDb, TMDB, Letterboxd, Trakt or just the title) to
+  Radarr or Sonarr. `atrium://` links open a service, movie or series from a
+  notification, Tasker or a shell.
 - **Wake-on-LAN.** Store your machines (MAC / broadcast / port) in the
   profile and wake them from Settings; magic packets are sent with pure
   Dart UDP.

@@ -233,13 +233,13 @@ class _SonarrAddSeriesSearchScreenState
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: InkWell(
-                          onTap: () {
+                          onTap: () async {
                             if (_searchFocusNode.hasFocus) {
                               _searchFocusNode.unfocus();
                             }
                             if (isAdded) {
                               // Already added: go to details screen
-                              pushScreen<void>(
+                              await pushScreen<void>(
                                 context,
                                 SeriesDetailScreen(
                                   instance: widget.instance,
@@ -248,7 +248,8 @@ class _SonarrAddSeriesSearchScreenState
                               );
                             } else {
                               // Not added: open configuration sheet
-                              showModalBottomSheet<void>(
+                              final bool? added =
+                                  await showModalBottomSheet<bool>(
                                 context: context,
                                 useRootNavigator: true,
                                 isScrollControlled: true,
@@ -264,6 +265,9 @@ class _SonarrAddSeriesSearchScreenState
                                   series: s,
                                 ),
                               );
+                              if ((added ?? false) && context.mounted) {
+                                Navigator.of(context).pop();
+                              }
                             }
                           },
                           child: IntrinsicHeight(

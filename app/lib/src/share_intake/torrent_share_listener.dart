@@ -13,7 +13,10 @@ import 'package:service_rtorrent/service_rtorrent.dart';
 import 'package:service_transmission/service_transmission.dart';
 
 import '../router.dart';
+import 'atrium_link.dart';
+import 'atrium_link_flow.dart';
 import 'share_intake.dart';
+import 'title_share_flow.dart';
 import 'torrent_share.dart';
 
 /// The instances a shared torrent can be sent to.
@@ -113,7 +116,7 @@ class _TorrentShareListenerState extends ConsumerState<TorrentShareListener> {
   /// which serialises them.
   Future<void> _handle(TorrentShare share) async {
     if (share is TorrentShareProblem) {
-      await _tell(share.message);
+      await _tell(share.message, title: share.title);
       return;
     }
 
@@ -123,13 +126,42 @@ class _TorrentShareListenerState extends ConsumerState<TorrentShareListener> {
     try {
       await ref.read(profileListProvider.future);
     } catch (_) {
-      await _tell(
-        'Atrium could not read your saved profiles, so it does not know '
-        'where to send this torrent.',
-      );
+      await (share is AtriumLink
+          ? _tell(
+              'Atrium could not read your saved profiles, so it could not '
+              'open that link.',
+              title: linkProblemTitle,
+            )
+          : _tell(
+              'Atrium could not read your saved profiles, so it does not '
+              'know where to send this torrent.',
+            ));
       return;
     }
     if (!mounted) {
+      return;
+    }
+
+    // A movie or show goes to Radarr or Sonarr, not a torrent client.
+    if (share is TitleShare) {
+      await runTitleShare(
+        ref,
+        share,
+        presentContext: () => _presentContext,
+        tell: _tell,
+      );
+      return;
+    }
+
+    // A link from another app goes where it points.
+    if (share is AtriumLink) {
+      await openAtriumLink(
+        ref,
+        share,
+        presentContext: () => _presentContext,
+        tell: (String message) => _tell(message, title: linkProblemTitle),
+        go: (String location) => ref.read(routerProvider).go(location),
+      );
       return;
     }
 
@@ -152,7 +184,7 @@ class _TorrentShareListenerState extends ConsumerState<TorrentShareListener> {
     await _openAddSheet(target, share);
   }
 
-  Future<void> _tell(String message) async {
+  Future<void> _tell(String message, {String title = 'Nothing added'}) async {
     final BuildContext? context = _presentContext;
     if (context == null) {
       return;
@@ -160,7 +192,7 @@ class _TorrentShareListenerState extends ConsumerState<TorrentShareListener> {
     await showDialog<void>(
       context: context,
       builder: (BuildContext context) => AlertDialog(
-        title: const Text('Nothing added'),
+        title: Text(title),
         content: Text(message),
         actions: <Widget>[
           TextButton(

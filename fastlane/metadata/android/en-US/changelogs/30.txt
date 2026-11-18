@@ -1,0 +1,8 @@
+Share a movie or show from another app to add it to Radarr or Sonarr, by
+IMDb, TMDB, Letterboxd or Trakt link, or by title.
+
+atrium:// links open a service, movie or show from notifications and
+automation apps.
+
+The Radarr, Sonarr and Lidarr add sheets remember your last choices for
+each instance.

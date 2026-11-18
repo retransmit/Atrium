@@ -260,4 +260,70 @@ void main() {
       expect(addOptions['monitor'], equals('movieOnly'));
     });
   });
+
+  testWidgets('adding pops only the sheet, and the screen under it stays',
+      (tester) async {
+    final dio = Dio();
+    dio.httpClientAdapter = _CapturingAdapter((options) async {
+      final bool post = options.method == 'POST';
+      return ResponseBody.fromString(
+        post ? '{"id": 57}' : '[]',
+        post ? 201 : 200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      );
+    });
+    const movie = RadarrMovie(tmdbId: 103, title: 'Dune');
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          radarrApiProvider(instance).overrideWith((ref) => RadarrApi(dio)),
+          radarrRootFoldersProvider(instance).overrideWith((ref) => [
+                {'id': 1, 'path': '/movies'},
+              ],),
+          radarrQualityProfilesProvider(instance).overrideWith((ref) => [
+                {'id': 1, 'name': 'HD-1080p'},
+              ],),
+          radarrTagsProvider(instance).overrideWith((ref) => []),
+        ],
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: Column(
+                children: [
+                  const Text('Base'),
+                  ElevatedButton(
+                    // Opened straight from a screen, with no search route
+                    // above it, the way a share opens it.
+                    onPressed: () => showModalBottomSheet<bool>(
+                      context: context,
+                      builder: (_) => const RadarrAddMovieSheet(
+                        instance: instance,
+                        movie: movie,
+                      ),
+                    ),
+                    child: const Text('Open Sheet'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Open Sheet'));
+    await tester.pumpAndSettle();
+
+    final addMovieButton = find.widgetWithText(FilledButton, 'Add Movie');
+    await tester.scrollUntilVisible(addMovieButton, 100);
+    await tester.pumpAndSettle();
+    await tester.tap(addMovieButton);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(RadarrAddMovieSheet), findsNothing);
+    expect(find.text('Base'), findsOneWidget);
+  });
 }
