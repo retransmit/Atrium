@@ -8,6 +8,7 @@ import 'package:service_emby/service_emby.dart';
 import 'package:service_jellyfin/service_jellyfin.dart';
 import 'package:service_plex/service_plex.dart';
 import 'package:service_qbittorrent/service_qbittorrent.dart';
+import 'package:service_rtorrent/service_rtorrent.dart';
 import 'package:service_seerr/service_seerr.dart';
 
 import 'connection_test_result.dart';
@@ -114,6 +115,8 @@ class ConnectionTester {
         return _testSlskd(forced);
       case ServiceKind.seerr:
         return _testSeerr(forced);
+      case ServiceKind.rtorrent:
+        return _testRtorrent(forced);
       default:
         final HealthProbe probe =
             HealthProbe(dioFactory: _ref.read(dioFactoryProvider));
@@ -240,6 +243,72 @@ class ConnectionTester {
       return connectionResultFromError(error);
     } on Object catch (error) {
       return connectionResultFromError(error);
+    } finally {
+      dio?.close(force: true);
+    }
+  }
+
+  /// Verifies an rTorrent candidate, and looks for its XML-RPC nearby when
+  /// the address answers with something else.
+  ///
+  /// People mostly have the ruTorrent page to hand, and on a seedbox rTorrent
+  /// is only reachable through ruTorrent's httprpc plugin beneath it. That
+  /// page answers fine, so without looking further the test could only say
+  /// the check did not pass.
+  Future<ConnectionTestResult> _testRtorrent(Instance forced) async {
+    switch (await _rtorrentAnswer(forced)) {
+      case RtorrentEndpointAnswer.xmlRpc:
+        return const ConnectionTestResult(
+          ConnectionOutcome.connected,
+          'Connected',
+        );
+      case RtorrentEndpointAnswer.refused:
+        return const ConnectionTestResult(
+          ConnectionOutcome.authFailed,
+          'Reachable, but the credentials were rejected',
+        );
+      case RtorrentEndpointAnswer.unreachable:
+        return const ConnectionTestResult(
+          ConnectionOutcome.unreachable,
+          'Could not reach the server',
+        );
+      case RtorrentEndpointAnswer.notXmlRpc:
+        break;
+    }
+    final bool external = forced.urlMode == UrlMode.forceExternal;
+    final String url = external ? forced.externalUrl : forced.localUrl;
+    for (final String path in rtorrentEndpointGuesses) {
+      final String? guess = rtorrentGuessUrl(url, path);
+      if (guess == null) {
+        break;
+      }
+      final Instance there = external
+          ? forced.copyWith(externalUrl: guess)
+          : forced.copyWith(localUrl: guess);
+      if (await _rtorrentAnswer(there) == RtorrentEndpointAnswer.xmlRpc) {
+        return ConnectionTestResult(
+          ConnectionOutcome.authFailed,
+          'Reachable, but rTorrent is not at this address. It answers at '
+          '$guess',
+          suggestedUrl: guess,
+        );
+      }
+    }
+    return const ConnectionTestResult(
+      ConnectionOutcome.authFailed,
+      'Reachable, but rTorrent did not answer here. Behind ruTorrent, as on '
+      'most seedboxes, the address ends in /plugins/httprpc/action.php. '
+      'Otherwise rTorrent is usually at /RPC2 or on port 8000',
+    );
+  }
+
+  Future<RtorrentEndpointAnswer> _rtorrentAnswer(Instance instance) async {
+    Dio? dio;
+    try {
+      dio = await _ref.read(dioFactoryProvider).create(instance);
+      return await checkRtorrentEndpoint(dio);
+    } on Object {
+      return RtorrentEndpointAnswer.unreachable;
     } finally {
       dio?.close(force: true);
     }

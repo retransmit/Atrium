@@ -388,6 +388,228 @@ void main() {
       expect(result.outcome, ConnectionOutcome.authFailed);
     });
   });
+
+  group('rTorrent', () {
+    Instance rtorrentAt(String local, {String external = ''}) => Instance(
+          id: 'rtorrent',
+          name: 'rTorrent',
+          kind: ServiceKind.rtorrent,
+          localUrl: local,
+          externalUrl: external,
+          urlMode: UrlMode.auto,
+          auth: const InstanceAuth.userPass(username: 'u', password: 'p'),
+        );
+
+    /// Tests [instance] against a server that answers each URL from [routes]
+    /// and anything else with the ruTorrent web page.
+    Future<(ConnectionTestResult, _RtorrentServer)> testAgainst(
+      Instance instance,
+      Map<String, ResponseBody Function()> routes, {
+      UrlMode url = UrlMode.forceLocal,
+    }) async {
+      final _RtorrentServer server = _RtorrentServer(routes);
+      final ProviderContainer container = ProviderContainer(
+        overrides: <Override>[dioFactoryProvider.overrideWithValue(server)],
+      );
+      addTearDown(container.dispose);
+      final ConnectionTestResult result = await container
+          .read(connectionTesterProvider)
+          .test(candidate: instance, url: url);
+      return (result, server);
+    }
+
+    test('XML-RPC at the address tests as connected', () async {
+      final (ConnectionTestResult result, _) = await testAgainst(
+        rtorrentAt('http://box.test:8000'),
+        <String, ResponseBody Function()>{
+          'http://box.test:8000/': _xmlRpcAnswer,
+        },
+      );
+
+      expect(result.outcome, ConnectionOutcome.connected);
+      expect(result.suggestedUrl, isNull);
+    });
+
+    test('the ruTorrent page finds the httprpc endpoint beneath it', () async {
+      // badgone88's seedbox: the web UI answers at the address they typed,
+      // rTorrent only through ruTorrent's httprpc plugin.
+      final (ConnectionTestResult result, _) = await testAgainst(
+        rtorrentAt('https://seedbox.test/user/rutorrent/'),
+        <String, ResponseBody Function()>{
+          'https://seedbox.test/user/rutorrent/plugins/httprpc/action.php':
+              _xmlRpcAnswer,
+        },
+      );
+
+      expect(result.outcome, ConnectionOutcome.authFailed);
+      expect(
+        result.suggestedUrl,
+        'https://seedbox.test/user/rutorrent/plugins/httprpc/action.php',
+      );
+      expect(result.message, contains(result.suggestedUrl));
+    });
+
+    test('a server root finds ruTorrent beneath it', () async {
+      final (ConnectionTestResult result, _) = await testAgainst(
+        rtorrentAt('https://seedbox.test/user'),
+        <String, ResponseBody Function()>{
+          'https://seedbox.test/user/rutorrent/plugins/httprpc/action.php':
+              _xmlRpcAnswer,
+        },
+      );
+
+      expect(
+        result.suggestedUrl,
+        'https://seedbox.test/user/rutorrent/plugins/httprpc/action.php',
+      );
+    });
+
+    test('an RPC2 mount is found too', () async {
+      final (ConnectionTestResult result, _) = await testAgainst(
+        rtorrentAt('http://box.test'),
+        <String, ResponseBody Function()>{
+          'http://box.test/RPC2': _xmlRpcAnswer,
+        },
+      );
+
+      expect(result.suggestedUrl, 'http://box.test/RPC2');
+    });
+
+    test('the external address is searched under its own URL', () async {
+      final (ConnectionTestResult result, _) = await testAgainst(
+        rtorrentAt('http://box.test:8000', external: 'https://seedbox.test/ru'),
+        <String, ResponseBody Function()>{
+          'https://seedbox.test/ru/plugins/httprpc/action.php': _xmlRpcAnswer,
+        },
+        url: UrlMode.forceExternal,
+      );
+
+      expect(
+        result.suggestedUrl,
+        'https://seedbox.test/ru/plugins/httprpc/action.php',
+      );
+    });
+
+    test('with nothing found, the message says where rTorrent usually is',
+        () async {
+      final (ConnectionTestResult result, _) = await testAgainst(
+        rtorrentAt('https://seedbox.test/user/rutorrent'),
+        <String, ResponseBody Function()>{},
+      );
+
+      expect(result.outcome, ConnectionOutcome.authFailed);
+      expect(result.suggestedUrl, isNull);
+      expect(result.message, contains('/plugins/httprpc/action.php'));
+      expect(result.message, contains('/RPC2'));
+    });
+
+    test('refused credentials are reported without searching', () async {
+      final (ConnectionTestResult result, _RtorrentServer server) =
+          await testAgainst(
+        rtorrentAt('https://seedbox.test/user/rutorrent'),
+        <String, ResponseBody Function()>{
+          'https://seedbox.test/user/rutorrent/': () =>
+              ResponseBody.fromString('Unauthorized', 401),
+        },
+      );
+
+      expect(result.outcome, ConnectionOutcome.authFailed);
+      expect(result.message, contains('credentials'));
+      expect(result.suggestedUrl, isNull);
+      expect(server.requested, hasLength(1));
+    });
+
+    test('an address already at an endpoint is not searched beneath',
+        () async {
+      final (ConnectionTestResult result, _RtorrentServer server) =
+          await testAgainst(
+        rtorrentAt('https://seedbox.test/rutorrent/plugins/httprpc/action.php'),
+        <String, ResponseBody Function()>{},
+      );
+
+      expect(result.suggestedUrl, isNull);
+      expect(server.requested, hasLength(1));
+    });
+
+    test('an unreachable server is not searched', () async {
+      final (ConnectionTestResult result, _RtorrentServer server) =
+          await testAgainst(
+        rtorrentAt('http://down.test:8000'),
+        <String, ResponseBody Function()>{
+          'http://down.test:8000/': () => throw DioException.connectionError(
+                requestOptions: RequestOptions(),
+                reason: 'refused',
+              ),
+        },
+      );
+
+      expect(result.outcome, ConnectionOutcome.unreachable);
+      expect(server.requested, hasLength(1));
+    });
+  });
+}
+
+ResponseBody _xmlRpcAnswer() => ResponseBody.fromString(
+      '<?xml version="1.0"?><methodResponse><params><param><value>'
+      '<string>0.9.8</string></value></param></params></methodResponse>',
+      200,
+      headers: <String, List<String>>{
+        Headers.contentTypeHeader: <String>['text/xml'],
+      },
+    );
+
+/// A seedbox: each URL in [routes] answers as given, anything else with the
+/// ruTorrent web page. Records every URL asked for.
+class _RtorrentServer implements DioFactory {
+  _RtorrentServer(this.routes);
+
+  final Map<String, ResponseBody Function()> routes;
+  final List<String> requested = <String>[];
+
+  @override
+  Future<Dio> create(Instance instance) async {
+    final String url = instance.urlMode == UrlMode.forceExternal
+        ? instance.externalUrl
+        : instance.localUrl;
+    return Dio(BaseOptions(baseUrl: url.endsWith('/') ? url : '$url/'))
+      ..httpClientAdapter = _RtorrentRoutes(this);
+  }
+}
+
+class _RtorrentRoutes implements HttpClientAdapter {
+  _RtorrentRoutes(this._server);
+
+  final _RtorrentServer _server;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    final String url = options.uri.toString();
+    _server.requested.add(url);
+    // A trailing slash is the client's business, covered by its own tests.
+    String bare(String u) => u.replaceFirst(RegExp(r'/$'), '');
+    final ResponseBody Function()? route = _server.routes.entries
+        .where((MapEntry<String, ResponseBody Function()> e) =>
+            bare(e.key) == bare(url),)
+        .map((MapEntry<String, ResponseBody Function()> e) => e.value)
+        .firstOrNull;
+    if (route != null) {
+      return route();
+    }
+    return ResponseBody.fromString(
+      '<!doctype html><html><head><title>ruTorrent</title></head></html>',
+      200,
+      headers: <String, List<String>>{
+        Headers.contentTypeHeader: <String>['text/html; charset=utf-8'],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
 }
 
 class _SlskdDioFactory implements DioFactory {
