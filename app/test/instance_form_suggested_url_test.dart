@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:atrium/src/connection_test/connection_test_result.dart';
 import 'package:atrium/src/connection_test/connection_tester.dart';
 import 'package:atrium/src/screens/instance_form_screen.dart';
@@ -29,6 +31,9 @@ void main() {
   late _Profiles profiles;
   late List<String> tested;
 
+  /// When set, every test waits for it before answering.
+  Completer<void>? gate;
+
   Future<void> edit(WidgetTester tester) async {
     tester.view.physicalSize = const Size(900, 1600);
     tester.view.devicePixelRatio = 1;
@@ -36,6 +41,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     profiles = _Profiles(rtorrent);
     tested = <String>[];
+    gate = null;
     final GoRouter router = GoRouter(
       initialLocation: '/edit',
       routes: <RouteBase>[
@@ -60,7 +66,7 @@ void main() {
           profileListProvider.overrideWith(() => profiles),
           activeProfileIdProvider.overrideWith(_Active.new),
           connectionTesterProvider
-              .overrideWith((Ref ref) => _Tester(ref, tested, found)),
+              .overrideWith((Ref ref) => _Tester(ref, tested, found, () => gate)),
         ],
         child: MaterialApp.router(routerConfig: router),
       ),
@@ -95,6 +101,31 @@ void main() {
     expect(profiles.saved.single.localUrl, found);
   });
 
+  testWidgets('a test still running when the address is edited is dropped',
+      (WidgetTester tester) async {
+    await edit(tester);
+    gate = Completer<void>();
+
+    await tester.scrollUntilVisible(
+      find.text('Test connection'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Test connection'));
+    await tester.pump();
+
+    // Edited while the search is still out, then the search comes back.
+    const String edited = 'https://other.test/rutorrent';
+    await tester.enterText(find.widgetWithText(TextFormField, typed), edited);
+    gate!.complete();
+    await tester.pumpAndSettle();
+
+    // Its suggestion would put the old search's address over the new one.
+    expect(find.text('Use this address'), findsNothing);
+    expect(find.textContaining('Local:'), findsNothing);
+    expect(find.widgetWithText(TextFormField, edited), findsOneWidget);
+  });
+
   testWidgets('no button without a suggestion', (WidgetTester tester) async {
     await edit(tester);
     await tester.enterText(
@@ -110,10 +141,11 @@ void main() {
 
 /// Finds rTorrent at [found] whenever any other address is tested.
 class _Tester extends ConnectionTester {
-  _Tester(super.ref, this.tested, this.found);
+  _Tester(super.ref, this.tested, this.found, this.gate);
 
   final List<String> tested;
   final String found;
+  final Completer<void>? Function() gate;
 
   @override
   Future<ConnectionTestResult> test({
@@ -121,6 +153,7 @@ class _Tester extends ConnectionTester {
     required UrlMode url,
   }) async {
     tested.add(candidate.localUrl);
+    await gate()?.future;
     if (candidate.localUrl == found ||
         candidate.localUrl == 'http://other.test:8000') {
       return const ConnectionTestResult(ConnectionOutcome.connected, 'Connected');

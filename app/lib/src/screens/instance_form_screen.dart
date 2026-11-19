@@ -357,9 +357,17 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
       }
     } finally {
       if (mounted) {
+        // Results belong to the form as it was tested. Anything edited since
+        // has already cleared them, and putting them back would offer an old
+        // address over the one now typed.
+        final bool unchanged = _buildInstance(
+              widget.instanceId ?? 'connection-test',
+            ) ==
+            candidate;
         setState(() {
           _testingConnection = false;
-          _connectionResults = results;
+          _connectionResults =
+              unchanged ? results : <String, ConnectionTestResult>{};
         });
       }
     }
