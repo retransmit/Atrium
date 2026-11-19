@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 
 import 'auth_interceptor.dart';
 import 'dio_factory.dart';
+import 'self_path.dart';
 
 /// How a service's health endpoint should be interpreted.
 enum _HealthMode {
@@ -244,7 +245,10 @@ class HealthProbe {
             body == null ? null : _probeContentType(instance.kind),
         responseType: body == null ? null : ResponseType.plain,
       );
-      final String path = _probePath(instance, cfg.path);
+      final String probePath = _probePath(instance, cfg.path);
+      // An empty path means the address itself; see [selfPath].
+      final String path =
+          probePath.isEmpty ? selfPath(dio.options.baseUrl) : probePath;
       final Response<dynamic> resp = body == null
           ? await dio.get<dynamic>(path, options: options)
           : await dio.post<dynamic>(path, data: body, options: options);
