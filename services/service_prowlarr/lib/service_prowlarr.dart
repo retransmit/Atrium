@@ -6,10 +6,12 @@
 /// template.
 library;
 
+export 'src/models/prowlarr_category.dart';
 export 'src/models/prowlarr_indexer.dart';
 export 'src/models/prowlarr_indexer_stats.dart';
 export 'src/models/prowlarr_release.dart';
 export 'src/prowlarr_api.dart';
 export 'src/prowlarr_home.dart';
 export 'src/prowlarr_providers.dart';
+export 'src/prowlarr_search_filters.dart';
 export 'src/prowlarr_search_screen.dart';
