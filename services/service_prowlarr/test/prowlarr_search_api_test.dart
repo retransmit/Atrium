@@ -34,4 +34,12 @@ void main() {
     expect(uri.queryParameters.containsKey('indexerIds'), isFalse);
     expect(uri.queryParameters.containsKey('categories'), isFalse);
   });
+
+  test('search sends the type, basic by default', () async {
+    final ProwlarrApi api = ProwlarrApi(dioFor(server));
+    await api.search('dune');
+    expect(server.requests.last.uri.queryParameters['type'], 'search');
+    await api.search('dune', type: 'movie');
+    expect(server.requests.last.uri.queryParameters['type'], 'movie');
+  });
 }
