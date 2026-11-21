@@ -369,6 +369,26 @@ class _FilterSheet extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
+                    const _SectionHeader('Search type'),
+                    Padding(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: Insets.lg),
+                      child: Wrap(
+                        spacing: Insets.sm,
+                        runSpacing: Insets.xs,
+                        children: <Widget>[
+                          for (final ProwlarrSearchType t
+                              in ProwlarrSearchType.values)
+                            ChoiceChip(
+                              label: Text(t.label),
+                              selected: value.type == t,
+                              onSelected: (_) =>
+                                  filter.value = value.copyWith(type: t),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const Divider(),
                     const _SectionHeader('Indexers'),
                     _loaded(
                       indexers,
