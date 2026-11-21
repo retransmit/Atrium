@@ -116,6 +116,27 @@ void main() {
     expect(request.headers.containsKey('Authorization'), isFalse);
   });
 
+  test('Gotify client token is sent only as X-Gotify-Key', () async {
+    const String token = 'placeholder-gotify-client-token';
+    final _RecordingAdapter adapter = _RecordingAdapter();
+    final Dio dio = Dio(BaseOptions(baseUrl: 'https://gotify.example.test/'))
+      ..httpClientAdapter = adapter
+      ..interceptors.add(
+        const AuthInterceptor(
+          kind: ServiceKind.gotify,
+          auth: InstanceAuth.apiKey(apiKey: token),
+        ),
+      );
+
+    await dio.get<dynamic>('message');
+
+    final RequestOptions request = adapter.request!;
+    expect(request.headers['X-Gotify-Key'], token);
+    expect(request.headers.containsKey('X-Api-Key'), isFalse);
+    expect(request.headers.containsKey('Authorization'), isFalse);
+    expect(request.uri.toString(), isNot(contains(token)));
+  });
+
   test('aria2 sends no auth header at all', () async {
     // The daemon reads its `--rpc-secret` from the first parameter of every
     // RPC call, not from a header. A header would hand the secret to every

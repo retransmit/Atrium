@@ -39,8 +39,19 @@ void main() {
         'aria2',
         'cleanuparr',
         'slskd',
+        'gotify',
       ],
     );
+  });
+
+  test('Gotify is registered as an apiKey extra service', () {
+    expect(ServiceKind.gotify.displayName, 'Gotify');
+    expect(ServiceKind.gotify.tagline, 'Notifications');
+    expect(ServiceKind.gotify.isBeta, isTrue);
+    expect(ServiceKind.gotify.defaultPort, 80);
+    expect(ServiceKind.gotify.authStyle, AuthStyle.apiKey);
+    expect(ServiceKind.gotify.role, ServiceRole.extra);
+    expect(ServiceKind.gotify.acceptsTorrents, isFalse);
   });
 
   test('Ombi is registered as an apiKey request service', () {

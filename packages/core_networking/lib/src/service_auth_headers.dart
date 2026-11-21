@@ -33,6 +33,8 @@ Set<String> serviceAuthHeaderNames(ServiceKind kind, InstanceAuth auth) {
           return const <String>{};
         case ServiceKind.slskd:
           return apiKey.isEmpty ? const <String>{} : const <String>{'X-Api-Key'};
+        case ServiceKind.gotify:
+          return const <String>{'X-Gotify-Key'};
         case _:
           return const <String>{'X-Api-Key'};
       }
