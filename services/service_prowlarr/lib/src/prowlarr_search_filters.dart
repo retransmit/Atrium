@@ -116,6 +116,56 @@ String _reach(Set<int> ids) {
   return others == 0 ? group : '$group and $count';
 }
 
+/// [value] with `{token:}` in place of its selection, or on the end when
+/// it has none, and the cursor inside it ready for the value.
+TextEditingValue prowlarrInsertToken(TextEditingValue value, String token) {
+  final String insert = '{$token:}';
+  final TextSelection selection = value.selection;
+  final int start = selection.isValid ? selection.start : value.text.length;
+  final int end = selection.isValid ? selection.end : value.text.length;
+  return TextEditingValue(
+    text: value.text.replaceRange(start, end, insert),
+    selection: TextSelection.collapsed(offset: start + insert.length - 1),
+  );
+}
+
+/// The parameters a typed search reads, as chips under the search field.
+/// Braces are fiddly on a phone keyboard; a tap puts one in.
+class ProwlarrTokenChips extends StatelessWidget
+    implements PreferredSizeWidget {
+  const ProwlarrTokenChips({
+    required this.type,
+    required this.onToken,
+    super.key,
+  });
+
+  final ProwlarrSearchType type;
+  final ValueChanged<String> onToken;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(48);
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 48,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(
+          horizontal: Insets.lg,
+          vertical: Insets.xs,
+        ),
+        itemCount: type.tokens.length,
+        separatorBuilder: (_, __) => const SizedBox(width: Insets.sm),
+        itemBuilder: (BuildContext context, int i) => ActionChip(
+          label: Text(type.tokens[i]),
+          onPressed: () => onToken(type.tokens[i]),
+        ),
+      ),
+    );
+  }
+}
+
 /// Indexers grouped by protocol, as on Prowlarr's search page. Ticking a
 /// group searches every indexer of that protocol, and stands in for any of
 /// them that were ticked one by one.

@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:service_prowlarr/service_prowlarr.dart';
 
@@ -127,5 +128,24 @@ void main() {
       ProwlarrSearchType.values.map((ProwlarrSearchType t) => t.apiValue),
       <String>['search', 'tvsearch', 'movie', 'music', 'book'],
     );
+  });
+
+  test('insert appends with no selection', () {
+    final TextEditingValue out =
+        prowlarrInsertToken(const TextEditingValue(text: 'dune'), 'ImdbId');
+    expect(out.text, 'dune{ImdbId:}');
+    expect(out.selection, const TextSelection.collapsed(offset: 12));
+  });
+
+  test('insert replaces the selection', () {
+    final TextEditingValue out = prowlarrInsertToken(
+      const TextEditingValue(
+        text: 'ab',
+        selection: TextSelection(baseOffset: 1, extentOffset: 2),
+      ),
+      'Year',
+    );
+    expect(out.text, 'a{Year:}');
+    expect(out.selection, const TextSelection.collapsed(offset: 7));
   });
 }

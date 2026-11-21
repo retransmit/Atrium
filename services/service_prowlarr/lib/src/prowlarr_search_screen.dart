@@ -30,6 +30,7 @@ class ProwlarrSearchScreen extends ConsumerStatefulWidget {
 
 class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
   final TextEditingController _controller = TextEditingController();
+  final FocusNode _field = FocusNode();
   List<ProwlarrRelease>? _results;
   bool _searching = false;
   String? _error;
@@ -58,6 +59,7 @@ class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
   void dispose() {
     _filter.removeListener(_onFilter);
     _filter.dispose();
+    _field.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -82,6 +84,7 @@ class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
         term,
         indexerIds: filter.indexerIds.toList(),
         categories: filter.categories.toList(),
+        type: filter.type.apiValue,
       );
       if (!mounted || generation != _generation) {
         return;
@@ -137,6 +140,7 @@ class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
       appBar: AppBar(
         title: TextField(
           controller: _controller,
+          focusNode: _field,
           autofocus: true,
           textInputAction: TextInputAction.search,
           decoration: InputDecoration(
@@ -145,6 +149,16 @@ class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
           ),
           onSubmitted: _search,
         ),
+        bottom: _filter.value.type == ProwlarrSearchType.basic
+            ? null
+            : ProwlarrTokenChips(
+                type: _filter.value.type,
+                onToken: (String token) {
+                  _controller.value =
+                      prowlarrInsertToken(_controller.value, token);
+                  _field.requestFocus();
+                },
+              ),
         actions: <Widget>[
           ProwlarrFilterButton(
             instance: widget.instance,
