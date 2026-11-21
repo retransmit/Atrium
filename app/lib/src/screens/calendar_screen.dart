@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:collection/collection.dart';
 import 'package:core_models/core_models.dart';
 import 'package:core_router/core_router.dart';
@@ -72,7 +73,7 @@ class RadarrCalendarEvent extends CalendarEvent {
     if (general != null && general.isAfter(start) && general.isBefore(end)) {
       return general;
     }
-    return cinemas ?? digital ?? physical ?? general ?? DateTime.now();
+    return cinemas ?? digital ?? physical ?? general ?? clock.now();
   }
 
   @override
@@ -110,9 +111,9 @@ class SonarrCalendarEvent extends CalendarEvent {
   @override
   DateTime get date {
     if (episode.airDateUtc == null || episode.airDateUtc!.isEmpty) {
-      return DateTime.now();
+      return clock.now();
     }
-    return (DateTime.tryParse(episode.airDateUtc!) ?? DateTime.now()).toLocal();
+    return (DateTime.tryParse(episode.airDateUtc!) ?? clock.now()).toLocal();
   }
 
   @override
@@ -154,9 +155,9 @@ class LidarrCalendarEvent extends CalendarEvent {
   @override
   DateTime get date {
     if (album.releaseDate == null || album.releaseDate!.isEmpty) {
-      return DateTime.now();
+      return clock.now();
     }
-    return (DateTime.tryParse(album.releaseDate!) ?? DateTime.now()).toLocal();
+    return (DateTime.tryParse(album.releaseDate!) ?? clock.now()).toLocal();
   }
 
   @override
@@ -296,10 +297,37 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   late DateTime _visibleMonth;
   late DateTime _selectedDay;
 
+  // List view opens at today: the first day from today with releases, or the
+  // last one when they are all past. These track when to jump there.
+  final ScrollController _listScroll = ScrollController();
+  final GlobalKey _anchorKey = GlobalKey();
+  bool _anchorPending = true;
+  DateTime? _listMonth;
+
+  @override
+  void dispose() {
+    _listScroll.dispose();
+    super.dispose();
+  }
+
+  /// Puts the anchored day at the top, or the top of the list when this
+  /// month has none.
+  void _scrollToAnchor() {
+    if (!mounted) {
+      return;
+    }
+    final BuildContext? target = _anchorKey.currentContext;
+    if (target != null) {
+      Scrollable.ensureVisible(target);
+    } else if (_listScroll.hasClients) {
+      _listScroll.jumpTo(0);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    final DateTime now = DateTime.now();
+    final DateTime now = clock.now();
     _visibleMonth = DateTime(now.year, now.month);
     _selectedDay = DateTime(now.year, now.month, now.day);
   }
@@ -349,10 +377,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   }
 
   void _goToToday() {
-    final DateTime now = DateTime.now();
+    final DateTime now = clock.now();
     setState(() {
       _visibleMonth = DateTime(now.year, now.month);
       _selectedDay = DateTime(now.year, now.month, now.day);
+      _anchorPending = true;
     });
   }
 
@@ -584,9 +613,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               ),
               tooltip:
                   showListView ? 'Switch to grid view' : 'Switch to list view',
-              onPressed: () => ref
-                  .read(preferencesProvider.notifier)
-                  .setCalendarListView(!showListView),
+              onPressed: () {
+                if (!showListView) {
+                  _anchorPending = true;
+                }
+                ref
+                    .read(preferencesProvider.notifier)
+                    .setCalendarListView(!showListView);
+              },
             ),
             const SizedBox(width: 8),
           ],
@@ -604,12 +638,28 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             }
 
             final ThemeData theme = Theme.of(context);
-            final DateTime now = DateTime.now();
+            final DateTime now = clock.now();
 
             final Widget content;
             if (showListView) {
               final List<DateTime> eventDates = entriesMap.keys.toList()
                 ..sort((a, b) => a.compareTo(b));
+
+              final DateTime today = DateTime(now.year, now.month, now.day);
+              final bool thisMonth = _visibleMonth.year == now.year &&
+                  _visibleMonth.month == now.month;
+              final DateTime? anchor = thisMonth && eventDates.isNotEmpty
+                  ? eventDates.firstWhere(
+                      (DateTime d) => !d.isBefore(today),
+                      orElse: () => eventDates.last,
+                    )
+                  : null;
+              if (_anchorPending || _listMonth != _visibleMonth) {
+                _anchorPending = false;
+                _listMonth = _visibleMonth;
+                WidgetsBinding.instance
+                    .addPostFrameCallback((_) => _scrollToAnchor());
+              }
 
               content = GestureDetector(
                 onHorizontalDragEnd: (DragEndDetails details) {
@@ -621,129 +671,157 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   }
                 },
                 behavior: HitTestBehavior.translucent,
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: Insets.page,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => _showMonthYearPicker(context),
-                            borderRadius: BorderRadius.circular(8),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: Insets.xs,
-                                vertical: 4,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: <Widget>[
-                                  Text(
-                                    DateFormat('yyyy').format(_visibleMonth),
-                                    style: theme.textTheme.labelSmall?.copyWith(
-                                      color: theme.colorScheme.outline,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 1.2,
+                    // The month and its controls stay put while the days
+                    // scroll, since the list opens part way down.
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        Insets.lg,
+                        Insets.lg,
+                        Insets.lg,
+                        Insets.xs,
+                      ),
+                      child: Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: InkWell(
+                              onTap: () => _showMonthYearPicker(context),
+                              borderRadius: BorderRadius.circular(8),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: Insets.xs,
+                                  vertical: 4,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    Text(
+                                      DateFormat('yyyy').format(_visibleMonth),
+                                      style: theme.textTheme.labelSmall?.copyWith(
+                                        color: theme.colorScheme.outline,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 1.2,
+                                      ),
                                     ),
-                                  ),
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: <Widget>[
-                                      Flexible(
-                                        child: Text(
-                                          DateFormat('MMMM')
-                                              .format(_visibleMonth),
-                                          style: theme.textTheme.titleLarge
-                                              ?.copyWith(
-                                            fontWeight: FontWeight.bold,
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: <Widget>[
+                                        Flexible(
+                                          child: Text(
+                                            DateFormat('MMMM')
+                                                .format(_visibleMonth),
+                                            style: theme.textTheme.titleLarge
+                                                ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
                                           ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                      ),
-                                      const SizedBox(width: 2),
-                                      Icon(
-                                        Icons.arrow_drop_down,
-                                        size: 20,
-                                        color:
-                                            theme.colorScheme.onSurfaceVariant,
-                                      ),
-                                    ],
-                                  ),
-                                ],
+                                        const SizedBox(width: 2),
+                                        Icon(
+                                          Icons.arrow_drop_down,
+                                          size: 20,
+                                          color:
+                                              theme.colorScheme.onSurfaceVariant,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: Insets.xs),
-                        TextButton.icon(
-                          onPressed: _goToToday,
-                          style: TextButton.styleFrom(
+                          const SizedBox(width: Insets.xs),
+                          TextButton.icon(
+                            onPressed: _goToToday,
+                            style: TextButton.styleFrom(
+                              visualDensity: VisualDensity.compact,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: Insets.sm),
+                            ),
+                            icon: const Icon(Icons.today, size: 16),
+                            label: const Text('Today'),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.chevron_left),
+                            onPressed: _prevMonth,
                             visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: Insets.sm),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
                           ),
-                          icon: const Icon(Icons.today, size: 16),
-                          label: const Text('Today'),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.chevron_left),
-                          onPressed: _prevMonth,
-                          visualDensity: VisualDensity.compact,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                        const SizedBox(width: Insets.xs),
-                        IconButton(
-                          icon: const Icon(Icons.chevron_right),
-                          onPressed: _nextMonth,
-                          visualDensity: VisualDensity.compact,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                      ],
+                          const SizedBox(width: Insets.xs),
+                          IconButton(
+                            icon: const Icon(Icons.chevron_right),
+                            onPressed: _nextMonth,
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: Insets.md),
-                    if (eventDates.isEmpty)
-                      Center(
-                        child: Padding(
-                          padding:
-                              const EdgeInsets.symmetric(vertical: Insets.xxl),
-                          child: Column(
-                            children: <Widget>[
-                              Icon(
-                                Icons.calendar_today_outlined,
-                                size: 48,
-                                color: theme.colorScheme.outline
-                                    .withValues(alpha: 0.5),
-                              ),
-                              const SizedBox(height: Insets.md),
-                              Text(
-                                'No releases scheduled this month',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  color: theme.colorScheme.outline,
+                    Expanded(
+                      // Laid out in full, not lazily, so the day to open at
+                      // exists to scroll to. A month is a few dozen rows.
+                      child: SingleChildScrollView(
+                        controller: _listScroll,
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(
+                          Insets.lg,
+                          0,
+                          Insets.lg,
+                          Insets.lg,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: <Widget>[
+                            if (eventDates.isEmpty)
+                              Center(
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: Insets.xxl),
+                                  child: Column(
+                                    children: <Widget>[
+                                      Icon(
+                                        Icons.calendar_today_outlined,
+                                        size: 48,
+                                        color: theme.colorScheme.outline
+                                            .withValues(alpha: 0.5),
+                                      ),
+                                      const SizedBox(height: Insets.md),
+                                      Text(
+                                        'No releases scheduled this month',
+                                        style: theme.textTheme.titleMedium?.copyWith(
+                                          color: theme.colorScheme.outline,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
+                              )
+                            else
+                              for (final DateTime date in eventDates) ...[
+                                Padding(
+                                  key: date == anchor ? _anchorKey : null,
+                                  padding: const EdgeInsets.only(
+                                    top: Insets.md,
+                                    bottom: Insets.xs,
+                                  ),
+                                  child: _DateHeader(date: date),
+                                ),
+                                for (final CalendarEvent event
+                                    in entriesMap[date]!
+                                      ..sort((a, b) => a.date.compareTo(b.date)))
+                                  _EventTile(event: event),
+                              ],
+                          ],
                         ),
-                      )
-                    else
-                      for (final DateTime date in eventDates) ...[
-                        Padding(
-                          padding: const EdgeInsets.only(
-                            top: Insets.md,
-                            bottom: Insets.xs,
-                          ),
-                          child: _DateHeader(date: date),
-                        ),
-                        for (final CalendarEvent event
-                            in entriesMap[date]!
-                              ..sort((a, b) => a.date.compareTo(b.date)))
-                          _EventTile(event: event),
-                      ],
+                      ),
+                    ),
                   ],
                 ),
               );
@@ -1068,7 +1146,7 @@ class _DateHeader extends StatelessWidget {
   }
 
   String _formatDate(DateTime date) {
-    final DateTime now = DateTime.now();
+    final DateTime now = clock.now();
     final DateTime today = DateTime(now.year, now.month, now.day);
     final DateTime tomorrow = today.add(const Duration(days: 1));
     final DateTime yesterday = today.subtract(const Duration(days: 1));
@@ -1176,7 +1254,7 @@ class _EventTile extends ConsumerWidget {
       posterWidget = _Poster(imageUrl: imageUrl, icon: Icons.album_outlined);
     }
 
-    final bool isFuture = event.date.isAfter(DateTime.now());
+    final bool isFuture = event.date.isAfter(clock.now());
     final (String label, Color bg, Color fg, Color accentColor) = event.hasFile
         ? (
             'Downloaded',
