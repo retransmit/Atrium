@@ -138,4 +138,18 @@ void main() {
     expect(find.text('New answer'), findsOneWidget);
     expect(find.text('Old answer'), findsNothing);
   });
+
+  testWidgets('Retry searches the query that failed, not the field',
+      (WidgetTester tester) async {
+    server.fail('GET', 'api/v1/search', 500);
+    await pump(tester);
+    await submit(tester, 'dune');
+    expect(find.text('Retry'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), '');
+    server.mend('GET', 'api/v1/search');
+    await tester.tap(find.text('Retry'));
+    await run(tester);
+    expect(searches(), hasLength(2));
+    expect(searches().last.uri.queryParameters['query'], 'dune');
+  });
 }

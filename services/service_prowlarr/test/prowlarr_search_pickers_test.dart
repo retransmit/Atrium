@@ -157,4 +157,19 @@ void main() {
     expect(sub.value, isTrue);
     expect(sub.onChanged, isNull);
   });
+
+  testWidgets('a ticked indexer that became disabled can still be unticked',
+      (WidgetTester tester) async {
+    Set<int>? reported;
+    await _pump(
+      tester,
+      ProwlarrIndexerPicker(
+        indexers: _indexers,
+        selected: const <int>{4},
+        onChanged: (Set<int> s) => reported = s,
+      ),
+    );
+    await tester.tap(find.text('Old Tracker'));
+    expect(reported, <int>{});
+  });
 }

@@ -127,7 +127,9 @@ class ProwlarrIndexerPicker extends StatelessWidget {
             value: groupOn || selected.contains(i.id),
             title: Text(i.name),
             subtitle: i.enable ? null : const Text('Disabled'),
-            onChanged: groupOn || !i.enable
+            // A disabled indexer can't be picked, but one picked before it
+            // was disabled can still be let go of.
+            onChanged: groupOn || (!i.enable && !selected.contains(i.id))
                 ? null
                 : (bool? on) => onChanged(_toggled(selected, i.id, on)),
           ),

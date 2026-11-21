@@ -55,7 +55,11 @@ final prowlarrCategoriesProvider =
   final ProwlarrApi api = await ref.watch(
     prowlarrApiProvider(instance).future,
   );
-  return api.getCategories();
+  final List<ProwlarrCategory> tree = await api.getCategories();
+  // Kept once loaded, so reopening the filters doesn't fetch it again. A
+  // failure isn't kept, so Retry asks again.
+  ref.keepAlive();
+  return tree;
 });
 
 /// Indexer stats keyed by indexerId, for badge counts in the list. Polls

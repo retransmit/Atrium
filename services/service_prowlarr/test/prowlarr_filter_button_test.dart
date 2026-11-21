@@ -122,4 +122,14 @@ void main() {
     expect(find.text('Could not load categories'), findsNothing);
     expect(find.text('Movies'), findsOneWidget);
   });
+
+  testWidgets('categories are fetched once, not on every open',
+      (WidgetTester tester) async {
+    await pump(tester);
+    await open(tester);
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    await open(tester);
+    expect(server.to('GET', 'api/v1/indexer/categories'), hasLength(1));
+  });
 }

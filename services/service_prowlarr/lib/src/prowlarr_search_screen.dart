@@ -199,7 +199,7 @@ class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
       return ErrorView(
         title: 'Search failed',
         message: _error!,
-        onRetry: () => _search(_controller.text),
+        onRetry: () => _search(_lastQuery ?? _controller.text),
       );
     }
     final List<ProwlarrRelease>? results = _results;
