@@ -186,6 +186,7 @@ class ProwlarrApi {
     String query, {
     List<int> indexerIds = const <int>[],
     List<int> categories = const <int>[],
+    String type = 'search',
     int limit = 150,
   }) async {
     try {
@@ -193,7 +194,7 @@ class ProwlarrApi {
         '$_base/search',
         queryParameters: <String, dynamic>{
           'query': query,
-          'type': 'search',
+          'type': type,
           'limit': limit,
           'offset': 0,
           if (indexerIds.isNotEmpty) 'indexerIds': indexerIds,

@@ -13,24 +13,64 @@ import 'prowlarr_providers.dart';
 const int prowlarrAllUsenet = -1;
 const int prowlarrAllTorrents = -2;
 
+/// Prowlarr's search types. A typed search reads `{Key:Value}` parameters
+/// such as `{ImdbId:tt0111161}` out of the query; a basic one does not.
+enum ProwlarrSearchType {
+  basic('search', 'Basic', <String>[]),
+  tv('tvsearch', 'TV', <String>[
+    'ImdbId',
+    'TvdbId',
+    'TmdbId',
+    'TvMazeId',
+    'Season',
+    'Episode',
+    'Year',
+  ]),
+  movie('movie', 'Movie', <String>['ImdbId', 'TmdbId', 'TraktId', 'Year']),
+  audio('music', 'Audio', <String>['Artist', 'Album', 'Label', 'Year']),
+  book('book', 'Book', <String>['Author', 'Title', 'Publisher', 'Year']);
+
+  const ProwlarrSearchType(this.apiValue, this.label, this.tokens);
+
+  /// The `type` sent to `/api/v1/search`.
+  final String apiValue;
+  final String label;
+
+  /// The parameters Prowlarr reads for this type.
+  final List<String> tokens;
+}
+
 /// What a search is narrowed to. Empty means all, as in Prowlarr.
 @immutable
 class ProwlarrSearchFilter {
   const ProwlarrSearchFilter({
+    this.type = ProwlarrSearchType.basic,
     this.indexerIds = const <int>{},
     this.categories = const <int>{},
   });
 
+  final ProwlarrSearchType type;
   final Set<int> indexerIds;
   final Set<int> categories;
 
-  bool get isEmpty => indexerIds.isEmpty && categories.isEmpty;
+  bool get isEmpty =>
+      type == ProwlarrSearchType.basic &&
+      indexerIds.isEmpty &&
+      categories.isEmpty;
 
   /// How many things are picked, for the filter button's badge.
-  int get count => indexerIds.length + categories.length;
+  int get count =>
+      (type == ProwlarrSearchType.basic ? 0 : 1) +
+      indexerIds.length +
+      categories.length;
 
-  ProwlarrSearchFilter copyWith({Set<int>? indexerIds, Set<int>? categories}) =>
+  ProwlarrSearchFilter copyWith({
+    ProwlarrSearchType? type,
+    Set<int>? indexerIds,
+    Set<int>? categories,
+  }) =>
       ProwlarrSearchFilter(
+        type: type ?? this.type,
         indexerIds: indexerIds ?? this.indexerIds,
         categories: categories ?? this.categories,
       );
@@ -38,11 +78,13 @@ class ProwlarrSearchFilter {
   @override
   bool operator ==(Object other) =>
       other is ProwlarrSearchFilter &&
+      other.type == type &&
       setEquals(other.indexerIds, indexerIds) &&
       setEquals(other.categories, categories);
 
   @override
   int get hashCode => Object.hash(
+        type,
         Object.hashAllUnordered(indexerIds),
         Object.hashAllUnordered(categories),
       );
@@ -50,7 +92,14 @@ class ProwlarrSearchFilter {
 
 /// The search field's hint: what a search with [filter] will reach.
 String prowlarrSearchHint(ProwlarrSearchFilter filter) {
-  final Set<int> ids = filter.indexerIds;
+  final String reach = _reach(filter.indexerIds);
+  return filter.type == ProwlarrSearchType.basic
+      ? 'Search $reach...'
+      : '${filter.type.label} search, $reach...';
+}
+
+/// Which indexers [ids] covers: "all torrents and 1 indexer".
+String _reach(Set<int> ids) {
   final bool torrents = ids.contains(prowlarrAllTorrents);
   final bool usenet = ids.contains(prowlarrAllUsenet);
   final int others = ids
@@ -58,13 +107,63 @@ String prowlarrSearchHint(ProwlarrSearchFilter filter) {
       .length;
   final String count = '$others ${others == 1 ? 'indexer' : 'indexers'}';
   if (ids.isEmpty || (torrents && usenet)) {
-    return 'Search all indexers...';
+    return 'all indexers';
   }
   if (!torrents && !usenet) {
-    return 'Search $count...';
+    return count;
   }
   final String group = torrents ? 'all torrents' : 'all usenet';
-  return others == 0 ? 'Search $group...' : 'Search $group and $count...';
+  return others == 0 ? group : '$group and $count';
+}
+
+/// [value] with `{token:}` in place of its selection, or on the end when
+/// it has none, and the cursor inside it ready for the value.
+TextEditingValue prowlarrInsertToken(TextEditingValue value, String token) {
+  final String insert = '{$token:}';
+  final TextSelection selection = value.selection;
+  final int start = selection.isValid ? selection.start : value.text.length;
+  final int end = selection.isValid ? selection.end : value.text.length;
+  return TextEditingValue(
+    text: value.text.replaceRange(start, end, insert),
+    selection: TextSelection.collapsed(offset: start + insert.length - 1),
+  );
+}
+
+/// The parameters a typed search reads, as chips under the search field.
+/// Braces are fiddly on a phone keyboard; a tap puts one in.
+class ProwlarrTokenChips extends StatelessWidget
+    implements PreferredSizeWidget {
+  const ProwlarrTokenChips({
+    required this.type,
+    required this.onToken,
+    super.key,
+  });
+
+  final ProwlarrSearchType type;
+  final ValueChanged<String> onToken;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(48);
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 48,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(
+          horizontal: Insets.lg,
+          vertical: Insets.xs,
+        ),
+        itemCount: type.tokens.length,
+        separatorBuilder: (_, __) => const SizedBox(width: Insets.sm),
+        itemBuilder: (BuildContext context, int i) => ActionChip(
+          label: Text(type.tokens[i]),
+          onPressed: () => onToken(type.tokens[i]),
+        ),
+      ),
+    );
+  }
 }
 
 /// Indexers grouped by protocol, as on Prowlarr's search page. Ticking a
@@ -320,6 +419,26 @@ class _FilterSheet extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
+                    const _SectionHeader('Search type'),
+                    Padding(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: Insets.lg),
+                      child: Wrap(
+                        spacing: Insets.sm,
+                        runSpacing: Insets.xs,
+                        children: <Widget>[
+                          for (final ProwlarrSearchType t
+                              in ProwlarrSearchType.values)
+                            ChoiceChip(
+                              label: Text(t.label),
+                              selected: value.type == t,
+                              onSelected: (_) =>
+                                  filter.value = value.copyWith(type: t),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const Divider(),
                     const _SectionHeader('Indexers'),
                     _loaded(
                       indexers,

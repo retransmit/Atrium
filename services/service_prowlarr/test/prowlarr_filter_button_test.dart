@@ -132,4 +132,46 @@ void main() {
     await open(tester);
     expect(server.to('GET', 'api/v1/indexer/categories'), hasLength(1));
   });
+
+  testWidgets('Search type comes first with Basic picked',
+      (WidgetTester tester) async {
+    await pump(tester);
+    await open(tester);
+    expect(
+      tester.getTopLeft(find.text('Search type')).dy,
+      lessThan(tester.getTopLeft(find.text('Indexers')).dy),
+    );
+    expect(
+      tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Basic'))
+          .selected,
+      isTrue,
+    );
+  });
+
+  testWidgets('picking Movie sets the type and the badge',
+      (WidgetTester tester) async {
+    await pump(tester);
+    await open(tester);
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Movie'));
+    await tester.pump();
+    expect(filter.value.type, ProwlarrSearchType.movie);
+    expect(
+      tester.widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Movie'))
+          .selected,
+      isTrue,
+    );
+    expect(
+      find.descendant(of: find.byType(Badge), matching: find.text('1')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Clear resets the type', (WidgetTester tester) async {
+    filter.value = const ProwlarrSearchFilter(type: ProwlarrSearchType.movie);
+    await pump(tester);
+    await open(tester);
+    await tester.tap(find.text('Clear'));
+    await tester.pump();
+    expect(filter.value.type, ProwlarrSearchType.basic);
+  });
 }

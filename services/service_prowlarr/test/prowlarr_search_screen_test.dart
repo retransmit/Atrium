@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:core_networking/core_networking.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -59,6 +60,16 @@ void main() {
       await tester.tap(target);
       await tester.pump();
     }
+    await tester.tap(find.text('Done'));
+    await run(tester);
+  }
+
+  /// Opens the filters, picks the search type [label], and presses Done.
+  Future<void> pickType(WidgetTester tester, String label) async {
+    await tester.tap(find.byTooltip('Filters'));
+    await run(tester);
+    await tester.tap(find.widgetWithText(ChoiceChip, label));
+    await tester.pump();
     await tester.tap(find.text('Done'));
     await run(tester);
   }
@@ -151,5 +162,118 @@ void main() {
     await run(tester);
     expect(searches(), hasLength(2));
     expect(searches().last.uri.queryParameters['query'], 'dune');
+  });
+
+  testWidgets('chips show for a typed search only',
+      (WidgetTester tester) async {
+    await pump(tester);
+    expect(find.byType(ActionChip), findsNothing);
+    await pickType(tester, 'Movie');
+    expect(find.widgetWithText(ActionChip, 'ImdbId'), findsOneWidget);
+    expect(find.widgetWithText(ActionChip, 'TraktId'), findsOneWidget);
+    expect(find.widgetWithText(ActionChip, 'TvdbId'), findsNothing);
+    await pickType(tester, 'Basic');
+    expect(find.byType(ActionChip), findsNothing);
+  });
+
+  testWidgets('a chip inserts its token and focuses the field',
+      (WidgetTester tester) async {
+    await pump(tester);
+    await pickType(tester, 'Movie');
+    await tester.tap(find.widgetWithText(ActionChip, 'ImdbId'));
+    await tester.pump();
+    final TextEditingController field =
+        tester.widget<TextField>(find.byType(TextField)).controller!;
+    expect(field.text, '{ImdbId:}');
+    expect(field.selection, const TextSelection.collapsed(offset: 8));
+    expect(
+      tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus,
+      isTrue,
+    );
+  });
+
+  testWidgets('switching back to Basic keeps typed tokens',
+      (WidgetTester tester) async {
+    await pump(tester);
+    await pickType(tester, 'TV');
+    await tester.tap(find.widgetWithText(ActionChip, 'Season'));
+    await tester.pump();
+    await pickType(tester, 'Basic');
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      '{Season:}',
+    );
+  });
+
+  testWidgets('the search sends the type', (WidgetTester tester) async {
+    await pump(tester);
+    await pickType(tester, 'TV');
+    await submit(tester, '{TvdbId:71663}');
+    expect(searches().last.uri.queryParameters['type'], 'tvsearch');
+    expect(searches().last.uri.queryParameters['query'], '{TvdbId:71663}');
+  });
+
+  testWidgets('changing only the type re-runs the search',
+      (WidgetTester tester) async {
+    await pump(tester);
+    await submit(tester, 'dune');
+    await pickType(tester, 'Movie');
+    expect(searches(), hasLength(2));
+    expect(searches().last.uri.queryParameters['type'], 'movie');
+  });
+
+  testWidgets('the TV chip row scrolls instead of overflowing on a phone',
+      (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(360, 780);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await pump(tester);
+    await pickType(tester, 'TV');
+    expect(tester.takeException(), isNull);
+    expect(find.widgetWithText(ActionChip, 'Year').hitTestable(), findsNothing);
+    await tester.dragUntilVisible(
+      find.widgetWithText(ActionChip, 'Year'),
+      find.ancestor(
+        of: find.byType(ActionChip).first,
+        matching: find.byType(Scrollable),
+      ),
+      const Offset(-100, 0),
+    );
+    await tester.ensureVisible(find.widgetWithText(ActionChip, 'Year'));
+    await tester.pumpAndSettle();
+    expect(
+      find.widgetWithText(ActionChip, 'Year').hitTestable(),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('picking a type in the sheet keeps the keyboard down',
+      (WidgetTester tester) async {
+    await pump(tester);
+    await tester.tap(find.byTooltip('Filters'));
+    await run(tester);
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Movie'));
+    await run(tester);
+    final FocusNode field =
+        tester.widget<EditableText>(find.byType(EditableText)).focusNode;
+    expect(field.hasFocus, isFalse);
+    expect(tester.testTextInput.isVisible, isFalse);
+    await tester.tap(find.text('Done'));
+    await run(tester);
+    expect(field.hasFocus, isFalse);
+    expect(tester.testTextInput.isVisible, isFalse);
+  });
+
+  testWidgets('a chip brings back a keyboard that was put away',
+      (WidgetTester tester) async {
+    await pump(tester);
+    await pickType(tester, 'Movie');
+    await tester.tap(find.byType(TextField));
+    await tester.pump();
+    await SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
+    expect(tester.testTextInput.isVisible, isFalse);
+    await tester.tap(find.widgetWithText(ActionChip, 'ImdbId'));
+    await tester.pump();
+    expect(tester.testTextInput.isVisible, isTrue);
   });
 }
