@@ -6,6 +6,7 @@
 /// template.
 library;
 
+export 'src/models/prowlarr_category.dart';
 export 'src/models/prowlarr_indexer.dart';
 export 'src/models/prowlarr_indexer_stats.dart';
 export 'src/models/prowlarr_release.dart';

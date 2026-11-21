@@ -3,6 +3,7 @@ import 'package:core_networking/core_networking.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'models/prowlarr_application.dart';
+import 'models/prowlarr_category.dart';
 import 'models/prowlarr_history.dart';
 import 'models/prowlarr_indexer.dart';
 import 'models/prowlarr_indexer_stats.dart';
@@ -42,6 +43,19 @@ final prowlarrIndexersProvider =
         a.name.toLowerCase().compareTo(b.name.toLowerCase()),
   );
   return indexers;
+});
+
+/// Prowlarr's standard category tree, for narrowing a search. Fixed per
+/// Prowlarr version, so it is fetched once and not polled.
+final prowlarrCategoriesProvider =
+    FutureProvider.autoDispose.family<List<ProwlarrCategory>, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final ProwlarrApi api = await ref.watch(
+    prowlarrApiProvider(instance).future,
+  );
+  return api.getCategories();
 });
 
 /// Indexer stats keyed by indexerId, for badge counts in the list. Polls
