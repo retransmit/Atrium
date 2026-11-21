@@ -4,7 +4,7 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
-typedef FakeAnswer = Object? Function(RequestOptions request);
+typedef FakeAnswer = FutureOr<Object?> Function(RequestOptions request);
 
 /// Prowlarr's `api/v1` as far as the search tests need it. Requests are
 /// matched on method and path.
