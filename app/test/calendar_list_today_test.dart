@@ -34,12 +34,19 @@ const Instance _radarr = Instance(
   auth: InstanceAuth.apiKey(apiKey: 'k'),
 );
 
-/// One movie in cinemas on each of [days] of [month], titled `M<month>-<day>`.
-List<RadarrMovie> _movies(DateTime month, Iterable<int> days) => <RadarrMovie>[
+/// [perDay] movies in cinemas on each of [days] of [month]. The first of a
+/// day is titled `M<month>-<day>`, any others `M<month>-<day>-<n>`.
+List<RadarrMovie> _movies(
+  DateTime month,
+  Iterable<int> days, {
+  int perDay = 1,
+}) =>
+    <RadarrMovie>[
       for (final int day in days)
+        for (int n = 0; n < perDay; n++)
         RadarrMovie(
-          id: month.month * 100 + day,
-          title: 'M${month.month}-$day',
+          id: month.month * 10000 + day * 100 + n,
+          title: n == 0 ? 'M${month.month}-$day' : 'M${month.month}-$day-$n',
           year: month.year,
           inCinemas: DateTime(month.year, month.month, day, 12)
               .toIso8601String(),
@@ -55,6 +62,7 @@ Future<void> _pump(
   WidgetTester tester, {
   required Iterable<int> Function(DateTime month) days,
   bool listView = true,
+  int perDay = 1,
 }) async {
   tester.view.physicalSize = const Size(800, 1200);
   tester.view.devicePixelRatio = 1.0;
@@ -71,7 +79,7 @@ Future<void> _pump(
         ),
         radarrCalendarProvider.overrideWith(
           (Ref ref, (Instance, DateTime, bool) key) async =>
-              _movies(key.$2, days(key.$2)),
+              _movies(key.$2, days(key.$2), perDay: perDay),
         ),
       ],
       child: MaterialApp(
@@ -134,7 +142,7 @@ void main() {
     await withClock(nov21, () async {
       await _pump(tester, days: (_) => _range(1, 30));
       await tester.fling(
-        find.byType(SingleChildScrollView).first,
+        find.byType(CustomScrollView),
         const Offset(0, 4000),
         3000,
       );
@@ -162,6 +170,20 @@ void main() {
       await tester.tap(find.byTooltip('Switch to list view'));
       await _settle(tester);
       expect(_nearTop(tester, 'M11-21'), isTrue);
+    });
+  });
+
+  testWidgets('rows far from the screen are not built',
+      (WidgetTester tester) async {
+    await withClock(nov21, () async {
+      await _pump(tester, days: (_) => _range(1, 30), perDay: 10);
+      expect(_nearTop(tester, 'M11-21'), isTrue);
+      // 300 releases; only those around what is on screen should exist,
+      // since each row loads a poster.
+      expect(
+        find.textContaining('M11-', skipOffstage: false).evaluate().length,
+        lessThan(60),
+      );
     });
   });
 }

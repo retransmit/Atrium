@@ -298,9 +298,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   late DateTime _selectedDay;
 
   // List view opens at today: the first day from today with releases, or the
-  // last one when they are all past. These track when to jump there.
+  // last one when they are all past. That day is the list's centre, so
+  // offset zero puts it at the top. These track when to jump back there.
+  static const Key _laterKey = ValueKey<String>('calendar-list-later');
   final ScrollController _listScroll = ScrollController();
-  final GlobalKey _anchorKey = GlobalKey();
   bool _anchorPending = true;
   DateTime? _listMonth;
 
@@ -313,13 +314,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   /// Puts the anchored day at the top, or the top of the list when this
   /// month has none.
   void _scrollToAnchor() {
-    if (!mounted) {
-      return;
-    }
-    final BuildContext? target = _anchorKey.currentContext;
-    if (target != null) {
-      Scrollable.ensureVisible(target);
-    } else if (_listScroll.hasClients) {
+    if (mounted && _listScroll.hasClients) {
       _listScroll.jumpTo(0);
     }
   }
@@ -654,6 +649,27 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       orElse: () => eventDates.last,
                     )
                   : null;
+              // Rows from the anchor day on, and the rows before it.
+              final List<Widget> later = <Widget>[];
+              final List<Widget> earlier = <Widget>[];
+              for (final DateTime date in eventDates) {
+                final List<Widget> rows =
+                    anchor != null && date.isBefore(anchor) ? earlier : later;
+                rows.add(
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      top: Insets.md,
+                      bottom: Insets.xs,
+                    ),
+                    child: _DateHeader(date: date),
+                  ),
+                );
+                for (final CalendarEvent event in entriesMap[date]!
+                  ..sort((a, b) => a.date.compareTo(b.date))) {
+                  rows.add(_EventTile(event: event));
+                }
+              }
+
               if (_anchorPending || _listMonth != _visibleMonth) {
                 _anchorPending = false;
                 _listMonth = _visibleMonth;
@@ -765,61 +781,59 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       ),
                     ),
                     Expanded(
-                      // Laid out in full, not lazily, so the day to open at
-                      // exists to scroll to. A month is a few dozen rows.
-                      child: SingleChildScrollView(
+                      // The anchor day is the centre: days before it grow
+                      // upwards above it. Both lists build lazily, since
+                      // every row loads a poster.
+                      child: CustomScrollView(
                         controller: _listScroll,
                         physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.fromLTRB(
-                          Insets.lg,
-                          0,
-                          Insets.lg,
-                          Insets.lg,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            if (eventDates.isEmpty)
-                              Center(
-                                child: Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: Insets.xxl),
-                                  child: Column(
-                                    children: <Widget>[
-                                      Icon(
-                                        Icons.calendar_today_outlined,
-                                        size: 48,
-                                        color: theme.colorScheme.outline
-                                            .withValues(alpha: 0.5),
+                        center: _laterKey,
+                        slivers: <Widget>[
+                          SliverPadding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: Insets.lg,
+                            ),
+                            sliver: SliverList.list(
+                              children: earlier.reversed.toList(),
+                            ),
+                          ),
+                          SliverPadding(
+                            key: _laterKey,
+                            padding: const EdgeInsets.fromLTRB(
+                              Insets.lg,
+                              0,
+                              Insets.lg,
+                              Insets.lg,
+                            ),
+                            sliver: eventDates.isEmpty
+                                ? SliverToBoxAdapter(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: Insets.xxl,
                                       ),
-                                      const SizedBox(height: Insets.md),
-                                      Text(
-                                        'No releases scheduled this month',
-                                        style: theme.textTheme.titleMedium?.copyWith(
-                                          color: theme.colorScheme.outline,
-                                        ),
+                                      child: Column(
+                                        children: <Widget>[
+                                          Icon(
+                                            Icons.calendar_today_outlined,
+                                            size: 48,
+                                            color: theme.colorScheme.outline
+                                                .withValues(alpha: 0.5),
+                                          ),
+                                          const SizedBox(height: Insets.md),
+                                          Text(
+                                            'No releases scheduled this month',
+                                            style: theme.textTheme.titleMedium
+                                                ?.copyWith(
+                                              color: theme.colorScheme.outline,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
-                                ),
-                              )
-                            else
-                              for (final DateTime date in eventDates) ...[
-                                Padding(
-                                  key: date == anchor ? _anchorKey : null,
-                                  padding: const EdgeInsets.only(
-                                    top: Insets.md,
-                                    bottom: Insets.xs,
-                                  ),
-                                  child: _DateHeader(date: date),
-                                ),
-                                for (final CalendarEvent event
-                                    in entriesMap[date]!
-                                      ..sort((a, b) => a.date.compareTo(b.date)))
-                                  _EventTile(event: event),
-                              ],
-                          ],
-                        ),
+                                    ),
+                                  )
+                                : SliverList.list(children: later),
+                          ),
+                        ],
                       ),
                     ),
                   ],
