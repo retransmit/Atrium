@@ -7,11 +7,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'models/prowlarr_release.dart';
 import 'prowlarr_api.dart';
 import 'prowlarr_providers.dart';
+import 'prowlarr_search_filters.dart';
 
 /// Sort orders for search results.
 enum _SortBy { seeders, size, age }
 
-/// Manual search across all of an instance's indexers, with grab-to-client.
+/// Manual search across an instance's indexers, with grab-to-client. The
+/// filter button narrows it to some indexers and categories.
 ///
 /// Search is submit-driven (not debounced): one query fans out to every
 /// enabled indexer and can take tens of seconds, so firing on every
@@ -32,9 +34,30 @@ class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
   bool _searching = false;
   String? _error;
   _SortBy _sortBy = _SortBy.seeders;
+  final ValueNotifier<ProwlarrSearchFilter> _filter =
+      ValueNotifier<ProwlarrSearchFilter>(const ProwlarrSearchFilter());
+
+  /// The query and filter last searched with: what the results on screen
+  /// are for.
+  String? _lastQuery;
+  ProwlarrSearchFilter? _lastFilter;
+
+  /// Bumped per search, so an answer to an older one is dropped.
+  int _generation = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _filter.addListener(_onFilter);
+  }
+
+  // The hint follows the filter.
+  void _onFilter() => setState(() {});
 
   @override
   void dispose() {
+    _filter.removeListener(_onFilter);
+    _filter.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -44,6 +67,10 @@ class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
     if (term.length < 2) {
       return;
     }
+    final ProwlarrSearchFilter filter = _filter.value;
+    _lastQuery = term;
+    _lastFilter = filter;
+    final int generation = ++_generation;
     setState(() {
       _searching = true;
       _error = null;
@@ -51,8 +78,12 @@ class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
     try {
       final ProwlarrApi api =
           await ref.read(prowlarrApiProvider(widget.instance).future);
-      final List<ProwlarrRelease> releases = await api.search(term);
-      if (!mounted) {
+      final List<ProwlarrRelease> releases = await api.search(
+        term,
+        indexerIds: filter.indexerIds.toList(),
+        categories: filter.categories.toList(),
+      );
+      if (!mounted || generation != _generation) {
         return;
       }
       setState(() {
@@ -60,13 +91,22 @@ class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
         _searching = false;
       });
     } on Object catch (e) {
-      if (!mounted) {
+      if (!mounted || generation != _generation) {
         return;
       }
       setState(() {
         _error = e is NetworkException ? e.message : '$e';
         _searching = false;
       });
+    }
+  }
+
+  /// After the filter sheet closes: search again if a search has been made
+  /// and the filter is no longer the one it used.
+  void _onFiltersClosed() {
+    final String? query = _lastQuery;
+    if (query != null && _filter.value != _lastFilter) {
+      _search(query);
     }
   }
 
@@ -99,13 +139,18 @@ class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
           controller: _controller,
           autofocus: true,
           textInputAction: TextInputAction.search,
-          decoration: const InputDecoration(
-            hintText: 'Search all indexers...',
+          decoration: InputDecoration(
+            hintText: prowlarrSearchHint(_filter.value),
             border: InputBorder.none,
           ),
           onSubmitted: _search,
         ),
         actions: <Widget>[
+          ProwlarrFilterButton(
+            instance: widget.instance,
+            filter: _filter,
+            onClosed: _onFiltersClosed,
+          ),
           PopupMenuButton<_SortBy>(
             tooltip: 'Sort',
             icon: const Icon(Icons.sort),
