@@ -2,6 +2,7 @@ import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'models/prowlarr_release.dart';
@@ -31,6 +32,11 @@ class ProwlarrSearchScreen extends ConsumerStatefulWidget {
 class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _field = FocusNode();
+
+  // The chip row coming and going rebuilds the app bar's layout. The key
+  // moves the field instead of rebuilding it, so autofocus doesn't fire
+  // again and pull the keyboard up behind the filter sheet.
+  final GlobalKey _fieldKey = GlobalKey();
   List<ProwlarrRelease>? _results;
   bool _searching = false;
   String? _error;
@@ -139,6 +145,7 @@ class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
     return Scaffold(
       appBar: AppBar(
         title: TextField(
+          key: _fieldKey,
           controller: _controller,
           focusNode: _field,
           autofocus: true,
@@ -156,7 +163,14 @@ class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
                 onToken: (String token) {
                   _controller.value =
                       prowlarrInsertToken(_controller.value, token);
-                  _field.requestFocus();
+                  if (_field.hasFocus) {
+                    // Back hides the keyboard but leaves the focus, so
+                    // asking for focus again would not bring it back.
+                    SystemChannels.textInput
+                        .invokeMethod<void>('TextInput.show');
+                  } else {
+                    _field.requestFocus();
+                  }
                 },
               ),
         actions: <Widget>[

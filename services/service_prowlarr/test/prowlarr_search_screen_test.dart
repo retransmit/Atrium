@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:core_networking/core_networking.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -244,5 +245,35 @@ void main() {
       find.widgetWithText(ActionChip, 'Year').hitTestable(),
       findsOneWidget,
     );
+  });
+
+  testWidgets('picking a type in the sheet keeps the keyboard down',
+      (WidgetTester tester) async {
+    await pump(tester);
+    await tester.tap(find.byTooltip('Filters'));
+    await run(tester);
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Movie'));
+    await run(tester);
+    final FocusNode field =
+        tester.widget<EditableText>(find.byType(EditableText)).focusNode;
+    expect(field.hasFocus, isFalse);
+    expect(tester.testTextInput.isVisible, isFalse);
+    await tester.tap(find.text('Done'));
+    await run(tester);
+    expect(field.hasFocus, isFalse);
+    expect(tester.testTextInput.isVisible, isFalse);
+  });
+
+  testWidgets('a chip brings back a keyboard that was put away',
+      (WidgetTester tester) async {
+    await pump(tester);
+    await pickType(tester, 'Movie');
+    await tester.tap(find.byType(TextField));
+    await tester.pump();
+    await SystemChannels.textInput.invokeMethod<void>('TextInput.hide');
+    expect(tester.testTextInput.isVisible, isFalse);
+    await tester.tap(find.widgetWithText(ActionChip, 'ImdbId'));
+    await tester.pump();
+    expect(tester.testTextInput.isVisible, isTrue);
   });
 }
