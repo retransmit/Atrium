@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:clock/clock.dart';
 import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
 import 'package:core_profile/core_profile.dart';
@@ -325,7 +326,9 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     final Instance radarr = _instance(ServiceKind.radarr);
-    final DateTime airDate = DateTime.now();
+    // The screen reads the test's clock, which stands still; the real time
+    // would already be after it and count as upcoming.
+    final DateTime airDate = clock.now();
 
     await _pump(
       tester,
