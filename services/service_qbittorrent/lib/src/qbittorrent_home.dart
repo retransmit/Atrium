@@ -1212,14 +1212,18 @@ class _TorrentTileState extends ConsumerState<_TorrentTile> {
                                         : cs.onSurfaceVariant,
                                   ),
                                   const SizedBox(width: 2),
-                                  Text(
-                                    '${fmtBytes(bytes)} this session',
-                                    maxLines: 1,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: isSelected
-                                          ? cs.onPrimaryContainer
-                                              .withValues(alpha: 0.8)
-                                          : cs.onSurfaceVariant,
+                                  // Bounded, so large text wraps inside
+                                  // the card rather than running off it.
+                                  Flexible(
+                                    child: Text(
+                                      '${fmtBytes(bytes)} this session',
+                                      style:
+                                          theme.textTheme.bodySmall?.copyWith(
+                                        color: isSelected
+                                            ? cs.onPrimaryContainer
+                                                .withValues(alpha: 0.8)
+                                            : cs.onSurfaceVariant,
+                                      ),
                                     ),
                                   ),
                                 ],

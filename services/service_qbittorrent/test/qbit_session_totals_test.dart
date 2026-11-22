@@ -118,6 +118,24 @@ void main() {
       expect(find.text('1.5 GB this session'), findsNothing);
     });
 
+    testWidgets('keeps the session line inside a narrow card at large text',
+        (WidgetTester tester) async {
+      final ProviderContainer c = await _openList(tester);
+      tester.view.physicalSize = const Size(320, 891);
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      // The card's speed row overflows at this size on its own; that is not
+      // what this test is about, so overflow reports are set aside and the
+      // session line is measured instead.
+      final void Function(FlutterErrorDetails)? report = FlutterError.onError;
+      FlutterError.onError = (FlutterErrorDetails _) {};
+      await _sortBy(tester, c, QbitSortField.sessionUp);
+      await tester.pump();
+      FlutterError.onError = report;
+      final Rect line = tester.getRect(find.textContaining('this session'));
+      expect(line.right, lessThanOrEqualTo(320));
+    });
+
     testWidgets('drops it again for another sort',
         (WidgetTester tester) async {
       final ProviderContainer c = await _openList(tester);
