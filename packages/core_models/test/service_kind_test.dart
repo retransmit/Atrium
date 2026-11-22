@@ -40,6 +40,7 @@ void main() {
         'cleanuparr',
         'slskd',
         'gotify',
+        'technitium',
       ],
     );
   });
@@ -178,6 +179,16 @@ void main() {
     expect(ServiceKind.slskd.authStyle, AuthStyle.apiKey);
     expect(ServiceKind.slskd.role, ServiceRole.downloader);
     expect(ServiceKind.slskd.acceptsTorrents, isFalse);
+  });
+
+  test('Technitium is registered as an apiKey analytics service', () {
+    expect(ServiceKind.technitium.displayName, 'Technitium DNS');
+    expect(ServiceKind.technitium.tagline, 'Network-wide DNS & ad blocking');
+    expect(ServiceKind.technitium.isBeta, isTrue);
+    expect(ServiceKind.technitium.defaultPort, 5380);
+    expect(ServiceKind.technitium.authStyle, AuthStyle.apiKey);
+    expect(ServiceKind.technitium.role, ServiceRole.analytics);
+    expect(ServiceKind.technitium.acceptsTorrents, isFalse);
   });
 
   test('existing services retain their default ports', () {

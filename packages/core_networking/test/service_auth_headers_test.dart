@@ -13,8 +13,7 @@ void main() {
   /// Runs a request through the interceptor and reports the headers it set.
   Set<String> headersActuallySet(ServiceKind kind, InstanceAuth auth) {
     final RequestOptions options = RequestOptions(path: '/probe');
-    final AuthInterceptor interceptor =
-        AuthInterceptor(kind: kind, auth: auth);
+    final AuthInterceptor interceptor = AuthInterceptor(kind: kind, auth: auth);
     interceptor.onRequest(options, RequestInterceptorHandler());
     return options.headers.keys.toSet();
   }
@@ -45,7 +44,8 @@ void main() {
     }
   });
 
-  test('MySpeed sets password and x-password headers only when key provided', () {
+  test('MySpeed sets password and x-password headers only when key provided',
+      () {
     expect(
       serviceAuthHeaderNames(ServiceKind.myspeed, apiKey),
       <String>{'password', 'x-password'},
@@ -63,7 +63,7 @@ void main() {
     );
   });
 
-  test('the six kinds that spend Authorization on themselves are named', () {
+  test('the kinds that spend Authorization on themselves are named', () {
     // These are the ones where a user's own Authorization header never
     // reaches the wire, which is the whole reason the warning exists.
     final Set<ServiceKind> owners = <ServiceKind>{
@@ -76,6 +76,7 @@ void main() {
     expect(owners, <ServiceKind>{
       ServiceKind.speedtestTracker,
       ServiceKind.tracearr,
+      ServiceKind.technitium,
       ServiceKind.nzbget,
       ServiceKind.transmission,
       ServiceKind.rtorrent,

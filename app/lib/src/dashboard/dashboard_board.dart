@@ -27,6 +27,7 @@ import 'package:service_gluetun/service_gluetun.dart';
 import 'package:service_myspeed/service_myspeed.dart';
 import 'package:service_aria2/service_aria2.dart';
 import 'package:service_cleanuparr/service_cleanuparr.dart';
+import 'package:service_technitium/service_technitium.dart';
 import 'package:service_slskd/service_slskd.dart';
 
 import '../health_providers.dart';
@@ -35,6 +36,7 @@ import 'dashboard_layout.dart';
 import 'dashboard_widget_kind.dart';
 import 'widgets/adguard_home_widget.dart';
 import 'widgets/cleanuparr_widget.dart';
+import 'widgets/technitium_widget.dart';
 import 'widgets/dashdot_widget.dart';
 import 'widgets/downloads_widget.dart';
 import 'widgets/gluetun_status_widget.dart';
@@ -224,6 +226,10 @@ class DashboardBoard extends ConsumerWidget {
         return DashboardGotifyWidget(
           instances: _byKind(instances, ServiceKind.gotify),
         );
+      case DashboardWidgetKind.technitium:
+        return DashboardTechnitiumWidget(
+          instances: _byKind(instances, ServiceKind.technitium),
+        );
       case DashboardWidgetKind.wakeOnLan:
         return const DashboardWakeOnLanWidget();
     }
@@ -306,6 +312,10 @@ class DashboardBoard extends ConsumerWidget {
         case ServiceKind.slskd:
           ref.invalidate(slskdDownloadsProvider(i));
           ref.invalidate(slskdUploadsProvider(i));
+        case ServiceKind.technitium:
+          ref.invalidate(technitiumStatusProvider(i));
+          ref.invalidate(technitiumStatsProvider(i));
+          ref.invalidate(technitiumSettingsProvider(i));
         default:
           break;
       }
@@ -380,16 +390,15 @@ class _EditBoard extends ConsumerWidget {
                               ? 'Show widget'
                               : 'Needs something that can fill it',
                           icon: const Icon(Icons.add_circle_outline),
-                          onPressed:
-                              DashboardBoard._configured(
+                          onPressed: DashboardBoard._configured(
                             c.kind,
                             instances,
                             wolDeviceCount: wolCount,
                           )
-                                  ? () => ref
-                                      .read(dashboardLayoutProvider.notifier)
-                                      .setEnabled(c.kind, true)
-                                  : null,
+                              ? () => ref
+                                  .read(dashboardLayoutProvider.notifier)
+                                  .setEnabled(c.kind, true)
+                              : null,
                         ),
                       ),
                     ),

@@ -66,6 +66,7 @@ dependencies:
   service_aria2:
   service_cleanuparr:
   service_slskd:
+  service_technitium:
   url_launcher: ^6.3.2
 dev_dependencies:
   flutter_launcher_icons: ^0.14.3
