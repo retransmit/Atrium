@@ -124,14 +124,25 @@ void main() {
       tester.view.physicalSize = const Size(320, 891);
       tester.platformDispatcher.textScaleFactorTestValue = 2;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-      // The card's speed row overflows at this size on its own; that is not
-      // what this test is about, so overflow reports are set aside and the
-      // session line is measured instead.
+      // Set aside here: overflow, since the card's speed row overflows at
+      // this size on its own and the session line is measured below; and
+      // the settings tab, built alongside the list, which the wide test font
+      // trips at this size where Roboto does not. Any other error from the
+      // list still reports.
       final void Function(FlutterErrorDetails)? report = FlutterError.onError;
-      FlutterError.onError = (FlutterErrorDetails _) {};
-      await _sortBy(tester, c, QbitSortField.sessionUp);
-      await tester.pump();
-      FlutterError.onError = report;
+      FlutterError.onError = (FlutterErrorDetails d) {
+        final String text = '$d';
+        if (text.contains('qbittorrent_home.dart') &&
+            !text.contains('A RenderFlex overflowed')) {
+          report?.call(d);
+        }
+      };
+      try {
+        await _sortBy(tester, c, QbitSortField.sessionUp);
+        await tester.pump();
+      } finally {
+        FlutterError.onError = report;
+      }
       final Rect line = tester.getRect(find.textContaining('this session'));
       expect(line.right, lessThanOrEqualTo(320));
     });
