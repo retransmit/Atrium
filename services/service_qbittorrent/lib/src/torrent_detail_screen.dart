@@ -656,8 +656,17 @@ class _OverviewTab extends ConsumerWidget {
               _SectionCard(
                 title: 'Transfer',
                 rows: <(String, String)>[
-                  ('Downloaded', fmtBytes(p.totalDownloaded)),
-                  ('Uploaded', fmtBytes(p.totalUploaded)),
+                  // All time, then since qBittorrent last started.
+                  (
+                    'Downloaded',
+                    '${fmtBytes(p.totalDownloaded)} '
+                        '(${fmtBytes(torrent.downloadedSession)} this session)',
+                  ),
+                  (
+                    'Uploaded',
+                    '${fmtBytes(p.totalUploaded)} '
+                        '(${fmtBytes(torrent.uploadedSession)} this session)',
+                  ),
                   ('Ratio', p.shareRatio.toStringAsFixed(2)),
                   ('Seeds', '${p.seeds} connected (${p.seedsTotal} total)'),
                   ('Peers', '${p.peers} connected (${p.peersTotal} total)'),

@@ -1068,6 +1068,16 @@ class _TorrentTileState extends ConsumerState<_TorrentTile> {
     final bool complete = progress >= 1.0;
     final bool dlActive = torrent.dlspeed > 0;
     final bool upActive = torrent.upspeed > 0;
+    // Sorted by a session total, the card shows the figure it is sorted by.
+    final QbitSortField sortField = ref.watch(
+      qbitSortProvider(widget.instance)
+          .select((QbitSortConfig c) => c.field),
+    );
+    final (IconData, int)? session = switch (sortField) {
+      QbitSortField.sessionUp => (Icons.north, torrent.uploadedSession),
+      QbitSortField.sessionDl => (Icons.south, torrent.downloadedSession),
+      _ => null,
+    };
 
     final Widget tile = Material(
       color: isSelected ? cs.primaryContainer : cs.surfaceContainerHigh,
@@ -1190,6 +1200,30 @@ class _TorrentTileState extends ConsumerState<_TorrentTile> {
                                     : cs.onSurfaceVariant,
                               ),
                             ),
+                            if (session case (final IconData icon, final int bytes))
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Icon(
+                                    icon,
+                                    size: 12,
+                                    color: isSelected
+                                        ? cs.onPrimaryContainer
+                                        : cs.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    '${fmtBytes(bytes)} this session',
+                                    maxLines: 1,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: isSelected
+                                          ? cs.onPrimaryContainer
+                                              .withValues(alpha: 0.8)
+                                          : cs.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
                           ],
                         ),
                       ],
