@@ -1224,44 +1224,78 @@ class _TorrentTileState extends ConsumerState<_TorrentTile> {
                 ],
               ),
               const SizedBox(height: Insets.md),
-              Row(
-                children: <Widget>[
-                  _SpeedPill(
-                    icon: Icons.south,
-                    label: '${fmtBytes(torrent.dlspeed)}/s',
-                    color: cs.primary,
-                    active: dlActive,
-                  ),
-                  const SizedBox(width: Insets.sm),
-                  _SpeedPill(
-                    icon: Icons.north,
-                    label: '${fmtBytes(torrent.upspeed)}/s',
-                    color: cs.tertiary,
-                    active: upActive,
-                  ),
-                  const Spacer(),
-                  Icon(Icons.swap_vert, size: 14, color: cs.onSurfaceVariant),
-                  const SizedBox(width: 2),
-                  Text(
-                    torrent.ratio.toStringAsFixed(2),
-                    style: theme.textTheme.labelSmall
-                        ?.copyWith(color: cs.onSurfaceVariant),
-                  ),
-                  if (!complete) ...<Widget>[
-                    const SizedBox(width: Insets.sm),
-                    Icon(
-                      Icons.schedule,
-                      size: 14,
-                      color: cs.onSurfaceVariant,
+              // Speeds on the left, ratio and ETA on the right. Where one
+              // line cannot hold both, as on a narrow phone with large text,
+              // the ratio and ETA move under the speeds instead of running
+              // off the card.
+              SizedBox(
+                width: double.infinity,
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: Insets.sm,
+                  runSpacing: Insets.xs,
+                  children: <Widget>[
+                    Wrap(
+                      spacing: Insets.sm,
+                      runSpacing: Insets.xs,
+                      children: <Widget>[
+                        _SpeedPill(
+                          icon: Icons.south,
+                          label: '${fmtBytes(torrent.dlspeed)}/s',
+                          color: cs.primary,
+                          active: dlActive,
+                        ),
+                        _SpeedPill(
+                          icon: Icons.north,
+                          label: '${fmtBytes(torrent.upspeed)}/s',
+                          color: cs.tertiary,
+                          active: upActive,
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 2),
-                    Text(
-                      _formatEta(torrent.eta),
-                      style: theme.textTheme.labelSmall
-                          ?.copyWith(color: cs.onSurfaceVariant),
+                    Wrap(
+                      spacing: Insets.sm,
+                      runSpacing: Insets.xs,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: <Widget>[
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Icon(
+                              Icons.swap_vert,
+                              size: 14,
+                              color: cs.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              torrent.ratio.toStringAsFixed(2),
+                              style: theme.textTheme.labelSmall
+                                  ?.copyWith(color: cs.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                        if (!complete)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              Icon(
+                                Icons.schedule,
+                                size: 14,
+                                color: cs.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                _formatEta(torrent.eta),
+                                style: theme.textTheme.labelSmall
+                                    ?.copyWith(color: cs.onSurfaceVariant),
+                              ),
+                            ],
+                          ),
+                      ],
                     ),
                   ],
-                ],
+                ),
               ),
             ],
           ),
