@@ -33,7 +33,8 @@ enum ServiceKind {
   adguardHome,
   aria2,
   cleanuparr,
-  slskd;
+  slskd,
+  gotify;
 
   /// All [ServiceKind] entries sorted alphabetically by their display name.
   static List<ServiceKind> get sortedValues =>
@@ -82,6 +83,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.aria2 => 'aria2',
         ServiceKind.cleanuparr => 'Cleanuparr',
         ServiceKind.slskd => 'slskd',
+        ServiceKind.gotify => 'Gotify',
       };
 
   /// One-line role description.
@@ -116,6 +118,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.aria2 => 'Download client',
         ServiceKind.cleanuparr => 'Malware blocker & cleaner',
         ServiceKind.slskd => 'Soulseek client',
+        ServiceKind.gotify => 'Notifications',
       };
 
   /// Whether this service's integration is still in beta. Surfaced as a
@@ -126,7 +129,8 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.rtorrent ||
         ServiceKind.aria2 ||
         ServiceKind.cleanuparr ||
-        ServiceKind.slskd =>
+        ServiceKind.slskd ||
+        ServiceKind.gotify =>
           true,
         _ => false,
       };
@@ -174,6 +178,8 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.cleanuparr => 11011,
         // slskd default HTTP/API port.
         ServiceKind.slskd => 5030,
+        // The port the official Docker image listens on.
+        ServiceKind.gotify => 80,
       };
 
   /// What auth flow the service uses by default. Some services (Jellyfin) can
@@ -192,7 +198,9 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.gluetun ||
         ServiceKind.myspeed ||
         ServiceKind.cleanuparr ||
-        ServiceKind.ombi =>
+        ServiceKind.ombi ||
+        // A client token; an application token can only post messages.
+        ServiceKind.gotify =>
           AuthStyle.apiKey,
         // aria2's credential is its `--rpc-secret`, which is sent as the
         // first RPC parameter rather than as a header. It is optional - a
@@ -258,7 +266,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.gluetun => ServiceRole.analytics,
         ServiceKind.myspeed => ServiceRole.analytics,
         ServiceKind.adguardHome => ServiceRole.analytics,
-        ServiceKind.cleanuparr => ServiceRole.extra,
+        ServiceKind.cleanuparr || ServiceKind.gotify => ServiceRole.extra,
       };
 
   /// Whether this service can be handed a torrent - a magnet URI, a link to a
