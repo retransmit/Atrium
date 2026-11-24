@@ -251,6 +251,46 @@ void main() {
     expect(find.textContaining('Test Show'), findsOneWidget);
   });
 
+  testWidgets('DashboardUpcomingWidget gives a season drop one banner',
+      (WidgetTester tester) async {
+    final Instance sonarr = makeInstance(ServiceKind.sonarr);
+    final DateTime tomorrow = DateTime.now().add(const Duration(days: 1));
+    const SonarrSeries drop = SonarrSeries(id: 7, title: 'Blade Runner 2099');
+    SonarrCalendarEvent episode(SonarrSeries series, int n) =>
+        SonarrCalendarEvent(
+          SonarrEpisode(
+            id: series.id * 100 + n,
+            seriesId: series.id,
+            title: 'Chapter $n',
+            seasonNumber: 1,
+            episodeNumber: n,
+            airDateUtc: tomorrow.toUtc().toIso8601String(),
+            monitored: true,
+            series: series,
+          ),
+          sonarr,
+        );
+    final List<CalendarEvent> events = <CalendarEvent>[
+      for (int n = 1; n <= 10; n++) episode(drop, n),
+      episode(const SonarrSeries(id: 8, title: 'Stick'), 5),
+    ];
+    await pumpBody(
+      tester,
+      <Override>[
+        for (final DateTime m in upcomingWindowMonths(DateTime.now()))
+          globalCalendarProvider((m, false))
+              .overrideWith((Ref ref) async => events),
+      ],
+      const DashboardUpcomingWidget(),
+    );
+    expect(find.text('Blade Runner 2099'), findsOneWidget);
+    expect(find.text('Stick'), findsOneWidget);
+    expect(find.textContaining('+9 more'), findsOneWidget);
+    expect(find.textContaining('Chapter 2'), findsNothing);
+    // Rows, not episodes: the pill agrees with what is listed.
+    expect(find.text('2 releases'), findsOneWidget);
+  });
+
   testWidgets('DashboardRecentlyAddedWidget shows newest series and movies',
       (WidgetTester tester) async {
     final Instance sonarr = makeInstance(ServiceKind.sonarr);

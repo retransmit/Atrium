@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../screens/calendar_groups.dart';
 import '../../screens/calendar_screen.dart';
 import '../dashboard_widget_card.dart';
 import '../dashboard_widget_kind.dart';
@@ -54,7 +55,10 @@ class DashboardUpcomingWidget extends ConsumerWidget {
       return !d.isBefore(windowStart) && d.isBefore(windowEnd);
     }).toList()
       ..sort((CalendarEvent a, CalendarEvent b) => a.date.compareTo(b.date));
-    final List<CalendarEvent> top = upcoming.take(5).toList();
+    // A series' episodes on one day are one row, so a season dropped at once
+    // does not fill the widget; every count below is in rows.
+    final List<CalendarGroup> groups = groupCalendarEvents(upcoming);
+    final List<CalendarGroup> top = groups.take(5).toList();
 
     Widget body;
     if (upcoming.isEmpty && anyLoading) {
@@ -81,8 +85,8 @@ class DashboardUpcomingWidget extends ConsumerWidget {
     } else {
       final List<Widget> rows = <Widget>[];
       DateTime? lastDay;
-      for (final CalendarEvent e in top) {
-        final DateTime d = e.date.toLocal();
+      for (final CalendarGroup g in top) {
+        final DateTime d = g.date.toLocal();
         final DateTime day = DateTime(d.year, d.month, d.day);
         if (lastDay == null || day != lastDay) {
           lastDay = day;
@@ -118,13 +122,12 @@ class DashboardUpcomingWidget extends ConsumerWidget {
         } else {
           rows.add(const SizedBox(height: Insets.sm));
         }
-        rows.add(_ReleaseBanner(event: e));
+        rows.add(_ReleaseBanner(group: g));
       }
-      if (upcoming.length > top.length) {
+      if (groups.length > top.length) {
         rows.add(Padding(
           padding: const EdgeInsets.only(top: Insets.sm),
-          child:
-              DashboardIdleRow(text: '+${upcoming.length - top.length} more'),
+          child: DashboardIdleRow(text: '+${groups.length - top.length} more'),
         ));
       }
       body = Column(
@@ -137,11 +140,10 @@ class DashboardUpcomingWidget extends ConsumerWidget {
       kind: DashboardWidgetKind.upcoming,
       accent: cs.secondary,
       onTap: () => context.goNamed(AtriumRoutes.calendarName),
-      trailing: upcoming.isNotEmpty
+      trailing: groups.isNotEmpty
           ? DashboardPill(
               icon: Icons.calendar_today_outlined,
-              label:
-                  '${upcoming.length} release${upcoming.length == 1 ? '' : 's'}',
+              label: '${groups.length} release${groups.length == 1 ? '' : 's'}',
               color: cs.primary,
             )
           : null,
@@ -164,12 +166,13 @@ class DashboardUpcomingWidget extends ConsumerWidget {
 /// poster thumb, title + meta line, and a trailing badge - a check for a
 /// grabbed release, an airtime chip for an episode still to air.
 class _ReleaseBanner extends StatelessWidget {
-  const _ReleaseBanner({required this.event});
+  const _ReleaseBanner({required this.group});
 
-  final CalendarEvent event;
+  final CalendarGroup group;
 
   @override
   Widget build(BuildContext context) {
+    final CalendarEvent event = group.first;
     final ThemeData theme = Theme.of(context);
     final ColorScheme cs = theme.colorScheme;
     final String? backdrop = event.backdropUrl;
@@ -186,8 +189,9 @@ class _ReleaseBanner extends StatelessWidget {
         hasArt ? onArt.withValues(alpha: 0.78) : cs.onSurfaceVariant;
     // Episodes carry a real airtime; movie release dates do not.
     final String? airTime = event is SonarrCalendarEvent
-        ? DateFormat.jm().format(event.date.toLocal())
+        ? DateFormat.jm().format(group.date.toLocal())
         : null;
+
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
@@ -254,12 +258,30 @@ class _ReleaseBanner extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 3),
-                        Text(
-                          event.subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.bodySmall
-                              ?.copyWith(color: subColor),
+                        Row(
+                          children: <Widget>[
+                            Flexible(
+                              child: Text(
+                                event.subtitle,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall
+                                    ?.copyWith(color: subColor),
+                              ),
+                            ),
+                            // Its own text, so a long episode title is cut
+                            // before the count is.
+                            if (group.more > 0) ...<Widget>[
+                              const SizedBox(width: Insets.xs),
+                              Text(
+                                '+${group.more} more',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: subColor,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ],
                     ),
@@ -267,7 +289,7 @@ class _ReleaseBanner extends StatelessWidget {
                   const SizedBox(width: Insets.sm),
                   _StatusBadge(
                     hasArt: hasArt,
-                    hasFile: event.hasFile,
+                    hasFile: group.allHaveFiles,
                     airTime: airTime,
                     onArt: onArt,
                     scrim: scrim,
