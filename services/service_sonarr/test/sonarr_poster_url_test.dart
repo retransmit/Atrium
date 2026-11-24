@@ -45,4 +45,20 @@ void main() {
       expect(url, contains('/sonarr/api/v3/mediacover/87/'));
     });
   });
+
+  test('the api key stays out of the url', () {
+    // A reverse proxy writes the full request line to its access log, so a
+    // key in the query ends up there. Artwork sends it as a header instead,
+    // from ArtworkHeaders in core_ui.
+    final String? url = _apiFor('https://example.com/').posterUrl(
+      const SonarrImage(
+        coverType: 'poster',
+        url: '/MediaCover/87/poster.jpg?lastWrite=639',
+      ),
+    );
+    expect(
+      url,
+      'https://example.com/api/v3/mediacover/87/poster.jpg?lastWrite=639',
+    );
+  });
 }
