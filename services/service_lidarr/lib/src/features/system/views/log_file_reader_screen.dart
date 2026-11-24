@@ -4,11 +4,11 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/lidarr_formatters.dart';
 import '../../../generated/generated.dart';
 import '../../../lidarr_providers.dart';
+import '../log_file_save.dart';
 
 /// High-performance, virtualized in-app log viewer for Lidarr log files.
 class LogFileReaderScreen extends ConsumerStatefulWidget {
@@ -138,49 +138,20 @@ class _LogFileReaderScreenState extends ConsumerState<LogFileReaderScreen> {
     }
   }
 
-  String _buildDirectDownloadUrl() {
-    final String rawBase = widget.instance.localUrl.isNotEmpty
-        ? widget.instance.localUrl
-        : widget.instance.externalUrl;
-    final String host = rawBase.replaceAll(RegExp(r'/+$'), '');
-    final String path =
-        widget.file.downloadUrl ?? '/logfile/${widget.file.filename}';
-    final String normalizedPath = path.startsWith('/') ? path : '/$path';
-    final String apiKey = switch (widget.instance.auth) {
-      InstanceAuthApiKey(:final String apiKey) => apiKey,
-      _ => '',
-    };
-    final String separator = normalizedPath.contains('?') ? '&' : '?';
-    return '$host$normalizedPath${apiKey.isNotEmpty ? '${separator}apikey=$apiKey' : ''}';
-  }
-
-  Future<void> _downloadLogFile() async {
-    final String downloadUrl = _buildDirectDownloadUrl();
-    final Uri uri = Uri.parse(downloadUrl);
-    try {
-      final bool launched = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
+  Future<void> _downloadLogFile() => saveLidarrLogFile(
+        context,
+        filename: widget.file.filename ?? 'lidarr.txt',
+        read: () => ref.read(
+          lidarrLogFileContentProvider(
+            (
+              widget.instance,
+              filename: widget.file.filename ?? '',
+              contentsUrl: widget.file.contentsUrl,
+              downloadUrl: widget.file.downloadUrl,
+            ),
+          ).future,
+        ),
       );
-      if (!launched && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not open download URL: $downloadUrl'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to trigger download: $e'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-  }
 
   Color _getLineColor(String line, ColorScheme cs) {
     final String lower = line.toLowerCase();
