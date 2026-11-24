@@ -1,6 +1,6 @@
 # Atrium - Status
 
-> Snapshot of what genuinely works and what is left, as of 2026-11-18.
+> Snapshot of what genuinely works and what is left, as of 2026-11-24.
 > Atrium is published on F-Droid and on the GitHub releases page. It is
 > still in early development and every module is work in progress; nothing
 > here is a release promise.
@@ -32,7 +32,9 @@ Atrium is a **controller** app. Video playback was removed by design
   airings/releases with status dots (downloaded in the theme's tertiary
   colour since PR #213, upcoming in primary, missing in error), or a list;
   the view picked is kept
-  across launches (Bhavyashah94, PR #205, #203)
+  across launches (Bhavyashah94, PR #205, #203). The list opens at today,
+  or at the next day with releases (the latest one when the whole month is
+  past), and builds only the rows near the screen (PR #254, #203)
 - **Dashboard widgets**, reorderable from Customize dashboard: Active
   downloads, Now streaming, Upcoming releases, Recently added, Recently
   downloaded, Requests (Seerr and Ombi), Glances, Dashdot, Speedtest
@@ -61,7 +63,10 @@ Atrium is a **controller** app. Video playback was removed by design
   instance that allows a self-signed certificate has it accepted for its
   artwork too, not only its API (per host, 2026-10-19, #189); the
   instance form needs one valid URL and rejects a malformed one in either
-  field (PR #213)
+  field (PR #213); artwork from Radarr, Sonarr, Lidarr, Plex, Jellyfin and
+  Emby carries the instance's key or session token as a header, never in
+  the URL, and only to the instance the image belongs to (PR #262, reported
+  privately through #258)
 - **qBittorrent**: cookie login (qBit 5.x 204 fix), realtime polling of
   only what changed (per-instance interval, default 5s), add
   magnet/file (with skip hash check), categories, tag and tracker
@@ -80,7 +85,13 @@ Atrium is a **controller** app. Video playback was removed by design
   server says which: in the list from qBittorrent 5.0, on a torrent's own
   screen from 4.5.1, and nowhere while a magnet has no metadata. Settings >
   System shows the external IPv4 and IPv6 address qBittorrent reports, from
-  5.0 (PR #210, #204)
+  5.0 (PR #210, #204). Session totals (what a torrent moved since
+  qBittorrent started) sit beside the all-time ones on its screen, and on
+  the cards while sorted by session upload or download (PR #256, #250); the
+  card's bottom row wraps rather than overflowing on narrow phones and large
+  text (PR #257). A torrent's category is changed from its Overview tab,
+  in the same picker as the list's hold menu and multi-select, which ticks
+  the current one (PR #263, #259)
 - **Sonarr** (the canonical *arr module): poster/banner grid with
   client-side sort & filter (status, network, airing, added, size on
   disk) and per-series disk sizes, the custom filters saved on the
@@ -105,7 +116,9 @@ Atrium is a **controller** app. Video playback was removed by design
   (missing and cutoff unmet), queue/history/blocklist, the full settings
   tree (profiles, download clients, indexers, import lists, notifications,
   metadata, media management, quality definitions), system diagnostics and
-  an in-app log viewer with level filtering and search. Album releases also
+  an in-app log viewer with level filtering and search, whose download saves
+  the file through the API rather than opening the browser on a keyed URL
+  (PR #262). Album releases also
   appear in the shared calendar. The add sheet remembers the last choices
   per instance; until the first add, the root folder's own defaults apply
   (#234). Artwork loads through `api/v1/mediacover`
@@ -113,7 +126,10 @@ Atrium is a **controller** app. Video playback was removed by design
   behind a sign-in portal that only lets `/api` through (#222)
 - **Prowlarr**: indexers (add/edit/test from schema), manual search
   across indexers with grab-to-client, history, full settings menu,
-  system
+  system. Search takes a filter sheet: indexers (single ones, or all torrent
+  or all Usenet), categories with their subcategories (PR #252, #248), and a
+  search type (TV, Movie, Audio, Book) whose parameters come as chips that
+  insert `{ImdbId:}`-style tokens (PR #253, #249)
 - **Bazarr**: series/movies with per-episode subtitle status, manual
   provider search/download/delete, wanted, history, blacklist, system
 - **Seerr** (Jellyseerr / Overseerr): discover (trending/upcoming/genres),
@@ -345,7 +361,11 @@ Atrium is a **controller** app. Video playback was removed by design
   asked to load an http(s) `.torrent` by URL, over both http and https, so the
   app downloads the file itself and sends the bytes, which does work. That
   fetch deliberately uses a bare Dio rather than the instance one, so an
-  instance's credentials are never sent to whatever host a pasted link names
+  instance's credentials are never sent to whatever host a pasted link names.
+  Test connection looks beneath the given address for ruTorrent's httprpc
+  plugin and `RPC2`, and offers "Use this address" when rTorrent answers
+  there; httprpc requests go to the address itself, without the trailing
+  slash nginx answers with a 404 (PR #246, #247)
 
 - **aria2** (beta; contributed by Bhavyashah94 in PR #202, #167; added 2026-10-21, modernized 2026-10-22, live-verified against 1.37.0): the
   client that speaks its own protocol rather than a REST API - JSON-RPC over

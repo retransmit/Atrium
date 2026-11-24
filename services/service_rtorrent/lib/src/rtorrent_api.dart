@@ -25,8 +25,10 @@ import 'xmlrpc.dart';
 ///    the shared [AuthInterceptor].
 ///
 /// The endpoint is whatever URL the user configured: `host:8000` for a direct
-/// XML-RPC port, or something like `host/RPC2` when ruTorrent's nginx fronts
-/// it. Both are just "POST to the base URL" as far as this client cares.
+/// XML-RPC port, `host/RPC2` when a web server mounts it, or
+/// `.../rutorrent/plugins/httprpc/action.php` on a seedbox where only
+/// ruTorrent's httprpc plugin reaches it. All are just "POST to the address
+/// itself" as far as this client cares.
 class RtorrentApi {
   RtorrentApi(this._dio, {Dio? fetchDio}) : _fetchDio = fetchDio ?? Dio();
 
@@ -208,6 +210,12 @@ class RtorrentApi {
     return dir.isEmpty ? const <String>[] : <String>['d.directory.set="$dir"'];
   }
 
+  // ------------------------------------------------------------------ misc
+
+  /// rTorrent's version string; the cheapest call there is.
+  Future<String> clientVersion() async =>
+      '${await _call('system.client_version', const <Object?>[])}';
+
   // ---------------------------------------------------------------- limits
 
   /// Global caps in **bytes per second**; 0 clears the limit.
@@ -222,7 +230,8 @@ class RtorrentApi {
   Future<Object?> _call(String method, List<Object?> params) async {
     try {
       final Response<String> resp = await _dio.post<String>(
-        '',
+        // The endpoint is the address itself, never `.../action.php/`.
+        selfPath(_dio.options.baseUrl),
         data: XmlRpc.buildCall(method, params),
         options: Options(
           contentType: 'text/xml',
@@ -254,9 +263,11 @@ class RtorrentApi {
       throw NetworkServerException('rTorrent: ${e.message}', status: 200);
     } on FormatException catch (e) {
       throw NetworkBadResponseException(
-        'rTorrent did not return XML-RPC (${e.message}). Point the URL at the '
-        'SCGI/XML-RPC endpoint - often port 8000, or /RPC2 when ruTorrent is '
-        'in front - rather than at the web UI.',
+        'rTorrent did not return XML-RPC (${e.message}), so the address '
+        'points somewhere else, such as the ruTorrent web page. Behind '
+        'ruTorrent, as on most seedboxes, add /plugins/httprpc/action.php to '
+        'the ruTorrent address. Otherwise rTorrent is usually at /RPC2 or on '
+        'port 8000.',
         status: 200,
       );
     } on DioException catch (e) {

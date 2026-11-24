@@ -1,0 +1,11 @@
+Prowlarr search: pick indexers and categories, and search by TV, Movie,
+Audio or Book with parameter chips.
+
+qBittorrent: session upload and download totals, and change a torrent's
+category from its own screen.
+
+The calendar list opens at today.
+
+rTorrent finds its address behind ruTorrent and works behind nginx.
+
+Artwork requests no longer carry API keys or tokens in their address.

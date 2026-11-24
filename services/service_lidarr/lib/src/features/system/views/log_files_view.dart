@@ -3,11 +3,11 @@ import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/lidarr_formatters.dart';
 import '../../../generated/generated.dart';
 import '../../../lidarr_providers.dart';
+import '../log_file_save.dart';
 import 'log_file_reader_screen.dart';
 
 /// Log files available on disk view.
@@ -16,46 +16,24 @@ class LogFilesView extends ConsumerWidget {
 
   final Instance instance;
 
-  String _buildDirectDownloadUrl(LogFileResource file) {
-    final String rawBase =
-        instance.localUrl.isNotEmpty ? instance.localUrl : instance.externalUrl;
-    final String host = rawBase.replaceAll(RegExp(r'/+$'), '');
-    final String path = file.downloadUrl ?? '/logfile/${file.filename}';
-    final String normalizedPath = path.startsWith('/') ? path : '/$path';
-    final String apiKey = switch (instance.auth) {
-      InstanceAuthApiKey(:final String apiKey) => apiKey,
-      _ => '',
-    };
-    final String separator = normalizedPath.contains('?') ? '&' : '?';
-    return '$host$normalizedPath${apiKey.isNotEmpty ? '${separator}apikey=$apiKey' : ''}';
-  }
-
-  Future<void> _downloadFile(BuildContext context, LogFileResource file) async {
-    final String downloadUrl = _buildDirectDownloadUrl(file);
-    final Uri uri = Uri.parse(downloadUrl);
-    try {
-      final bool launched = await launchUrl(
-        uri,
-        mode: LaunchMode.externalApplication,
-      );
-      if (!launched && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not open download URL: $downloadUrl'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to trigger download: $e'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
+  Future<void> _downloadFile(
+    BuildContext context,
+    WidgetRef ref,
+    LogFileResource file,
+  ) {
+    final provider = lidarrLogFileContentProvider(
+      (
+        instance,
+        filename: file.filename ?? '',
+        contentsUrl: file.contentsUrl,
+        downloadUrl: file.downloadUrl,
+      ),
+    );
+    return saveLidarrLogFile(
+      context,
+      filename: file.filename ?? 'lidarr.txt',
+      read: () => ref.read(provider.future),
+    );
   }
 
   void _openFileReader(BuildContext context, LogFileResource file) {
@@ -70,7 +48,11 @@ class LogFilesView extends ConsumerWidget {
     );
   }
 
-  void _showFileDetailDialog(BuildContext context, LogFileResource file) {
+  void _showFileDetailDialog(
+    BuildContext context,
+    WidgetRef ref,
+    LogFileResource file,
+  ) {
     showDialog<void>(
       context: context,
       builder: (BuildContext ctx) {
@@ -138,7 +120,7 @@ class LogFilesView extends ConsumerWidget {
               label: const Text('Download'),
               onPressed: () {
                 Navigator.pop(ctx);
-                _downloadFile(context, file);
+                _downloadFile(context, ref, file);
               },
             ),
             FilledButton.icon(
@@ -244,12 +226,12 @@ class LogFilesView extends ConsumerWidget {
                         IconButton(
                           icon: const Icon(Icons.download_outlined, size: 20),
                           tooltip: 'Download',
-                          onPressed: () => _downloadFile(context, file),
+                          onPressed: () => _downloadFile(context, ref, file),
                         ),
                         IconButton(
                           icon: const Icon(Icons.info_outline, size: 20),
                           tooltip: 'Details',
-                          onPressed: () => _showFileDetailDialog(context, file),
+                          onPressed: () => _showFileDetailDialog(context, ref, file),
                         ),
                         const Icon(
                           Icons.chevron_right,

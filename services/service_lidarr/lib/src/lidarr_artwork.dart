@@ -45,7 +45,8 @@ abstract final class LidarrArtwork {
   static bool _isRemote(String? url) =>
       url != null && url.isNotEmpty && url.startsWith('http');
 
-  /// Builds an absolute, authenticated image URL for an item's [MediaCover].
+  /// Builds an absolute image URL for an item's [MediaCover]. The api key is
+  /// not in it; `AtriumNetworkImage` sends it as a header.
   ///
   /// Lidarr hands out web paths, prefixed with its URL Base when one is set:
   /// `/base/MediaCover/<artistId>/poster.jpg`,
@@ -116,17 +117,10 @@ abstract final class LidarrArtwork {
       resolvedPath = pathOrUrl;
     }
 
-    final String? apiKey = switch (instance.auth) {
-      InstanceAuthApiKey(:final String apiKey) when apiKey.isNotEmpty => apiKey,
-      _ => null,
-    };
-    final String separator = resolvedPath.contains('?') ? '&' : '?';
-    final String withKey = apiKey != null
-        ? '$resolvedPath${separator}apikey=$apiKey'
-        : resolvedPath;
-
+    // No key in the URL: a reverse proxy logs the full request line.
+    // Artwork carries it as an X-Api-Key header, from ArtworkHeaders.
     final Uri base = Uri.parse(rawBase.endsWith('/') ? rawBase : '$rawBase/');
-    return base.resolve(withKey).toString();
+    return base.resolve(resolvedPath).toString();
   }
 
   /// Poster / artwork image for an artist. Defaults to optimized 250px thumbnail.

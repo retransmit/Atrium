@@ -2,16 +2,19 @@ import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
 import 'package:core_ui/core_ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'models/prowlarr_release.dart';
 import 'prowlarr_api.dart';
 import 'prowlarr_providers.dart';
+import 'prowlarr_search_filters.dart';
 
 /// Sort orders for search results.
 enum _SortBy { seeders, size, age }
 
-/// Manual search across all of an instance's indexers, with grab-to-client.
+/// Manual search across an instance's indexers, with grab-to-client. The
+/// filter button narrows it to some indexers and categories.
 ///
 /// Search is submit-driven (not debounced): one query fans out to every
 /// enabled indexer and can take tens of seconds, so firing on every
@@ -28,13 +31,41 @@ class ProwlarrSearchScreen extends ConsumerStatefulWidget {
 
 class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
   final TextEditingController _controller = TextEditingController();
+  final FocusNode _field = FocusNode();
+
+  // The chip row coming and going rebuilds the app bar's layout. The key
+  // moves the field instead of rebuilding it, so autofocus doesn't fire
+  // again and pull the keyboard up behind the filter sheet.
+  final GlobalKey _fieldKey = GlobalKey();
   List<ProwlarrRelease>? _results;
   bool _searching = false;
   String? _error;
   _SortBy _sortBy = _SortBy.seeders;
+  final ValueNotifier<ProwlarrSearchFilter> _filter =
+      ValueNotifier<ProwlarrSearchFilter>(const ProwlarrSearchFilter());
+
+  /// The query and filter last searched with: what the results on screen
+  /// are for.
+  String? _lastQuery;
+  ProwlarrSearchFilter? _lastFilter;
+
+  /// Bumped per search, so an answer to an older one is dropped.
+  int _generation = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _filter.addListener(_onFilter);
+  }
+
+  // The hint follows the filter.
+  void _onFilter() => setState(() {});
 
   @override
   void dispose() {
+    _filter.removeListener(_onFilter);
+    _filter.dispose();
+    _field.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -44,6 +75,10 @@ class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
     if (term.length < 2) {
       return;
     }
+    final ProwlarrSearchFilter filter = _filter.value;
+    _lastQuery = term;
+    _lastFilter = filter;
+    final int generation = ++_generation;
     setState(() {
       _searching = true;
       _error = null;
@@ -51,8 +86,13 @@ class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
     try {
       final ProwlarrApi api =
           await ref.read(prowlarrApiProvider(widget.instance).future);
-      final List<ProwlarrRelease> releases = await api.search(term);
-      if (!mounted) {
+      final List<ProwlarrRelease> releases = await api.search(
+        term,
+        indexerIds: filter.indexerIds.toList(),
+        categories: filter.categories.toList(),
+        type: filter.type.apiValue,
+      );
+      if (!mounted || generation != _generation) {
         return;
       }
       setState(() {
@@ -60,13 +100,22 @@ class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
         _searching = false;
       });
     } on Object catch (e) {
-      if (!mounted) {
+      if (!mounted || generation != _generation) {
         return;
       }
       setState(() {
         _error = e is NetworkException ? e.message : '$e';
         _searching = false;
       });
+    }
+  }
+
+  /// After the filter sheet closes: search again if a search has been made
+  /// and the filter is no longer the one it used.
+  void _onFiltersClosed() {
+    final String? query = _lastQuery;
+    if (query != null && _filter.value != _lastFilter) {
+      _search(query);
     }
   }
 
@@ -96,16 +145,40 @@ class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
     return Scaffold(
       appBar: AppBar(
         title: TextField(
+          key: _fieldKey,
           controller: _controller,
+          focusNode: _field,
           autofocus: true,
           textInputAction: TextInputAction.search,
-          decoration: const InputDecoration(
-            hintText: 'Search all indexers...',
+          decoration: InputDecoration(
+            hintText: prowlarrSearchHint(_filter.value),
             border: InputBorder.none,
           ),
           onSubmitted: _search,
         ),
+        bottom: _filter.value.type == ProwlarrSearchType.basic
+            ? null
+            : ProwlarrTokenChips(
+                type: _filter.value.type,
+                onToken: (String token) {
+                  _controller.value =
+                      prowlarrInsertToken(_controller.value, token);
+                  if (_field.hasFocus) {
+                    // Back hides the keyboard but leaves the focus, so
+                    // asking for focus again would not bring it back.
+                    SystemChannels.textInput
+                        .invokeMethod<void>('TextInput.show');
+                  } else {
+                    _field.requestFocus();
+                  }
+                },
+              ),
         actions: <Widget>[
+          ProwlarrFilterButton(
+            instance: widget.instance,
+            filter: _filter,
+            onClosed: _onFiltersClosed,
+          ),
           PopupMenuButton<_SortBy>(
             tooltip: 'Sort',
             icon: const Icon(Icons.sort),
@@ -154,7 +227,7 @@ class _ProwlarrSearchScreenState extends ConsumerState<ProwlarrSearchScreen> {
       return ErrorView(
         title: 'Search failed',
         message: _error!,
-        onRetry: () => _search(_controller.text),
+        onRetry: () => _search(_lastQuery ?? _controller.text),
       );
     }
     final List<ProwlarrRelease>? results = _results;

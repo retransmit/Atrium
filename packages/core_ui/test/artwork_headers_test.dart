@@ -21,7 +21,9 @@ void main() {
         localUrl: local,
         externalUrl: external,
         urlMode: UrlMode.auto,
-        auth: const InstanceAuth.apiKey(apiKey: 'k'),
+        // No key, so these cover the custom headers on their own. The key
+        // itself is covered in artwork_auth_headers_test.dart.
+        auth: const InstanceAuth.apiKey(apiKey: ''),
         customHeaders: headers,
       );
 

@@ -154,6 +154,14 @@ Two consequences worth knowing:
   TMDB and Fanart.tv, and your proxy credentials have no business leaving
   your network.
 
+Since 1.12.0 the instance's own key travels the same way: `X-Api-Key` for
+Radarr, Sonarr and Lidarr, `X-Plex-Token` for Plex, and the signed-in session
+token for Jellyfin and Emby. Artwork URLs no longer carry `?apikey=`,
+`api_key=` or `X-Plex-Token=`, so a proxy that logs the full request line, as
+Traefik, nginx and Caddy do by default, no longer writes the key to its access
+log. Older versions put it there; if your proxy logs go anywhere others can
+read, rotate the keys once you have updated.
+
 ## What the dashboard dot means
 
 - **Online**: the service answered its own status endpoint and the

@@ -357,12 +357,27 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
       }
     } finally {
       if (mounted) {
+        // Results belong to the form as it was tested. Anything edited since
+        // has already cleared them, and putting them back would offer an old
+        // address over the one now typed.
+        final bool unchanged = _buildInstance(
+              widget.instanceId ?? 'connection-test',
+            ) ==
+            candidate;
         setState(() {
           _testingConnection = false;
-          _connectionResults = results;
+          _connectionResults =
+              unchanged ? results : <String, ConnectionTestResult>{};
         });
       }
     }
+  }
+
+  /// Puts the address the test found into the field it was testing, and tests
+  /// again so the result shows it working.
+  void _useSuggestedUrl(String which, String url) {
+    (which == 'External' ? _externalUrl : _localUrl).text = url;
+    _testConnection();
   }
 
   Future<void> _delete() async {
@@ -721,9 +736,25 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                         ),
                         const SizedBox(width: Insets.sm),
                         Expanded(
-                          child: Text(
-                            '${entry.key}: ${entry.value.message}',
-                            style: theme.textTheme.bodyMedium,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                '${entry.key}: ${entry.value.message}',
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                              if (entry.value.suggestedUrl
+                                  case final String suggested)
+                                TextButton(
+                                  onPressed: _testingConnection
+                                      ? null
+                                      : () => _useSuggestedUrl(
+                                            entry.key,
+                                            suggested,
+                                          ),
+                                  child: const Text('Use this address'),
+                                ),
+                            ],
                           ),
                         ),
                       ],

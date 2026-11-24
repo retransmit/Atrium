@@ -163,8 +163,8 @@ class SonarrApi {
     }
   }
 
-  /// Absolute, authenticated URL for a series image, suitable for
-  /// `CachedNetworkImage`.
+  /// Absolute URL for a series image, for `AtriumNetworkImage`, which adds
+  /// the api key as a header.
   String? posterUrl(
     SonarrImage image, {
     int? width,
@@ -205,8 +205,9 @@ class SonarrApi {
             pathOrUrl.substring(coverIdx + '/MediaCover'.length);
         pathOrUrl = '$_base/mediacover$tail';
       }
-      final String separator = pathOrUrl.contains('?') ? '&' : '?';
-      return base.resolve('$pathOrUrl${separator}apikey=$apiKey').toString();
+      // No key in the URL: a reverse proxy logs the full request line.
+      // Artwork carries it as an X-Api-Key header, from ArtworkHeaders.
+      return base.resolve(pathOrUrl).toString();
     }
     return upstream;
   }

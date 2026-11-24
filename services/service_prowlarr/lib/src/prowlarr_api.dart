@@ -2,6 +2,7 @@ import 'package:core_networking/core_networking.dart';
 import 'package:dio/dio.dart';
 
 import 'models/prowlarr_application.dart';
+import 'models/prowlarr_category.dart';
 import 'models/prowlarr_history.dart';
 import 'models/prowlarr_indexer.dart';
 import 'models/prowlarr_indexer_stats.dart';
@@ -27,6 +28,20 @@ class ProwlarrApi {
             (dynamic e) => ProwlarrIndexer.fromJson(e as Map<String, dynamic>),
           )
           .toList();
+    } on DioException catch (e) {
+      throw NetworkException.fromDio(e);
+    }
+  }
+
+  /// The standard category tree a search can be narrowed to.
+  Future<List<ProwlarrCategory>> getCategories() async {
+    try {
+      final Response<dynamic> resp =
+          await _dio.get<dynamic>('$_base/indexer/categories');
+      return <ProwlarrCategory>[
+        for (final Object? e in resp.data as List<dynamic>)
+          if (e is Map<String, dynamic>) ProwlarrCategory.fromJson(e),
+      ];
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
     }
@@ -171,6 +186,7 @@ class ProwlarrApi {
     String query, {
     List<int> indexerIds = const <int>[],
     List<int> categories = const <int>[],
+    String type = 'search',
     int limit = 150,
   }) async {
     try {
@@ -178,7 +194,7 @@ class ProwlarrApi {
         '$_base/search',
         queryParameters: <String, dynamic>{
           'query': query,
-          'type': 'search',
+          'type': type,
           'limit': limit,
           'offset': 0,
           if (indexerIds.isNotEmpty) 'indexerIds': indexerIds,

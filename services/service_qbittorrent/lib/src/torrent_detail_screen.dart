@@ -9,6 +9,7 @@ import 'package:progress_indicator_m3e/progress_indicator_m3e.dart';
 import 'models/qbit_detail.dart';
 import 'models/qbit_torrent.dart';
 import 'qbit_tracker_edit.dart';
+import 'qbittorrent_action_utils.dart';
 import 'qbittorrent_client.dart';
 import 'qbittorrent_home.dart' show fmtBytes, friendlyState;
 import 'qbittorrent_providers.dart';
@@ -656,8 +657,17 @@ class _OverviewTab extends ConsumerWidget {
               _SectionCard(
                 title: 'Transfer',
                 rows: <(String, String)>[
-                  ('Downloaded', fmtBytes(p.totalDownloaded)),
-                  ('Uploaded', fmtBytes(p.totalUploaded)),
+                  // All time, then since qBittorrent last started.
+                  (
+                    'Downloaded',
+                    '${fmtBytes(p.totalDownloaded)} '
+                        '(${fmtBytes(torrent.downloadedSession)} this session)',
+                  ),
+                  (
+                    'Uploaded',
+                    '${fmtBytes(p.totalUploaded)} '
+                        '(${fmtBytes(torrent.uploadedSession)} this session)',
+                  ),
                   ('Ratio', p.shareRatio.toStringAsFixed(2)),
                   ('Seeds', '${p.seeds} connected (${p.seedsTotal} total)'),
                   ('Peers', '${p.peers} connected (${p.peersTotal} total)'),
@@ -670,12 +680,22 @@ class _OverviewTab extends ConsumerWidget {
               const SizedBox(height: Insets.md),
               _SectionCard(
                 title: 'Info',
+                editable: <String, VoidCallback>{
+                  'Category': () => QbittorrentActionUtils.editCategory(
+                        context,
+                        ref,
+                        instance,
+                        <String>{torrent.hash},
+                      ),
+                },
                 rows: <(String, String)>[
                   ('Save path', p.savePath),
                   ('Added', date(p.additionDate)),
                   ('Completed', date(p.completionDate)),
-                  if (torrent.category.isNotEmpty)
-                    ('Category', torrent.category),
+                  (
+                    'Category',
+                    torrent.category.isEmpty ? 'None' : torrent.category,
+                  ),
                   if (p.comment.isNotEmpty) ('Comment', p.comment),
                 ],
               ),
@@ -728,10 +748,17 @@ class _MiniPill extends StatelessWidget {
 }
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.rows});
+  const _SectionCard({
+    required this.title,
+    required this.rows,
+    this.editable = const <String, VoidCallback>{},
+  });
 
   final String title;
   final List<(String, String)> rows;
+
+  /// Rows that can be changed, by label, with what a tap on them does.
+  final Map<String, VoidCallback> editable;
 
   @override
   Widget build(BuildContext context) {
@@ -754,27 +781,45 @@ class _SectionCard extends StatelessWidget {
           ),
           const SizedBox(height: Insets.sm),
           for (final (String label, String value) in rows)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: Insets.xs),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  SizedBox(
-                    width: 104,
-                    child: Text(
-                      label,
-                      style: theme.textTheme.labelMedium
-                          ?.copyWith(color: cs.onSurfaceVariant),
-                    ),
-                  ),
-                  Expanded(
-                    child: Text(value, style: theme.textTheme.bodyMedium),
-                  ),
-                ],
-              ),
-            ),
+            _row(theme, cs, label, value, editable[label]),
         ],
       ),
+    );
+  }
+
+  Widget _row(
+    ThemeData theme,
+    ColorScheme cs,
+    String label,
+    String value,
+    VoidCallback? onEdit,
+  ) {
+    final Widget row = Padding(
+      padding: const EdgeInsets.symmetric(vertical: Insets.xs),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          SizedBox(
+            width: 104,
+            child: Text(
+              label,
+              style: theme.textTheme.labelMedium
+                  ?.copyWith(color: cs.onSurfaceVariant),
+            ),
+          ),
+          Expanded(
+            child: Text(value, style: theme.textTheme.bodyMedium),
+          ),
+          if (onEdit != null)
+            Icon(Icons.edit_outlined, size: 18, color: cs.onSurfaceVariant),
+        ],
+      ),
+    );
+    if (onEdit == null) return row;
+    return InkWell(
+      onTap: onEdit,
+      borderRadius: BorderRadius.circular(8),
+      child: Semantics(button: true, hint: 'Change', child: row),
     );
   }
 }

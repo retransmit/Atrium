@@ -10,7 +10,7 @@ the home Wi-Fi or out in the world.
 
 **[Website][site]** - screenshots and a tour, no install needed.
 
-> **Status:** v1.11.0. Install from [F-Droid][fdroid], or grab a signed APK
+> **Status:** v1.12.0. Install from [F-Droid][fdroid], or grab a signed APK
 > from the [releases page][releases].
 
 ## Why
@@ -63,7 +63,7 @@ each one covers:
 | Sonarr                 | 7 tabs incl. full Settings editor, sort/filter with the server's custom filters, calendar |
 | Radarr                 | same depth as Sonarr, movie flavored, with collection monitoring      |
 | Lidarr                 | artists, albums and tracks, wanted, activity, settings, log reader    |
-| Prowlarr               | indexers, search + grab, history, settings, system                    |
+| Prowlarr               | indexers, search by type with indexer and category filters + grab, history, settings, system |
 | Bazarr                 | series/movies, wanted, manual subtitle search, system                 |
 | Seerr                  | discover, search, requests management filtered by status, sign in as a Seerr, Jellyfin or Emby user |
 | Ombi                   | requests with approve/deny/delete, search, discover                   |
@@ -73,7 +73,7 @@ each one covers:
 | Emby                   | same depth as Jellyfin                                                |
 | Plex                   | libraries, detail, seasons, music, genres, now-playing controller, plex.tv sign-in |
 | Navidrome              | artists, albums and tracks, playlists, ratings and favorites, search |
-| qBittorrent            | realtime list, add/manage, torrent detail, tracker editing, private/public badges, queue reorder, full settings, execution log, external IP |
+| qBittorrent            | realtime list, add/manage, torrent detail, category and tracker editing, session totals, private/public badges, queue reorder, full settings, execution log, external IP |
 | Deluge                 | torrent list with a filter drawer, add/manage, queue moves, speed limits, torrent detail (beta) |
 | Transmission           | the web UI's filters in a drawer, actions and inspector, full settings, turtle mode |
 | rTorrent               | torrent list, add/manage, priorities, speed limits, torrent detail (beta) |
