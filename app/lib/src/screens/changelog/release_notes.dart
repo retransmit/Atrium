@@ -27,6 +27,28 @@ class ReleaseNote {
 /// Newest first. Update alongside appVersion and the pubspec at each release.
 const List<ReleaseNote> releaseNotes = <ReleaseNote>[
   ReleaseNote(
+    version: '1.12.0',
+    date: '2026-11-24',
+    groups: <ChangeGroup>[
+      ChangeGroup(ChangeCategory.added, <String>[
+        'Prowlarr search can be narrowed to the indexers and categories you pick, or to all torrent or all Usenet indexers, from one filter button next to the search bar.',
+        "Prowlarr can search by type: TV, Movie, Audio or Book. Each type shows chips for the parameters it takes, such as ImdbId or Season, which put the {ImdbId:} token in for you.",
+        "qBittorrent shows what each torrent has uploaded and downloaded since qBittorrent started: beside the all-time totals on the torrent's screen, and on the cards while the list is sorted by session upload or download.",
+        "A torrent's category can be changed from its own screen: tap Category on the Overview tab. The current category is ticked.",
+      ]),
+      ChangeGroup(ChangeCategory.improved, <String>[
+        "The calendar's list view opens at today, or at the next day with releases, instead of the start of the month.",
+        "rTorrent's Test connection looks for rTorrent beneath the address you gave, such as ruTorrent's httprpc plugin, and offers the address it found. When it finds nothing it says where rTorrent usually is.",
+      ]),
+      ChangeGroup(ChangeCategory.fixed, <String>[
+        'API keys and tokens are no longer part of the address of poster and artwork requests to Radarr, Sonarr, Lidarr, Plex, Jellyfin and Emby. They travel in a header, like every other request, so a reverse proxy no longer writes them to its access log.',
+        "Lidarr's log file download saves the file through the app instead of opening the browser on an address carrying the API key.",
+        "rTorrent through ruTorrent's httprpc plugin works behind nginx.",
+        'qBittorrent cards keep their speeds, ratio and ETA inside the card on narrow phones and with large text.',
+      ]),
+    ],
+  ),
+  ReleaseNote(
     version: '1.11.0',
     date: '2026-11-18',
     groups: <ChangeGroup>[

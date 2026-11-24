@@ -9,7 +9,8 @@ Supported services:
 
 * Sonarr, Radarr and Lidarr - library, queue, wanted, history, blocklist,
   system status and the full settings tree
-* Prowlarr - indexers, search and grab
+* Prowlarr - indexers, search by type with indexer and category filters,
+  and grab
 * Bazarr - subtitle status, search and download
 * Seerr (Overseerr and Jellyseerr) and Ombi - discover, request and manage
   requests
