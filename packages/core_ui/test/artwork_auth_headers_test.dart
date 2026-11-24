@@ -234,6 +234,36 @@ void main() {
       expect(ArtworkHeaders.forUrl(image), isNull);
     });
 
+    test('another profile on the same server does not inherit the token', () {
+      // Two profiles, one Jellyfin, different accounts. Until the new
+      // profile's client signs in, its artwork must not go out under the
+      // previous account's token.
+      Instance account(String id, String user) => Instance(
+            id: id,
+            name: id,
+            kind: ServiceKind.jellyfin,
+            localUrl: jf,
+            externalUrl: '',
+            urlMode: UrlMode.auto,
+            auth: InstanceAuth.userPass(username: user, password: 'p'),
+          );
+      use(<Instance>[account('profile-a-jf', 'alice')]);
+      ArtworkHeaders.setSession(jf, <String, String>{'X-Emby-Token': 'alice'});
+      use(<Instance>[account('profile-b-jf', 'bob')]);
+      expect(ArtworkHeaders.forUrl(image), isNull);
+    });
+
+    test('a new account on the same instance drops the old token', () {
+      use(<Instance>[jellyfin()]);
+      ArtworkHeaders.setSession(jf, <String, String>{'X-Emby-Token': 't'});
+      use(<Instance>[
+        jellyfin().copyWith(
+          auth: const InstanceAuth.userPass(username: 'other', password: 'p'),
+        ),
+      ]);
+      expect(ArtworkHeaders.forUrl(image), isNull);
+    });
+
     test('removing the instance drops its token', () {
       use(<Instance>[jellyfin()]);
       ArtworkHeaders.setSession(jf, <String, String>{'X-Emby-Token': 't'});

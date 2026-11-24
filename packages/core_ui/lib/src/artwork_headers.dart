@@ -34,6 +34,10 @@ abstract final class ArtworkHeaders {
   static Map<String, Map<String, String>> _sessions =
       <String, Map<String, String>>{};
 
+  /// Which instance, and which account on it, each base belonged to when the
+  /// lookup was last built. A session token is only good for that account.
+  static Map<String, Object> _owners = const <String, Object>{};
+
   /// Rebuilds the lookup for [instances], merging each instance's headers
   /// over [global] exactly as the Dio factory does, then its own credential
   /// on top, as the auth interceptor does after the custom headers.
@@ -43,6 +47,7 @@ abstract final class ArtworkHeaders {
   }) {
     final Map<String, Map<String, String>> next =
         <String, Map<String, String>>{};
+    final Map<String, Object> owners = <String, Object>{};
     for (final Instance instance in instances) {
       final Map<String, String> headers = <String, String>{
         ...mergeHeaders(global, instance.customHeaders),
@@ -55,12 +60,19 @@ abstract final class ArtworkHeaders {
         final String key = _normalise(base);
         if (key.isNotEmpty) {
           next[key] = headers;
+          owners[key] = (instance.id, instance.auth);
         }
       }
     }
+    // A token belongs to the account that signed in. When a base is removed,
+    // or now belongs to another instance or account (a profile switch, a
+    // changed user), its token goes; that client registers a new one when it
+    // signs in.
+    _sessions.removeWhere(
+      (String base, _) => owners[base] == null || owners[base] != _owners[base],
+    );
     _byBase = next;
-    // A removed instance takes its signed-in token with it.
-    _sessions.removeWhere((String base, _) => !next.containsKey(base));
+    _owners = owners;
   }
 
   /// Records the headers a signed-in client needs on artwork under
@@ -130,6 +142,7 @@ abstract final class ArtworkHeaders {
   static void reset() {
     _byBase = const <String, Map<String, String>>{};
     _sessions = <String, Map<String, String>>{};
+    _owners = const <String, Object>{};
   }
 
   /// Lowercased and stripped of trailing slashes so the comparison survives
