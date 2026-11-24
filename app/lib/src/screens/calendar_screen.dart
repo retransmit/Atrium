@@ -14,6 +14,7 @@ import 'package:service_radarr/service_radarr.dart';
 import 'package:service_sonarr/service_sonarr.dart';
 
 import '../arr_artwork.dart';
+import 'calendar_groups.dart';
 
 /// Aggregated calendar event representation.
 sealed class CalendarEvent {
@@ -664,9 +665,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     child: _DateHeader(date: date),
                   ),
                 );
-                for (final CalendarEvent event in entriesMap[date]!
-                  ..sort((a, b) => a.date.compareTo(b.date))) {
-                  rows.add(_EventTile(event: event));
+                for (final CalendarGroup group
+                    in groupCalendarEvents(entriesMap[date]!)) {
+                  rows.add(_EventTile(group: group));
                 }
               }
 
@@ -1088,8 +1089,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       ),
                     )
                   else
-                    for (final CalendarEvent event in selectedDayEntries)
-                      _EventTile(event: event),
+                    for (final CalendarGroup group
+                        in groupCalendarEvents(selectedDayEntries))
+                      _EventTile(group: group),
                 ],
               );
             }
@@ -1178,13 +1180,25 @@ class _DateHeader extends StatelessWidget {
   }
 }
 
-class _EventTile extends ConsumerWidget {
-  const _EventTile({required this.event});
-  final CalendarEvent event;
+/// One calendar row: a release, or a series' episodes on one day. For a
+/// group, "+N more" opens the other episodes under the card; the rest of the
+/// card opens the series as before.
+class _EventTile extends ConsumerStatefulWidget {
+  const _EventTile({required this.group});
+  final CalendarGroup group;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_EventTile> createState() => _EventTileState();
+}
+
+class _EventTileState extends ConsumerState<_EventTile> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final CalendarGroup group = widget.group;
+    final CalendarEvent event = group.first;
     final Instance instance = event.instance;
 
     Widget? posterWidget;
@@ -1192,7 +1206,7 @@ class _EventTile extends ConsumerWidget {
     VoidCallback? onTap;
 
     if (event is RadarrCalendarEvent) {
-      final RadarrMovie movie = (event as RadarrCalendarEvent).movie;
+      final RadarrMovie movie = event.movie;
       final RadarrApi? api = ref.watch(radarrApiProvider(instance)).value;
       final RadarrImage? poster = movie.images
           .firstWhereOrNull((RadarrImage i) => i.coverType == 'poster');
@@ -1223,7 +1237,7 @@ class _EventTile extends ConsumerWidget {
 
       posterWidget = _Poster(imageUrl: imageUrl, icon: Icons.movie_outlined);
     } else if (event is SonarrCalendarEvent) {
-      final SonarrEpisode episode = (event as SonarrCalendarEvent).episode;
+      final SonarrEpisode episode = event.episode;
       final SonarrApi? api = ref.watch(sonarrApiProvider(instance)).value;
       final SonarrImage? poster = episode.series?.images
           .firstWhereOrNull((SonarrImage i) => i.coverType == 'poster');
@@ -1244,7 +1258,7 @@ class _EventTile extends ConsumerWidget {
 
       posterWidget = _Poster(imageUrl: imageUrl, icon: Icons.tv_outlined);
     } else if (event is LidarrCalendarEvent) {
-      final AlbumResource album = (event as LidarrCalendarEvent).album;
+      final AlbumResource album = event.album;
       final String? imageUrl =
           LidarrArtwork.albumCoverUrl(instance, album.images) ??
               LidarrArtwork.artistPosterUrl(instance, album.artist?.images);
@@ -1268,27 +1282,28 @@ class _EventTile extends ConsumerWidget {
       posterWidget = _Poster(imageUrl: imageUrl, icon: Icons.album_outlined);
     }
 
-    final bool isFuture = event.date.isAfter(clock.now());
-    final (String label, Color bg, Color fg, Color accentColor) = event.hasFile
-        ? (
-            'Downloaded',
-            theme.colorScheme.primaryContainer,
-            theme.colorScheme.onPrimaryContainer,
-            theme.colorScheme.tertiary,
-          )
-        : isFuture
-            ? (
-                'Upcoming',
-                theme.colorScheme.secondaryContainer,
-                theme.colorScheme.onSecondaryContainer,
-                theme.colorScheme.primary,
-              )
-            : (
-                'Missing',
-                theme.colorScheme.errorContainer,
-                theme.colorScheme.onErrorContainer,
-                theme.colorScheme.error,
-              );
+    final DateTime now = clock.now();
+    final (String label, Color bg, Color fg, Color accentColor) =
+        switch (group.status(now)) {
+      CalendarStatus.downloaded => (
+          'Downloaded',
+          theme.colorScheme.primaryContainer,
+          theme.colorScheme.onPrimaryContainer,
+          theme.colorScheme.tertiary,
+        ),
+      CalendarStatus.upcoming => (
+          'Upcoming',
+          theme.colorScheme.secondaryContainer,
+          theme.colorScheme.onSecondaryContainer,
+          theme.colorScheme.primary,
+        ),
+      CalendarStatus.missing => (
+          'Missing',
+          theme.colorScheme.errorContainer,
+          theme.colorScheme.onErrorContainer,
+          theme.colorScheme.error,
+        ),
+    };
 
     return Card(
       margin: const EdgeInsets.only(bottom: Insets.sm),
@@ -1312,7 +1327,10 @@ class _EventTile extends ConsumerWidget {
             ),
           ),
           padding: const EdgeInsets.all(Insets.md),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               ClipRRect(
@@ -1370,6 +1388,12 @@ class _EventTile extends ConsumerWidget {
                             color: theme.colorScheme.outline,
                           ),
                         ),
+                        if (group.more > 0)
+                          _MoreChip(
+                            count: group.more,
+                            open: _open,
+                            onTap: () => setState(() => _open = !_open),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -1382,14 +1406,14 @@ class _EventTile extends ConsumerWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          DateFormat.jm().format(event.date.toLocal()),
+                          DateFormat.jm().format(group.date.toLocal()),
                           style: theme.textTheme.labelMedium?.copyWith(
                             color: theme.colorScheme.outline,
                           ),
                         ),
                         const SizedBox(width: Insets.md),
                         Icon(
-                          event.monitored
+                          group.monitored
                               ? Icons.bookmark
                               : Icons.bookmark_border,
                           size: 14,
@@ -1397,7 +1421,7 @@ class _EventTile extends ConsumerWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          event.monitored ? 'Monitored' : 'Unmonitored',
+                          group.monitored ? 'Monitored' : 'Unmonitored',
                           style: theme.textTheme.labelMedium?.copyWith(
                             color: theme.colorScheme.outline,
                           ),
@@ -1428,7 +1452,137 @@ class _EventTile extends ConsumerWidget {
               ),
             ],
           ),
+              if (_open)
+                for (final CalendarEvent other in group.events.skip(1))
+                  _GroupedEpisode(
+                    event: other,
+                    shownTime: group.date,
+                    now: now,
+                  ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+/// "+N more" on a grouped card, with a chevron saying it opens in place.
+class _MoreChip extends StatelessWidget {
+  const _MoreChip({
+    required this.count,
+    required this.open,
+    required this.onTap,
+  });
+
+  final int count;
+  final bool open;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    return Semantics(
+      button: true,
+      expanded: open,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(8, 2, 4, 2),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.secondaryContainer,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text(
+                '+$count more',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSecondaryContainer,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Icon(
+                open ? Icons.expand_less : Icons.expand_more,
+                size: 16,
+                color: theme.colorScheme.onSecondaryContainer,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One of a group's other episodes, under its opened card: a status dot, the
+/// episode code and title, and the time when it differs from the card's.
+class _GroupedEpisode extends StatelessWidget {
+  const _GroupedEpisode({
+    required this.event,
+    required this.shownTime,
+    required this.now,
+  });
+
+  final CalendarEvent event;
+  final DateTime shownTime;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ColorScheme cs = theme.colorScheme;
+    final SonarrEpisode? episode =
+        event is SonarrCalendarEvent ? (event as SonarrCalendarEvent).episode : null;
+    final String code = episode == null
+        ? ''
+        : 'S${episode.seasonNumber.toString().padLeft(2, '0')}'
+            'E${episode.episodeNumber.toString().padLeft(2, '0')}';
+    final String title = episode?.title ?? event.title;
+    final Color dot = switch (calendarStatusOf(event, now)) {
+      CalendarStatus.downloaded => cs.tertiary,
+      CalendarStatus.upcoming => cs.primary,
+      CalendarStatus.missing => cs.error,
+    };
+    final bool sameTime = event.date.toLocal().hour == shownTime.toLocal().hour &&
+        event.date.toLocal().minute == shownTime.toLocal().minute;
+    return Padding(
+      padding: const EdgeInsets.only(top: Insets.sm),
+      child: Row(
+        children: <Widget>[
+          const SizedBox(width: 52 + Insets.md - 14),
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            code,
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: Insets.sm),
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+          if (!sameTime) ...<Widget>[
+            const SizedBox(width: Insets.sm),
+            Text(
+              DateFormat.jm().format(event.date.toLocal()),
+              style: theme.textTheme.labelSmall?.copyWith(color: cs.outline),
+            ),
+          ],
+        ],
       ),
     );
   }
