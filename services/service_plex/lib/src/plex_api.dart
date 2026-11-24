@@ -155,12 +155,15 @@ class PlexApi {
   /// Builds an absolute poster URL from a relative [thumb] path. Returns null
   /// when the item has no thumbnail. The Dio base URL is the already-resolved
   /// LAN/WAN address.
+  ///
+  /// The token is not in it: a reverse proxy logs the full request line.
+  /// `AtriumNetworkImage` sends it as an X-Plex-Token header instead.
   String? imageUrl(String? thumb) {
     if (thumb == null || thumb.isEmpty) {
       return null;
     }
     final String base = _dio.options.baseUrl.replaceAll(RegExp(r'/+$'), '');
-    return '$base$thumb?X-Plex-Token=$token';
+    return '$base$thumb';
   }
 
   /// Stable-ish client id for Companion command routing + a per-client
