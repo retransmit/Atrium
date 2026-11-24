@@ -667,7 +667,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 );
                 for (final CalendarGroup group
                     in groupCalendarEvents(entriesMap[date]!)) {
-                  rows.add(_EventTile(group: group));
+                  rows.add(_EventTile(key: ValueKey<Object>(group.id), group: group));
                 }
               }
 
@@ -1091,7 +1091,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   else
                     for (final CalendarGroup group
                         in groupCalendarEvents(selectedDayEntries))
-                      _EventTile(group: group),
+                      _EventTile(key: ValueKey<Object>(group.id), group: group),
                 ],
               );
             }
@@ -1184,7 +1184,7 @@ class _DateHeader extends StatelessWidget {
 /// group, "+N more" opens the other episodes under the card; the rest of the
 /// card opens the series as before.
 class _EventTile extends ConsumerStatefulWidget {
-  const _EventTile({required this.group});
+  const _EventTile({required this.group, super.key});
   final CalendarGroup group;
 
   @override

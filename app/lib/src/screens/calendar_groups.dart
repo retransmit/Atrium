@@ -15,7 +15,12 @@ CalendarStatus calendarStatusOf(CalendarEvent event, DateTime now) {
 /// One calendar row: a release, or every episode of one series that airs on
 /// the same day on the same instance (a season dropped at once).
 class CalendarGroup {
-  CalendarGroup._(this.events);
+  CalendarGroup._(this.id, this.events);
+
+  /// Stable across rebuilds and refreshes: the instance, the series and the
+  /// day for a group of episodes, the item itself otherwise. Rows are keyed
+  /// by it so an opened row stays with its own group.
+  final Object id;
 
   /// Oldest episode first; a single release is a group of one.
   final List<CalendarEvent> events;
@@ -58,23 +63,22 @@ List<CalendarGroup> groupCalendarEvents(Iterable<CalendarEvent> events) {
   final Map<Object, List<CalendarEvent>> byKey = <Object, List<CalendarEvent>>{};
   final Set<(String, int)> seenEpisodes = <(String, int)>{};
   for (final CalendarEvent e in events) {
-    final Object key;
-    if (e is SonarrCalendarEvent) {
-      if (!seenEpisodes.add((e.instance.id, e.episode.id))) continue;
-      final DateTime local = e.date.toLocal();
-      key = (
-        e.instance.id,
-        e.episode.seriesId,
-        DateTime(local.year, local.month, local.day),
-      );
-    } else {
-      key = e;
+    final DateTime local = e.date.toLocal();
+    final DateTime day = DateTime(local.year, local.month, local.day);
+    final Object key = switch (e) {
+      SonarrCalendarEvent() => ('episodes', e.instance.id, e.episode.seriesId, day),
+      RadarrCalendarEvent() => ('movie', e.instance.id, e.movie.id, day),
+      LidarrCalendarEvent() => ('album', e.instance.id, e.album.id, day),
+    };
+    if (e is SonarrCalendarEvent &&
+        !seenEpisodes.add((e.instance.id, e.episode.id))) {
+      continue;
     }
     byKey.putIfAbsent(key, () => <CalendarEvent>[]).add(e);
   }
   final List<CalendarGroup> groups = <CalendarGroup>[
-    for (final List<CalendarEvent> list in byKey.values)
-      CalendarGroup._(list..sort(_episodeOrder)),
+    for (final MapEntry<Object, List<CalendarEvent>> entry in byKey.entries)
+      CalendarGroup._(entry.key, entry.value..sort(_episodeOrder)),
   ]..sort((CalendarGroup a, CalendarGroup b) => a.date.compareTo(b.date));
   return groups;
 }

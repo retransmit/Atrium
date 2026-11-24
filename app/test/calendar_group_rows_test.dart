@@ -69,6 +69,7 @@ Future<void> _pump(
   WidgetTester tester, {
   bool listView = true,
   bool fifthAiredWithoutFile = false,
+  List<SonarrEpisode>? episodes,
 }) async {
   tester.view.physicalSize = const Size(800, 1600);
   tester.view.devicePixelRatio = 1.0;
@@ -86,7 +87,8 @@ Future<void> _pump(
         sonarrCalendarProvider.overrideWith(
           (Ref ref, (Instance, DateTime, bool) key) async =>
               key.$2.month == 11
-                  ? _episodes(fifthAiredWithoutFile: fifthAiredWithoutFile)
+                  ? episodes ??
+                      _episodes(fifthAiredWithoutFile: fifthAiredWithoutFile)
                   : <SonarrEpisode>[],
         ),
       ],
@@ -163,6 +165,37 @@ void main() {
       expect(find.text('Blade Runner 2099 - S01E01'), findsOneWidget);
       expect(find.text('Blade Runner 2099 - S01E02'), findsNothing);
       expect(find.text('+9 more'), findsOneWidget);
+    });
+  });
+
+  testWidgets("another day's group opens closed", (WidgetTester tester) async {
+    // A three-part show the next day, so both days have a group in the same
+    // place in the grid's day list.
+    const SonarrSeries miniseries =
+        SonarrSeries(id: 9, title: 'The Night Shift', monitored: true);
+    final List<SonarrEpisode> episodes = <SonarrEpisode>[
+      ..._episodes().where((SonarrEpisode e) => e.seriesId == _drop.id),
+      for (int n = 1; n <= 3; n++)
+        SonarrEpisode(
+          id: 900 + n,
+          seriesId: miniseries.id,
+          seasonNumber: 1,
+          episodeNumber: n,
+          title: 'Part $n',
+          monitored: true,
+          airDateUtc: DateTime(2026, 11, 26, 21).toUtc().toIso8601String(),
+          series: miniseries,
+        ),
+    ];
+    await withClock(_morning, () async {
+      await _pump(tester, listView: false, episodes: episodes);
+      await tester.tap(find.text('+9 more'));
+      await tester.pump();
+      expect(find.text('Chapter 2'), findsOneWidget);
+      await tester.tap(find.text('26'));
+      await tester.pump();
+      expect(find.text('The Night Shift - S01E01'), findsOneWidget);
+      expect(find.text('Part 2'), findsNothing);
     });
   });
 }
