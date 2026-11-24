@@ -99,6 +99,31 @@ void main() {
     expectSaved(tester);
   });
 
+  testWidgets('a name from the server cannot point outside the folder',
+      (tester) async {
+    // The file name is whatever Lidarr reports. The save sheet gets only its
+    // last segment, cleaned, never a path.
+    for (final (String reported, String offered) in <(String, String)>[
+      ('../../.ssh/authorized_keys', 'authorized_keys'),
+      (r'..\..\evil.txt', 'evil.txt'),
+      ('..', 'lidarr.txt'),
+      ('', 'lidarr.txt'),
+      ('a:b*c?.txt', 'a_b_c_.txt'),
+    ]) {
+      await pump(
+        tester,
+        LogFileReaderScreen(
+          instance: testInstance,
+          file: _file.copyWith(filename: reported),
+        ),
+      );
+      await tester.tap(find.byTooltip('Download log file'));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+      expect(sheet.fileName, offered, reason: reported);
+    }
+  });
+
   testWidgets('the details dialog saves it too', (tester) async {
     await pump(tester, const LogFilesView(instance: testInstance));
     await tester.tap(find.byTooltip('Details'));

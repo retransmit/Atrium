@@ -16,6 +16,7 @@ Future<void> saveLidarrLogFile(
   required String filename,
   required Future<String> Function() read,
 }) async {
+  final String name = _safeFileName(filename);
   final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
   void say(String text) => messenger.showSnackBar(
         SnackBar(content: Text(text), behavior: SnackBarBehavior.floating),
@@ -25,7 +26,7 @@ Future<void> saveLidarrLogFile(
   try {
     content = await read();
   } on Object {
-    say('Could not read $filename');
+    say('Could not read $name');
     return;
   }
 
@@ -33,7 +34,7 @@ Future<void> saveLidarrLogFile(
   try {
     saved = await FilePicker.saveFile(
       dialogTitle: 'Save log file',
-      fileName: filename,
+      fileName: name,
       bytes: Uint8List.fromList(utf8.encode(content)),
     );
   } on PlatformException catch (e) {
@@ -41,6 +42,18 @@ Future<void> saveLidarrLogFile(
     return;
   }
   if (saved != null) {
-    say('Saved $filename');
+    say('Saved $name');
   }
+}
+
+/// The last segment of [reported], with characters a file name cannot hold
+/// replaced. The name comes from the server, so it is never trusted as a
+/// path.
+String _safeFileName(String reported) {
+  final String last = reported
+      .split(RegExp(r'[\\/]'))
+      .last
+      .replaceAll(RegExp(r'[<>:"|?*]'), '_')
+      .trim();
+  return last.isEmpty || last == '.' || last == '..' ? 'lidarr.txt' : last;
 }
