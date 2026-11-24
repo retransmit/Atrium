@@ -189,8 +189,8 @@ class RadarrApi {
     }
   }
 
-  /// Absolute, authenticated URL for a movie image, suitable for
-  /// `CachedNetworkImage`.
+  /// Absolute URL for a movie image, for `AtriumNetworkImage`, which adds
+  /// the api key as a header.
   String? posterUrl(
     RadarrImage image, {
     int? width,
@@ -230,8 +230,9 @@ class RadarrApi {
             pathOrUrl.substring(coverIdx + '/MediaCover'.length);
         pathOrUrl = '$_base/mediacover$tail';
       }
-      final String separator = pathOrUrl.contains('?') ? '&' : '?';
-      return base.resolve('$pathOrUrl${separator}apikey=$apiKey').toString();
+      // No key in the URL: a reverse proxy logs the full request line.
+      // Artwork carries it as an X-Api-Key header, from ArtworkHeaders.
+      return base.resolve(pathOrUrl).toString();
     }
     return upstream;
   }
