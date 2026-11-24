@@ -2,15 +2,17 @@
 
 ## Supported versions
 
-Atrium is pre-1.0. Only the latest commit on `main` is supported.
+Only the latest release is supported. Please check that an issue still
+happens on it before reporting.
 
 ## Reporting a vulnerability
 
 Please report security issues privately - do **not** open a public issue.
 
-- Email: see the maintainer's GitHub profile.
-- Or use GitHub's "Report a vulnerability" private disclosure flow on the
-  repository.
+Use GitHub's private reporting form:
+[Report a vulnerability](https://github.com/retransmit/Atrium/security/advisories/new)
+(also under the repository's **Security** tab). Only the maintainers can
+see what you send there.
 
 Please include:
 
