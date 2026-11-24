@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:core_networking/core_networking.dart';
+import 'package:core_ui/core_ui.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 
@@ -119,6 +120,10 @@ class JellyfinClient {
       _userId = result.user.id;
       _serverId = result.serverId;
       _dio.options.headers['Authorization'] = _authHeader();
+      // Artwork is fetched outside Dio, so it gets the token through
+      // ArtworkHeaders as a header. It used to ride in the URL as api_key,
+      // which a reverse proxy writes to its access log in full.
+      ArtworkHeaders.setSession(baseUrl.toString(), <String, String>{'Authorization': _authHeader()});
       _loggedIn = true;
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
@@ -373,8 +378,6 @@ class JellyfinClient {
                       ? 1.0
                       : (2 / 3)));
 
-          final String key = _token == null ? '' : '&api_key=$_token';
-
           // Resolve primary image target ID and tag
           String? posterTargetId;
           String? posterTag;
@@ -468,7 +471,7 @@ class JellyfinClient {
           }
 
           final String? posterUrl = posterTargetId != null
-              ? '$_baseStr/Items/$posterTargetId/Images/Primary?quality=100${(posterTag != null && posterTag.isNotEmpty) ? '&tag=$posterTag' : ''}$key'
+              ? '$_baseStr/Items/$posterTargetId/Images/Primary?quality=100${(posterTag != null && posterTag.isNotEmpty) ? '&tag=$posterTag' : ''}'
               : null;
 
           // Resolve backdrop image target ID and tag
@@ -481,7 +484,7 @@ class JellyfinClient {
           if (backdropTags != null && backdropTags.isNotEmpty) {
             final String tag = backdropTags.first.toString();
             backdropUrl =
-                '$_baseStr/Items/${nowPlaying['Id']}/Images/Backdrop/0?quality=100&tag=$tag$key';
+                '$_baseStr/Items/${nowPlaying['Id']}/Images/Backdrop/0?quality=100&tag=$tag';
           } else if (parentBackdropTags != null &&
               parentBackdropTags.isNotEmpty) {
             final String? parentBackdropId =
@@ -492,7 +495,7 @@ class JellyfinClient {
             if (parentBackdropId != null && parentBackdropId.isNotEmpty) {
               final String tag = parentBackdropTags.first.toString();
               backdropUrl =
-                  '$_baseStr/Items/$parentBackdropId/Images/Backdrop/0?quality=100&tag=$tag$key';
+                  '$_baseStr/Items/$parentBackdropId/Images/Backdrop/0?quality=100&tag=$tag';
             }
           } else if (type != 'Audio') {
             final String? fallbackBackdropId =
@@ -500,7 +503,7 @@ class JellyfinClient {
                     nowPlaying['Id'] as String?;
             if (fallbackBackdropId != null && fallbackBackdropId.isNotEmpty) {
               backdropUrl =
-                  '$_baseStr/Items/$fallbackBackdropId/Images/Backdrop/0?quality=100$key';
+                  '$_baseStr/Items/$fallbackBackdropId/Images/Backdrop/0?quality=100';
             }
           }
 
@@ -766,74 +769,70 @@ class JellyfinClient {
 
   /// Builds a primary-image (poster) URL for [item], or null if it has none.
   String? imageUrl(JellyfinItem item, {int maxHeight = 420}) {
-    final String key = _token == null ? '' : '&api_key=$_token';
-
     // Prefer the Series poster (anime cover) over the episode thumbnail.
     if (item.type == 'Episode' && item.seriesId != null) {
       final String tagParam = item.seriesPrimaryImageTag != null
           ? '&tag=${item.seriesPrimaryImageTag}'
           : '';
       return '$_baseStr/Items/${item.seriesId}/Images/Primary'
-          '?quality=100$tagParam$key';
+          '?quality=100$tagParam';
     }
 
     if (item.type == 'Audio') {
       if (item.albumPrimaryImageTag != null && item.albumId != null) {
         return '$_baseStr/Items/${item.albumId}/Images/Primary'
-            '?quality=100&tag=${item.albumPrimaryImageTag}$key';
+            '?quality=100&tag=${item.albumPrimaryImageTag}';
       }
       if (item.parentPrimaryImageTag != null && item.parentId != null) {
         return '$_baseStr/Items/${item.parentId}/Images/Primary'
-            '?quality=100&tag=${item.parentPrimaryImageTag}$key';
+            '?quality=100&tag=${item.parentPrimaryImageTag}';
       }
       if (item.imageTags.containsKey('Primary')) {
         return '$_baseStr/Items/${item.id}/Images/Primary'
-            '?quality=100&tag=${item.imageTags['Primary']}$key';
+            '?quality=100&tag=${item.imageTags['Primary']}';
       }
       final String targetId = item.albumId ?? item.parentId ?? item.id;
       return '$_baseStr/Items/$targetId/Images/Primary'
-          '?quality=100$key';
+          '?quality=100';
     }
 
     if (item.primaryImageItemId != null) {
       final String tagParam =
           item.primaryImageTag != null ? '&tag=${item.primaryImageTag}' : '';
       return '$_baseStr/Items/${item.primaryImageItemId}/Images/Primary'
-          '?quality=100$tagParam$key';
+          '?quality=100$tagParam';
     }
 
     if (item.imageTags.containsKey('Primary')) {
       final String tag = item.imageTags['Primary']!;
       return '$_baseStr/Items/${item.id}/Images/Primary'
-          '?tag=$tag&quality=100$key';
+          '?tag=$tag&quality=100';
     }
 
     if (item.seriesPrimaryImageTag != null && item.seriesId != null) {
       final String tag = item.seriesPrimaryImageTag!;
       return '$_baseStr/Items/${item.seriesId}/Images/Primary'
-          '?tag=$tag&quality=100$key';
+          '?tag=$tag&quality=100';
     }
 
     if (item.parentPrimaryImageTag != null && item.parentId != null) {
       final String tag = item.parentPrimaryImageTag!;
       return '$_baseStr/Items/${item.parentId}/Images/Primary'
-          '?tag=$tag&quality=100$key';
+          '?tag=$tag&quality=100';
     }
 
     // Fallback: If no tags were provided in the payload, try fetching the primary image directly.
     return '$_baseStr/Items/${item.id}/Images/Primary'
-        '?quality=100$key';
+        '?quality=100';
   }
 
   /// Builds a banner image URL for [item], or null if it has none.
   String? bannerImageUrl(JellyfinItem item, {int maxWidth = 1920}) {
-    final String key = _token == null ? '' : '&api_key=$_token';
-
     if (item.imageTags.containsKey('Banner')) {
-      return '$_baseStr/Items/${item.id}/Images/Banner/0?quality=100&tag=${item.imageTags['Banner']}$key';
+      return '$_baseStr/Items/${item.id}/Images/Banner/0?quality=100&tag=${item.imageTags['Banner']}';
     } else if (item.seriesId != null && item.seriesPrimaryImageTag != null) {
       // Sometimes series have banners under their own ID
-      return '$_baseStr/Items/${item.seriesId}/Images/Banner/0?quality=100$key';
+      return '$_baseStr/Items/${item.seriesId}/Images/Banner/0?quality=100';
     }
 
     return null;
@@ -854,8 +853,6 @@ class JellyfinClient {
 
   /// Builds a backdrop image URL for [item], or null if it has none.
   String? backdropImageUrl(JellyfinItem item, {int maxWidth = 1920}) {
-    final String key = _token == null ? '' : '&api_key=$_token';
-
     String targetId = item.id;
     String tagParam = '';
     int targetIndex = 0;
@@ -886,14 +883,13 @@ class JellyfinClient {
       }
     }
 
-    return '$_baseStr/Items/$targetId/Images/Backdrop/$targetIndex?quality=100$tagParam$key';
+    return '$_baseStr/Items/$targetId/Images/Backdrop/$targetIndex?quality=100$tagParam';
   }
 
   String untaggedImageUrl(String itemId, String imageType) {
     final String targetType =
         imageType == 'Backdrop' ? 'Backdrop/0' : imageType;
-    final String key = _token == null ? '' : '&api_key=$_token';
-    return '$_baseStr/Items/$itemId/Images/$targetType?quality=100$key';
+    return '$_baseStr/Items/$itemId/Images/$targetType?quality=100';
   }
 
   Future<List<JellyfinRemoteImage>> getRemoteImages(

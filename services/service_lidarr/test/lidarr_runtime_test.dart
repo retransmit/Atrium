@@ -126,7 +126,7 @@ void main() {
       expect(
         posterUrl,
         equals(
-          'https://lidarr.kurai.cloud/api/v1/mediacover/artist/5/poster-250.jpg?lastWrite=639210363806026257&apikey=my-api-key',
+          'https://lidarr.kurai.cloud/api/v1/mediacover/artist/5/poster-250.jpg?lastWrite=639210363806026257',
         ),
       );
 
@@ -136,7 +136,7 @@ void main() {
       expect(
         posterFullUrl,
         equals(
-          'https://lidarr.kurai.cloud/api/v1/mediacover/artist/5/poster.jpg?lastWrite=639210363806026257&apikey=my-api-key',
+          'https://lidarr.kurai.cloud/api/v1/mediacover/artist/5/poster.jpg?lastWrite=639210363806026257',
         ),
       );
 
@@ -145,7 +145,7 @@ void main() {
       expect(
         albumUrl,
         equals(
-          'https://lidarr.kurai.cloud/api/v1/mediacover/album/30/cover-250.jpg?lastWrite=639223812709425181&apikey=my-api-key',
+          'https://lidarr.kurai.cloud/api/v1/mediacover/album/30/cover-250.jpg?lastWrite=639223812709425181',
         ),
       );
 
@@ -163,7 +163,7 @@ void main() {
       expect(
         subpathUrl,
         equals(
-          'http://192.168.1.100:8686/lidarr/api/v1/mediacover/artist/5/poster-250.jpg?lastWrite=639210363806026257&apikey=key',
+          'http://192.168.1.100:8686/lidarr/api/v1/mediacover/artist/5/poster-250.jpg?lastWrite=639210363806026257',
         ),
       );
     });

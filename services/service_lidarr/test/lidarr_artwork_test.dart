@@ -56,7 +56,7 @@ void main() {
       expect(
         url,
         'http://192.168.1.10:8686/lidarr/api/v1/mediacover/artist/5/'
-        'poster-250.jpg?lastWrite=639210363806026257&apikey=k',
+        'poster-250.jpg?lastWrite=639210363806026257',
       );
       expect(url, isNot(contains('/lidarr/lidarr/')));
       expect(url, isNot(contains('/MediaCover/')));
@@ -66,7 +66,7 @@ void main() {
       expect(
         LidarrArtwork.albumCoverUrl(_lidarr(), <MediaCover>[_albumCover]),
         'http://192.168.1.10:8686/lidarr/api/v1/mediacover/album/30/'
-        'cover-250.jpg?lastWrite=639223812709425181&apikey=k',
+        'cover-250.jpg?lastWrite=639223812709425181',
       );
     });
 
@@ -89,8 +89,7 @@ void main() {
       );
       expect(
         url,
-        'http://192.168.1.10:8686/lidarr/MediaCoverProxy/0a1b2c/1-500.jpg'
-        '?apikey=k',
+        'http://192.168.1.10:8686/lidarr/MediaCoverProxy/0a1b2c/1-500.jpg',
       );
     });
   });
@@ -194,8 +193,7 @@ void main() {
         ],
         width: null,
       ),
-      'https://lidarr.example.org/api/v1/mediacover/artist/5/poster.jpg'
-      '?apikey=k',
+      'https://lidarr.example.org/api/v1/mediacover/artist/5/poster.jpg',
     );
   });
 }
