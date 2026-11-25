@@ -480,9 +480,14 @@ class SeerrApi {
 
   /// The signed-in user's watchlist.
   ///
-  /// Watchlist entries can come back in a Plex-flavoured shape carrying a
-  /// `tmdbId` but no TMDB `id`, so entries are normalised before parsing and
-  /// anything with no usable id is dropped instead of failing the whole page.
+  /// Entries are bare: a title, a media type and a `tmdbId`. For a user
+  /// without a Plex token they are rows of Seerr's own watchlist table, whose
+  /// `id` is the row's number rather than the title's, so the TMDB id is read
+  /// from `tmdbId` and anything without one is dropped.
+  ///
+  /// No shape carries artwork, so each entry is filled from its movie or TV
+  /// details, as Seerr's own web page does per card. An entry whose details
+  /// cannot be read stays in the row with only its title.
   Future<List<SeerrDiscoverResult>> getWatchlist() async {
     try {
       final Response<dynamic> resp =
@@ -490,16 +495,32 @@ class SeerrApi {
       final Map<String, dynamic> data = resp.data as Map<String, dynamic>;
       final List<dynamic> raw =
           (data['results'] as List<dynamic>?) ?? <dynamic>[];
-      final List<Map<String, dynamic>> results = <Map<String, dynamic>>[];
+      final List<SeerrDiscoverResult> bare = <SeerrDiscoverResult>[];
       for (final dynamic e in raw) {
         if (e is! Map<String, dynamic>) continue;
-        e['id'] ??= e['tmdbId'];
-        if (e['id'] != null) results.add(e);
+        final Object? tmdbId = e['tmdbId'] ?? e['id'];
+        if (tmdbId is! int) continue;
+        bare.add(
+          SeerrDiscoverResult(
+            id: tmdbId,
+            mediaType: e['mediaType'] as String? ?? 'movie',
+            title: e['title'] as String?,
+          ),
+        );
       }
-      data['results'] = results;
-      return SeerrDiscoverPage.fromJson(data).results;
+      return Future.wait(bare.map(_withDetails));
     } on DioException catch (e) {
       throw NetworkException.fromDio(e);
+    }
+  }
+
+  Future<SeerrDiscoverResult> _withDetails(SeerrDiscoverResult item) async {
+    try {
+      final SeerrDiscoverResult full =
+          await getMediaDetails(item.mediaType, item.id);
+      return full.copyWith(id: item.id, mediaType: item.mediaType);
+    } on Object {
+      return item;
     }
   }
 }
