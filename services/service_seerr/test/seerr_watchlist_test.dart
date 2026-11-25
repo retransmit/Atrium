@@ -162,6 +162,32 @@ void main() {
     expect(item.posterPath, '/sev.jpg');
   });
 
+  test('an entry with only an id opens and dresses by that id', () async {
+    final _FakeSeerr fake = _FakeSeerr(
+      <Map<String, dynamic>>[
+        <String, dynamic>{
+          'id': 95396,
+          'ratingKey': '5d9c086fe9d5a1001f4d5c6b',
+          'title': 'Severance',
+          'mediaType': 'tv',
+        },
+      ],
+      <String, Map<String, dynamic>>{
+        'tv/95396': <String, dynamic>{
+          'id': 95396,
+          'name': 'Severance',
+          'posterPath': '/sev.jpg',
+        },
+      },
+    );
+
+    final SeerrDiscoverResult item = (await _api(fake).getWatchlist()).single;
+
+    expect(item.id, 95396);
+    expect(fake.asked, contains(endsWith('/tv/95396')));
+    expect(item.posterPath, '/sev.jpg');
+  });
+
   test('a title whose details fail still shows, by its name', () async {
     final _FakeSeerr fake = _FakeSeerr(
       <Map<String, dynamic>>[
