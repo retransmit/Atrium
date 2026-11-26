@@ -40,8 +40,17 @@ void main() {
         'cleanuparr',
         'slskd',
         'gotify',
+        'dockerHost',
       ],
     );
+  });
+
+  test('Docker Host is registered as an SSH extra service', () {
+    expect(ServiceKind.dockerHost.displayName, 'Docker Host');
+    expect(ServiceKind.dockerHost.authStyle, AuthStyle.ssh);
+    expect(ServiceKind.dockerHost.role, ServiceRole.extra);
+    expect(ServiceKind.dockerHost.defaultPort, 22);
+    expect(ServiceKind.dockerHost.isBeta, isTrue);
   });
 
   test('Gotify is registered as an apiKey extra service', () {

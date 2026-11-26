@@ -57,6 +57,14 @@ abstract class Instance with _$Instance {
     /// over the profile's global headers (instance wins on key collision).
     /// Values live in the profile JSON like URLs do; they are not secrets.
     @Default(<String, String>{}) Map<String, String> customHeaders,
+
+    /// Id of the [ServiceKind.dockerHost] instance this service's container
+    /// runs on. Empty means "the profile's only / first Docker host".
+    @Default('') String dockerHostId,
+
+    /// Name (or id) of the Docker container this service runs in. Empty
+    /// disables the in-container shell.
+    @Default('') String dockerContainer,
   }) = _Instance;
 
   factory Instance.fromJson(Map<String, dynamic> json) =>
@@ -75,7 +83,9 @@ abstract class Instance with _$Instance {
       'auth: $auth, '
       'allowSelfSignedCerts: $allowSelfSignedCerts, '
       'pollingIntervalSeconds: $pollingIntervalSeconds, '
-      'customHeaderNames: ${customHeaders.keys.toList(growable: false)}'
+      'customHeaderNames: ${customHeaders.keys.toList(growable: false)}, '
+      'dockerHostId: $dockerHostId, '
+      'dockerContainer: $dockerContainer'
       ')';
 }
 

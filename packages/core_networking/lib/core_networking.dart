@@ -19,4 +19,5 @@ export 'src/self_path.dart';
 export 'src/self_signed_cert_trust.dart';
 export 'src/service_auth_headers.dart';
 export 'src/service_health.dart';
+export 'src/ssh_probe.dart';
 export 'src/wol.dart';

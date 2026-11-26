@@ -153,10 +153,19 @@ class ProfileRepository {
   Future<Profile> importProfile(String json) async {
     final Profile incoming =
         Profile.fromJson(jsonDecode(json) as Map<String, dynamic>);
+    final Map<String, String> newIds = <String, String>{
+      for (final Instance i in incoming.instances) i.id: _uuid.v4(),
+    };
     final Profile reIded = incoming.copyWith(
       id: _uuid.v4(),
       instances: incoming.instances
-          .map((Instance i) => i.copyWith(id: _uuid.v4()))
+          .map(
+            (Instance i) => i.copyWith(
+              id: newIds[i.id]!,
+              // Keep a service pointing at the same Docker host.
+              dockerHostId: newIds[i.dockerHostId] ?? '',
+            ),
+          )
           .toList(),
     );
     await saveProfile(reIded);
@@ -200,5 +209,7 @@ class ProfileRepository {
         InstanceAuthPlex() => const InstanceAuth.plexToken(token: ''),
         InstanceAuthCookie(:final String username) =>
           InstanceAuth.cookieLogin(username: username, password: ''),
+        InstanceAuthSsh(:final String username) =>
+          InstanceAuth.ssh(username: username),
       };
 }

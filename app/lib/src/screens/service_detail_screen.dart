@@ -37,6 +37,7 @@ import 'package:service_aria2/service_aria2.dart';
 import 'package:service_cleanuparr/service_cleanuparr.dart';
 import 'package:service_slskd/service_slskd.dart';
 
+import '../terminal/terminal_screen.dart';
 import 'dashboard_screen.dart';
 
 /// Routes an instance to its service-specific screen, dispatching on
@@ -177,6 +178,16 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
     if (instance.kind == ServiceKind.cleanuparr) {
       return CleanuparrHome(
         instance: instance,
+        drawer: ServicesDrawer(
+          instances: ref.watch(activeInstancesProvider),
+          profile: ref.watch(activeProfileProvider),
+        ),
+      );
+    }
+    if (instance.kind == ServiceKind.dockerHost) {
+      return TerminalScreen(
+        key: ValueKey<String>(instance.id),
+        host: instance,
         drawer: ServicesDrawer(
           instances: ref.watch(activeInstancesProvider),
           profile: ref.watch(activeProfileProvider),
@@ -418,6 +429,8 @@ class _ServiceDetailScreenState extends ConsumerState<ServiceDetailScreen> {
       // Owns its own scaffold, handled above.
       ServiceKind.slskd => const SizedBox.shrink(),
       ServiceKind.gotify => GotifyHome(instance: instance),
+      // Owns its own scaffold, handled above.
+      ServiceKind.dockerHost => const SizedBox.shrink(),
     };
   }
 }

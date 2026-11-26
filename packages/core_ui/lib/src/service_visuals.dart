@@ -39,6 +39,7 @@ abstract final class ServiceVisuals {
         ServiceKind.cleanuparr => Icons.cleaning_services_outlined,
         ServiceKind.slskd => Icons.library_music_outlined,
         ServiceKind.gotify => Icons.notifications_active_outlined,
+        ServiceKind.dockerHost => Icons.terminal_rounded,
       };
 
   static Color accent(ServiceKind kind) => switch (kind) {
@@ -73,6 +74,7 @@ abstract final class ServiceVisuals {
         ServiceKind.cleanuparr => const Color(0xFF7C3AED),
         ServiceKind.slskd => const Color(0xFF007ACC),
         ServiceKind.gotify => const Color(0xFF71CAEE),
+        ServiceKind.dockerHost => const Color(0xFF1D63ED),
       };
 
   /// Human label for a [ServiceRole] section header.

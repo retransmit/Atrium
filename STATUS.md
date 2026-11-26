@@ -44,6 +44,14 @@ Atrium is a **controller** app. Video playback was removed by design
   over pure Dart UDP), **custom HTTP headers** (global + per-instance,
   for reverse-proxy auth, kept intact when an instance's own form is
   saved), all carried by profile export/import
+- **Docker Host terminal** (beta): a Termux-style SSH terminal to the
+  server (password or private key, kept in the keystore; host keys pinned
+  on first use), with tabs, an extra-keys row and copy/paste. A service
+  given its container name - typed or picked from `docker ps` - opens a
+  shell inside that container from its sidebar long-press. Every shell is a
+  channel on the host's one SSH connection, which closes once the last
+  shell exits, after 5 minutes in the background, or when the app closes.
+  Plain `docker` only for now (no `sudo docker` / podman)
 - **Shares and links**: a magnet or `.torrent` shared to Atrium goes to a
   torrent client; a movie or show shared from another app (an IMDb, TMDB,
   Letterboxd or Trakt link, Showly's text, or a bare title) is looked up on

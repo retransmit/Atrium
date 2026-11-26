@@ -9,5 +9,6 @@ export 'src/instance.dart';
 export 'src/instance_auth.dart';
 export 'src/profile.dart';
 export 'src/service_kind.dart';
+export 'src/ssh_endpoint.dart';
 export 'src/url_mode.dart';
 export 'src/wol_device.dart';

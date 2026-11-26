@@ -49,7 +49,8 @@ class SeerrSignIn {
             username: username,
             password: password,
           ),
-        InstanceAuthApiKey() || InstanceAuthPlex() => null,
+        InstanceAuthApiKey() || InstanceAuthPlex() || InstanceAuthSsh() =>
+          null,
       };
 
   /// The auth to store for this account.

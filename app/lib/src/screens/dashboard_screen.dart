@@ -12,6 +12,8 @@ import 'package:go_router/go_router.dart';
 
 import '../dashboard/dashboard_board.dart';
 import '../health_providers.dart';
+import '../terminal/docker_shell.dart';
+import '../terminal/terminal_screen.dart';
 import 'reorder_sidebar_screen.dart';
 
 /// Home screen. Services live in the navigation drawer (the sidebar); the
@@ -532,6 +534,39 @@ class _HealthAwareTile extends ConsumerWidget {
                       );
                     },
                   ),
+                  if (instance.kind != ServiceKind.dockerHost &&
+                      dockerHostFor(
+                            instance,
+                            ref.read(activeInstancesProvider),
+                          ) !=
+                          null)
+                    ListTile(
+                      leading: const Icon(Icons.terminal_rounded),
+                      title: const Text('Open shell in container'),
+                      subtitle: instance.dockerContainer.isEmpty
+                          ? const Text('Set the container in its settings')
+                          : Text(instance.dockerContainer),
+                      onTap: () {
+                        Navigator.pop(sheetContext);
+                        if (instance.dockerContainer.isEmpty) {
+                          final GoRouter router = GoRouter.of(context);
+                          Navigator.of(context).pop();
+                          router.goNamed(
+                            AtriumRoutes.editInstanceName,
+                            pathParameters: <String, String>{
+                              'instanceId': instance.id,
+                            },
+                          );
+                          return;
+                        }
+                        openServiceShell(
+                          context,
+                          ref,
+                          instance,
+                          beforeNavigate: () => Navigator.of(context).pop(),
+                        );
+                      },
+                    ),
                   ListTile(
                     leading: const Icon(Icons.edit),
                     title: const Text('Edit connection settings'),

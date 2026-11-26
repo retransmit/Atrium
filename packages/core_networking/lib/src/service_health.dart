@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'auth_interceptor.dart';
 import 'dio_factory.dart';
 import 'self_path.dart';
+import 'ssh_probe.dart';
 
 /// How a service's health endpoint should be interpreted.
 enum _HealthMode {
@@ -146,6 +147,9 @@ enum _HealthMode {
       // `health` and `version` answer anyone; `current/user` refuses a wrong
       // token, and an application token too, which cannot read messages.
       return (path: 'current/user', mode: _HealthMode.authed);
+    case ServiceKind.dockerHost:
+      // Not HTTP: [HealthProbe.check] hands it to [probeSshHost].
+      return (path: '', mode: _HealthMode.reachable);
   }
 }
 
@@ -188,7 +192,8 @@ String _aria2ProbeBody(Instance instance) {
     InstanceAuthApiKey(:final String apiKey) => apiKey,
     InstanceAuthUserPass() ||
     InstanceAuthPlex() ||
-    InstanceAuthCookie() =>
+    InstanceAuthCookie() ||
+    InstanceAuthSsh() =>
       '',
   };
   return jsonEncode(<String, dynamic>{
@@ -234,6 +239,9 @@ class HealthProbe {
   /// Probes [instance]; see [interpretServiceHealthResponse] for
   /// [connectionOnly].
   Future<Health> check(Instance instance, {bool connectionOnly = false}) async {
+    if (instance.kind == ServiceKind.dockerHost) {
+      return probeSshHost(instance);
+    }
     final ({String path, _HealthMode mode}) cfg = _config(instance.kind);
     Dio? dio;
     try {

@@ -163,6 +163,9 @@ class AuthInterceptor extends Interceptor {
         // Token / cookie auth is handled by the service's session manager,
         // not here.
         break;
+      case InstanceAuthSsh():
+        // SSH credentials never travel over HTTP.
+        break;
     }
     handler.next(options);
   }
