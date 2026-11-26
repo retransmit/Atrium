@@ -67,6 +67,11 @@ class GotifyMessagesNotifier extends AsyncNotifier<GotifyMessageFeed> {
   /// put deleted messages back; it is dropped and the next tick fetches again.
   int _edits = 0;
 
+  /// Deletes and clears still waiting on the server. No poll starts while
+  /// one is: the server may still hold what was deleted, and the counter
+  /// above does not move until the request is done.
+  int _pendingEdits = 0;
+
   @override
   Future<GotifyMessageFeed> build() async {
     final Timer timer = Timer.periodic(
@@ -97,7 +102,7 @@ class GotifyMessagesNotifier extends AsyncNotifier<GotifyMessageFeed> {
   /// as it is and backs off: a wrong token or a server that is down is tried
   /// again after 1, 3, 7, ... skipped ticks rather than on every one.
   Future<void> sync() async {
-    if (_syncing || state.value == null) return;
+    if (_syncing || _pendingEdits > 0 || state.value == null) return;
     _syncing = true;
     final int edits = _edits;
     try {
@@ -139,6 +144,7 @@ class GotifyMessagesNotifier extends AsyncNotifier<GotifyMessageFeed> {
   /// asks the server. A refusal reloads the list and rethrows.
   Future<void> delete(int id) async {
     _edits++;
+    _pendingEdits++;
     final GotifyMessageFeed? current = state.value;
     if (current != null) {
       state = AsyncData<GotifyMessageFeed>(current.without(id));
@@ -151,12 +157,14 @@ class GotifyMessagesNotifier extends AsyncNotifier<GotifyMessageFeed> {
       rethrow;
     } finally {
       _edits++;
+      _pendingEdits--;
     }
   }
 
   /// Deletes every message, or every message of this feed's application.
   Future<void> clear() async {
     _edits++;
+    _pendingEdits++;
     final int? appId = key.appId;
     try {
       final GotifyApi api = await ref.read(gotifyApiProvider(instance).future);
@@ -167,6 +175,7 @@ class GotifyMessagesNotifier extends AsyncNotifier<GotifyMessageFeed> {
       }
     } finally {
       _edits++;
+      _pendingEdits--;
     }
     if (ref.mounted) {
       state = const AsyncData<GotifyMessageFeed>(GotifyMessageFeed.empty);

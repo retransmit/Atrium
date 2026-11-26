@@ -19,13 +19,15 @@ const Instance _instance = Instance(
 GotifyMessage _m(int id) => GotifyMessage(id: id, appId: 1, message: '$id');
 
 /// A server holding messages 3, 2 and 1. Every fetch after the first waits
-/// for [release], so a poll can be caught in flight.
+/// for [release], so a poll can be caught in flight, and deletes wait for
+/// [holdDeletes] when it is set, so a delete can be caught in flight too.
 class _HeldApi extends GotifyApi {
   _HeldApi() : super(Dio());
 
   int fetches = 0;
   final Completer<void> release = Completer<void>();
   final List<int> deleted = <int>[];
+  Completer<void>? holdDeletes;
 
   @override
   Future<GotifyMessagePage> getMessages({
@@ -38,10 +40,13 @@ class _HeldApi extends GotifyApi {
   }
 
   @override
-  Future<void> deleteMessage(int id) async => deleted.add(id);
+  Future<void> deleteMessage(int id) async {
+    await holdDeletes?.future;
+    deleted.add(id);
+  }
 
   @override
-  Future<void> deleteAllMessages() async {}
+  Future<void> deleteAllMessages() async => holdDeletes?.future;
 }
 
 List<int> _ids(GotifyMessageFeed? feed) =>
@@ -88,6 +93,35 @@ void main() {
     await feed.clear();
     api.release.complete();
     await poll;
+
+    expect(_ids(container.read(gotifyMessagesProvider(key)).value), isEmpty);
+  });
+
+  test('a poll that runs while a delete is in flight does not land',
+      () async {
+    final GotifyMessagesNotifier feed =
+        container.read(gotifyMessagesProvider(key).notifier);
+    api.release.complete();
+    api.holdDeletes = Completer<void>();
+
+    final Future<void> deleting = feed.delete(2);
+    await feed.sync();
+    api.holdDeletes!.complete();
+    await deleting;
+
+    expect(_ids(container.read(gotifyMessagesProvider(key)).value), <int>[3, 1]);
+  });
+
+  test('a poll that runs while a clear is in flight does not land', () async {
+    final GotifyMessagesNotifier feed =
+        container.read(gotifyMessagesProvider(key).notifier);
+    api.release.complete();
+    api.holdDeletes = Completer<void>();
+
+    final Future<void> clearing = feed.clear();
+    await feed.sync();
+    api.holdDeletes!.complete();
+    await clearing;
 
     expect(_ids(container.read(gotifyMessagesProvider(key)).value), isEmpty);
   });
