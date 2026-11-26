@@ -62,6 +62,11 @@ class GotifyMessagesNotifier extends AsyncNotifier<GotifyMessageFeed> {
   int _failures = 0;
   int _ticksToSkip = 0;
 
+  /// Counts deletes and clears, before and after each reaches the server. A
+  /// poll that overlapped one fetched the list as it was, so its page would
+  /// put deleted messages back; it is dropped and the next tick fetches again.
+  int _edits = 0;
+
   @override
   Future<GotifyMessageFeed> build() async {
     final Timer timer = Timer.periodic(
@@ -94,13 +99,14 @@ class GotifyMessagesNotifier extends AsyncNotifier<GotifyMessageFeed> {
   Future<void> sync() async {
     if (_syncing || state.value == null) return;
     _syncing = true;
+    final int edits = _edits;
     try {
       final GotifyApi api = await ref.read(gotifyApiProvider(instance).future);
       final GotifyMessagePage page =
           await api.getMessages(appId: key.appId);
       _failures = 0;
       _ticksToSkip = 0;
-      if (!ref.mounted) return;
+      if (!ref.mounted || edits != _edits) return;
       final GotifyMessageFeed? current = state.value;
       if (current == null) return;
       state = AsyncData<GotifyMessageFeed>(
@@ -132,6 +138,7 @@ class GotifyMessagesNotifier extends AsyncNotifier<GotifyMessageFeed> {
   /// Removes the message at once (a dismissed tile must leave the tree), then
   /// asks the server. A refusal reloads the list and rethrows.
   Future<void> delete(int id) async {
+    _edits++;
     final GotifyMessageFeed? current = state.value;
     if (current != null) {
       state = AsyncData<GotifyMessageFeed>(current.without(id));
@@ -142,17 +149,24 @@ class GotifyMessagesNotifier extends AsyncNotifier<GotifyMessageFeed> {
     } on Object {
       if (ref.mounted) ref.invalidateSelf();
       rethrow;
+    } finally {
+      _edits++;
     }
   }
 
   /// Deletes every message, or every message of this feed's application.
   Future<void> clear() async {
+    _edits++;
     final int? appId = key.appId;
-    final GotifyApi api = await ref.read(gotifyApiProvider(instance).future);
-    if (appId == null) {
-      await api.deleteAllMessages();
-    } else {
-      await api.deleteApplicationMessages(appId);
+    try {
+      final GotifyApi api = await ref.read(gotifyApiProvider(instance).future);
+      if (appId == null) {
+        await api.deleteAllMessages();
+      } else {
+        await api.deleteApplicationMessages(appId);
+      }
+    } finally {
+      _edits++;
     }
     if (ref.mounted) {
       state = const AsyncData<GotifyMessageFeed>(GotifyMessageFeed.empty);
