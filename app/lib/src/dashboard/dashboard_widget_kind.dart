@@ -17,6 +17,7 @@ enum DashboardWidgetKind {
   adguardHome,
   wakeOnLan,
   cleanuparr,
+  gotify,
 }
 
 extension DashboardWidgetKindX on DashboardWidgetKind {
@@ -35,6 +36,7 @@ extension DashboardWidgetKindX on DashboardWidgetKind {
         DashboardWidgetKind.adguardHome => 'AdGuard Home',
         DashboardWidgetKind.wakeOnLan => 'Wake on LAN',
         DashboardWidgetKind.cleanuparr => 'Cleanuparr',
+        DashboardWidgetKind.gotify => 'Gotify',
       };
 
   IconData get icon => switch (this) {
@@ -52,6 +54,7 @@ extension DashboardWidgetKindX on DashboardWidgetKind {
         DashboardWidgetKind.adguardHome => Icons.gpp_good_outlined,
         DashboardWidgetKind.wakeOnLan => Icons.power_settings_new_rounded,
         DashboardWidgetKind.cleanuparr => Icons.cleaning_services_outlined,
+        DashboardWidgetKind.gotify => Icons.notifications_active_outlined,
       };
 
   /// Service kinds whose presence makes this widget "configured".
@@ -108,6 +111,7 @@ extension DashboardWidgetKindX on DashboardWidgetKind {
         DashboardWidgetKind.cleanuparr => const <ServiceKind>[
             ServiceKind.cleanuparr
           ],
+        DashboardWidgetKind.gotify => const <ServiceKind>[ServiceKind.gotify],
         // Wake-on-LAN answers to no service. Its targets are machines on the
         // network, kept on the profile beside the instances, so there is no
         // service whose presence could stand in for being set up.

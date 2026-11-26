@@ -39,6 +39,7 @@ const String anonymousRequestExtra = 'atrium.anonymous';
 /// | Navidrome                | `?u=` + `?t=` salted MD5 + `?s=` query params |
 /// | Ombi                     | `ApiKey` header                             |
 /// | aria2                    | `token:<secret>` as the first RPC parameter |
+/// | Gotify                   | `X-Gotify-Key` header (client token)        |
 ///
 /// `Jellyfin/Emby` and `qBittorrent` both use the user/password auth flow:
 /// the session token / cookie is acquired out of band and stored in the
@@ -100,6 +101,8 @@ class AuthInterceptor extends Interceptor {
             if (apiKey.isNotEmpty) {
               options.headers['X-Api-Key'] = apiKey;
             }
+          case ServiceKind.gotify:
+            options.headers['X-Gotify-Key'] = apiKey;
           case _:
             options.headers['X-Api-Key'] = apiKey;
         }

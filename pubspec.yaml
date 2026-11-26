@@ -55,3 +55,4 @@ workspace:
   - services/service_aria2
   - services/service_cleanuparr
   - services/service_slskd
+  - services/service_gotify
