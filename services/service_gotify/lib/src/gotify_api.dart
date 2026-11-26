@@ -50,7 +50,7 @@ class GotifyApi {
           appId == null ? 'message' : 'application/$appId/message',
           queryParameters: <String, dynamic>{
             'limit': limit.clamp(1, maxPageSize),
-            if (since != null) 'since': since,
+            'since': ?since,
           },
         );
         return GotifyMessagePage.fromResponse(response.data);

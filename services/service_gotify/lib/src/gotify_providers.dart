@@ -16,7 +16,7 @@ final gotifyApiProvider =
     final Dio dio = await ref.watch(instanceDioProvider(instance).future);
     return GotifyApi(dio);
   },
-  retry: (int _, Object __) => null,
+  retry: (int _, Object _) => null,
 );
 
 final gotifyApplicationsProvider =
@@ -25,7 +25,7 @@ final gotifyApplicationsProvider =
     final GotifyApi api = await ref.watch(gotifyApiProvider(instance).future);
     return api.getApplications();
   },
-  retry: (int _, Object __) => null,
+  retry: (int _, Object _) => null,
 );
 
 /// The application the screen's message list is filtered to, or null for all.
@@ -177,5 +177,5 @@ class GotifyMessagesNotifier extends AsyncNotifier<GotifyMessageFeed> {
 final gotifyMessagesProvider = AsyncNotifierProvider.autoDispose
     .family<GotifyMessagesNotifier, GotifyMessageFeed, GotifyFeedKey>(
   GotifyMessagesNotifier.new,
-  retry: (int _, Object __) => null,
+  retry: (int _, Object _) => null,
 );
