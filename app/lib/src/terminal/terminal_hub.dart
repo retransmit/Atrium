@@ -12,6 +12,7 @@ import 'package:xterm/xterm.dart';
 import '../preferences.dart';
 import 'docker_shell.dart';
 import 'ssh_connector.dart';
+import 'ssh_host_status.dart';
 
 enum SshStatus { disconnected, connecting, connected, failed }
 
@@ -105,6 +106,15 @@ class HostSession extends ChangeNotifier {
 
   /// What the connection attempt is doing right now, for the loading UI.
   String? stage;
+
+  /// Called with the outcome of every real login (not unreachable hosts -
+  /// reachability is the health probe's business).
+  void Function(SshLoginRecord login)? onLogin;
+
+  /// The last Docker problem seen on this host (`docker ps` failing, or
+  /// `docker exec` not found / not allowed). Kept apart from the connection
+  /// status: the server itself is fine.
+  String? dockerIssue;
   SshEndpoint? endpoint;
 
   final List<TerminalTab> tabs = <TerminalTab>[];
@@ -192,6 +202,9 @@ class HostSession extends ChangeNotifier {
       _client = result.client;
       endpoint = result.endpoint;
       status = SshStatus.connected;
+      onLogin?.call(
+        SshLoginRecord(ok: true, at: DateTime.now(), username: _username(host)),
+      );
       stage = null;
       final SSHClient client = result.client;
       unawaited(
@@ -205,9 +218,24 @@ class HostSession extends ChangeNotifier {
       status = SshStatus.failed;
       stage = null;
       error = e.toString();
+      if (e is SshConnectException && e.authFailed) {
+        onLogin?.call(
+          SshLoginRecord(
+            ok: false,
+            at: DateTime.now(),
+            username: _username(host),
+            message: e.message,
+          ),
+        );
+      }
       _notify();
     }
   }
+
+  static String _username(Instance host) => switch (host.auth) {
+        InstanceAuthSsh(:final String username) => username.trim(),
+        _ => '',
+      };
 
   void _onClosed(SSHClient client) {
     if (!identical(client, _client)) {
@@ -363,10 +391,12 @@ class HostSession extends ChangeNotifier {
       final String out = utf8.decode(result.stdout, allowMalformed: true);
       if (result.exitCode != null && result.exitCode != 0) {
         final String err = utf8.decode(result.stderr, allowMalformed: true);
-        throw StateError(
-          (err.trim().isEmpty ? out : err).trim().split('\n').first,
-        );
+        final String reason =
+            (err.trim().isEmpty ? out : err).trim().split('\n').first;
+        _setDockerIssue(dockerIssueFor(result.exitCode!, reason));
+        throw StateError(reason);
       }
+      _setDockerIssue(null);
       return parseDockerPs(out);
     } finally {
       _busy--;
@@ -455,6 +485,7 @@ class HostSession extends ChangeNotifier {
       return;
     }
     tab._session = session;
+    final DateTime startedAt = DateTime.now();
     const Utf8Decoder decoder = Utf8Decoder(allowMalformed: true);
     tab._stdout = session.stdout.cast<List<int>>().transform(decoder).listen(
           term.write,
@@ -472,6 +503,19 @@ class HostSession extends ChangeNotifier {
           // The remote process ended by itself (exit / Ctrl+D).
           tab.finished = true;
           final int? code = session.exitCode;
+          // `docker exec` that dies at once with 126/127 never got a shell:
+          // docker is missing or not allowed. Later, the same codes are just
+          // the user's last command inside the container.
+          if (tab.container != null &&
+              code != null &&
+              DateTime.now().difference(startedAt) <
+                  const Duration(seconds: 3)) {
+            if (code == 126 || code == 127) {
+              _setDockerIssue(dockerIssueFor(code, ''));
+            }
+          } else if (tab.container != null) {
+            _setDockerIssue(null);
+          }
           term.write(
             '\r\n\x1b[2m[Process completed${code == null ? '' : ' ($code)'}'
             ' - press Enter to restart]\x1b[0m\r\n',
@@ -482,6 +526,13 @@ class HostSession extends ChangeNotifier {
       }),
     );
     _notify();
+  }
+
+  void _setDockerIssue(String? issue) {
+    if (dockerIssue != issue) {
+      dockerIssue = issue;
+      _notify();
+    }
   }
 
   void _notify() {
@@ -501,8 +552,11 @@ class HostSession extends ChangeNotifier {
 /// Owns one [HostSession] per Docker host for the app's lifetime, and closes
 /// their connections when the app is closed or left in the background.
 class TerminalHub {
-  TerminalHub(this._knownHosts, {DateTime Function()? now})
+  TerminalHub(this._knownHosts, {DateTime Function()? now, this.onLogin})
       : _now = now ?? DateTime.now;
+
+  /// Receives every host's login outcomes (see [HostSession.onLogin]).
+  final void Function(String hostId, SshLoginRecord login)? onLogin;
 
   /// How long the app may sit in the background before SSH connections are
   /// closed. Long enough to switch apps to copy something, short enough not
@@ -519,8 +573,11 @@ class TerminalHub {
 
   KnownHostsStore get knownHosts => _knownHosts;
 
-  HostSession session(String hostId) =>
-      _sessions.putIfAbsent(hostId, () => HostSession(hostId, _knownHosts));
+  HostSession session(String hostId) => _sessions.putIfAbsent(
+        hostId,
+        () => HostSession(hostId, _knownHosts)
+          ..onLogin = (SshLoginRecord login) => onLogin?.call(hostId, login),
+      );
 
   /// Closes sessions whose host left the active profile, or whose address
   /// or login was edited - their connection was made with the old details.
@@ -595,8 +652,11 @@ class TerminalHub {
 final Provider<TerminalHub> terminalHubProvider = Provider<TerminalHub>((
   Ref ref,
 ) {
-  final TerminalHub hub =
-      TerminalHub(KnownHostsStore(ref.watch(settingsBoxProvider)));
+  final TerminalHub hub = TerminalHub(
+    KnownHostsStore(ref.watch(settingsBoxProvider)),
+    onLogin: (String hostId, SshLoginRecord login) =>
+        ref.read(sshLoginRecordsProvider.notifier).record(hostId, login),
+  );
   final AppLifecycleListener lifecycle =
       AppLifecycleListener(onStateChange: hub.handleLifecycle);
   hub.syncHosts(ref.read(activeInstancesProvider));

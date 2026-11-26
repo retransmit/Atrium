@@ -107,6 +107,23 @@ Instance? dockerHostFor(Instance service, List<Instance> instances) {
   return hosts.firstOrNull;
 }
 
+/// Plain words for a failed `docker` call, from its exit code and message.
+String dockerIssueFor(int exitCode, String message) {
+  final String m = message.toLowerCase();
+  if (exitCode == 127 || m.contains('command not found')) {
+    return 'Docker was not found on the host';
+  }
+  if (m.contains('permission denied') || exitCode == 126) {
+    return 'This SSH user is not allowed to use Docker (needs sudo or '
+        'the docker group)';
+  }
+  if (m.contains('cannot connect to the docker daemon') ||
+      m.contains('is the docker daemon running')) {
+    return 'Docker is installed but its daemon is not running';
+  }
+  return message.isEmpty ? 'Docker failed (exit $exitCode)' : message;
+}
+
 /// Applies the on-screen Ctrl / Alt modifiers to one chunk of terminal input,
 /// the way a hardware keyboard would encode them.
 String applyModifiers(String data, {bool ctrl = false, bool alt = false}) {

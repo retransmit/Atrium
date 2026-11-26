@@ -20,6 +20,7 @@ import '../plex_client_identifier.dart';
 import '../service_icon.dart';
 import '../terminal/docker_shell.dart';
 import '../terminal/ssh_connector.dart';
+import '../terminal/ssh_host_status.dart';
 import '../terminal/terminal_hub.dart';
 import '../terminal/terminal_screen.dart';
 
@@ -361,6 +362,13 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     final String id = widget.instanceId ??
         ref.read(profileRepositoryProvider).newInstanceId();
     final Instance instance = _buildInstance(id);
+    final Instance? before =
+        _isEdit ? ref.read(instanceByIdProvider(widget.instanceId!)) : null;
+    if (_isSsh && before != null && !_sameSshLogin(before, instance)) {
+      // The last login was made with the old details; forget it so a host
+      // that refused a wrong password is not still amber after the fix.
+      await ref.read(sshLoginRecordsProvider.notifier).clear(id);
+    }
     await controller.upsertInstance(profile.id, instance);
     if (mounted) {
       if (context.canPop()) {
@@ -1292,11 +1300,15 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
             mounted ? confirmHostKey(context, p) : Future<bool>.value(false),
       );
       result.client.close();
+      _recordTestLogin(forced, null);
       return const ConnectionTestResult(
         ConnectionOutcome.connected,
         'Connected and logged in',
       );
     } on SshConnectException catch (e) {
+      if (e.authFailed) {
+        _recordTestLogin(forced, e.message);
+      }
       return ConnectionTestResult(
         e.authFailed
             ? ConnectionOutcome.authFailed
@@ -1305,6 +1317,31 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
       );
     }
   }
+
+  /// A test login counts towards the saved host's status only when it used
+  /// the saved address and login - not unsaved edits still on the form.
+  void _recordTestLogin(Instance tested, String? refusal) {
+    final String? id = widget.instanceId;
+    final Instance? saved = id == null ? null : ref.read(instanceByIdProvider(id));
+    if (id == null || saved == null || !_sameSshLogin(saved, tested)) {
+      return;
+    }
+    final InstanceAuth auth = tested.auth;
+    ref.read(sshLoginRecordsProvider.notifier).record(
+          id,
+          SshLoginRecord(
+            ok: refusal == null,
+            at: DateTime.now(),
+            username: auth is InstanceAuthSsh ? auth.username : '',
+            message: refusal,
+          ),
+        );
+  }
+
+  static bool _sameSshLogin(Instance a, Instance b) =>
+      a.localUrl == b.localUrl &&
+      a.externalUrl == b.externalUrl &&
+      a.auth == b.auth;
 
   List<Instance> get _dockerHosts => ref
       .watch(activeInstancesProvider)
@@ -1378,6 +1415,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
           autocorrect: false,
           enableSuggestions: false,
         ),
+        _DockerIssueNote(hostId: host.id),
         if (saved != null && saved.dockerContainer.isNotEmpty) ...<Widget>[
           const SizedBox(height: Insets.md),
           OutlinedButton.icon(
@@ -1482,6 +1520,48 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     }
     final Uri? uri = Uri.tryParse(raw.trim());
     return uri != null && uri.hasScheme && uri.host.isNotEmpty;
+  }
+}
+
+/// The last Docker problem seen on the host, if any. It lives here rather
+/// than on the host's status dot because the server itself is reachable.
+class _DockerIssueNote extends ConsumerWidget {
+  const _DockerIssueNote({required this.hostId});
+
+  final String hostId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final HostSession session = ref.watch(terminalHubProvider).session(hostId);
+    return ListenableBuilder(
+      listenable: session,
+      builder: (BuildContext context, Widget? _) {
+        final String? issue = session.dockerIssue;
+        if (issue == null) {
+          return const SizedBox.shrink();
+        }
+        final ColorScheme cs = Theme.of(context).colorScheme;
+        return Padding(
+          padding: const EdgeInsets.only(top: Insets.sm),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Icon(Icons.warning_amber_rounded, size: 18, color: cs.error),
+              const SizedBox(width: Insets.sm),
+              Expanded(
+                child: Text(
+                  issue,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: cs.error),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
 

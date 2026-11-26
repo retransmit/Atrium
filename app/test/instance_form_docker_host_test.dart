@@ -1,6 +1,10 @@
+import 'dart:io';
+
+import 'package:atrium/src/preferences.dart';
 import 'package:atrium/src/screens/instance_form_screen.dart';
 import 'package:core_models/core_models.dart';
 import 'package:core_profile/core_profile.dart';
+import 'package:core_storage/core_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
@@ -30,6 +34,17 @@ void main() {
   );
 
   late _Profiles profiles;
+  late Box<String> settings;
+
+  setUpAll(() async {
+    final Directory dir = await Directory.systemTemp.createTemp('form');
+    Hive.init(dir.path);
+    settings = await Hive.openBox<String>('settings');
+  });
+
+  tearDownAll(() async {
+    await Hive.close();
+  });
 
   Future<void> edit(WidgetTester tester, String instanceId) async {
     tester.view.physicalSize = const Size(900, 1600);
@@ -60,6 +75,7 @@ void main() {
         overrides: <Override>[
           profileListProvider.overrideWith(() => profiles),
           activeProfileIdProvider.overrideWith(_Active.new),
+          settingsBoxProvider.overrideWithValue(settings),
         ],
         child: MaterialApp.router(routerConfig: router),
       ),
