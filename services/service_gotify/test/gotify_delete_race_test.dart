@@ -119,7 +119,9 @@ void main() {
     api.holdDeletes = Completer<void>();
 
     final Future<void> clearing = feed.clear();
+    final int fetchesBefore = api.fetches;
     await feed.sync();
+    expect(api.fetches, fetchesBefore);
     api.holdDeletes!.complete();
     await clearing;
 
