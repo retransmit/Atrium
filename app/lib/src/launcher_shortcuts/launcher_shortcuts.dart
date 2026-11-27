@@ -60,10 +60,21 @@ class LauncherShortcutChoiceController extends Notifier<List<String>?> {
     return null;
   }
 
+  /// Shows [ids] at once, so a second tap made while this one is still
+  /// saving starts from it, then saves. A failed save puts the earlier
+  /// choice back, unless a later one has replaced it.
   Future<void> setChosen(List<String> ids) async {
+    final List<String>? previous = state;
     final List<String> next = List<String>.unmodifiable(ids);
-    await ref.read(settingsBoxProvider).put(_key, jsonEncode(next));
     state = next;
+    try {
+      await ref.read(settingsBoxProvider).put(_key, jsonEncode(next));
+    } catch (_) {
+      if (identical(state, next)) {
+        state = previous;
+      }
+      rethrow;
+    }
   }
 }
 

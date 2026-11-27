@@ -116,6 +116,39 @@ void main() {
       expect(relaunch().read(launcherShortcutChoiceProvider('p1')), isNull);
     });
 
+    test('a new choice shows before the save finishes', () async {
+      final ProviderContainer container = relaunch();
+      final LauncherShortcutChoiceController choice =
+          container.read(launcherShortcutChoiceProvider('p1').notifier);
+
+      final Future<void> first = choice.setChosen(<String>['a', 'b']);
+      // A second tap, made while the first save is still running, starts
+      // from the first tap's choice.
+      expect(container.read(launcherShortcutChoiceProvider('p1')),
+          <String>['a', 'b']);
+      final Future<void> second = choice.setChosen(<String>['b']);
+      await Future.wait(<Future<void>>[first, second]);
+
+      expect(relaunch().read(launcherShortcutChoiceProvider('p1')), <String>['b']);
+    });
+
+    test('a failed save puts the old choice back', () async {
+      await box.put('launcherShortcuts.p1', '["a"]');
+      final ProviderContainer container = relaunch();
+      expect(container.read(launcherShortcutChoiceProvider('p1')), <String>['a']);
+      await box.close();
+
+      await expectLater(
+        container
+            .read(launcherShortcutChoiceProvider('p1').notifier)
+            .setChosen(<String>['b']),
+        throwsA(anything),
+      );
+      expect(container.read(launcherShortcutChoiceProvider('p1')), <String>['a']);
+
+      box = await Hive.openBox<String>('settings');
+    });
+
     test('the active profile picks its own instances', () async {
       await box.put('launcherShortcuts.p1', '["c"]');
       final ProviderContainer container = ProviderContainer(

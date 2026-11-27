@@ -38,10 +38,16 @@ class LauncherShortcutsPublisher {
     }
     _sent = shortcuts;
     try {
-      await _channel.invokeMethod<bool>(
+      final bool? applied = await _channel.invokeMethod<bool>(
         'setShortcuts',
         <String, Object>{'shortcuts': shortcuts},
       );
+      // Android can refuse (rate limited while in the background) or fail.
+      // Forget the list so the same one is tried again, unless a newer
+      // publish has already replaced it.
+      if (applied != true && identical(_sent, shortcuts)) {
+        _sent = null;
+      }
     } on MissingPluginException {
       _sent = null;
     } on PlatformException {

@@ -141,6 +141,21 @@ void main() {
     expect(attempts, 2);
   });
 
+  test('a refused update is tried again next time', () async {
+    int attempts = 0;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_channel, (MethodCall call) async {
+      attempts++;
+      // Android said no (rate limited, or the update threw).
+      return attempts > 1;
+    });
+    final LauncherShortcutsPublisher publisher = LauncherShortcutsPublisher();
+    await publisher.publish(<Instance>[_i('a')]);
+    await publisher.publish(<Instance>[_i('a')]);
+    await publisher.publish(<Instance>[_i('a')]);
+    expect(attempts, 2);
+  });
+
   test('nothing is sent until profiles have loaded', () async {
     final Completer<List<Profile>> loading = Completer<List<Profile>>();
     final ProviderContainer container = ProviderContainer(
