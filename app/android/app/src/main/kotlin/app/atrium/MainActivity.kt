@@ -1,16 +1,38 @@
 package app.atrium
 
 import android.content.Intent
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Rect
+import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.provider.OpenableColumns
+import io.flutter.FlutterInjector
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 // FlutterFragmentActivity (not FlutterActivity) is required by local_auth so
 // the BiometricPrompt can attach to a FragmentActivity host.
 class MainActivity : FlutterFragmentActivity() {
+    companion object {
+        // Publishing shortcuts decodes icons and can take Android a while, so
+        // it runs off the main thread. One thread for the whole process keeps
+        // updates in the order sent, even across a recreated activity, so an
+        // older list can never land after a newer one.
+        private val shortcutExecutor: ExecutorService by lazy { Executors.newSingleThreadExecutor() }
+    }
+
     private val CHANNEL = "app.atrium/launcher"
     private val SHARE_CHANNEL = "app.atrium/share"
 
@@ -23,6 +45,8 @@ class MainActivity : FlutterFragmentActivity() {
     private val MAX_BATCH_FILES = 200
 
     private var shareChannel: MethodChannel? = null
+
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     // The intent Atrium was launched with, held until Dart asks for it. Dart
     // is not running yet when a cold start arrives, so it cannot be pushed.
@@ -79,10 +103,79 @@ class MainActivity : FlutterFragmentActivity() {
                 } else {
                     result.error("INVALID_ARGUMENT", "URL is required", null)
                 }
+            } else if (call.method == "setShortcuts") {
+                val shortcuts = call.argument<List<Map<String, String>>>("shortcuts")
+                if (shortcuts == null) {
+                    result.error("INVALID_ARGUMENT", "shortcuts is required", null)
+                } else {
+                    shortcutExecutor.execute {
+                        val applied = runCatching { setShortcuts(shortcuts) }.getOrDefault(false)
+                        mainHandler.post { result.success(applied) }
+                    }
+                }
             } else {
                 result.notImplemented()
             }
         }
+    }
+
+    /// Replaces Atrium's launcher shortcuts (long-press on the icon, and
+    /// launcher search) with [shortcuts]. Each opens an atrium:// link, so a
+    /// tap takes the same path as any other Atrium link. An empty list clears
+    /// them. False below Android 7.1, which has no launcher shortcuts, and
+    /// when Android refuses the update (it rate limits apps in the background).
+    private fun setShortcuts(shortcuts: List<Map<String, String>>): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return false
+        val manager = getSystemService(ShortcutManager::class.java) ?: return false
+        val infos = shortcuts.mapIndexedNotNull { index, entry ->
+            val id = entry["id"] ?: return@mapIndexedNotNull null
+            // Android rejects an empty label, which would fail the whole list.
+            val name = entry["name"]?.takeIf { it.isNotEmpty() } ?: return@mapIndexedNotNull null
+            val link = entry["link"] ?: return@mapIndexedNotNull null
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link))
+                .setClass(this, MainActivity::class.java)
+            ShortcutInfo.Builder(this, id)
+                .setShortLabel(name)
+                .setLongLabel("Open $name")
+                .setRank(index)
+                .setIntent(intent)
+                .setIcon(shortcutIcon(entry["icon"]))
+                .build()
+        }
+        return manager.setDynamicShortcuts(infos)
+    }
+
+    /// The service's bundled icon, or Atrium's own when the service has none
+    /// or it cannot be read.
+    private fun shortcutIcon(assetPath: String?): Icon {
+        val bitmap = assetPath?.let { path ->
+            runCatching {
+                val key = FlutterInjector.instance().flutterLoader().getLookupKeyForAsset(path)
+                assets.open(key).use { BitmapFactory.decodeStream(it) }
+            }.getOrNull()
+        } ?: return Icon.createWithResource(this, R.mipmap.ic_launcher)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return Icon.createWithBitmap(bitmap)
+        }
+        return Icon.createWithAdaptiveBitmap(adaptiveBitmap(bitmap))
+    }
+
+    /// Centres [logo] on a white square sized for an adaptive icon. The
+    /// launcher masks the outer edge into its own shape, so the logo sits
+    /// inside the square that fits the smallest (circular) mask.
+    private fun adaptiveBitmap(logo: Bitmap): Bitmap {
+        val size = 432
+        val inner = size * 46 / 108
+        val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(out)
+        canvas.drawColor(Color.WHITE)
+        val scale = minOf(inner.toFloat() / logo.width, inner.toFloat() / logo.height)
+        val w = (logo.width * scale).toInt()
+        val h = (logo.height * scale).toInt()
+        val left = (size - w) / 2
+        val top = (size - h) / 2
+        canvas.drawBitmap(logo, null, Rect(left, top, left + w, top + h), Paint(Paint.FILTER_BITMAP_FLAG))
+        return out
     }
 
     // Reached when Atrium is already running (launchMode is singleTop), so

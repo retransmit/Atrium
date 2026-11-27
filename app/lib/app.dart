@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'src/custom_theme_providers.dart';
+import 'src/launcher_shortcuts/launcher_shortcuts_publisher.dart';
 import 'src/preferences.dart';
 import 'src/router.dart';
 import 'src/share_intake/torrent_share_listener.dart';
@@ -56,6 +57,10 @@ class AtriumApp extends ConsumerWidget {
     // One-time initial set so headers apply on cold start, not only when the
     // profile changes after this widget is built.
     syncGlobalHeaders(ref.read(activeProfileProvider));
+
+    // Keeps the long-press shortcuts on Atrium's launcher icon in step with
+    // the active profile's services.
+    ref.watch(launcherShortcutsSyncProvider);
 
     final ThemeSource themeSource =
         ref.watch(preferencesProvider.select((Preferences p) => p.themeSource));
