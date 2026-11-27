@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:atrium/src/launcher_shortcuts/launcher_shortcuts.dart';
@@ -11,6 +12,28 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive.dart';
+
+/// Profiles that arrive when [_profiles] completes, as they do at launch
+/// once secure storage has been read.
+class _SlowProfiles extends ProfileListController {
+  _SlowProfiles(this._profiles);
+  final Future<List<Profile>> _profiles;
+
+  @override
+  Future<List<Profile>> build() => _profiles;
+}
+
+class _FixedActiveId extends ActiveProfileIdController {
+  @override
+  String? build() => 'p1';
+}
+
+class _NoChoice extends LauncherShortcutChoiceController {
+  _NoChoice(super.profileId);
+
+  @override
+  List<String>? build() => null;
+}
 
 const MethodChannel _channel = MethodChannel('app.atrium/launcher');
 
@@ -118,6 +141,46 @@ void main() {
     expect(attempts, 2);
   });
 
+  test('nothing is sent until profiles have loaded', () async {
+    final Completer<List<Profile>> loading = Completer<List<Profile>>();
+    final ProviderContainer container = ProviderContainer(
+      overrides: <Override>[
+        profileListProvider.overrideWith(() => _SlowProfiles(loading.future)),
+        activeProfileIdProvider.overrideWith(_FixedActiveId.new),
+        launcherShortcutChoiceProvider('p1')
+            .overrideWith(() => _NoChoice('p1')),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    container.listen(launcherShortcutsSyncProvider, (_, __) {});
+    await pumpEventQueue();
+    expect(calls, isEmpty);
+
+    loading.complete(<Profile>[
+      Profile(id: 'p1', name: 'Home', instances: <Instance>[_i('a')]),
+    ]);
+    await pumpEventQueue();
+    expect(calls, hasLength(1));
+    expect(shortcutsOf(calls.single), hasLength(1));
+  });
+
+  test('a failed profile load leaves the shortcuts alone', () async {
+    final ProviderContainer container = ProviderContainer(
+      overrides: <Override>[
+        profileListProvider.overrideWith(
+          () => _SlowProfiles(Future<List<Profile>>.error(StateError('no'))),
+        ),
+        activeProfileIdProvider.overrideWith(_FixedActiveId.new),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    container.listen(launcherShortcutsSyncProvider, (_, __) {});
+    await pumpEventQueue();
+    expect(calls, isEmpty);
+  });
+
   group('kept in step with the active profile', () {
     late Directory tempDir;
     late Box<String> box;
@@ -150,6 +213,9 @@ void main() {
       final ProviderContainer container = ProviderContainer(
         overrides: <Override>[
           settingsBoxProvider.overrideWithValue(box),
+          profileListProvider.overrideWith(
+            () => _SlowProfiles(Future<List<Profile>>.value(<Profile>[p1, p2])),
+          ),
           activeProfileProvider.overrideWith((Ref ref) => ref.watch(active)),
         ],
       );
