@@ -25,6 +25,14 @@ import java.util.concurrent.Executors
 // FlutterFragmentActivity (not FlutterActivity) is required by local_auth so
 // the BiometricPrompt can attach to a FragmentActivity host.
 class MainActivity : FlutterFragmentActivity() {
+    companion object {
+        // Publishing shortcuts decodes icons and can take Android a while, so
+        // it runs off the main thread. One thread for the whole process keeps
+        // updates in the order sent, even across a recreated activity, so an
+        // older list can never land after a newer one.
+        private val shortcutExecutor: ExecutorService by lazy { Executors.newSingleThreadExecutor() }
+    }
+
     private val CHANNEL = "app.atrium/launcher"
     private val SHARE_CHANNEL = "app.atrium/share"
 
@@ -38,9 +46,6 @@ class MainActivity : FlutterFragmentActivity() {
 
     private var shareChannel: MethodChannel? = null
 
-    // Publishing shortcuts decodes icons and can take Android a while, so it
-    // runs off the main thread. One thread keeps updates in the order sent.
-    private val shortcutExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
 
     // The intent Atrium was launched with, held until Dart asks for it. Dart
@@ -171,11 +176,6 @@ class MainActivity : FlutterFragmentActivity() {
         val top = (size - h) / 2
         canvas.drawBitmap(logo, null, Rect(left, top, left + w, top + h), Paint(Paint.FILTER_BITMAP_FLAG))
         return out
-    }
-
-    override fun onDestroy() {
-        shortcutExecutor.shutdown()
-        super.onDestroy()
     }
 
     // Reached when Atrium is already running (launchMode is singleTop), so
