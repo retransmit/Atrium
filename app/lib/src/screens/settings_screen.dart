@@ -18,6 +18,7 @@ import '../update_check/app_version.dart';
 import '../update_check/update_check_tile.dart';
 import 'changelog_screen.dart';
 import 'custom_headers_screen.dart';
+import 'launcher_shortcuts_screen.dart';
 import 'reorder_sidebar_screen.dart';
 import 'wake_on_lan_screen.dart';
 
@@ -183,6 +184,15 @@ class SettingsScreen extends ConsumerWidget {
                 const Text('Drag to change the order services appear in.'),
             onTap: () =>
                 pushScreen<void>(context, const ReorderSidebarScreen()),
+          ),
+          ListTile(
+            leading: const Icon(Icons.app_shortcut_rounded),
+            title: const Text('Launcher shortcuts'),
+            subtitle: const Text(
+              "Services shown when you long-press Atrium's icon.",
+            ),
+            onTap: () =>
+                pushScreen<void>(context, const LauncherShortcutsScreen()),
           ),
           const Divider(),
           const _SectionHeader('About'),
