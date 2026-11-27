@@ -1,9 +1,19 @@
 package app.atrium
 
 import android.content.Intent
+import android.content.pm.ShortcutInfo
+import android.content.pm.ShortcutManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Rect
+import android.graphics.drawable.Icon
 import android.net.Uri
 import android.os.Build
 import android.provider.OpenableColumns
+import io.flutter.FlutterInjector
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -79,10 +89,75 @@ class MainActivity : FlutterFragmentActivity() {
                 } else {
                     result.error("INVALID_ARGUMENT", "URL is required", null)
                 }
+            } else if (call.method == "setShortcuts") {
+                val shortcuts = call.argument<List<Map<String, String>>>("shortcuts")
+                if (shortcuts == null) {
+                    result.error("INVALID_ARGUMENT", "shortcuts is required", null)
+                } else {
+                    result.success(runCatching { setShortcuts(shortcuts) }.getOrDefault(false))
+                }
             } else {
                 result.notImplemented()
             }
         }
+    }
+
+    /// Replaces Atrium's launcher shortcuts (long-press on the icon, and
+    /// launcher search) with [shortcuts]. Each opens an atrium:// link, so a
+    /// tap takes the same path as any other Atrium link. An empty list clears
+    /// them. False below Android 7.1, which has no launcher shortcuts.
+    private fun setShortcuts(shortcuts: List<Map<String, String>>): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return false
+        val manager = getSystemService(ShortcutManager::class.java) ?: return false
+        val infos = shortcuts.mapIndexedNotNull { index, entry ->
+            val id = entry["id"] ?: return@mapIndexedNotNull null
+            val name = entry["name"] ?: return@mapIndexedNotNull null
+            val link = entry["link"] ?: return@mapIndexedNotNull null
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(link))
+                .setClass(this, MainActivity::class.java)
+            ShortcutInfo.Builder(this, id)
+                .setShortLabel(name)
+                .setLongLabel("Open $name")
+                .setRank(index)
+                .setIntent(intent)
+                .setIcon(shortcutIcon(entry["icon"]))
+                .build()
+        }
+        manager.dynamicShortcuts = infos
+        return true
+    }
+
+    /// The service's bundled icon, or Atrium's own when the service has none
+    /// or it cannot be read.
+    private fun shortcutIcon(assetPath: String?): Icon {
+        val bitmap = assetPath?.let { path ->
+            runCatching {
+                val key = FlutterInjector.instance().flutterLoader().getLookupKeyForAsset(path)
+                assets.open(key).use { BitmapFactory.decodeStream(it) }
+            }.getOrNull()
+        } ?: return Icon.createWithResource(this, R.mipmap.ic_launcher)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return Icon.createWithBitmap(bitmap)
+        }
+        return Icon.createWithAdaptiveBitmap(adaptiveBitmap(bitmap))
+    }
+
+    /// Centres [logo] on a white square sized for an adaptive icon. The
+    /// launcher masks the outer edge into its own shape, so the logo sits
+    /// inside the square that fits the smallest (circular) mask.
+    private fun adaptiveBitmap(logo: Bitmap): Bitmap {
+        val size = 432
+        val inner = size * 46 / 108
+        val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(out)
+        canvas.drawColor(Color.WHITE)
+        val scale = minOf(inner.toFloat() / logo.width, inner.toFloat() / logo.height)
+        val w = (logo.width * scale).toInt()
+        val h = (logo.height * scale).toInt()
+        val left = (size - w) / 2
+        val top = (size - h) / 2
+        canvas.drawBitmap(logo, null, Rect(left, top, left + w, top + h), Paint(Paint.FILTER_BITMAP_FLAG))
+        return out
     }
 
     // Reached when Atrium is already running (launchMode is singleTop), so
