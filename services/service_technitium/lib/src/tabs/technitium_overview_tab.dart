@@ -64,7 +64,7 @@ class _TechnitiumOverviewTabState extends ConsumerState<TechnitiumOverviewTab> {
         ref.watch(technitiumStatsPeriodProvider(_instance));
 
     return RefreshIndicator(
-      onRefresh: () async => _actions.refresh(),
+      onRefresh: _actions.refreshOverview,
       child: ListView(
         padding: const EdgeInsets.all(Insets.md),
         children: <Widget>[

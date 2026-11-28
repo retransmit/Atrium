@@ -16,7 +16,7 @@ class _RecordingActions extends TechnitiumActions {
   }
 
   @override
-  void refresh() => calls.add('refresh');
+  Future<void> refresh() async => calls.add('refresh');
 }
 
 void main() {

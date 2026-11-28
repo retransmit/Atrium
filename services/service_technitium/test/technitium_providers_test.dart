@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,9 +17,12 @@ class _FakeApi extends TechnitiumApi {
   bool forceUpdateCalled = false;
   String? addedDomain;
   String? deletedDomain;
+  Completer<void>? statusGate;
 
   @override
   Future<TechnitiumStatus> getStatus() async {
+    final Completer<void>? gate = statusGate;
+    if (gate != null) await gate.future;
     return TechnitiumStatus(
       version: '13.0.0',
       isBlockingEnabled: true,
@@ -121,6 +126,31 @@ void main() {
 
       await actions.deleteBlockedZone('ad.tracker.com');
       expect(fakeApi.deletedDomain, 'ad.tracker.com');
+    });
+
+    test('refreshOverview waits for provider reloads', () async {
+      final _FakeApi fakeApi = _FakeApi()..statusGate = Completer<void>();
+      final ProviderContainer container = ProviderContainer(
+        overrides: [
+          technitiumApiProvider(technitiumTestInstance)
+              .overrideWith((_) async => fakeApi),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final TechnitiumActions actions =
+          container.read(technitiumActionsProvider(technitiumTestInstance));
+
+      bool completed = false;
+      final Future<void> refresh =
+          actions.refreshOverview().whenComplete(() => completed = true);
+
+      await Future<void>.delayed(Duration.zero);
+      expect(completed, isFalse);
+
+      fakeApi.statusGate!.complete();
+      await refresh;
+      expect(completed, isTrue);
     });
 
     test('Period and query log filters update cleanly', () {

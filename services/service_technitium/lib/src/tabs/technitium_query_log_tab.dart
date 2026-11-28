@@ -175,8 +175,7 @@ class _TechnitiumQueryLogTabState extends ConsumerState<TechnitiumQueryLogTab> {
         // Query log list
         Expanded(
           child: RefreshIndicator(
-            onRefresh: () async =>
-                ref.invalidate(technitiumQueryLogProvider(_instance)),
+            onRefresh: _actions.refreshQueryLog,
             child: logPageAsync.when(
               data: (TechnitiumQueryLogPage page) {
                 if (page.entries.isEmpty) {

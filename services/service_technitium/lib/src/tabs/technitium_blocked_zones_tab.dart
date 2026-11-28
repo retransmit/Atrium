@@ -204,8 +204,7 @@ class _TechnitiumBlockedZonesTabState
           // Zone list
           Expanded(
             child: RefreshIndicator(
-              onRefresh: () async =>
-                  ref.invalidate(technitiumBlockedZonesProvider(_instance)),
+              onRefresh: _actions.refreshBlockedZones,
               child: zonesAsync.when(
                 data: (List<TechnitiumBlockedZone> zones) {
                   final String query =

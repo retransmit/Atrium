@@ -211,15 +211,54 @@ class TechnitiumActions {
     _ref.invalidate(technitiumSettingsProvider(_instance));
   }
 
-  /// Refreshes all active instance providers.
-  void refresh() {
-    _ref.invalidate(technitiumStatusProvider(_instance));
-    _ref.invalidate(technitiumStatsProvider(_instance));
-    _ref.invalidate(technitiumDashboardStatsProvider(_instance));
-    _ref.invalidate(technitiumSettingsProvider(_instance));
-    _ref.invalidate(technitiumBlockedZonesProvider(_instance));
-    _ref.invalidate(technitiumQueryLogProvider(_instance));
+  /// Invalidates [provider] and waits for it to settle.
+  ///
+  /// Errors stay on the provider's [AsyncValue]; the refresh gesture still
+  /// completes so the indicator can dismiss.
+  Future<void> _reload<T>(FutureProvider<T> provider) async {
+    _ref.invalidate(provider);
+    try {
+      await _ref.read(provider.future);
+    } on Object {
+      // Surfaced through the provider's error state.
+    }
   }
+
+  /// Refreshes all active instance providers.
+  Future<void> refresh() async {
+    await Future.wait(<Future<void>>[
+      _reload(technitiumStatusProvider(_instance)),
+      _reload(technitiumStatsProvider(_instance)),
+      _reload(technitiumDashboardStatsProvider(_instance)),
+      _reload(technitiumSettingsProvider(_instance)),
+      _reload(technitiumBlockedZonesProvider(_instance)),
+      _reload(technitiumQueryLogProvider(_instance)),
+    ]);
+  }
+
+  /// Refreshes the providers used by the overview tab.
+  Future<void> refreshOverview() async {
+    await Future.wait(<Future<void>>[
+      _reload(technitiumStatusProvider(_instance)),
+      _reload(technitiumStatsProvider(_instance)),
+    ]);
+  }
+
+  /// Refreshes the providers used by the settings tab.
+  Future<void> refreshSettings() async {
+    await Future.wait(<Future<void>>[
+      _reload(technitiumStatusProvider(_instance)),
+      _reload(technitiumSettingsProvider(_instance)),
+    ]);
+  }
+
+  /// Refreshes the blocked-zones tab.
+  Future<void> refreshBlockedZones() =>
+      _reload(technitiumBlockedZonesProvider(_instance));
+
+  /// Refreshes the query-log tab.
+  Future<void> refreshQueryLog() =>
+      _reload(technitiumQueryLogProvider(_instance));
 }
 
 final technitiumActionsProvider = Provider.family<TechnitiumActions, Instance>(
