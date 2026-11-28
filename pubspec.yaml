@@ -56,3 +56,4 @@ workspace:
   - services/service_cleanuparr
   - services/service_slskd
   - services/service_gotify
+  - services/service_technitium

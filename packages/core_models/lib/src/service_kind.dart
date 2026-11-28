@@ -34,16 +34,15 @@ enum ServiceKind {
   aria2,
   cleanuparr,
   slskd,
-  gotify;
+  gotify,
+  technitium;
 
   /// All [ServiceKind] entries sorted alphabetically by their display name.
-  static List<ServiceKind> get sortedValues =>
-      ServiceKind.values.toList()
-        ..sort(
-          (ServiceKind a, ServiceKind b) => a.displayName
-              .toLowerCase()
-              .compareTo(b.displayName.toLowerCase()),
-        );
+  static List<ServiceKind> get sortedValues => ServiceKind.values.toList()
+    ..sort(
+      (ServiceKind a, ServiceKind b) =>
+          a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()),
+    );
 }
 
 /// Static metadata about a [ServiceKind] - display name, default port, the
@@ -84,6 +83,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.cleanuparr => 'Cleanuparr',
         ServiceKind.slskd => 'slskd',
         ServiceKind.gotify => 'Gotify',
+        ServiceKind.technitium => 'Technitium DNS',
       };
 
   /// One-line role description.
@@ -119,6 +119,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.cleanuparr => 'Malware blocker & cleaner',
         ServiceKind.slskd => 'Soulseek client',
         ServiceKind.gotify => 'Notifications',
+        ServiceKind.technitium => 'Network-wide DNS & ad blocking',
       };
 
   /// Whether this service's integration is still in beta. Surfaced as a
@@ -130,7 +131,8 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.aria2 ||
         ServiceKind.cleanuparr ||
         ServiceKind.slskd ||
-        ServiceKind.gotify =>
+        ServiceKind.gotify ||
+        ServiceKind.technitium =>
           true,
         _ => false,
       };
@@ -180,6 +182,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.slskd => 5030,
         // The port the official Docker image listens on.
         ServiceKind.gotify => 80,
+        ServiceKind.technitium => 5380,
       };
 
   /// What auth flow the service uses by default. Some services (Jellyfin) can
@@ -200,15 +203,14 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.cleanuparr ||
         ServiceKind.ombi ||
         // A client token; an application token can only post messages.
-        ServiceKind.gotify =>
+        ServiceKind.gotify => AuthStyle.apiKey,
+        ServiceKind.technitium =>
           AuthStyle.apiKey,
         // aria2's credential is its `--rpc-secret`, which is sent as the
         // first RPC parameter rather than as a header. It is optional - a
         // daemon with no secret answers anyone - so the form must not
         // demand one.
-        ServiceKind.aria2 ||
-        ServiceKind.slskd =>
-          AuthStyle.apiKey,
+        ServiceKind.aria2 || ServiceKind.slskd => AuthStyle.apiKey,
         // Transmission and rTorrent both use HTTP Basic, and for both it is
         // *optional* - rTorrent's XML-RPC has no auth of its own and is only
         // protected when someone puts a proxy in front - so the form must not
@@ -266,6 +268,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.gluetun => ServiceRole.analytics,
         ServiceKind.myspeed => ServiceRole.analytics,
         ServiceKind.adguardHome => ServiceRole.analytics,
+        ServiceKind.technitium => ServiceRole.analytics,
         ServiceKind.cleanuparr || ServiceKind.gotify => ServiceRole.extra,
       };
 

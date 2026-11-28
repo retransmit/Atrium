@@ -30,6 +30,7 @@ export const servicesList = [
   'dashdot',
   'gluetun',
   'adguard-home',
+  'technitium',
   'unraid'
 ];
 
@@ -492,6 +493,20 @@ export const servicesData = {
       'Query Log with One-Tap Block & Unblock',
       'Blocklists, Custom Rules, Blocked Services & Rewrites',
       'Client, DNS, Cache, Access & Retention Settings'
+    ]
+  },
+  technitium: {
+    name: 'Technitium DNS',
+    category: 'Downloads & Utilities',
+    icon: asset('assets/service_icons/technitium.png'),
+    screenshots: [],
+    description: 'Network-wide DNS server and ad blocker. Pause protection with timed pauses, inspect live query logs, and manage blocked zones and cache settings.',
+    features: [
+      'Protection Switch with Timed Pauses',
+      'Statistics with Top Clients & Domains',
+      'Query Log with Instant Domain Blocking',
+      'Blocked Zones & Block List Updates',
+      'DNS Cache Flush & Server Diagnostics'
     ]
   },
   unraid: {

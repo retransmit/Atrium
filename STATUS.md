@@ -38,7 +38,7 @@ Atrium is a **controller** app. Video playback was removed by design
 - **Dashboard widgets**, reorderable from Customize dashboard: Active
   downloads, Now streaming, Upcoming releases, Recently added, Recently
   downloaded, Requests (Seerr and Ombi), Glances, Dashdot, Speedtest
-  results, MySpeed, Gluetun VPN, AdGuard Home, Cleanuparr and Wake on LAN
+  results, MySpeed, Gluetun VPN, AdGuard Home, Technitium DNS, Cleanuparr and Wake on LAN
 - **Settings**: theme, biometric lock, profile import/export (SAF,
   live-verified), **Wake-on-LAN devices** (profile-stored, magic packets
   over pure Dart UDP), **custom HTTP headers** (global + per-instance,
@@ -452,6 +452,24 @@ Atrium is a **controller** app. Video playback was removed by design
     with severity filters and search.
   - **Dashboard widget**: Integrated into `DashboardWidgetKind.downloads` for cross-service queue tracking.
   - Strictly dynamic Material 3 theming with `AtriumBottomNav` system insets support and `ExpressiveProgressIndicator`.
+
+- **Technitium DNS** (beta; added 2026-11-22): network-wide DNS server and ad blocker (`service_technitium`).
+  Default port 5380, role: `ServiceRole.analytics`, API token authentication via Bearer token
+  (`Authorization: Bearer <token>` or `token=<token>`).
+  - **Overview tab**: Protection status card with timed pauses (30 seconds, 1 minute, 10 minutes,
+    1 hour, or until turned back on) and resume controls, queries & blocked metric tiles,
+    dual-series sparkline charts for total and blocked traffic, selectable time ranges (Last hour,
+    Last 24 hours, Last 7 days, Last 30 days), and top clients / top domains leaderboards.
+  - **Query Log tab**: Live paginated DNS queries log (`/api/logs/query`), response type filter chips
+    (All, Blocked, Allowed), instant domain search, query detail bottom sheet with record details,
+    client IP, protocol, and 1-tap Quick Block domain action.
+  - **Blocked Zones tab**: Blocked domain and zone rules management, add new blocked zone dialog,
+    zone deletion, and on-demand block list force update trigger (`/api/settings/forceUpdateBlockLists`).
+  - **Settings & Cache tab**: DNS server metrics (version, uptime, threads, memory), cache flushing
+    action (`/api/cache/flush`) with confirmation dialog, and blocking configuration overview.
+  - **Dashboard widget**: Compact `DashboardTechnitiumWidget` displaying protection state,
+    countdown timer when paused, queries count, blocked percentage share ring, and traffic sparkline chart.
+  - Full parity with AdGuard Home workflow and dynamic Material 3 theming.
 
 - **iOS**: the target exists and CI builds it unsigned on macOS on every
   change, so it cannot rot unnoticed. Deep links already no-op off Android and

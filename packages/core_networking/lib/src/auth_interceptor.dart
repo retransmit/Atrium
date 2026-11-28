@@ -67,7 +67,9 @@ class AuthInterceptor extends Interceptor {
     switch (auth) {
       case InstanceAuthApiKey(:final String apiKey):
         switch (kind) {
-          case ServiceKind.speedtestTracker || ServiceKind.tracearr:
+          case ServiceKind.speedtestTracker ||
+                ServiceKind.tracearr ||
+                ServiceKind.technitium:
             options.headers['Authorization'] = 'Bearer $apiKey';
             options.headers['Accept'] = 'application/json';
           case ServiceKind.sabnzbd || ServiceKind.tautulli:

@@ -15,7 +15,9 @@ Set<String> serviceAuthHeaderNames(ServiceKind kind, InstanceAuth auth) {
   switch (auth) {
     case InstanceAuthApiKey(:final String apiKey):
       switch (kind) {
-        case ServiceKind.speedtestTracker || ServiceKind.tracearr:
+        case ServiceKind.speedtestTracker ||
+              ServiceKind.tracearr ||
+              ServiceKind.technitium:
           return const <String>{'Authorization', 'Accept'};
         case ServiceKind.sabnzbd || ServiceKind.tautulli:
           // Query parameter, not a header, so nothing collides.

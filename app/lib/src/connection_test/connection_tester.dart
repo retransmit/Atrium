@@ -10,6 +10,7 @@ import 'package:service_plex/service_plex.dart';
 import 'package:service_qbittorrent/service_qbittorrent.dart';
 import 'package:service_rtorrent/service_rtorrent.dart';
 import 'package:service_seerr/service_seerr.dart';
+import 'package:service_technitium/service_technitium.dart';
 
 import 'connection_test_result.dart';
 
@@ -117,6 +118,8 @@ class ConnectionTester {
         return _testSeerr(forced);
       case ServiceKind.rtorrent:
         return _testRtorrent(forced);
+      case ServiceKind.technitium:
+        return _testTechnitium(forced);
       default:
         final HealthProbe probe =
             HealthProbe(dioFactory: _ref.read(dioFactoryProvider));
@@ -206,7 +209,8 @@ class ConnectionTester {
       // A forward-auth login portal answers 200 with a web page. The API
       // always answers with a JSON object, so anything else did not reach it.
       final String contentType =
-          response.headers.value(Headers.contentTypeHeader)?.toLowerCase() ?? '';
+          response.headers.value(Headers.contentTypeHeader)?.toLowerCase() ??
+              '';
       if (contentType.contains('text/html') || response.data is! Map) {
         return connectionResultFromHealth(Health.warning);
       }
@@ -338,6 +342,35 @@ class ConnectionTester {
           ? connectionResultFromError(e)
           : ConnectionTestResult(ConnectionOutcome.authFailed, e.message);
     } on Object catch (error) {
+      return connectionResultFromError(error);
+    } finally {
+      dio?.close(force: true);
+    }
+  }
+
+  Future<ConnectionTestResult> _testTechnitium(Instance forced) async {
+    Dio? dio;
+    try {
+      dio = await _ref.read(dioFactoryProvider).create(forced);
+      final TechnitiumApi api = TechnitiumApi(dio);
+      await api.getSettings();
+      return const ConnectionTestResult(
+        ConnectionOutcome.connected,
+        'Connected',
+      );
+    } on TechnitiumAuthException catch (e) {
+      return ConnectionTestResult(
+        ConnectionOutcome.authFailed,
+        e.message.isNotEmpty ? e.message : 'Invalid API key',
+      );
+    } on Object catch (error) {
+      if (error is TechnitiumUnexpectedAnswer ||
+          error is NetworkNotFoundException) {
+        return const ConnectionTestResult(
+          ConnectionOutcome.unreachable,
+          'Reachable, but Technitium DNS did not answer at this address',
+        );
+      }
       return connectionResultFromError(error);
     } finally {
       dio?.close(force: true);

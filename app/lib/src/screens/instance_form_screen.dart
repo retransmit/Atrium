@@ -299,7 +299,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
   }
 
   bool get _warnAboutExternalHttp {
-    if (_kind != ServiceKind.speedtestTracker) {
+    if (_kind != ServiceKind.speedtestTracker &&
+        _kind != ServiceKind.technitium) {
       return false;
     }
     final Uri? uri = Uri.tryParse(_externalUrl.text.trim());
@@ -493,7 +494,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                                   Flexible(
                                     child: Text(
                                       _kind.displayName,
-                                      style: theme.textTheme.titleLarge?.copyWith(
+                                      style:
+                                          theme.textTheme.titleLarge?.copyWith(
                                         fontWeight: FontWeight.bold,
                                       ),
                                       overflow: TextOverflow.ellipsis,
@@ -716,11 +718,13 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                   Container(
                     padding: const EdgeInsets.all(Insets.sm),
                     decoration: BoxDecoration(
-                      color: _connectionOutcomeColor(context, entry.value.outcome)
-                          .withValues(alpha: 0.1),
+                      color:
+                          _connectionOutcomeColor(context, entry.value.outcome)
+                              .withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(Radii.sm),
                       border: Border.all(
-                        color: _connectionOutcomeColor(context, entry.value.outcome)
+                        color: _connectionOutcomeColor(
+                                context, entry.value.outcome)
                             .withValues(alpha: 0.3),
                       ),
                     ),
@@ -849,8 +853,7 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
             border: const OutlineInputBorder(),
             labelText: local ? 'Email' : 'Username',
           ),
-          keyboardType:
-              local ? TextInputType.emailAddress : TextInputType.text,
+          keyboardType: local ? TextInputType.emailAddress : TextInputType.text,
           autocorrect: false,
           textInputAction: TextInputAction.next,
           onChanged: _clearConnectionTest,
@@ -955,11 +958,13 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
             decoration: InputDecoration(
               border: const OutlineInputBorder(),
               labelText: keyOptional ? 'API key (optional)' : 'API key',
-              helperText: keyOptional
-                  ? (_kind == ServiceKind.slskd
-                      ? 'Leave empty if authentication is disabled in slskd.'
-                      : 'Leave empty if the control server has auth turned off.')
-                  : null,
+              helperText: _kind == ServiceKind.technitium
+                  ? 'Create an API token in Administration > API Tokens in the Technitium console.'
+                  : keyOptional
+                      ? (_kind == ServiceKind.slskd
+                          ? 'Leave empty if authentication is disabled in slskd.'
+                          : 'Leave empty if the control server has auth turned off.')
+                      : null,
             ),
             autocorrect: false,
             onChanged: _clearConnectionTest,

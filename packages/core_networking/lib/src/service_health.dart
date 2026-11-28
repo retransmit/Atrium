@@ -146,6 +146,8 @@ enum _HealthMode {
       // `health` and `version` answer anyone; `current/user` refuses a wrong
       // token, and an application token too, which cannot read messages.
       return (path: 'current/user', mode: _HealthMode.authed);
+    case ServiceKind.technitium:
+      return (path: 'api/status', mode: _HealthMode.publicEndpoint);
   }
 }
 
@@ -186,10 +188,7 @@ String? _probeBody(Instance instance) => switch (instance.kind) {
 String _aria2ProbeBody(Instance instance) {
   final String secret = switch (instance.auth) {
     InstanceAuthApiKey(:final String apiKey) => apiKey,
-    InstanceAuthUserPass() ||
-    InstanceAuthPlex() ||
-    InstanceAuthCookie() =>
-      '',
+    InstanceAuthUserPass() || InstanceAuthPlex() || InstanceAuthCookie() => '',
   };
   return jsonEncode(<String, dynamic>{
     'jsonrpc': '2.0',
@@ -245,8 +244,7 @@ class HealthProbe {
             ? <String, dynamic>{anonymousRequestExtra: true}
             : null,
         receiveTimeout: const Duration(seconds: 8),
-        contentType:
-            body == null ? null : _probeContentType(instance.kind),
+        contentType: body == null ? null : _probeContentType(instance.kind),
         responseType: body == null ? null : ResponseType.plain,
       );
       final String probePath = _probePath(instance, cfg.path);
@@ -371,7 +369,13 @@ Health interpretServiceHealthResponse(
       // attention.
       return Health.warning;
     case _HealthMode.publicEndpoint:
-      return (status >= 200 && status < 300) ? Health.ok : Health.error;
+      if (status >= 200 && status < 300) {
+        if (kind == ServiceKind.technitium && !_technitiumSaysOk(data)) {
+          return Health.warning;
+        }
+        return Health.ok;
+      }
+      return Health.error;
     case _HealthMode.reachable:
       return Health.ok;
     case _HealthMode.anonymous:
@@ -440,4 +444,22 @@ bool _subsonicSaysOk(Object? data) {
   }
   final Object? envelope = data['subsonic-response'];
   return envelope is Map && envelope['status'] == 'ok';
+}
+
+/// Whether a Technitium DNS /api/status response succeeded.
+///
+/// Returns true if status code was 2xx and body carries `{"status":"ok"}`.
+bool _technitiumSaysOk(Object? data) {
+  Object? body = data;
+  if (body is String) {
+    try {
+      body = jsonDecode(body);
+    } on FormatException {
+      return false;
+    }
+  }
+  if (body is! Map) {
+    return false;
+  }
+  return body['status'] == 'ok';
 }

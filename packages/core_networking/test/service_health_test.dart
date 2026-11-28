@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('aria2 JSON-RPC health', _aria2Tests);
   group('AdGuard Home anonymous health', _adguardHomeTests);
+  group('Technitium DNS public health', _technitiumTests);
   group('proxy interception', _interceptionTests);
   group('Navidrome Subsonic health', _navidromeTests);
   group('Gluetun VPN health', _gluetunTests);
@@ -109,7 +110,9 @@ void main() {
         interpretServiceHealthResponse(
           ServiceKind.myspeed,
           401,
-          <String, dynamic>{'message': 'Please provide the correct password in the header'},
+          <String, dynamic>{
+            'message': 'Please provide the correct password in the header'
+          },
         ),
         Health.warning,
       );
@@ -140,7 +143,9 @@ void _interceptionTests() {
   test('a 200 page is not a healthy service', () {
     expect(
       interpretServiceHealthResponse(
-        ServiceKind.sonarr, 200, '<!--SPDX--><!DOCTYPE html>',
+        ServiceKind.sonarr,
+        200,
+        '<!--SPDX--><!DOCTYPE html>',
         contentType: html,
       ),
       Health.warning,
@@ -150,7 +155,10 @@ void _interceptionTests() {
   test('it applies to the public-endpoint services too', () {
     expect(
       interpretServiceHealthResponse(
-        ServiceKind.jellyfin, 200, '<html>', contentType: html,
+        ServiceKind.jellyfin,
+        200,
+        '<html>',
+        contentType: html,
       ),
       Health.warning,
     );
@@ -161,7 +169,10 @@ void _interceptionTests() {
     // accept a login portal.
     expect(
       interpretServiceHealthResponse(
-        ServiceKind.qbittorrent, 200, '<html>', contentType: html,
+        ServiceKind.qbittorrent,
+        200,
+        '<html>',
+        contentType: html,
       ),
       Health.warning,
     );
@@ -170,7 +181,9 @@ void _interceptionTests() {
   test('a real json answer is still healthy', () {
     expect(
       interpretServiceHealthResponse(
-        ServiceKind.sonarr, 200, <String, dynamic>{'version': '4.0'},
+        ServiceKind.sonarr,
+        200,
+        <String, dynamic>{'version': '4.0'},
         contentType: json,
       ),
       Health.ok,
@@ -182,7 +195,9 @@ void _interceptionTests() {
     // 2xx is treated as an interception for exactly this reason.
     expect(
       interpretServiceHealthResponse(
-        ServiceKind.transmission, 409, '<h1>409: Conflict</h1>',
+        ServiceKind.transmission,
+        409,
+        '<h1>409: Conflict</h1>',
         contentType: html,
       ),
       Health.ok,
@@ -192,7 +207,10 @@ void _interceptionTests() {
   test('rtorrent answering 502 with a page is left alone', () {
     expect(
       interpretServiceHealthResponse(
-        ServiceKind.rtorrent, 502, '<html>502</html>', contentType: html,
+        ServiceKind.rtorrent,
+        502,
+        '<html>502</html>',
+        contentType: html,
       ),
       Health.warning,
     );
@@ -203,7 +221,8 @@ void _interceptionTests() {
     // rather than sniffing the body.
     expect(
       interpretServiceHealthResponse(
-        ServiceKind.rtorrent, 200,
+        ServiceKind.rtorrent,
+        200,
         '<?xml version="1.0"?><methodResponse></methodResponse>',
         contentType: 'text/xml',
       ),
@@ -213,7 +232,8 @@ void _interceptionTests() {
 
   test('no content type at all changes nothing', () {
     expect(
-      interpretServiceHealthResponse(ServiceKind.sonarr, 200, <String, dynamic>{}),
+      interpretServiceHealthResponse(
+          ServiceKind.sonarr, 200, <String, dynamic>{}),
       Health.ok,
     );
   });
@@ -492,6 +512,65 @@ void _adguardHomeTests() {
   });
 
   test('no answer at all is offline', () {
+    expect(health(0), Health.error);
+  });
+}
+
+void _technitiumTests() {
+  Health health(int status, {Object? data, String? contentType}) =>
+      interpretServiceHealthResponse(
+        ServiceKind.technitium,
+        status,
+        data,
+        contentType: contentType,
+      );
+
+  test('status 200 with ok status envelope is online', () {
+    expect(
+      health(
+        200,
+        data: <String, dynamic>{'status': 'ok'},
+        contentType: 'application/json',
+      ),
+      Health.ok,
+    );
+    expect(
+      health(
+        200,
+        data: '{"status":"ok"}',
+        contentType: 'application/json',
+      ),
+      Health.ok,
+    );
+  });
+
+  test('status 200 with non-ok status or bad envelope is warning', () {
+    expect(
+      health(200, data: <String, dynamic>{'status': 'error'}),
+      Health.warning,
+    );
+    expect(
+      health(200, data: <String, dynamic>{'hello': 'world'}),
+      Health.warning,
+    );
+    expect(
+      health(200, data: 'not json at all'),
+      Health.warning,
+    );
+    expect(health(200), Health.warning);
+  });
+
+  test('status 200 with HTML interception is warning', () {
+    expect(
+      health(200, data: '<html>Login</html>', contentType: 'text/html'),
+      Health.warning,
+    );
+  });
+
+  test('non-200 responses are error', () {
+    expect(health(401), Health.error);
+    expect(health(404), Health.error);
+    expect(health(500), Health.error);
     expect(health(0), Health.error);
   });
 }
