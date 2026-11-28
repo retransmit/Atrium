@@ -18,6 +18,8 @@ class TechnitiumApi {
 
   final Dio _dio;
   final TechnitiumSession _session;
+  String? _queryLoggerName;
+  String? _queryLoggerClassPath;
 
   TechnitiumSession get session => _session;
 
@@ -40,6 +42,15 @@ class TechnitiumApi {
         data is Map<String, dynamic> ? data : data.cast<String, dynamic>();
 
     final Object? status = map['status'];
+    if (status == 'invalid-token' || status == '2fa-required') {
+      _session.recordAuthRefusal();
+      final String msg = (map['errorMessage'] ??
+              (status == '2fa-required'
+                  ? 'Two-factor authentication required'
+                  : 'Invalid or expired API token'))
+          .toString();
+      throw TechnitiumAuthException(msg);
+    }
     if (status == 'error') {
       final String msg =
           (map['errorMessage'] ?? map['message'] ?? 'Technitium API error')
@@ -166,28 +177,14 @@ class TechnitiumApi {
     );
   }
 
-  /// Temporarily pauses blocking for [minutes].
+  /// Temporarily pauses blocking for integer [minutes].
   ///
   /// Passing `minutes: 0` re-enables blocking immediately.
   Future<void> temporaryDisableBlocking({required num minutes}) async {
-    final dynamic val = (minutes is double && minutes == minutes.toInt())
-        ? minutes.toInt()
-        : minutes;
-    try {
-      await _get(
-        'api/settings/temporaryDisableBlocking',
-        query: <String, dynamic>{'minutes': val},
-      );
-    } on TechnitiumRequestException {
-      if (val is double) {
-        await _get(
-          'api/settings/temporaryDisableBlocking',
-          query: <String, dynamic>{'minutes': val.ceil()},
-        );
-      } else {
-        rethrow;
-      }
-    }
+    await _get(
+      'api/settings/temporaryDisableBlocking',
+      query: <String, dynamic>{'minutes': minutes.toInt()},
+    );
   }
 
   /// Forces an immediate update and download of all configured block lists.
@@ -211,12 +208,54 @@ class TechnitiumApi {
   }
 
   /// Lists manually configured blocked zones / domains.
+  ///
+  /// Uses `/api/blocked/export` for a flat domain list on Technitium v13+,
+  /// falling back to `/api/blocked/list` (supporting both object-with-`zones`
+  /// and flat-array shapes).
   Future<List<TechnitiumBlockedZone>> listBlockedZones() async {
+    try {
+      final Response<dynamic> exportResp = await _dio.get<dynamic>(
+        'api/blocked/export',
+        options: Options(
+          responseType: ResponseType.plain,
+          validateStatus: (int? s) => s != null && s < 500,
+        ),
+      );
+      if (exportResp.statusCode == 401 || exportResp.statusCode == 403) {
+        _session.recordAuthRefusal();
+        throw const TechnitiumAuthException();
+      }
+      if (exportResp.statusCode == 200 && exportResp.data is String) {
+        final String text = (exportResp.data as String).trim();
+        if (text.isEmpty) return const <TechnitiumBlockedZone>[];
+        if (text.startsWith('{')) {
+          final Object? decoded = jsonDecode(text);
+          if (decoded is Map<String, dynamic> &&
+              decoded['status'] != null &&
+              decoded['status'] != 'ok') {
+            _unwrapResponse(exportResp);
+          }
+        } else {
+          _session.resetAuthRefusal();
+          return <TechnitiumBlockedZone>[
+            for (final String line in text.split(RegExp(r'\r?\n')))
+              if (line.trim().isNotEmpty && !line.trim().startsWith('#'))
+                TechnitiumBlockedZone(domain: line.trim()),
+          ];
+        }
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+        _session.recordAuthRefusal();
+        throw const TechnitiumAuthException();
+      }
+      if (e.response?.statusCode != 404) rethrow;
+    }
+
     Map<String, dynamic> json;
     try {
       json = await _get('api/blocked/list');
     } on TechnitiumUnexpectedAnswer {
-      // Fallback for older / variant endpoints
       json = await _get('api/blockedZones/list');
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
@@ -239,6 +278,19 @@ class TechnitiumApi {
           result.add(
             TechnitiumBlockedZone.fromJson(item.cast<String, dynamic>()),
           );
+        }
+      }
+    } else if (raw is Map) {
+      final Object? zones = raw['zones'] ?? raw['records'];
+      if (zones is List) {
+        for (final Object? item in zones) {
+          if (item is String && item.isNotEmpty) {
+            result.add(TechnitiumBlockedZone(domain: item));
+          } else if (item is Map) {
+            result.add(
+              TechnitiumBlockedZone.fromJson(item.cast<String, dynamic>()),
+            );
+          }
         }
       }
     }
@@ -290,6 +342,32 @@ class TechnitiumApi {
     }
   }
 
+  Future<void> _ensureQueryLoggerApp() async {
+    if (_queryLoggerName != null && _queryLoggerClassPath != null) return;
+    final Map<String, dynamic> json = await _get('api/apps/list');
+    final Object? response = json['response'];
+    final Object? apps = response is Map ? response['apps'] : json['apps'];
+    if (apps is List) {
+      for (final Object? app in apps) {
+        if (app is! Map) continue;
+        final String appName = (app['name'] ?? '').toString();
+        final Object? dnsApps = app['dnsApps'];
+        if (dnsApps is List) {
+          for (final Object? dnsApp in dnsApps) {
+            if (dnsApp is Map && dnsApp['isQueryLogger'] == true) {
+              _queryLoggerName = appName;
+              _queryLoggerClassPath = (dnsApp['classPath'] ?? '').toString();
+              return;
+            }
+          }
+        }
+      }
+    }
+    throw const TechnitiumRequestException(
+      'No DNS Query Logger app is installed on this Technitium server',
+    );
+  }
+
   /// Queries DNS logs with optional pagination and filters.
   Future<TechnitiumQueryLogPage> getQueryLogs({
     int pageNumber = 1,
@@ -297,7 +375,10 @@ class TechnitiumApi {
     String? filter,
     String? domain,
   }) async {
+    await _ensureQueryLoggerApp();
     final Map<String, dynamic> query = <String, dynamic>{
+      'name': _queryLoggerName,
+      'classPath': _queryLoggerClassPath,
       'pageNumber': pageNumber,
       'entriesPerPage': entriesPerPage,
       'descendingOrder': true,

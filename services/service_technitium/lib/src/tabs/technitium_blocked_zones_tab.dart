@@ -267,11 +267,31 @@ class _TechnitiumBlockedZonesTabState
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (Object e, _) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(Insets.lg),
-                    child: Text('Failed to load blocked zones: $e'),
-                  ),
+                error: (Object e, _) => ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.all(Insets.lg),
+                  children: <Widget>[
+                    const SizedBox(height: Insets.xl),
+                    Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Text(
+                            'Failed to load blocked zones: $e',
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: Insets.md),
+                          OutlinedButton.icon(
+                            onPressed: () => ref.invalidate(
+                              technitiumBlockedZonesProvider(_instance),
+                            ),
+                            icon: const Icon(Icons.refresh),
+                            label: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

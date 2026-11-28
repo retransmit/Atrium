@@ -76,7 +76,7 @@ void main() {
           technitiumStatusProvider(instance).overrideWith(
             (_) async => statusWith(enabled: true),
           ),
-          technitiumStatsProvider(instance).overrideWith(
+          technitiumDashboardStatsProvider(instance).overrideWith(
             (_) async => testStats,
           ),
           technitiumActionsProvider(instance).overrideWith(
@@ -107,8 +107,8 @@ void main() {
     await tester.tap(find.text('Pause'));
     await tester.pumpAndSettle();
 
-    expect(find.text('30 seconds'), findsOneWidget);
     expect(find.text('1 minute'), findsOneWidget);
+    expect(find.text('5 minutes'), findsOneWidget);
     expect(find.text('10 minutes'), findsOneWidget);
     expect(find.text('1 hour'), findsOneWidget);
     expect(find.text('Until turned back on'), findsOneWidget);
@@ -132,7 +132,7 @@ void main() {
           technitiumStatusProvider(instance).overrideWith(
             (_) async => statusWith(enabled: true, pausedUntil: future),
           ),
-          technitiumStatsProvider(instance).overrideWith(
+          technitiumDashboardStatsProvider(instance).overrideWith(
             (_) async => testStats,
           ),
           technitiumActionsProvider(instance).overrideWith(

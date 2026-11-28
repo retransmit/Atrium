@@ -120,17 +120,17 @@ void main() {
       ]);
     });
 
-    test('listBlockedZones parses list', () async {
+    test('listBlockedZones parses api/blocked/export plain text', () async {
       final Dio dio = Dio()
         ..httpClientAdapter = _MockAdapter((RequestOptions opt) {
-          expect(opt.path, 'api/blocked/list');
-          return _json(<String, dynamic>{
-            'status': 'ok',
-            'response': <dynamic>[
-              'ads.example.com',
-              <String, dynamic>{'domain': 'telemetry.example.com'},
-            ],
-          });
+          expect(opt.path, 'api/blocked/export');
+          return ResponseBody.fromString(
+            'ads.example.com\ntelemetry.example.com\n',
+            200,
+            headers: <String, List<String>>{
+              Headers.contentTypeHeader: <String>['text/plain'],
+            },
+          );
         });
 
       final TechnitiumApi api = TechnitiumApi(dio);
@@ -140,10 +140,56 @@ void main() {
       expect(zones[1].domain, 'telemetry.example.com');
     });
 
-    test('getQueryLogs passes parameters and returns page', () async {
+    test('listBlockedZones falls back to api/blocked/list object shape',
+        () async {
       final Dio dio = Dio()
         ..httpClientAdapter = _MockAdapter((RequestOptions opt) {
+          if (opt.path == 'api/blocked/export') {
+            return ResponseBody.fromString('Not Found', 404);
+          }
+          expect(opt.path, 'api/blocked/list');
+          return _json(<String, dynamic>{
+            'status': 'ok',
+            'response': <String, dynamic>{
+              'domain': '',
+              'zones': <String>['ads.example.com', 'tracker.example.com'],
+              'records': <dynamic>[],
+            },
+          });
+        });
+
+      final TechnitiumApi api = TechnitiumApi(dio);
+      final List<TechnitiumBlockedZone> zones = await api.listBlockedZones();
+      expect(zones.length, 2);
+      expect(zones[0].domain, 'ads.example.com');
+      expect(zones[1].domain, 'tracker.example.com');
+    });
+
+    test('getQueryLogs discovers query logger app and passes parameters',
+        () async {
+      final Dio dio = Dio()
+        ..httpClientAdapter = _MockAdapter((RequestOptions opt) {
+          if (opt.path == 'api/apps/list') {
+            return _json(<String, dynamic>{
+              'status': 'ok',
+              'response': <String, dynamic>{
+                'apps': <dynamic>[
+                  <String, dynamic>{
+                    'name': 'Query Logs (Sqlite)',
+                    'dnsApps': <dynamic>[
+                      <String, dynamic>{
+                        'classPath': 'QueryLogsSqlite.App',
+                        'isQueryLogger': true,
+                      },
+                    ],
+                  },
+                ],
+              },
+            });
+          }
           expect(opt.path, 'api/logs/query');
+          expect(opt.queryParameters['name'], 'Query Logs (Sqlite)');
+          expect(opt.queryParameters['classPath'], 'QueryLogsSqlite.App');
           expect(opt.queryParameters['pageNumber'], 2);
           expect(opt.queryParameters['filter'], 'Blocked');
           return _json(<String, dynamic>{
@@ -178,6 +224,21 @@ void main() {
       final TechnitiumApi api = TechnitiumApi(dio);
       expect(
         api.getStatus,
+        throwsA(isA<TechnitiumAuthException>()),
+      );
+    });
+
+    test('throws TechnitiumAuthException on invalid-token status', () async {
+      final Dio dio = Dio()
+        ..httpClientAdapter = _MockAdapter((RequestOptions opt) {
+          return _json(<String, dynamic>{
+            'status': 'invalid-token',
+          });
+        });
+
+      final TechnitiumApi api = TechnitiumApi(dio);
+      expect(
+        api.getSettings,
         throwsA(isA<TechnitiumAuthException>()),
       );
     });

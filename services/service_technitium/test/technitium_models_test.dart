@@ -59,6 +59,23 @@ void main() {
 
       expect(status.protection, TechnitiumProtection.off);
     });
+
+    test('parses paused status even when enableBlocking is false', () {
+      final DateTime now = DateTime.utc(2026, 11, 22, 12);
+      final TechnitiumStatus status = TechnitiumStatus.fromJson(
+        <String, dynamic>{
+          'status': 'ok',
+          'response': <String, dynamic>{
+            'enableBlocking': false,
+            'temporaryDisableBlockingTill': '2026-11-22T12:10:00Z',
+          },
+        },
+        readAt: now,
+      );
+
+      expect(status.protection, TechnitiumProtection.paused);
+      expect(status.pauseLeft, const Duration(minutes: 10));
+    });
   });
 
   group('TechnitiumStats', () {
@@ -101,6 +118,47 @@ void main() {
       expect(stats.topClients.first.hits, 500);
       expect(stats.topDomains.first.name, 'google.com');
       expect(stats.topBlockedDomains.first.name, 'ads.example.com');
+    });
+
+    test(
+        'parses totalAuthoritative, totalRecursive, and mainChartData.datasets',
+        () {
+      final TechnitiumStats stats = TechnitiumStats.fromJson(<String, dynamic>{
+        'status': 'ok',
+        'response': <String, dynamic>{
+          'stats': <String, dynamic>{
+            'totalQueries': 925,
+            'totalBlocked': 49,
+            'totalCached': 481,
+            'totalAuthoritative': 47,
+            'totalRecursive': 348,
+            'totalClients': 6,
+          },
+          'mainChartData': <String, dynamic>{
+            'labels': <String>['10:00', '10:01'],
+            'datasets': <dynamic>[
+              <String, dynamic>{
+                'label': 'Total',
+                'data': <int>[400, 525]
+              },
+              <String, dynamic>{
+                'label': 'Blocked',
+                'data': <int>[20, 29]
+              },
+              <String, dynamic>{
+                'label': 'Cached',
+                'data': <int>[200, 281]
+              },
+            ],
+          },
+        },
+      });
+
+      expect(stats.authoritativeQueries, 47);
+      expect(stats.recursiveQueries, 348);
+      expect(stats.queriesSeries, <int>[400, 525]);
+      expect(stats.blockedSeries, <int>[20, 29]);
+      expect(stats.cachedSeries, <int>[200, 281]);
     });
   });
 

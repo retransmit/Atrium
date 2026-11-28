@@ -76,6 +76,39 @@ class TechnitiumStats {
       stats['totalClients'] ?? stats['clientsCount'] ?? clients.length,
     );
 
+    final List<int> directQueries = readInts(
+      chartData['totalQueries'] ?? chartData['queries'],
+    );
+    final List<int> directBlocked = readInts(
+      chartData['blockedQueries'] ?? chartData['blocked'],
+    );
+    final List<int> directCached = readInts(
+      chartData['cachedQueries'] ?? chartData['cached'],
+    );
+
+    List<int> seriesQueries = directQueries;
+    List<int> seriesBlocked = directBlocked;
+    List<int> seriesCached = directCached;
+
+    final Object? rawDatasets = chartData['datasets'];
+    if (rawDatasets is List) {
+      for (final Object? ds in rawDatasets) {
+        if (ds is! Map) continue;
+        final String label =
+            readString(ds['label'] ?? ds['name']).toLowerCase();
+        final List<int> values = readInts(ds['data']);
+        if (values.isEmpty) continue;
+        if (label.contains('block') && seriesBlocked.isEmpty) {
+          seriesBlocked = values;
+        } else if (label.contains('cach') && seriesCached.isEmpty) {
+          seriesCached = values;
+        } else if ((label == 'total' || label.contains('quer')) &&
+            seriesQueries.isEmpty) {
+          seriesQueries = values;
+        }
+      }
+    }
+
     return TechnitiumStats(
       totalQueries: totalQ,
       blockedQueries: blockedQ,
@@ -83,15 +116,19 @@ class TechnitiumStats {
       clientsCount: clientsC,
       forwardedQueries:
           readInt(stats['forwardedQueries'] ?? stats['forwarded']),
-      authoritativeQueries:
-          readInt(stats['authoritativeQueries'] ?? stats['authoritative']),
-      recursiveQueries:
-          readInt(stats['recursiveQueries'] ?? stats['recursive']),
-      queriesSeries:
-          readInts(chartData['totalQueries'] ?? chartData['queries']),
-      blockedSeries:
-          readInts(chartData['blockedQueries'] ?? chartData['blocked']),
-      cachedSeries: readInts(chartData['cachedQueries'] ?? chartData['cached']),
+      authoritativeQueries: readInt(
+        stats['totalAuthoritative'] ??
+            stats['authoritativeQueries'] ??
+            stats['authoritative'],
+      ),
+      recursiveQueries: readInt(
+        stats['totalRecursive'] ??
+            stats['recursiveQueries'] ??
+            stats['recursive'],
+      ),
+      queriesSeries: seriesQueries,
+      blockedSeries: seriesBlocked,
+      cachedSeries: seriesCached,
       chartLabels: readStrings(chartData['labels']),
       topClients: clients,
       topDomains: domains,

@@ -23,11 +23,19 @@ class TechnitiumQueryLogTab extends ConsumerStatefulWidget {
 }
 
 class _TechnitiumQueryLogTabState extends ConsumerState<TechnitiumQueryLogTab> {
-  final TextEditingController _searchController = TextEditingController();
+  late final TextEditingController _searchController;
 
   Instance get _instance => widget.instance;
   TechnitiumActions get _actions =>
       ref.read(technitiumActionsProvider(_instance));
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController(
+      text: ref.read(technitiumQueryLogSearchProvider(_instance)),
+    );
+  }
 
   @override
   void dispose() {
@@ -98,6 +106,12 @@ class _TechnitiumQueryLogTabState extends ConsumerState<TechnitiumQueryLogTab> {
                                   .notifier,
                             )
                             .state = '';
+                        ref
+                            .read(
+                              technitiumQueryLogPageProvider(_instance)
+                                  .notifier,
+                            )
+                            .state = 1;
                       },
                     )
                   : null,
@@ -166,13 +180,19 @@ class _TechnitiumQueryLogTabState extends ConsumerState<TechnitiumQueryLogTab> {
             child: logPageAsync.when(
               data: (TechnitiumQueryLogPage page) {
                 if (page.entries.isEmpty) {
-                  return Center(
-                    child: Text(
-                      'No queries found',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: cs.onSurfaceVariant,
+                  return ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: <Widget>[
+                      const SizedBox(height: Insets.xl * 2),
+                      Center(
+                        child: Text(
+                          'No queries found',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   );
                 }
                 return ListView.separated(

@@ -63,10 +63,10 @@ class TechnitiumStatus {
   final String serverIp;
 
   TechnitiumProtection get protection {
-    if (!isBlockingEnabled) return TechnitiumProtection.off;
     if (pausedUntil != null && pausedUntil!.isAfter(readAt)) {
       return TechnitiumProtection.paused;
     }
+    if (!isBlockingEnabled) return TechnitiumProtection.off;
     return TechnitiumProtection.on;
   }
 

@@ -105,7 +105,7 @@ class _TechnitiumBlockState extends ConsumerState<_TechnitiumBlock> {
     final AsyncValue<TechnitiumStatus> status =
         ref.watch(technitiumStatusProvider(_instance));
     final TechnitiumStats? stats =
-        ref.watch(technitiumStatsProvider(_instance)).value;
+        ref.watch(technitiumDashboardStatsProvider(_instance)).value;
 
     return InkWell(
       borderRadius: BorderRadius.circular(12),

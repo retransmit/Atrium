@@ -315,6 +315,7 @@ class DashboardBoard extends ConsumerWidget {
         case ServiceKind.technitium:
           ref.invalidate(technitiumStatusProvider(i));
           ref.invalidate(technitiumStatsProvider(i));
+          ref.invalidate(technitiumDashboardStatsProvider(i));
           ref.invalidate(technitiumSettingsProvider(i));
         default:
           break;

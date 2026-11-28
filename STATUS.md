@@ -464,7 +464,7 @@ Atrium is a **controller** app. Video playback was removed by design
     (All, Blocked, Allowed), instant domain search, query detail bottom sheet with record details,
     client IP, protocol, and 1-tap Quick Block domain action.
   - **Blocked Zones tab**: Blocked domain and zone rules management, add new blocked zone dialog,
-    zone deletion, and on-demand block list force update trigger (`/api/blockLists/forceUpdate`).
+    zone deletion, and on-demand block list force update trigger (`/api/settings/forceUpdateBlockLists`).
   - **Settings & Cache tab**: DNS server metrics (version, uptime, threads, memory), cache flushing
     action (`/api/cache/flush`) with confirmation dialog, and blocking configuration overview.
   - **Dashboard widget**: Compact `DashboardTechnitiumWidget` displaying protection state,

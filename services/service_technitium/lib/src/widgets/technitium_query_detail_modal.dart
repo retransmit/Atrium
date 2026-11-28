@@ -66,7 +66,7 @@ class TechnitiumQueryDetailModal extends StatelessWidget {
     final ColorScheme cs = theme.colorScheme;
 
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(Insets.lg),
         child: Column(
           mainAxisSize: MainAxisSize.min,

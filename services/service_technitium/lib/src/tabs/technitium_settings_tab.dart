@@ -31,6 +31,26 @@ class _TechnitiumSettingsTabState extends ConsumerState<TechnitiumSettingsTab> {
 
   Future<void> _flushCache() async {
     if (_flushing) return;
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext ctx) => AlertDialog(
+        title: const Text('Flush DNS cache?'),
+        content: const Text(
+          'This will clear all cached DNS records from the server.',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Flush'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     setState(() => _flushing = true);
     try {
       await _actions.flushDnsCache();
@@ -281,6 +301,7 @@ class _TechnitiumSettingsTabState extends ConsumerState<TechnitiumSettingsTab> {
       padding: const EdgeInsets.symmetric(vertical: Insets.xs),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(
             label,
@@ -288,10 +309,14 @@ class _TechnitiumSettingsTabState extends ConsumerState<TechnitiumSettingsTab> {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          Text(
-            value,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
+          const SizedBox(width: Insets.md),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

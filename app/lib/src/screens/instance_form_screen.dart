@@ -299,7 +299,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
   }
 
   bool get _warnAboutExternalHttp {
-    if (_kind != ServiceKind.speedtestTracker) {
+    if (_kind != ServiceKind.speedtestTracker &&
+        _kind != ServiceKind.technitium) {
       return false;
     }
     final Uri? uri = Uri.tryParse(_externalUrl.text.trim());

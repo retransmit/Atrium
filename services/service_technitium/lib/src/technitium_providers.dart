@@ -20,8 +20,8 @@ class TechnitiumPause {
 }
 
 const List<TechnitiumPause> technitiumPauses = <TechnitiumPause>[
-  TechnitiumPause('30 seconds', Duration(seconds: 30)),
   TechnitiumPause('1 minute', Duration(minutes: 1)),
+  TechnitiumPause('5 minutes', Duration(minutes: 5)),
   TechnitiumPause('10 minutes', Duration(minutes: 10)),
   TechnitiumPause('1 hour', Duration(hours: 1)),
 ];
@@ -56,22 +56,29 @@ final technitiumStatusProvider =
       await ref.watch(technitiumApiProvider(instance).future);
   final DateTime readAt = DateTime.now();
   final TechnitiumStatus status = await api.getStatus();
-  try {
-    final TechnitiumSettings settings = await api.getSettings();
-    return TechnitiumStatus(
-      version: status.version.isNotEmpty ? status.version : '13.0.0',
-      dnsServerDomain: settings.dnsServerDomain.isNotEmpty
-          ? settings.dnsServerDomain
-          : status.dnsServerDomain,
-      isBlockingEnabled: settings.enableBlocking,
-      pausedUntil: settings.temporaryDisableBlockingTill,
-      readAt: readAt,
-      uptimeSeconds: status.uptimeSeconds,
-      serverIp: status.serverIp,
-    );
-  } on Object {
-    return status;
-  }
+  final TechnitiumSettings settings = await api.getSettings();
+  return TechnitiumStatus(
+    version: status.version.isNotEmpty ? status.version : '13.0.0',
+    dnsServerDomain: settings.dnsServerDomain.isNotEmpty
+        ? settings.dnsServerDomain
+        : status.dnsServerDomain,
+    isBlockingEnabled: settings.enableBlocking,
+    pausedUntil: settings.temporaryDisableBlockingTill,
+    readAt: readAt,
+    uptimeSeconds: status.uptimeSeconds,
+    serverIp: status.serverIp,
+  );
+});
+
+/// Fixed 24-hour statistics for the Atrium dashboard widget.
+final technitiumDashboardStatsProvider =
+    FutureProvider.family<TechnitiumStats, Instance>((
+  Ref ref,
+  Instance instance,
+) async {
+  final TechnitiumApi api =
+      await ref.watch(technitiumApiProvider(instance).future);
+  return api.getStats(type: 'LastDay');
 });
 
 /// Server statistics for the active period.
@@ -152,20 +159,23 @@ class TechnitiumActions {
   /// Pauses, disables, or resumes DNS ad blocking.
   Future<void> setProtection({required bool enabled, Duration? pause}) async {
     final TechnitiumApi api = await _api();
-    if (pause != null && pause > Duration.zero) {
-      final double minutes = pause.inSeconds / 60.0;
-      await api.temporaryDisableBlocking(minutes: minutes);
-    } else if (enabled) {
-      // Clear any pause and enable
-      await api.temporaryDisableBlocking(minutes: 0);
-      await api.setBlocking(enabled: true);
-    } else {
-      await api.setBlocking(enabled: false);
+    try {
+      if (pause != null && pause > Duration.zero) {
+        final int minutes = (pause.inSeconds / 60).ceil().clamp(1, 1440);
+        await api.temporaryDisableBlocking(minutes: minutes);
+      } else if (enabled) {
+        // Clear any pause and enable
+        await api.temporaryDisableBlocking(minutes: 0);
+        await api.setBlocking(enabled: true);
+      } else {
+        await api.setBlocking(enabled: false);
+      }
+    } finally {
+      _ref.invalidate(technitiumStatusProvider(_instance));
+      _ref.invalidate(technitiumSettingsProvider(_instance));
+      _ref.invalidate(technitiumStatsProvider(_instance));
+      _ref.invalidate(technitiumDashboardStatsProvider(_instance));
     }
-
-    _ref.invalidate(technitiumStatusProvider(_instance));
-    _ref.invalidate(technitiumSettingsProvider(_instance));
-    _ref.invalidate(technitiumStatsProvider(_instance));
   }
 
   /// Flushes DNS server cache.
