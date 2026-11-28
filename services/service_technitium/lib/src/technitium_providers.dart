@@ -164,13 +164,12 @@ class TechnitiumActions {
         final int minutes = (pause.inSeconds / 60).ceil().clamp(1, 1440);
         await api.temporaryDisableBlocking(minutes: minutes);
       } else if (enabled) {
-        // Clear any pause and enable
-        await api.temporaryDisableBlocking(minutes: 0);
+        // Enabling blocking disposes any pending temporary-disable timer.
         await api.setBlocking(enabled: true);
       } else {
-        // Clear any pending temporary-disable timer before disabling
-        // indefinitely so it does not auto-resume later.
-        await api.temporaryDisableBlocking(minutes: 0);
+        // Cancel any pending temporary-disable timer without creating a
+        // new resume callback, then disable indefinitely.
+        await api.setBlocking(enabled: true);
         await api.setBlocking(enabled: false);
       }
     } finally {

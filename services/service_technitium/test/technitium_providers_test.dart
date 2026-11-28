@@ -9,6 +9,7 @@ class _FakeApi extends TechnitiumApi {
   _FakeApi() : super(Dio());
 
   bool setBlockingCalled = false;
+  final List<bool> setBlockingHistory = <bool>[];
   num? tempDisableMinutes;
   bool flushCacheCalled = false;
   bool forceUpdateCalled = false;
@@ -44,6 +45,7 @@ class _FakeApi extends TechnitiumApi {
   @override
   Future<void> setBlocking({required bool enabled}) async {
     setBlockingCalled = true;
+    setBlockingHistory.add(enabled);
   }
 
   @override
@@ -94,14 +96,15 @@ void main() {
       );
       expect(fakeApi.tempDisableMinutes, 10.0);
 
-      // Test disable
+      // Test disable (clears pending pause via enable=true before disable)
       await actions.setProtection(enabled: false);
-      expect(fakeApi.setBlockingCalled, isTrue);
+      expect(fakeApi.setBlockingHistory, <bool>[true, false]);
 
-      // Test resume
+      // Test resume (enable=true disposes pause timer directly)
       fakeApi.setBlockingCalled = false;
+      fakeApi.setBlockingHistory.clear();
       await actions.setProtection(enabled: true);
-      expect(fakeApi.tempDisableMinutes, 0.0);
+      expect(fakeApi.setBlockingHistory, <bool>[true]);
       expect(fakeApi.setBlockingCalled, isTrue);
 
       // Test flush cache
