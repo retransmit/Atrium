@@ -168,6 +168,9 @@ class TechnitiumActions {
         await api.temporaryDisableBlocking(minutes: 0);
         await api.setBlocking(enabled: true);
       } else {
+        // Clear any pending temporary-disable timer before disabling
+        // indefinitely so it does not auto-resume later.
+        await api.temporaryDisableBlocking(minutes: 0);
         await api.setBlocking(enabled: false);
       }
     } finally {
@@ -213,6 +216,7 @@ class TechnitiumActions {
   void refresh() {
     _ref.invalidate(technitiumStatusProvider(_instance));
     _ref.invalidate(technitiumStatsProvider(_instance));
+    _ref.invalidate(technitiumDashboardStatsProvider(_instance));
     _ref.invalidate(technitiumSettingsProvider(_instance));
     _ref.invalidate(technitiumBlockedZonesProvider(_instance));
     _ref.invalidate(technitiumQueryLogProvider(_instance));

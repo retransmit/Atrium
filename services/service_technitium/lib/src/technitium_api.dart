@@ -387,14 +387,31 @@ class TechnitiumApi {
       query['filter'] = filter;
       query['responseType'] = filter;
     }
-    if (domain != null && domain.isNotEmpty) {
-      query['search'] = domain;
-      query['domain'] = domain;
-      query['qname'] = domain;
+    if (domain != null && domain.trim().isNotEmpty) {
+      final String trimmed = domain.trim();
+      if (_isIpAddress(trimmed)) {
+        query['clientIpAddress'] = trimmed;
+      } else {
+        query['qname'] = trimmed;
+      }
     }
 
     final Map<String, dynamic> json =
         await _get('api/logs/query', query: query);
     return TechnitiumQueryLogPage.fromJson(json);
+  }
+
+  static bool _isIpAddress(String input) {
+    try {
+      Uri.parseIPv4Address(input);
+      return true;
+    } on FormatException {
+      try {
+        Uri.parseIPv6Address(input);
+        return true;
+      } on FormatException {
+        return false;
+      }
+    }
   }
 }

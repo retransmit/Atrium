@@ -212,6 +212,46 @@ void main() {
       expect(page.totalPages, 4);
     });
 
+    test('getQueryLogs sends clientIpAddress for IP search and omits qname',
+        () async {
+      final Dio dio = Dio()
+        ..httpClientAdapter = _MockAdapter((RequestOptions opt) {
+          if (opt.path == 'api/apps/list') {
+            return _json(<String, dynamic>{
+              'status': 'ok',
+              'response': <String, dynamic>{
+                'apps': <dynamic>[
+                  <String, dynamic>{
+                    'name': 'Query Logs (Sqlite)',
+                    'dnsApps': <dynamic>[
+                      <String, dynamic>{
+                        'classPath': 'QueryLogsSqlite.App',
+                        'isQueryLogger': true,
+                      },
+                    ],
+                  },
+                ],
+              },
+            });
+          }
+          expect(opt.path, 'api/logs/query');
+          expect(opt.queryParameters['clientIpAddress'], '192.168.1.5');
+          expect(opt.queryParameters.containsKey('qname'), isFalse);
+          return _json(<String, dynamic>{
+            'status': 'ok',
+            'response': <String, dynamic>{
+              'pageNumber': 1,
+              'totalPages': 1,
+              'totalEntries': 0,
+              'entries': <dynamic>[],
+            },
+          });
+        });
+
+      final TechnitiumApi api = TechnitiumApi(dio);
+      await api.getQueryLogs(domain: '192.168.1.5');
+    });
+
     test('throws TechnitiumAuthException on token failure', () async {
       final Dio dio = Dio()
         ..httpClientAdapter = _MockAdapter((RequestOptions opt) {
