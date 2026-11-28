@@ -3,6 +3,7 @@ import 'package:core_models/core_models.dart';
 import 'package:core_networking/core_networking.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:hive_ce/hive.dart';
 import '../cache/tracearr_artwork_cache.dart';
 import '../generated/api/raw_public_a_p_i_api.dart';
@@ -382,22 +383,41 @@ final tracearrHealthProvider =
   return repo.getHealth();
 });
 
+/// The device's IANA timezone (such as "America/Los_Angeles"), for the
+/// queries Tracearr answers by calendar day. Null when the platform cannot
+/// say, which leaves Tracearr on its default of UTC.
+final tracearrDeviceTimezoneProvider =
+    FutureProvider.autoDispose<String?>((ref) async {
+  try {
+    final String zone = (await FlutterTimezone.getLocalTimezone()).identifier;
+    return zone.isEmpty ? null : zone;
+  } catch (_) {
+    return null;
+  }
+});
+
 /// Provider for 24h fleet dashboard statistics per (Instance, serverId?, timezone?).
+/// With no timezone, "today" is the device's today.
 final tracearrTodayStatsProvider =
     FutureProvider.autoDispose.family<TracearrTodayStats, (Instance, String?, String?)>(
         (ref, arg) async {
   final repo = await ref.watch(tracearrRepositoryProvider(arg.$1).future);
-  return repo.getStatsToday(serverId: arg.$2, timezone: arg.$3);
+  final timezone =
+      arg.$3 ?? await ref.watch(tracearrDeviceTimezoneProvider.future);
+  return repo.getStatsToday(serverId: arg.$2, timezone: timezone);
 });
 
 /// Provider for playback activity trends per (Instance, period?, serverId?, timezone?).
+/// With no timezone, plays are bucketed by the device's calendar days.
 final tracearrActivityProvider = FutureProvider.autoDispose.family<TracearrActivityTrend,
     (Instance, String?, String?, String?)>((ref, arg) async {
   final repo = await ref.watch(tracearrRepositoryProvider(arg.$1).future);
+  final timezone =
+      arg.$4 ?? await ref.watch(tracearrDeviceTimezoneProvider.future);
   return repo.getActivity(
     period: arg.$2 ?? 'week',
     serverId: arg.$3,
-    timezone: arg.$4,
+    timezone: timezone,
   );
 });
 
