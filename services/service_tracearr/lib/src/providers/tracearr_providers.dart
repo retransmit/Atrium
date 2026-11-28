@@ -414,12 +414,39 @@ final tracearrActivityProvider = FutureProvider.autoDispose.family<TracearrActiv
   final repo = await ref.watch(tracearrRepositoryProvider(arg.$1).future);
   final timezone =
       arg.$4 ?? await ref.watch(tracearrDeviceTimezoneProvider.future);
-  return repo.getActivity(
+  final trend = await repo.getActivity(
     period: arg.$2 ?? 'week',
     serverId: arg.$3,
     timezone: timezone,
   );
+  // Bucket starts come without a zone, in the zone the request named. With
+  // none named, Tracearr used UTC, so read them as UTC rather than local.
+  return timezone == null ? _bucketsInUtc(trend) : trend;
 });
+
+TracearrActivityTrend _bucketsInUtc(TracearrActivityTrend trend) {
+  DateTime? asUtc(DateTime? d) => d == null || d.isUtc
+      ? d
+      : DateTime.utc(
+          d.year,
+          d.month,
+          d.day,
+          d.hour,
+          d.minute,
+          d.second,
+          d.millisecond,
+          d.microsecond,
+        );
+  return TracearrActivityTrend(
+    period: trend.period,
+    rangeStart: trend.rangeStart,
+    rangeEnd: trend.rangeEnd,
+    plays: [
+      for (final bucket in trend.plays)
+        TracearrActivityBucket(date: asUtc(bucket.date), count: bucket.count),
+    ],
+  );
+}
 
 /// Provider for 30-day dashboard aggregate stats per (Instance, serverId?).
 final tracearrAggregateStatsProvider =

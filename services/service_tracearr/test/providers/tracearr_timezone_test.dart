@@ -27,8 +27,12 @@ class _RecordingRepository implements TracearrRepository {
     String? timezone,
   }) async {
     activityZones.add(timezone);
-    return const TracearrActivityTrend(period: 'week');
+    return activity;
   }
+
+  /// What getActivity answers. Bucket starts come without a zone, so the
+  /// mapper parses them as local times, as it does for a real response.
+  TracearrActivityTrend activity = const TracearrActivityTrend(period: 'week');
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -136,6 +140,41 @@ void main() {
           .read(tracearrTodayStatsProvider((instance, null, 'Europe/Berlin')).future);
       expect(repository.activityZones, <String?>['Europe/Berlin']);
       expect(repository.todayZones, <String?>['Europe/Berlin']);
+    });
+
+    test('with no timezone sent, bucket starts are read as UTC', () async {
+      final ProviderContainer container = containerWith(null);
+      repository.activity = TracearrActivityTrend(
+        period: 'week',
+        rangeEnd: DateTime.utc(2026, 11, 27, 1, 30),
+        plays: <TracearrActivityBucket>[
+          TracearrActivityBucket(date: DateTime(2026, 11, 27), count: 3),
+          const TracearrActivityBucket(count: 1),
+        ],
+      );
+
+      final TracearrActivityTrend trend = await container
+          .read(tracearrActivityProvider((instance, 'week', null, null)).future);
+
+      expect(trend.plays.first.date, DateTime.utc(2026, 11, 27));
+      expect(trend.plays.first.count, 3);
+      expect(trend.plays.last.date, isNull);
+      expect(trend.rangeEnd, DateTime.utc(2026, 11, 27, 1, 30));
+    });
+
+    test('with a timezone sent, bucket starts stay local', () async {
+      final ProviderContainer container = containerWith('America/Los_Angeles');
+      repository.activity = TracearrActivityTrend(
+        period: 'week',
+        plays: <TracearrActivityBucket>[
+          TracearrActivityBucket(date: DateTime(2026, 11, 26, 18), count: 3),
+        ],
+      );
+
+      final TracearrActivityTrend trend = await container
+          .read(tracearrActivityProvider((instance, 'week', null, null)).future);
+
+      expect(trend.plays.single.date, DateTime(2026, 11, 26, 18));
     });
 
     test("an unknown device timezone leaves Tracearr's default", () async {
