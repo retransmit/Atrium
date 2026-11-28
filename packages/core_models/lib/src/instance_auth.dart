@@ -48,6 +48,16 @@ sealed class InstanceAuth with _$InstanceAuth {
     required String password,
   }) = InstanceAuthCookie;
 
+  /// SSH login for a [ServiceKind.dockerHost]. [privateKey] (PEM / OpenSSH,
+  /// optionally encrypted with [passphrase]) is offered first when set;
+  /// [password] covers password and keyboard-interactive auth.
+  const factory InstanceAuth.ssh({
+    required String username,
+    @Default('') String password,
+    @Default('') String privateKey,
+    @Default('') String passphrase,
+  }) = InstanceAuthSsh;
+
   factory InstanceAuth.fromJson(Map<String, dynamic> json) =>
       _$InstanceAuthFromJson(json);
 
@@ -60,5 +70,7 @@ sealed class InstanceAuth with _$InstanceAuth {
         InstanceAuthPlex() => 'InstanceAuth.plexToken(***redacted***)',
         InstanceAuthCookie(:final String username) =>
           'InstanceAuth.cookieLogin(username: $username, password: ***redacted***)',
+        InstanceAuthSsh(:final String username) =>
+          'InstanceAuth.ssh(username: $username, secrets: ***redacted***)',
       };
 }

@@ -12,6 +12,10 @@ import 'package:go_router/go_router.dart';
 
 import '../dashboard/dashboard_board.dart';
 import '../health_providers.dart';
+import '../terminal/docker_host_status_tile.dart';
+import '../terminal/docker_shell.dart';
+import '../terminal/terminal_hub.dart';
+import '../terminal/terminal_screen.dart';
 import 'reorder_sidebar_screen.dart';
 
 /// Home screen. Services live in the navigation drawer (the sidebar); the
@@ -517,6 +521,10 @@ class _HealthAwareTile extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
+                  if (instance.kind == ServiceKind.dockerHost) ...<Widget>[
+                    DockerHostStatusTile(host: instance),
+                    const Divider(),
+                  ],
                   ListTile(
                     leading: const Icon(Icons.open_in_new),
                     title: const Text('Open service'),
@@ -532,6 +540,37 @@ class _HealthAwareTile extends ConsumerWidget {
                       );
                     },
                   ),
+                  if (instance.kind != ServiceKind.dockerHost &&
+                      dockerHostFor(
+                            instance,
+                            ref.read(activeInstancesProvider),
+                          ) !=
+                          null)
+                    ListTile(
+                      leading: const Icon(Icons.terminal_rounded),
+                      title: const Text('Open shell in container'),
+                      subtitle: _ContainerShellSubtitle(instance: instance),
+                      onTap: () {
+                        Navigator.pop(sheetContext);
+                        if (instance.dockerContainer.isEmpty) {
+                          final GoRouter router = GoRouter.of(context);
+                          Navigator.of(context).pop();
+                          router.goNamed(
+                            AtriumRoutes.editInstanceName,
+                            pathParameters: <String, String>{
+                              'instanceId': instance.id,
+                            },
+                          );
+                          return;
+                        }
+                        openServiceShell(
+                          context,
+                          ref,
+                          instance,
+                          beforeNavigate: () => Navigator.of(context).pop(),
+                        );
+                      },
+                    ),
                   ListTile(
                     leading: const Icon(Icons.edit),
                     title: const Text('Edit connection settings'),
@@ -551,6 +590,41 @@ class _HealthAwareTile extends ConsumerWidget {
               ),
             );
           },
+        );
+      },
+    );
+  }
+}
+
+/// The container a service's shell opens in, or the last Docker problem
+/// seen on its host - shown here rather than on the host's own dot, since
+/// the server itself is fine.
+class _ContainerShellSubtitle extends ConsumerWidget {
+  const _ContainerShellSubtitle({required this.instance});
+
+  final Instance instance;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (instance.dockerContainer.isEmpty) {
+      return const Text('Set the container in its settings');
+    }
+    final Instance? host =
+        dockerHostFor(instance, ref.watch(activeInstancesProvider));
+    if (host == null) {
+      return Text(instance.dockerContainer);
+    }
+    final HostSession session = ref.watch(terminalHubProvider).session(host.id);
+    return ListenableBuilder(
+      listenable: session,
+      builder: (BuildContext context, Widget? _) {
+        final String? issue = session.dockerIssue;
+        if (issue == null) {
+          return Text(instance.dockerContainer);
+        }
+        return Text(
+          '${instance.dockerContainer} - $issue',
+          style: TextStyle(color: Theme.of(context).colorScheme.error),
         );
       },
     );

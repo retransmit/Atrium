@@ -1,8 +1,13 @@
+import 'dart:convert';
+
 import 'package:core_models/core_models.dart';
 import 'package:core_profile/core_profile.dart';
 import 'package:core_router/core_router.dart';
 import 'package:core_ui/core_ui.dart';
+import 'package:dartssh2/dartssh2.dart' show SSHClient;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:service_plex/service_plex.dart';
@@ -13,6 +18,11 @@ import '../connection_test/connection_test_result.dart';
 import '../connection_test/connection_tester.dart';
 import '../plex_client_identifier.dart';
 import '../service_icon.dart';
+import '../terminal/docker_shell.dart';
+import '../terminal/ssh_connector.dart';
+import '../terminal/ssh_host_status.dart';
+import '../terminal/terminal_hub.dart';
+import '../terminal/terminal_screen.dart';
 
 const String speedtestConnectionSuccessMessage =
     'Connected with results:read. Run permission cannot be verified until used.';
@@ -66,6 +76,13 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
   final TextEditingController _apiKey = TextEditingController();
   final TextEditingController _username = TextEditingController();
   final TextEditingController _password = TextEditingController();
+  final TextEditingController _privateKey = TextEditingController();
+  final TextEditingController _passphrase = TextEditingController();
+  final TextEditingController _dockerContainer = TextEditingController();
+
+  /// The Docker host this service's container runs on; empty = the first.
+  String _dockerHostId = '';
+  bool _loadingContainers = false;
 
   /// qBittorrent 5.2+ supports both username/password and API-key auth; this
   /// tracks which the user picked (qBit only).
@@ -94,6 +111,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
 
   bool get _isEdit => widget.instanceId != null;
 
+  bool get _isSsh => _kind == ServiceKind.dockerHost;
+
   @override
   void initState() {
     super.initState();
@@ -110,6 +129,9 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     _apiKey.dispose();
     _username.dispose();
     _password.dispose();
+    _privateKey.dispose();
+    _passphrase.dispose();
+    _dockerContainer.dispose();
     _pollingInterval.dispose();
     super.dispose();
   }
@@ -127,6 +149,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     _allowSelfSigned = instance.allowSelfSignedCerts;
     _pollingInterval.text = instance.pollingIntervalSeconds.toString();
     _customHeaders = instance.customHeaders;
+    _dockerHostId = instance.dockerHostId;
+    _dockerContainer.text = instance.dockerContainer;
     switch (instance.auth) {
       case InstanceAuthApiKey(:final String apiKey):
         _apiKey.text = apiKey;
@@ -138,6 +162,16 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
       case InstanceAuthCookie(:final String username, :final String password):
         _username.text = username;
         _password.text = password;
+      case InstanceAuthSsh(
+          :final String username,
+          :final String password,
+          :final String privateKey,
+          :final String passphrase,
+        ):
+        _username.text = username;
+        _password.text = password;
+        _privateKey.text = privateKey;
+        _passphrase.text = passphrase;
     }
     // A qBittorrent instance saved with key auth reopens on the API-key tab.
     _qbitUseApiKey = instance.kind == ServiceKind.qbittorrent &&
@@ -173,6 +207,12 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                 username: _username.text.trim(),
                 password: _password.text,
               ),
+      AuthStyle.ssh => InstanceAuth.ssh(
+          username: _username.text.trim(),
+          password: _password.text,
+          privateKey: _privateKey.text.trim(),
+          passphrase: _passphrase.text,
+        ),
       AuthStyle.none => const InstanceAuth.apiKey(apiKey: ''),
     };
   }
@@ -188,6 +228,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
         allowSelfSignedCerts: _allowSelfSigned,
         pollingIntervalSeconds: int.tryParse(_pollingInterval.text.trim()) ?? 5,
         customHeaders: _customHeaders,
+        dockerHostId: _isSsh ? '' : _dockerHostId,
+        dockerContainer: _isSsh ? '' : _dockerContainer.text.trim(),
       );
 
   void _clearConnectionTest(String _) {
@@ -320,6 +362,13 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     final String id = widget.instanceId ??
         ref.read(profileRepositoryProvider).newInstanceId();
     final Instance instance = _buildInstance(id);
+    final Instance? before =
+        _isEdit ? ref.read(instanceByIdProvider(widget.instanceId!)) : null;
+    if (_isSsh && before != null && !_sameSshLogin(before, instance)) {
+      // The last login was made with the old details; forget it so a host
+      // that refused a wrong password is not still amber after the fix.
+      await ref.read(sshLoginRecordsProvider.notifier).clear(id);
+    }
     await controller.upsertInstance(profile.id, instance);
     if (mounted) {
       if (context.canPop()) {
@@ -342,18 +391,17 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
       widget.instanceId ?? 'connection-test',
     );
     final ConnectionTester tester = ref.read(connectionTesterProvider);
+    final Future<ConnectionTestResult> Function(UrlMode) testOne = _isSsh
+        ? (UrlMode url) => _testSsh(candidate.copyWith(urlMode: url))
+        : (UrlMode url) => tester.test(candidate: candidate, url: url);
     final Map<String, ConnectionTestResult> results =
         <String, ConnectionTestResult>{};
     try {
       if (_localUrl.text.trim().isNotEmpty) {
-        results['Local'] =
-            await tester.test(candidate: candidate, url: UrlMode.forceLocal);
+        results['Local'] = await testOne(UrlMode.forceLocal);
       }
       if (_externalUrl.text.trim().isNotEmpty) {
-        results['External'] = await tester.test(
-          candidate: candidate,
-          url: UrlMode.forceExternal,
-        );
+        results['External'] = await testOne(UrlMode.forceExternal);
       }
     } finally {
       if (mounted) {
@@ -554,10 +602,12 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                   controller: _localUrl,
                   decoration: InputDecoration(
                     border: const OutlineInputBorder(),
-                    labelText: 'Local URL',
-                    hintText: _kind.defaultPort == null
-                        ? 'http://192.168.1.10'
-                        : 'http://192.168.1.10:${_kind.defaultPort}',
+                    labelText: _isSsh ? 'Local address' : 'Local URL',
+                    hintText: _isSsh
+                        ? 'ssh://192.168.1.10:22'
+                        : _kind.defaultPort == null
+                            ? 'http://192.168.1.10'
+                            : 'http://192.168.1.10:${_kind.defaultPort}',
                   ),
                   keyboardType: TextInputType.url,
                   autocorrect: false,
@@ -569,10 +619,12 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
                   controller: _externalUrl,
                   decoration: InputDecoration(
                     border: const OutlineInputBorder(),
-                    labelText: 'External URL',
-                    hintText: _kind == ServiceKind.speedtestTracker
-                        ? 'https://speedtest.example.com'
-                        : 'https://sonarr.example.com',
+                    labelText: _isSsh ? 'External address' : 'External URL',
+                    hintText: _isSsh
+                        ? 'ssh://home.example.com:2222'
+                        : _kind == ServiceKind.speedtestTracker
+                            ? 'https://speedtest.example.com'
+                            : 'https://sonarr.example.com',
                   ),
                   keyboardType: TextInputType.url,
                   autocorrect: false,
@@ -645,51 +697,58 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
             ),
             const SizedBox(height: Insets.lg),
 
-            // Preferences Card
-            _FormSectionCard(
-              title: 'Preferences',
-              icon: Icons.tune_outlined,
-              children: <Widget>[
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Allow self-signed certificates'),
-                  subtitle: const Text(
-                    'Skip TLS validation for this instance only.',
-                  ),
-                  value: _allowSelfSigned,
-                  onChanged: (bool v) => setState(() {
-                    _allowSelfSigned = v;
-                    _connectionResults = <String, ConnectionTestResult>{};
-                  }),
-                ),
-                if (_kind == ServiceKind.glances ||
-                    _kind == ServiceKind.dashdot ||
-                    _kind == ServiceKind.gluetun ||
-                    _kind == ServiceKind.qbittorrent ||
-                    _kind == ServiceKind.slskd ||
-                    _kind == ServiceKind.gotify) ...<Widget>[
-                  const SizedBox(height: Insets.md),
-                  TextFormField(
-                    controller: _pollingInterval,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Polling Interval (seconds)',
-                      hintText: '5',
-                      suffixText: 'sec',
+            if (_containerSection() case final Widget section) ...<Widget>[
+              section,
+              const SizedBox(height: Insets.lg),
+            ],
+
+            // Preferences Card (nothing applies to an SSH host)
+            if (!_isSsh) ...<Widget>[
+              _FormSectionCard(
+                title: 'Preferences',
+                icon: Icons.tune_outlined,
+                children: <Widget>[
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Allow self-signed certificates'),
+                    subtitle: const Text(
+                      'Skip TLS validation for this instance only.',
                     ),
-                    keyboardType: TextInputType.number,
-                    validator: (String? v) {
-                      final int? val = int.tryParse(v?.trim() ?? '');
-                      if (val == null || val < 1) {
-                        return 'Must be at least 1 second';
-                      }
-                      return null;
-                    },
+                    value: _allowSelfSigned,
+                    onChanged: (bool v) => setState(() {
+                      _allowSelfSigned = v;
+                      _connectionResults = <String, ConnectionTestResult>{};
+                    }),
                   ),
+                  if (_kind == ServiceKind.glances ||
+                      _kind == ServiceKind.dashdot ||
+                      _kind == ServiceKind.gluetun ||
+                      _kind == ServiceKind.qbittorrent ||
+                      _kind == ServiceKind.slskd ||
+                      _kind == ServiceKind.gotify) ...<Widget>[
+                    const SizedBox(height: Insets.md),
+                    TextFormField(
+                      controller: _pollingInterval,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Polling Interval (seconds)',
+                        hintText: '5',
+                        suffixText: 'sec',
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (String? v) {
+                        final int? val = int.tryParse(v?.trim() ?? '');
+                        if (val == null || val < 1) {
+                          return 'Must be at least 1 second';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
                 ],
-              ],
-            ),
-            const SizedBox(height: Insets.lg),
+              ),
+              const SizedBox(height: Insets.lg),
+            ],
 
             // Connection Test Card
             _FormSectionCard(
@@ -1096,6 +1155,8 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
           else
             ...userPass,
         ];
+      case AuthStyle.ssh:
+        return _sshAuthFields();
       case AuthStyle.none:
         return <Widget>[
           Padding(
@@ -1121,15 +1182,331 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     }
   }
 
+  List<Widget> _sshAuthFields() {
+    const TextStyle mono = TextStyle(fontFamily: 'JetBrainsMono Nerd Font');
+    return <Widget>[
+      TextFormField(
+        controller: _username,
+        decoration: const InputDecoration(
+          border: OutlineInputBorder(),
+          labelText: 'Username',
+        ),
+        autocorrect: false,
+        textInputAction: TextInputAction.next,
+        onChanged: _clearConnectionTest,
+        validator: (String? v) =>
+            (v == null || v.trim().isEmpty) ? 'Required' : null,
+      ),
+      const SizedBox(height: Insets.md),
+      TextFormField(
+        controller: _password,
+        decoration: const InputDecoration(
+          border: OutlineInputBorder(),
+          labelText: 'Password (optional with a key)',
+        ),
+        obscureText: true,
+        onChanged: _clearConnectionTest,
+        validator: (String? v) =>
+            (v ?? '').isEmpty && _privateKey.text.trim().isEmpty
+                ? 'Enter a password or a private key'
+                : null,
+      ),
+      const SizedBox(height: Insets.md),
+      TextFormField(
+        controller: _privateKey,
+        decoration: InputDecoration(
+          border: const OutlineInputBorder(),
+          labelText: 'Private key (optional)',
+          hintText: '-----BEGIN OPENSSH PRIVATE KEY-----',
+          helperText: 'Paste an OpenSSH / PEM key. Stored in the keystore.',
+          alignLabelWithHint: true,
+          suffixIcon: IconButton(
+            tooltip: 'Load key file',
+            icon: const Icon(Icons.file_open_outlined),
+            onPressed: _loadKeyFile,
+          ),
+        ),
+        style: mono.copyWith(fontSize: 12),
+        minLines: 2,
+        maxLines: 5,
+        autocorrect: false,
+        enableSuggestions: false,
+        keyboardType: TextInputType.multiline,
+        onChanged: _clearConnectionTest,
+        validator: (String? v) {
+          final String key = (v ?? '').trim();
+          if (key.isNotEmpty && !key.contains('PRIVATE KEY')) {
+            return 'Not a private key (expected a BEGIN ... PRIVATE KEY block)';
+          }
+          return null;
+        },
+      ),
+      const SizedBox(height: Insets.md),
+      TextFormField(
+        controller: _passphrase,
+        decoration: const InputDecoration(
+          border: OutlineInputBorder(),
+          labelText: 'Key passphrase (optional)',
+        ),
+        obscureText: true,
+        onChanged: _clearConnectionTest,
+      ),
+    ];
+  }
+
+  Future<void> _loadKeyFile() async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    FilePickerResult? picked;
+    try {
+      picked = await FilePicker.pickFiles(dialogTitle: 'Private key');
+    } on PlatformException catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not open file picker: ${e.message}')),
+      );
+      return;
+    }
+    final PlatformFile? file =
+        picked == null || picked.files.isEmpty ? null : picked.files.single;
+    if (file == null) {
+      return;
+    }
+    String text;
+    try {
+      text = utf8.decode(await file.readAsBytes(), allowMalformed: true).trim();
+    } on Object {
+      text = '';
+    }
+    if (!text.contains('PRIVATE KEY')) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('That file is not a private key.')),
+      );
+      return;
+    }
+    if (mounted) {
+      setState(() {
+        _privateKey.text = text;
+        _connectionResults = <String, ConnectionTestResult>{};
+      });
+    }
+  }
+
+  /// Logs in over SSH for real, so a wrong password or key shows up here.
+  Future<ConnectionTestResult> _testSsh(Instance forced) async {
+    try {
+      final ({SSHClient client, SshEndpoint endpoint}) result = await connectSsh(
+        forced,
+        knownHosts: ref.read(terminalHubProvider).knownHosts,
+        onHostKey: (HostKeyPrompt p) =>
+            mounted ? confirmHostKey(context, p) : Future<bool>.value(false),
+      );
+      result.client.close();
+      _recordTestLogin(forced, null);
+      return const ConnectionTestResult(
+        ConnectionOutcome.connected,
+        'Connected and logged in',
+      );
+    } on SshConnectException catch (e) {
+      if (e.authFailed) {
+        _recordTestLogin(forced, e.message);
+      }
+      return ConnectionTestResult(
+        e.authFailed
+            ? ConnectionOutcome.authFailed
+            : ConnectionOutcome.unreachable,
+        e.message,
+      );
+    }
+  }
+
+  /// A test login counts towards the saved host's status only when it used
+  /// the saved address and login - not unsaved edits still on the form.
+  void _recordTestLogin(Instance tested, String? refusal) {
+    final String? id = widget.instanceId;
+    final Instance? saved = id == null ? null : ref.read(instanceByIdProvider(id));
+    if (id == null || saved == null || !_sameSshLogin(saved, tested)) {
+      return;
+    }
+    final InstanceAuth auth = tested.auth;
+    ref.read(sshLoginRecordsProvider.notifier).record(
+          id,
+          SshLoginRecord(
+            ok: refusal == null,
+            at: DateTime.now(),
+            username: auth is InstanceAuthSsh ? auth.username : '',
+            message: refusal,
+          ),
+        );
+  }
+
+  static bool _sameSshLogin(Instance a, Instance b) =>
+      a.localUrl == b.localUrl &&
+      a.externalUrl == b.externalUrl &&
+      a.auth == b.auth;
+
+  List<Instance> get _dockerHosts => ref
+      .watch(activeInstancesProvider)
+      .where((Instance i) => i.kind == ServiceKind.dockerHost)
+      .toList();
+
+  Instance? get _selectedDockerHost {
+    final List<Instance> hosts = _dockerHosts;
+    for (final Instance h in hosts) {
+      if (h.id == _dockerHostId) return h;
+    }
+    return hosts.isEmpty ? null : hosts.first;
+  }
+
+  /// Which container this service runs in, for the in-container shell.
+  /// Only shown once the profile has a Docker host.
+  Widget? _containerSection() {
+    if (_isSsh) {
+      return null;
+    }
+    final List<Instance> hosts = _dockerHosts;
+    if (hosts.isEmpty) {
+      return null;
+    }
+    final Instance host = _selectedDockerHost!;
+    final Instance? saved = _isEdit
+        ? ref.watch(instanceByIdProvider(widget.instanceId!))
+        : null;
+    return _FormSectionCard(
+      title: 'Container shell',
+      icon: Icons.terminal_rounded,
+      subtitle: 'Open a shell inside this service\'s Docker container, over '
+          'the Docker host\'s SSH connection.',
+      children: <Widget>[
+        if (hosts.length > 1) ...<Widget>[
+          DropdownMenu<String>(
+            initialSelection: host.id,
+            label: const Text('Docker host'),
+            expandedInsets: EdgeInsets.zero,
+            dropdownMenuEntries: <DropdownMenuEntry<String>>[
+              for (final Instance h in hosts)
+                DropdownMenuEntry<String>(value: h.id, label: h.name),
+            ],
+            onSelected: (String? id) =>
+                setState(() => _dockerHostId = id ?? _dockerHostId),
+          ),
+          const SizedBox(height: Insets.md),
+        ],
+        TextFormField(
+          controller: _dockerContainer,
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            labelText: 'Container name',
+            hintText: _kind.name.toLowerCase(),
+            helperText: 'Leave empty to turn the container shell off.',
+            suffixIcon: _loadingContainers
+                ? const Padding(
+                    padding: EdgeInsets.all(14),
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : IconButton(
+                    tooltip: 'Pick a running container',
+                    icon: const Icon(Icons.manage_search_rounded),
+                    onPressed: () => _pickContainer(host),
+                  ),
+          ),
+          autocorrect: false,
+          enableSuggestions: false,
+        ),
+        _DockerIssueNote(hostId: host.id),
+        if (saved != null && saved.dockerContainer.isNotEmpty) ...<Widget>[
+          const SizedBox(height: Insets.md),
+          OutlinedButton.icon(
+            onPressed: () => openServiceShell(context, ref, saved),
+            icon: const Icon(Icons.terminal_rounded),
+            label: const Text('Open shell'),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Lists the host's running containers over the shared SSH connection,
+  /// likely matches for this service first.
+  Future<void> _pickContainer(Instance host) async {
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+    setState(() => _loadingContainers = true);
+    List<DockerContainer> containers;
+    try {
+      final List<DockerContainer> all =
+          await ref.read(terminalHubProvider).session(host.id).fetchContainers(
+                host,
+                (HostKeyPrompt p) => mounted
+                    ? confirmHostKey(context, p)
+                    : Future<bool>.value(false),
+              );
+      containers = rankContainersFor(_kind, all);
+    } on Object catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not list containers: $e')),
+      );
+      return;
+    } finally {
+      if (mounted) setState(() => _loadingContainers = false);
+    }
+    if (!mounted) return;
+    if (containers.isEmpty) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('No running containers on ${host.name}.')),
+      );
+      return;
+    }
+    final DockerContainer? picked = await showModalBottomSheet<DockerContainer>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (BuildContext sheetContext) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.7,
+          ),
+          child: ListView(
+            shrinkWrap: true,
+            children: <Widget>[
+              for (final DockerContainer c in containers)
+                ListTile(
+                  leading: Icon(
+                    containerMatchesKind(c, _kind)
+                        ? Icons.star_rounded
+                        : Icons.inventory_2_outlined,
+                  ),
+                  title: Text(c.name),
+                  subtitle: Text(
+                    c.status.isEmpty ? c.image : '${c.image} - ${c.status}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () => Navigator.pop(sheetContext, c),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked != null && mounted) {
+      setState(() => _dockerContainer.text = picked.name);
+    }
+  }
+
   /// At least one of local / external must be a valid URL, and any entered URL must be valid.
   String? _validateUrlsTogether(String? value) {
     final bool localOk = _isValidUrl(_localUrl.text);
     final bool externalOk = _isValidUrl(_externalUrl.text);
     if (!localOk && !externalOk) {
-      return 'Enter at least one valid URL (local or external)';
+      return _isSsh
+          ? 'Enter at least one SSH address (local or external)'
+          : 'Enter at least one valid URL (local or external)';
     }
     if (value != null && value.trim().isNotEmpty && !_isValidUrl(value)) {
-      return 'Enter a valid URL';
+      return _isSsh ? 'Enter host, host:port or ssh://host:port' : 'Enter a valid URL';
     }
     return null;
   }
@@ -1138,8 +1515,53 @@ class _InstanceFormScreenState extends ConsumerState<InstanceFormScreen> {
     if (raw.trim().isEmpty) {
       return false;
     }
+    if (_isSsh) {
+      return SshEndpoint.tryParse(raw) != null;
+    }
     final Uri? uri = Uri.tryParse(raw.trim());
     return uri != null && uri.hasScheme && uri.host.isNotEmpty;
+  }
+}
+
+/// The last Docker problem seen on the host, if any. It lives here rather
+/// than on the host's status dot because the server itself is reachable.
+class _DockerIssueNote extends ConsumerWidget {
+  const _DockerIssueNote({required this.hostId});
+
+  final String hostId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final HostSession session = ref.watch(terminalHubProvider).session(hostId);
+    return ListenableBuilder(
+      listenable: session,
+      builder: (BuildContext context, Widget? _) {
+        final String? issue = session.dockerIssue;
+        if (issue == null) {
+          return const SizedBox.shrink();
+        }
+        final ColorScheme cs = Theme.of(context).colorScheme;
+        return Padding(
+          padding: const EdgeInsets.only(top: Insets.sm),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Icon(Icons.warning_amber_rounded, size: 18, color: cs.error),
+              const SizedBox(width: Insets.sm),
+              Expanded(
+                child: Text(
+                  issue,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: cs.error),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
 

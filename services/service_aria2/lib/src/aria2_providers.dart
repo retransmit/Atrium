@@ -27,7 +27,11 @@ final aria2ApiProvider = FutureProvider.family<Aria2Api, Instance>((
   final dio = await ref.watch(instanceDioProvider(instance).future);
   final String secret = switch (instance.auth) {
     InstanceAuthApiKey(:final String apiKey) => apiKey,
-    InstanceAuthUserPass() || InstanceAuthPlex() || InstanceAuthCookie() => '',
+    InstanceAuthUserPass() ||
+    InstanceAuthPlex() ||
+    InstanceAuthCookie() ||
+    InstanceAuthSsh() =>
+      '',
   };
   return Aria2Api(dio, secret: secret);
 }, retry: (_, _) => null);

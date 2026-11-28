@@ -79,6 +79,7 @@ body:
         - AdGuard Home
         - Cleanuparr
         - Gotify
+        - Docker Host (terminal)
         - Unraid
         - Something else
     validations:

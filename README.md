@@ -42,6 +42,11 @@ external URLs.
 - **Wake-on-LAN.** Store your machines (MAC / broadcast / port) in the
   profile and wake them from Settings; magic packets are sent with pure
   Dart UDP.
+- **Terminal.** Add your server as a Docker Host to get a Termux-style SSH
+  terminal (password or private key, host keys pinned on first use). Give a
+  service its container name - or pick it from `docker ps` - and long-press
+  it in the sidebar to open a shell inside that container. Every shell is a
+  tab on the host's one SSH connection, kept alive while you use the app.
 - **Reverse-proxy friendly.** Global and per-instance custom HTTP
   headers (Authelia / Cloudflare Access style) ride every request. See
   [Behind a reverse proxy](docs/REVERSE_PROXY.md).
@@ -90,6 +95,7 @@ each one covers:
 | AdGuard Home           | protection switch and timed pause, statistics, top clients and domains, query log with block and unblock, blocklists, custom rules, blocked services and rewrites, persistent and runtime clients, DNS, cache, access and retention settings, dashboard widget |
 | Cleanuparr             | system status, operational metrics, active strikes ledger & reset, audit events feed, background cleaner job triggers, dashboard widget (beta) |
 | Unraid                 | array and disk health, system with per-core load, Docker, VM control  |
+| Docker Host            | SSH terminal (tabs, extra-keys row, host-key pinning) and a shell inside each service's container over one shared connection (beta) |
 
 ## Install
 

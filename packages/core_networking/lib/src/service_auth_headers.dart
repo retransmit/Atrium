@@ -54,9 +54,9 @@ Set<String> serviceAuthHeaderNames(ServiceKind kind, InstanceAuth auth) {
       return username.isEmpty && password.isEmpty
           ? const <String>{}
           : const <String>{'Authorization'};
-    case InstanceAuthUserPass() || InstanceAuthCookie():
+    case InstanceAuthUserPass() || InstanceAuthCookie() || InstanceAuthSsh():
       // Token and cookie flows are handled by the service's own session
-      // manager rather than by a static header.
+      // manager rather than by a static header; SSH never uses HTTP.
       return const <String>{};
   }
 }

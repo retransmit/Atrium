@@ -20,6 +20,7 @@ dependencies:
   core_ui:
   cached_network_image: ^3.4.1
   cupertino_icons: ^1.0.8
+  dartssh2: ^4.2.0
   dio: ^5.7.0
   file_picker: ^12.0.0-beta.7
   palette_generator_plus: ^1.0.0
@@ -67,6 +68,7 @@ dependencies:
   service_cleanuparr:
   service_slskd:
   url_launcher: ^6.3.2
+  xterm: ^4.0.0
 dev_dependencies:
   flutter_launcher_icons: ^0.14.3
   flutter_lints: ^6.0.0

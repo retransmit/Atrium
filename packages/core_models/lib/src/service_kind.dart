@@ -34,7 +34,8 @@ enum ServiceKind {
   aria2,
   cleanuparr,
   slskd,
-  gotify;
+  gotify,
+  dockerHost;
 
   /// All [ServiceKind] entries sorted alphabetically by their display name.
   static List<ServiceKind> get sortedValues =>
@@ -84,6 +85,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.cleanuparr => 'Cleanuparr',
         ServiceKind.slskd => 'slskd',
         ServiceKind.gotify => 'Gotify',
+        ServiceKind.dockerHost => 'Docker Host',
       };
 
   /// One-line role description.
@@ -119,6 +121,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.cleanuparr => 'Malware blocker & cleaner',
         ServiceKind.slskd => 'Soulseek client',
         ServiceKind.gotify => 'Notifications',
+        ServiceKind.dockerHost => 'Container terminal',
       };
 
   /// Whether this service's integration is still in beta. Surfaced as a
@@ -132,6 +135,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.slskd ||
         ServiceKind.gotify =>
           true,
+        ServiceKind.dockerHost => true,
         _ => false,
       };
 
@@ -180,6 +184,7 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.slskd => 5030,
         // The port the official Docker image listens on.
         ServiceKind.gotify => 80,
+        ServiceKind.dockerHost => 22,
       };
 
   /// What auth flow the service uses by default. Some services (Jellyfin) can
@@ -202,6 +207,7 @@ extension ServiceKindX on ServiceKind {
         // A client token; an application token can only post messages.
         ServiceKind.gotify =>
           AuthStyle.apiKey,
+        ServiceKind.dockerHost => AuthStyle.ssh,
         // aria2's credential is its `--rpc-secret`, which is sent as the
         // first RPC parameter rather than as a header. It is optional - a
         // daemon with no secret answers anyone - so the form must not
@@ -266,7 +272,10 @@ extension ServiceKindX on ServiceKind {
         ServiceKind.gluetun => ServiceRole.analytics,
         ServiceKind.myspeed => ServiceRole.analytics,
         ServiceKind.adguardHome => ServiceRole.analytics,
-        ServiceKind.cleanuparr || ServiceKind.gotify => ServiceRole.extra,
+        ServiceKind.cleanuparr ||
+        ServiceKind.gotify ||
+        ServiceKind.dockerHost =>
+          ServiceRole.extra,
       };
 
   /// Whether this service can be handed a torrent - a magnet URI, a link to a
@@ -305,6 +314,9 @@ enum AuthStyle {
   /// Username + password login that returns a cookie carried on subsequent
   /// requests (qBittorrent).
   cookieLogin,
+
+  /// SSH login (password and/or private key) for a Docker host.
+  ssh,
 
   /// No authentication required.
   none,
