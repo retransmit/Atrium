@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../models/tracearr_models.dart';
+import '../daily_plays.dart';
 
 /// 7-day activity trend histogram visualizing playback session counts over time.
 class OverviewActivityChart extends StatelessWidget {
@@ -90,9 +91,9 @@ class OverviewActivityChart extends StatelessWidget {
             ),
           ),
           data: (trend) {
-            final buckets = trend.plays;
+            final buckets = dailyPlays(trend);
 
-            if (buckets.isEmpty) {
+            if (buckets.every((b) => b.count == 0)) {
               return Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(Insets.lg),
