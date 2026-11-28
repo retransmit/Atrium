@@ -347,6 +347,7 @@ void main() {
 
       final activity = TracearrActivityTrend(
         period: 'week',
+        rangeEnd: DateTime(2026, 8, 12, 10),
         plays: [
           TracearrActivityBucket(
             date: DateTime(2026, 8, 10),
@@ -373,6 +374,73 @@ void main() {
       expect(find.text('7-DAY PLAYBACK ACTIVITY'), findsOneWidget);
       expect(find.text('12'), findsOneWidget);
       expect(find.text('25'), findsOneWidget);
+    });
+
+    testWidgets('shows one bar per day, adding up 6-hour buckets',
+        (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      // 6 to 12 August 2026 runs Thursday to Wednesday.
+      final activity = TracearrActivityTrend(
+        period: 'week',
+        rangeEnd: DateTime(2026, 8, 12, 10),
+        plays: [
+          TracearrActivityBucket(date: DateTime(2026, 8, 10), count: 2),
+          TracearrActivityBucket(date: DateTime(2026, 8, 10, 6), count: 3),
+          TracearrActivityBucket(date: DateTime(2026, 8, 10, 18), count: 4),
+          TracearrActivityBucket(date: DateTime(2026, 8, 12), count: 1),
+        ],
+      );
+
+      await tester.pumpWidget(
+        createOverviewWidget(
+          health: const TracearrHealthResponse(status: 'ok'),
+          streams: const [],
+          todayStats: const TracearrTodayStats(),
+          violations: const [],
+          activity: activity,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      for (final day in ['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed']) {
+        expect(find.text(day), findsOneWidget, reason: day);
+      }
+      expect(find.text('9'), findsOneWidget);
+      expect(find.text('2'), findsNothing);
+    });
+
+    testWidgets('a week with no plays says so', (tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        createOverviewWidget(
+          health: const TracearrHealthResponse(status: 'ok'),
+          streams: const [],
+          todayStats: const TracearrTodayStats(),
+          violations: const [],
+          activity: TracearrActivityTrend(
+            period: 'week',
+            rangeEnd: DateTime(2026, 8, 12, 10),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('No playback activity recorded in the past 7 days.'),
+        findsOneWidget,
+      );
     });
 
     testWidgets(
